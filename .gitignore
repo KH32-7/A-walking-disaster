@@ -1,0 +1,12 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Export / build output
+/build/
+/export/
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
