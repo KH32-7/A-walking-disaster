@@ -9,3 +9,24 @@ Godot 4.7 (Forward+) project - "Walking disaster's project".
    - Install [uv](https://docs.astral.sh/uv/getting-started/installation/) once (`irm https://astral.sh/uv/install.ps1 | iex` on Windows).
    - In the **Godot AI** dock, press **Configure** next to your MCP client (Claude Code, Codex, Cursor, ...).
    - Update the plugin with the dock's **Update** button, never by extracting over `addons/godot_ai/`.
+
+## Paid assets (private submodule)
+
+`assets/` is a git submodule pointing at the **private** repo `KH32-7/A-walking-disaster-assets`
+(Git LFS enabled). Without access the folder stays empty; the rest of the project still clones.
+
+```sh
+git clone --recurse-submodules https://github.com/KH32-7/A-walking-disaster.git
+# already cloned:
+git submodule update --init
+```
+
+Working with assets:
+
+1. Put licensed files only under `assets/` (`res://assets/...`). Never commit them anywhere else in this repo.
+2. Commit inside the submodule first, then record the new pointer in the main repo:
+   ```sh
+   cd assets && git add -A && git commit -m "..." && git push && cd ..
+   git add assets && git commit -m "Update assets" && git push
+   ```
+3. Pull both: `git pull && git submodule update --init`.
