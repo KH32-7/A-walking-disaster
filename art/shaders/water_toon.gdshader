@@ -3,6 +3,7 @@
 // Design 16 "팔레트": 청록 수면. reduce_flash -> sparkle_amount 0 from code.
 shader_type spatial;
 render_mode diffuse_toon, specular_disabled, cull_back, depth_draw_opaque;
+#include "res://art/shaders/toon_local_light.gdshaderinc"
 
 uniform vec4 shallow : source_color = vec4(0.27, 0.55, 0.56, 1.0);
 uniform vec4 deep : source_color = vec4(0.12, 0.34, 0.38, 1.0);
@@ -46,6 +47,10 @@ void fragment() {
 
 void light() {
 	float ndl = clamp(dot(NORMAL, LIGHT), 0.0, 1.0);
-	float lit = smoothstep(0.1, 0.2, ndl) * smoothstep(0.45, 0.55, ATTENUATION);
-	DIFFUSE_LIGHT += ALBEDO * mix(0.78, 1.0, lit) * LIGHT_COLOR / PI;
+	if (!LIGHT_IS_DIRECTIONAL) {
+		DIFFUSE_LIGHT += ALBEDO * LIGHT_COLOR * toon_local_light(ATTENUATION, ndl) / PI;
+	} else {
+		float lit = smoothstep(0.1, 0.2, ndl) * smoothstep(0.45, 0.55, ATTENUATION);
+		DIFFUSE_LIGHT += ALBEDO * mix(0.78, 1.0, lit) * LIGHT_COLOR / PI;
+	}
 }
