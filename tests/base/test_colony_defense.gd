@@ -115,7 +115,9 @@ func _test_repair() -> bool:
 	Colony.settle_day()
 	ok = _check(Colony.get_building(wall)["durability"] == 250, "벽 보수 하루 100 × 1.5 = 150") and ok
 	Colony.settle_day()
-	ok = _check(Colony.get_building(wall)["durability"] == 300 and Colony.job_of(builder) == &"", "최대 내구도에서 멈추고 배정 해제") and ok
+	var b: Dictionary = Colony.get_resident(builder)
+	ok = _check(Colony.get_building(wall)["durability"] == 300 and Colony.job_of(builder) == &"", "최대 내구도에서 멈추고 배정 해제 (내구도 %d, 작업 %s, 피로 %d, 배고픔 %d, 건강 %d, 사기 %d)" % [
+		Colony.get_building(wall)["durability"], Colony.job_of(builder), b["fatigue"], b["hunger"], b["health"], b["morale"]]) and ok
 	return ok
 
 
