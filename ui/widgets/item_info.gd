@@ -7,6 +7,17 @@ const CLASS_NAMES := ["총", "칼", "둔기"]
 const STAT_NAMES := {"damage": "공격력", "attack_interval": "공격 간격", "range": "사거리", "noise": "소음",
 	"magazine": "탄창", "defense": "방어", "noise_mod": "이동 소음", "max_hp": "최대 체력",
 	"crit_pctp": "치명", "stamina_pct": "스태미나"}
+const ICON_DIR := "res://art/icons/items/"
+
+static var _icons: Dictionary = {}
+
+
+## Icon for a data id (item def id, resource id, essence id). null = no art yet, callers draw text.
+static func icon(id: StringName) -> Texture2D:
+	if not _icons.has(id):
+		var path := ICON_DIR + String(id) + ".png"
+		_icons[id] = load(path) if ResourceLoader.exists(path) else null
+	return _icons[id]
 
 
 static func for_entry(e: Dictionary) -> Dictionary:
@@ -24,7 +35,7 @@ static func for_resource(id: StringName) -> Dictionary:
 	var name := String(def.name) if def != null else String(id)
 	var cat := ["기본 자원", "가공 자원", "필드 자원", "마물 자원", "특수 자원"]
 	var tag: String = cat[clampi(int(def.category), 0, 4)] if def != null else "소모품"
-	return {"name": name, "rarity": 0, "kind": &"resource", "tooltip": {"title": name, "rarity": -1,
+	return {"name": name, "rarity": 0, "kind": &"resource", "icon": id, "tooltip": {"title": name, "rarity": -1,
 		"tags": [tag], "desc": "", "stats": [["창고 보유", str(Economy.get_amount(id))]]}}
 
 
@@ -56,7 +67,7 @@ static func for_item(uid: StringName, compare_with: StringName = &"") -> Diction
 	var tags := [SLOT_NAMES[clampi(int(def.slot), 0, 6)] if def else "장비"]
 	if def != null and int(def.slot) <= Enums.EquipSlot.SUB:
 		tags.append(CLASS_NAMES[clampi(int(def.combat_class), 0, 2)])
-	return {"name": name, "rarity": int(it.rarity), "kind": &"item", "slot": int(def.slot) if def else -1,
+	return {"name": name, "rarity": int(it.rarity), "kind": &"item", "icon": it.def_id, "slot": int(def.slot) if def else -1,
 		"tooltip": {"title": name, "rarity": int(it.rarity), "tags": tags, "desc": "", "stats": rows,
 			"foot": ["%d×%d칸" % [def.size.x, def.size.y] if def else "", "강화 +%d" % it.upgrade_level],
 			"action": "비교: 장착 중" if compare_with != &"" else ""}}

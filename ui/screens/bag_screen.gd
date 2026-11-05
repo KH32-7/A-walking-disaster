@@ -164,7 +164,15 @@ func _loot_cell(i: int, s: Dictionary) -> Control:
 		b.disabled = true
 	else:
 		var info := ItemInfo.for_resource(StringName(s.item_id))
-		b.text = "%s\n×%d" % [info.name, int(s.count)]
+		var tex := ItemInfo.icon(StringName(s.item_id))
+		if tex != null:
+			b.icon = tex
+			b.expand_icon = true
+			b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+			b.text = "%s ×%d" % [info.name, int(s.count)]
+		else:
+			b.text = "%s\n×%d" % [info.name, int(s.count)]
 		b.add_theme_font_size_override(&"font_size", 13)
 		b.add_theme_color_override(&"font_color", UiTokens.TEXT)
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -200,9 +208,14 @@ func _equip_cell(slot: int) -> Control:
 	sb.bg_color = Color(0.33, 0.43, 0.53, 0.4)
 	var uid := Armory.get_equipped(Armory.PLAYER_ID, slot)
 	var text := ""
+	var has_art := false
 	if uid != &"":
 		var info := ItemInfo.for_item(uid)
 		text = String(info.name)
+		var tex := ItemInfo.icon(StringName(info.get("icon", &"")))
+		if tex != null:
+			p.add_child(_icon_box(tex))
+			has_art = true
 		if int(info.rarity) > 0:
 			sb.bg_color = Color(UiTokens.rarity_color(int(info.rarity)), 0.35)
 		p.mouse_entered.connect(func() -> void:
@@ -215,12 +228,30 @@ func _equip_cell(slot: int) -> Control:
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	if has_art:
+		l.size_flags_vertical = Control.SIZE_SHRINK_END
 	p.add_child(l)
 	v.add_child(p)
 	var cap := MenuScreen.label(ItemInfo.SLOT_NAMES[slot], &"LabelHud", 14)
 	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(cap)
 	return v
+
+
+## Item art inside a slot panel; the bottom strip stays free for the name label.
+static func _icon_box(tex: Texture2D) -> MarginContainer:
+	var m := MarginContainer.new()
+	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for side: String in ["left", "top", "right"]:
+		m.add_theme_constant_override("margin_" + side, 6)
+	m.add_theme_constant_override(&"margin_bottom", 20)
+	var ic := TextureRect.new()
+	ic.texture = tex
+	ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	m.add_child(ic)
+	return m
 
 
 func _on_hover(e: Dictionary, r: Rect2) -> void:
