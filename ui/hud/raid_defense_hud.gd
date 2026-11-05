@@ -4,10 +4,10 @@ extends Control
 ## (함정 다시 놓기, 경비 위치 정하기), 승리 = 모든 파 처치 또는 5분 버티기, 패배 = 대피소 문이 부서지거나
 ## 플레이어와 경비가 모두 쓰러짐. UI_RULES §4 필드 HUD 규칙(판 없이 선·숫자) + 배치 판만 SLATE.
 ##
-## C-17 is not merged: the HUD draws whatever set_state() gives it. When Colony gets the proposed
-## `defense_state()` getter the HUD pulls it every frame (auto_bind). Guard moves go to the proposed
-## `Colony.assign_defense_spot(resident_id, spot_id) -> bool`; without it the HUD only moves the chip
-## locally (preview) and emits guard_moved. "바로 시작" calls the proposed `Colony.skip_defense_prep()`.
+## The HUD draws whatever set_state() gives it; with auto_bind it pulls
+## `Colony.defense_state()` every frame (C-17). Guard moves go to
+## `Colony.assign_defense_spot(resident_id, spot_id) -> bool` (true without a battle: preview); the chip
+## moves locally and guard_moved is emitted. "바로 시작" calls `Colony.skip_defense_prep()`.
 ##
 ## State (all optional):
 ## {"wave": int, "waves": int, "phase": &"prep" | &"fight" | &"done", "time_left": float (prep countdown),
@@ -257,18 +257,17 @@ func _fill_roster() -> void:
 
 # ---------------- actions ----------------
 
-## Move a guard to a spot (&"" = back to the pool). Asks Colony when C-17 has the API.
+## Move a guard to a spot (&"" = back to the pool). Asks Colony (C-17 assign_defense_spot) first;
+## once accepted the chip moves at once (the next defense_state() pull says the same).
 func move_guard(resident_id: StringName, spot_id: StringName) -> bool:
 	if not _can_fit(resident_id, spot_id):
 		return false
 	_selected = &""
-	if Colony.has_method(ASSIGN_API):
-		if not bool(Colony.call(ASSIGN_API, resident_id, spot_id)):
-			return false
-	else:
-		for g: Dictionary in state.get("guards", []):  # preview only: move the chip locally
-			if StringName(g.get("id", &"")) == resident_id:
-				g["spot"] = spot_id
+	if Colony.has_method(ASSIGN_API) and not bool(Colony.call(ASSIGN_API, resident_id, spot_id)):
+		return false
+	for g: Dictionary in state.get("guards", []):
+		if StringName(g.get("id", &"")) == resident_id:
+			g["spot"] = spot_id
 	guard_moved.emit(resident_id, spot_id)
 	_apply()
 	return true
