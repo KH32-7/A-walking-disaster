@@ -187,7 +187,11 @@ func _test_radio_voice() -> bool:
 		return true  # the player turned the voice off in their own settings
 	EventBus.radio_message.emit(&"broadcaster", "테스트 무전입니다.", 0)
 	UI.subtitle.clear()
-	return _expect(UI.radio_voice.last_spoken == "테스트 무전입니다.", "radio lines go to the TTS voice when radio_voice is on")
+	var ok := _expect(UI.radio_voice.last_spoken == "테스트 무전입니다.", "radio lines go to the TTS voice when radio_voice is on")
+	var a := RadioVoice.clip_path(&"broadcaster", "탄약 부족입니다.")
+	ok = _expect(a == RadioVoice.clip_path(&"broadcaster", "탄약 부족입니다."), "same line, same clip path") and ok
+	ok = _expect(a != RadioVoice.clip_path(&"broadcaster", "탄약 부족입니다!"), "edited line, different clip path") and ok
+	return _expect(a.begins_with("res://assets/audio/voice/broadcaster/") and a.ends_with(".mp3"), "clip path layout") and ok
 
 
 func _page_text(s: JournalScreen) -> String:
