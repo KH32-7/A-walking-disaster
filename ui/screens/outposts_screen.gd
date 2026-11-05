@@ -337,6 +337,8 @@ class OutpostMap extends Control:
 
 	const DIR_VEC := {&"north": Vector2(0, -1), &"east": Vector2(1, 0), &"south": Vector2(0, 1), &"west": Vector2(-1, 0)}
 	const NODE_R := 16.0
+	const INNER := 0.24
+	const OUTER := 0.40
 
 	var nodes: Array = []
 	var selected: StringName = &""
@@ -348,8 +350,8 @@ class OutpostMap extends Control:
 	func positions() -> Dictionary:
 		var out := {}
 		var c := size * 0.5
-		var inner := minf(size.x, size.y) * 0.26
-		var outer := minf(size.x, size.y) * 0.43
+		var inner := minf(size.x, size.y) * INNER
+		var outer := minf(size.x, size.y) * OUTER
 		var regions: Array = []
 		for n: Dictionary in nodes:
 			var dir := StringName(n.get("direction", &""))
@@ -357,8 +359,11 @@ class OutpostMap extends Control:
 				out[n["node_id"]] = c + DIR_VEC[dir] * inner
 			else:
 				regions.append(n["node_id"])
+		# Region entrances share the four quadrants between the direction nodes (round-robin, clockwise
+		# from the north-east), so no connector crosses a direction node.
+		var per := ceili(regions.size() / 4.0)
 		for i in regions.size():
-			var ang := deg_to_rad(45.0 + 50.0 * i)  # from the north-east, clockwise
+			var ang := deg_to_rad(90.0 * (i % 4) + 90.0 * (i / 4 + 1) / (per + 1))
 			out[regions[i]] = c + Vector2(sin(ang), -cos(ang)) * outer
 		return out
 
@@ -374,8 +379,8 @@ class OutpostMap extends Control:
 	func _draw() -> void:
 		var c := size * 0.5
 		var font := UiThemeBuilder.font_kr(500)
-		var inner := minf(size.x, size.y) * 0.26
-		var outer := minf(size.x, size.y) * 0.43
+		var inner := minf(size.x, size.y) * INNER
+		var outer := minf(size.x, size.y) * OUTER
 		draw_arc(c, inner, 0, TAU, 64, Color(UiTokens.LINE, 0.5), 1.0, true)
 		_dashed_circle(c, outer, Color(UiTokens.LINE, 0.4))
 		# base
@@ -392,15 +397,19 @@ class OutpostMap extends Control:
 				draw_arc(p, NODE_R + 8, 0, TAU, 40, UiTokens.ACCENT, 3.0, true)
 			var g: Array = n.get("garrison", [])
 			var sub := "주둔 %d/%d" % [g.size(), OutpostRules.GARRISON_SIZE] if n.get("built", false) else "빈 노드"
-			_node_label(font, p, (p - c).normalized(), OutpostsScreen.short_name(n), sub)
+			var o := (p - c).normalized()
+			if StringName(n.get("direction", &"")) == &"":
+				o = Vector2(0, -1 if o.y < 0 else 1)  # outer ring: always above / below, inside the map
+			_node_label(font, p, o, OutpostsScreen.short_name(n), sub)
 
 	## Two lines on the outer side of the node, so the connector line to the base stays clear.
 	func _node_label(font: Font, p: Vector2, o: Vector2, title: String, sub: String) -> void:
 		var w := 200.0
 		if absf(o.y) >= absf(o.x) - 0.01:
 			var y := p.y - NODE_R - 30 if o.y < 0 else p.y + NODE_R + 26
-			draw_string(font, Vector2(p.x - w * 0.5, y), title, HORIZONTAL_ALIGNMENT_CENTER, w, 16, UiTokens.TEXT)
-			draw_string(font, Vector2(p.x - w * 0.5, y + 18), sub, HORIZONTAL_ALIGNMENT_CENTER, w, 13, UiTokens.TEXT_DIM)
+			var x := clampf(p.x - w * 0.5, 0.0, maxf(size.x - w, 0.0))
+			draw_string(font, Vector2(x, y), title, HORIZONTAL_ALIGNMENT_CENTER, w, 16, UiTokens.TEXT)
+			draw_string(font, Vector2(x, y + 18), sub, HORIZONTAL_ALIGNMENT_CENTER, w, 13, UiTokens.TEXT_DIM)
 		else:
 			var x := p.x + NODE_R + 12 if o.x > 0 else p.x - NODE_R - 12 - w
 			var al := HORIZONTAL_ALIGNMENT_LEFT if o.x > 0 else HORIZONTAL_ALIGNMENT_RIGHT
