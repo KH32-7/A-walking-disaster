@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="NightTuning" format=3]
+
+[ext_resource type="Script" path="res://field/defs/night_tuning.gd" id="1_night"]
+
+[resource]
+script = ExtResource("1_night")
+enabled = true
+spawn_mult = 1.5
+sight_mult = 0.7
+drop_mult = 1.3
+elite_chance = 0.15

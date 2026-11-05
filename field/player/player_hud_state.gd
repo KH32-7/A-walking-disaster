@@ -2,7 +2,8 @@ class_name PlayerHudState
 extends RefCounted
 ## Builds Player.hud_state() for the field HUD (D-04, issue #28). The HUD only draws what
 ## this returns; missing keys fall back to HUD defaults. Filled now: hp, stamina, weapons,
-## heading and compass (extraction points), hold bar, interact prompt.
+## heading and compass (extraction points), hold bar, interact prompt, dusk_left_sec (B-21,
+## left out when night is off so the demo has no dusk timer).
 ## Later: armor (B-06 armor), consumables (B-16), skills/mana (B-13/B-15),
 ## companions (B-17), objectives (A-13), minimap.
 
@@ -23,6 +24,8 @@ static func build(player: Player) -> Dictionary:
 	_add_compass(player, extraction, state)
 	state["hold"] = _hold(player, extraction)
 	state["prompt"] = _prompt(player, state["hold"])
+	if FieldState.night_enabled():
+		state["dusk_left_sec"] = FieldState.dusk_left_sec()
 	return state
 
 

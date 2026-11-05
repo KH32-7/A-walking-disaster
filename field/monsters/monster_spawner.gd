@@ -4,7 +4,9 @@ extends Node3D
 ## Put one in a region scene next to the layout. Each nest gets one pack at start,
 ## then 1 to 2 more every spawn_interval_sec while under the nest's max_alive and
 ## the region cap (MonsterRules.REGION_MAX_ALIVE).
-## Design reference: docs/design/04-monsters.md "등장"
+## At night (FieldState.is_night(), B-21) nest timers run FieldState.night.spawn_mult faster,
+## new monsters may be elite, and every monster gets the night sight and drop multipliers.
+## Design reference: docs/design/04-monsters.md "등장", 01-flow-time.md "필드의 밤"
 
 signal monster_spawned(monster: Monster, nest: MonsterNest)
 
@@ -20,12 +22,15 @@ var _nests: Array[Dictionary] = []
 var _collected := false
 
 
+func _ready() -> void:
+	FieldState.night_started.connect(_on_night_started)
+
+
 func _process(delta: float) -> void:
 	tick(delta)
 
 
 ## Advances nest timers. Tests call this with large deltas.
-## TODO(B-21): night spawn rate x1.5.
 func tick(delta: float) -> void:
 	if not _collected:
 		# Nests join their group in their own _ready, so collect on the first tick.
@@ -35,7 +40,7 @@ func tick(delta: float) -> void:
 		var nest: MonsterNest = entry.nest
 		if not is_instance_valid(nest):
 			continue
-		entry.timer -= delta
+		entry.timer -= delta * (FieldState.night.spawn_mult if FieldState.is_night() else 1.0)
 		while entry.timer <= 0.0:
 			entry.timer += nest.spawn_interval_sec
 			spawn_at(entry, randi_range(MonsterRules.NEST_SPAWN_MIN, MonsterRules.NEST_SPAWN_MAX), null)
@@ -86,6 +91,8 @@ func spawn_at(entry: Dictionary, count: int, def: MonsterDef) -> void:
 		monster.name = String(pick.id)
 		add_child(monster, true)
 		entry.alive.append(monster)
+		if FieldState.is_night():
+			_apply_night(monster, true)
 		monster_spawned.emit(monster, nest)
 
 
@@ -98,6 +105,26 @@ func _pick_def(nest: MonsterNest) -> MonsterDef:
 			continue
 		pool.append(def)
 	return pool.pick_random() if not pool.is_empty() else null
+
+
+## Night rules on one monster. drop_mult, sight_mult and make_elite() come with B-18;
+## until it lands the guards skip them. TODO(B-18 merged): test the real multipliers.
+func _apply_night(monster: Monster, roll_elite: bool) -> void:
+	var rules := FieldState.night
+	if "sight_mult" in monster:
+		monster.set(&"sight_mult", rules.sight_mult)
+	if "drop_mult" in monster:
+		monster.set(&"drop_mult", rules.drop_mult)
+	if roll_elite and monster.has_method(&"make_elite") and randf() < rules.elite_chance:
+		monster.call(&"make_elite")
+
+
+## Monsters already out when night falls see less and drop more, but do not turn elite.
+func _on_night_started() -> void:
+	for entry in _nests:
+		_prune(entry)
+		for monster: Monster in entry.alive:
+			_apply_night(monster, false)
 
 
 func _prune(entry: Dictionary) -> void:
