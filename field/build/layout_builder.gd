@@ -215,10 +215,10 @@ const CLEAR_BUILDING := 2.5
 const CLEAR_ROAD := 1.0
 const CLEAR_EDGE := 3.0
 
-## Monster density over the map file's nest values (user feedback 2026-11-05: more monsters).
-## Applied to every MonsterNest, map file and extra nests alike. 04 design: 3 min, region cap 40.
-const NEST_INTERVAL_MULT := 2.0 / 3.0 ## spawn_interval_sec 180 -> 120
-const NEST_MAX_MULT := 1.5 ## max_alive rounded up: 6 -> 9, 5 -> 8
+## Monster density over the map file's nest values (user feedback 2026-11-05, x2 again 2026-11-06: more monsters).
+## Applied to every MonsterNest, map file and extra nests alike. Map file nests are 3 min; 04 "등장" has the result.
+const NEST_INTERVAL_MULT := 1.0 / 3.0 ## spawn_interval_sec 180 -> 60
+const NEST_MAX_MULT := 3.0 ## max_alive: 6 -> 18, 5 -> 15
 ## Map file nest interval before NEST_INTERVAL_MULT, also used for extra nests.
 const NEST_BASE_INTERVAL := 180.0
 ## Nest LootSpot offset from its nest, map file coordinates.

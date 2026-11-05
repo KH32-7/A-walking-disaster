@@ -12891,23 +12891,24 @@ script = ExtResource("9_1r3xd")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -76.5, 0, -4.5)
 gizmo_extents = 0.5
 script = ExtResource("11_sm67l")
-spawn_interval_sec = 120.0
-max_alive = 9
+spawn_interval_sec = 60.0
+max_alive = 18
 wander_radius = 14.0
 
 [node name="MonsterNest_nest_gh" type="Marker3D" parent="Markers" unique_id=1549710175 instance=ExtResource("10_aksud")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 67.5, 0, -58.5)
 gizmo_extents = 0.5
 script = ExtResource("11_sm67l")
-spawn_interval_sec = 120.0
+spawn_interval_sec = 60.0
+max_alive = 12
 wander_radius = 10.0
 
 [node name="MonsterNest_nest_n" type="Marker3D" parent="Markers" unique_id=2038410416 instance=ExtResource("10_aksud")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 63, 0, -99)
 gizmo_extents = 0.5
 script = ExtResource("11_sm67l")
-spawn_interval_sec = 120.0
-max_alive = 8
+spawn_interval_sec = 60.0
+max_alive = 15
 wander_radius = 14.0
 
 [node name="PlayerSpawn_east" type="Marker3D" parent="Markers" unique_id=822324376 instance=ExtResource("12_5pr1y")]
@@ -12955,8 +12956,8 @@ spawn_tags = Array[StringName]([&"flooded_edge"])
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -99, 0, -37.5)
 gizmo_extents = 0.5
 script = ExtResource("11_sm67l")
-spawn_interval_sec = 120.0
-max_alive = 5
+spawn_interval_sec = 60.0
+max_alive = 9
 wander_radius = 8.0
 
 [node name="LootSpot_loot_nest_w" type="Marker3D" parent="Markers" unique_id=2139944743 instance=ExtResource("8_7lmyx")]
@@ -12969,8 +12970,8 @@ container_type = 4
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -75, 0, -93)
 gizmo_extents = 0.5
 script = ExtResource("11_sm67l")
-spawn_interval_sec = 120.0
-max_alive = 5
+spawn_interval_sec = 60.0
+max_alive = 9
 wander_radius = 8.0
 
 [node name="LootSpot_loot_nest_nw" type="Marker3D" parent="Markers" unique_id=2017894092 instance=ExtResource("8_7lmyx")]
@@ -12983,7 +12984,8 @@ container_type = 4
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48, 0, 27)
 gizmo_extents = 0.5
 script = ExtResource("11_sm67l")
-spawn_interval_sec = 120.0
+spawn_interval_sec = 60.0
+max_alive = 12
 wander_radius = 10.0
 
 [node name="LootSpot_loot_nest_pond_e" type="Marker3D" parent="Markers" unique_id=68830633 instance=ExtResource("8_7lmyx")]

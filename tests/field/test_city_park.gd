@@ -23,7 +23,7 @@ const MARKER_COUNTS := {
 }
 const EXTRACT_IDS := [&"park_south_gate", &"park_east_bus", &"park_north_gate"]
 const NAV_SYNC_MAX_FRAMES := 300
-const NEST_INTERVAL := 120.0
+const NEST_INTERVAL := 60.0
 ## 5 buildings and the underpass.
 const INDOOR_ZONES := 6
 const WALK_SPEED := 4.5

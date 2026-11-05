@@ -18,7 +18,7 @@ const MARKER_COUNTS := {
 const EXTRACT_IDS := [&"mall_dock", &"mall_gas_station", &"mall_north_gate"]
 const NAV_SYNC_MAX_FRAMES := 300
 ## Nest interval after the generator's NEST_INTERVAL_MULT (map file 180s).
-const NEST_INTERVAL := 120.0
+const NEST_INTERVAL := 60.0
 ## Floor plan scale of the generated layout. Path length limits below are for the unscaled map.
 const MAP_SCALE: float = preload("res://levels/field/flooded_mall/build/build_layout.gd").MAP_SCALE
 const WALK_TO_STAIRS_MAX := 30.0

@@ -2,7 +2,7 @@
 class_name MonsterNest
 extends FieldMarker
 ## Monster nest. B-07 spawns monsters here every spawn_interval_sec up to
-## max_alive. The region-wide cap (40) is a global rule, not a marker value.
+## max_alive. The region-wide cap (MonsterRules.REGION_MAX_ALIVE) is a global rule, not a marker value.
 ## Design reference: docs/design/04-monsters.md "감지와 행동"
 
 const GROUP := &"field_monster_nests"
