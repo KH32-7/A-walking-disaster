@@ -8,12 +8,6 @@ extends Node3D
 ## Design reference: docs/design/02-field.md "소음".
 
 const DEFAULT_TABLE := preload("res://field/noise/noise_table.tres")
-## Armor slots whose "noise" stat adds to footsteps (05-gear.md "방어구 기본형").
-const ARMOR_SLOTS: Array[Enums.EquipSlot] = [
-	Enums.EquipSlot.HEAD, Enums.EquipSlot.BODY, Enums.EquipSlot.LEGS, Enums.EquipSlot.ACCESSORY,
-]
-## Armory item stat key holding an armor piece's footstep noise bonus (m).
-const ARMOR_NOISE_KEY := "noise"
 
 @export var table: NoiseTable = DEFAULT_TABLE
 ## Armory owner whose armor adds footstep noise (Armory.PLAYER_ID for the player).
@@ -74,13 +68,8 @@ func _on_continuous_timeout() -> void:
 	emit(_continuous_action)
 
 
-## Sum of equipped armor noise bonuses, capped at table.armor_bonus_cap. Missing key = 0.
+## Sum of worn armor noise_mod. Armory applies the +3m cap (05-gear.md "방어구 기본형").
 func _armor_bonus() -> float:
 	if armory_owner_id == &"":
 		return 0.0
-	var total := 0.0
-	for slot in ARMOR_SLOTS:
-		var uid := Armory.get_equipped(armory_owner_id, slot)
-		if uid != &"":
-			total += float(Armory.get_item_stats(uid).get(ARMOR_NOISE_KEY, 0.0))
-	return minf(total, table.armor_bonus_cap)
+	return float(Armory.get_owner_summary(armory_owner_id).get("armor_noise", 0.0))

@@ -2,7 +2,11 @@ extends Node3D
 ## B-05 noise test scene. Instances field_sandbox.tscn and fires noises from keys.
 ## Sandbox only: debug keys use raw keycodes, not project input actions.
 
-const ARMOR_STUB := preload("res://field/_sandbox/stubs/armory_armor_stub.gd")
+## Real A-07 armor worn in this scene: 1 + 3 = 4, so the +3 cap is visible.
+const ARMOR_LOADOUT := {
+	Enums.EquipSlot.HEAD: &"riot_helmet",
+	Enums.EquipSlot.BODY: &"scrap_armor",
+}
 
 const KEY_ACTIONS := {
 	KEY_1: &"aim_walk", KEY_2: &"walk", KEY_3: &"sprint", KEY_4: &"roll",
@@ -17,9 +21,11 @@ var _last := "없음"
 
 
 func _ready() -> void:
-	# FieldSandbox (child) already ran _ready and may have installed armory_stub.gd.
-	# Swap to the armor stub, which extends it, so weapons and armor both answer.
-	Armory.set_script(ARMOR_STUB)
+	# FieldSandbox (child) already ran _ready and equipped the weapons. Add armor to empty
+	# slots with real items (rarity 0 = no affixes). No set_script(): it wipes Armory's defs.
+	for slot: Enums.EquipSlot in ARMOR_LOADOUT:
+		if Armory.get_equipped(Armory.PLAYER_ID, slot) == &"":
+			Armory.equip(Armory.PLAYER_ID, slot, Armory.create_item(ARMOR_LOADOUT[slot], 0))
 	EventBus.noise_emitted.connect(_on_noise_emitted)
 	_refresh()
 
