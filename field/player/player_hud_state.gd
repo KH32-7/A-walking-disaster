@@ -66,10 +66,15 @@ static func _add_compass(player: Player, extraction: ExtractionManager, state: D
 	if extraction == null:
 		return
 	var markers: Array = []
+	var emergency := player.get_tree().get_first_node_in_group(EmergencyReturn.GROUP) as EmergencyReturn
+	var emergency_id := emergency.target_point_id() if emergency else &""
 	for point in extraction.active_points():
 		var to_point := point.global_position - player.global_position
-		markers.append({"bearing": _bearing(to_point), "kind": &"extract",
-			"dist": Vector2(to_point.x, to_point.z).length()})
+		var marker := {"bearing": _bearing(to_point), "kind": &"extract",
+			"dist": Vector2(to_point.x, to_point.z).length()}
+		if point.id == emergency_id:
+			marker["emergency"] = true  # B-22: the emergency return target
+		markers.append(marker)
 	state["compass_markers"] = markers
 
 
