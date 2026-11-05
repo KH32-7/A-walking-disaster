@@ -1,13 +1,14 @@
 extends Node3D
 ## D-18 preview: every Fx id on a grey field under the field camera (55° pitch, FOV 60).
 ## Views: combat (gun, melee, hit sparks, damage numbers, hit flash), elements, combos, release,
-## blast (explosion, neon moth, noise lure), telegraph. Keys 1-6 switch views, R replays, F toggles
+## blast (explosion, neon moth, noise lure), telegraph, monsters and boss (D-17: the real models with their
+## attack and death effects; needs assets/). Keys 1-8 switch views, R replays, F toggles
 ## Settings.reduce_flash. Effects run on a fixed 60 fps timeline (Fx.manual_step) so shots repeat.
 ## Optional: -- --view=combat --shot=user://vfx.png --t=0.12        (one frame at 0.12 s)
 ##           -- --view=combat --shot=user://vfx.png --t=0.05,0.15,0.3  (user://vfx_0.png, _1, _2)
 ##           -- --reduce_flash
 
-const VIEWS := ["combat", "elements", "combos", "release", "blast", "telegraph"]
+const VIEWS := ["combat", "elements", "combos", "release", "blast", "telegraph", "monsters", "boss"]
 const DT := 1.0 / 60.0
 const LOOP_SEC := 3.6
 
@@ -50,6 +51,7 @@ var _clock := 0.0
 var _timeline: Array[Dictionary] = []  # {t, call: Callable}
 var _stage: Node3D
 var _cam: Camera3D
+var _anims: Array[AnimationPlayer] = []  # D-17 models, stepped with the timeline
 
 
 func _ready() -> void:
@@ -66,6 +68,10 @@ func _ready() -> void:
 	if _times.is_empty():
 		_times = [0.15]
 	Fx.manual_step = true
+	# The title screen (D-19) opens on boot over any scene; a VFX preview shows only the world.
+	for layer in UI.get_children():
+		if layer is CanvasLayer and layer.name != &"ColorFilterLayer":
+			(layer as CanvasLayer).visible = false
 	_world()
 	_build_view()
 	if _shot != "":
@@ -118,6 +124,7 @@ func _build_view() -> void:
 	_stage = Node3D.new()
 	add_child(_stage)
 	_timeline.clear()
+	_anims.clear()
 	_clock = 0.0
 	match _view:
 		"elements":
@@ -130,6 +137,10 @@ func _build_view() -> void:
 			_blast()
 		"telegraph":
 			_telegraph()
+		"monsters":
+			_monsters()
+		"boss":
+			_boss()
 		_:
 			_combat()
 	Fx.feedback.scan()
@@ -286,12 +297,73 @@ func _telegraph() -> void:
 	_caption(Vector3(6, 1.4, -4), "고리 (둔화, 주황)")
 
 
+## D-17: each model swings (attack_started), its effect lands ATTACK_WINDUP_SEC later, then two die.
+func _monsters() -> void:
+	_aim(Vector3(0, 0.6, 1.0), 14.0)
+	var face := Vector3(1, 0, 1).normalized()
+	var rows := [
+		[&"vine_tendril", &"monster_claw", Enums.Element.GREEN, "덩굴촉수: 할퀴기"],
+		[&"rubble_bug", &"monster_bite", Enums.Element.STONE, "잔해 벌레: 물기"],
+		[&"statue", &"monster_slam", Enums.Element.STONE, "석상: 내려찍기"],
+		[&"swamp_blob", &"monster_splash", Enums.Element.WATER, "늪 덩어리: 물 튀김"],
+		[&"spore_pod", &"monster_cast", Enums.Element.GREEN, "포자낭: 포자 쏘기"],
+		[&"signal_wraith", &"monster_cast", Enums.Element.LIGHT, "신호 망령: 전기 구체"],
+	]
+	for i in rows.size():
+		var pos := Vector3(-5.0 + 5.0 * (i % 3), 0, -2.5 + 5.0 * floorf(i / 3.0))
+		var v := _model(rows[i][0], pos, face)
+		if v:
+			_at(0.0, v._on_attack_started)
+		_fx(MonsterRules.ATTACK_WINDUP_SEC, rows[i][1], pos, {"direction": face, "element": rows[i][2]})
+		_caption(pos, rows[i][3])
+	_fx(1.2, &"monster_scream", Vector3(0, 0, 2.5), {"element": Enums.Element.GREEN})
+	_fx(1.6, &"monster_death", Vector3(-5, 0, -2.5), {"element": Enums.Element.GREEN, "radius": 0.7})
+	_fx(1.6, &"monster_death", Vector3(5, 0, -2.5), {"element": Enums.Element.STONE, "radius": 1.1})
+
+
+func _boss() -> void:
+	_aim(Vector3(0, 1.0, 1.5), 22.0)
+	var face := Vector3(1, 0, 1).normalized()
+	var v := _model(&"ancient_tree_giant", Vector3(-2, 0, -2), face)
+	if v:
+		_at(0.0, v._on_pattern_started.bind(&"slam"))
+		_at(1.4, v._on_pattern_started.bind(&"root_burst"))
+	_fx(0.6, &"boss_slam", Vector3(-2, 0, -2) + face * 2.5, {"radius": 3.0, "element": Enums.Element.GREEN})
+	_caption(Vector3(-2, 0, -2) + face * 2.5, "내려찍기 3m")
+	_fx(1.9, &"boss_root_burst", Vector3(-2, 0, -2), {"direction": Vector3(1, 0, 0.2), "length": 10.0,
+		"element": Enums.Element.GREEN})
+	_caption(Vector3(4, 0, -1), "뿌리 솟기 (직선)")
+	for p in [Vector3(-3, 0, 4), Vector3(0, 0, 5), Vector3(3, 0, 4)]:
+		_fx(0.3, &"boss_summon_pods", p, {"radius": 1.2, "element": Enums.Element.GREEN})
+	_caption(Vector3(0, 0, 5), "포자낭 소환")
+
+
+## A D-17 model facing `face`, its animation stepped by the timeline. Null without assets/.
+func _model(id: StringName, pos: Vector3, face: Vector3) -> MonsterVisual:
+	var scene := load("res://art/monsters/%s.tscn" % id) as PackedScene
+	if scene == null:
+		return null
+	var holder := Node3D.new()
+	holder.position = pos
+	holder.rotation.y = atan2(-face.x, -face.z)
+	_stage.add_child(holder)
+	var v := scene.instantiate() as MonsterVisual
+	holder.add_child(v)
+	if v.anim:
+		v.anim.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
+		_anims.append(v.anim)
+	v.set_process(false)
+	return v
+
+
 # --- timeline ------------------------------------------------------------------------------------
 
 func _advance_to(t: float) -> void:
 	while _clock < t - 0.0001:
 		_spawn_due()
 		Fx.advance(DT)
+		for a in _anims:
+			a.advance(DT)
 		_clock += DT
 	_spawn_due()
 

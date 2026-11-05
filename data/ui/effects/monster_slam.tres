@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="EffectDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/effect_def.gd" id="1_def"]
+[ext_resource type="PackedScene" path="res://vfx/effects/monster_attack.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"monster_slam"
+scene = ExtResource("2_scene")
+base_params = {
+"mode": &"slam",
+"radius": 1.6
+}
+sound = &""
+sound_crit = &""
+max_alive = 8
+combo_id = &""

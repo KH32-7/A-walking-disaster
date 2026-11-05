@@ -44,6 +44,14 @@
 | `noise_lure` | `fuse_sec`(4), `radius` | 소음 미끼가 떨어진 자리. 소음 15 m 자체는 B의 `noise_emitted` |
 | `boss_telegraph` | `shape`(`circle`·`cone`·`line`·`ring`), `radius`, `inner`, `angle_deg`, `length`, `width`, `direction`, `duration`(1초), `kind`(`danger` 빨강 / `warn` 주황) | B 보스. 소리 `boss_warning` |
 | `damage_number` | `amount`, `kind`(`hit`·`tick`·`player`·`heal`), `crit`, `weak_point`, `element` | HitFeedback (B가 직접 불러도 됨) |
+| `monster_claw` | `direction`, `range`(1.6), `element` | B-28 마물 근접 공격 (덩굴촉수, 뿌리 분쇄자) |
+| `monster_slam` | `radius`(1.6), `element` | B-28 내려찍기 (석상, 잔해 돌진자) |
+| `monster_bite` | `direction`, `element` | B-28 잔해 벌레 |
+| `monster_splash` | `radius`(1.4) | B-28 물 마물 공격, split 분열 |
+| `monster_scream` | `height`(1.3), `element` | B-28 alarm 경보 (포자낭) |
+| `monster_cast` | `direction`, `height`(1.4), `element` | B-28 shock_orb 발사 (신호 망령) |
+| `monster_death` | `radius`(0.9), `element` | B-28 모든 마물 사망 |
+| `boss_slam` / `boss_root_burst` / `boss_summon_pods` | `radius`, `direction`, `length`, `element` | B-28 보스 패턴 발동(`boss_<pattern.id>`), 예고는 `boss_telegraph` |
 
 ## 새 이펙트 추가
 
