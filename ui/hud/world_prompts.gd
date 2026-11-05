@@ -89,8 +89,18 @@ func _update_click_chip(cam: BaseCamera) -> void:
 func _update_chip(cam: Camera3D, player: Node3D) -> void:
 	var target: Node3D = player.call(&"interact_target") if player.has_method(&"interact_target") else null
 	var text := String(target.call(&"interact_label")) if target != null and target.has_method(&"interact_label") else ""
-	var hold := player.has_method(&"interacting") and player.call(&"interacting") != null
-	_chip.visible = text != "" and not hold
+	# Hidden only while something is being held / channelled (open bar, revive): interacting() keeps
+	# the last thing used, so it alone would hide every prompt after the first chest.
+	var using: Node = player.call(&"interacting") if player.has_method(&"interacting") else null
+	var hold := using != null and using.has_method(&"hold_state") and not (using.call(&"hold_state") as Dictionary).is_empty()
+	# While holding: the field HUD has its own hold bar; elsewhere (the intro house) the chip shows
+	# the progress so a press visibly did something.
+	var field_bar := UI.field_hud != null and UI.field_hud.is_visible_in_tree()
+	if hold and not field_bar:
+		var hs: Dictionary = using.call(&"hold_state")
+		text = "%s %d%%" % [String(hs.get("label", "")), roundi(float(hs.get("progress", 0.0)) * 100.0)]
+		target = using as Node3D
+	_chip.visible = text != "" and (not hold or not field_bar) and target != null
 	if not _chip.visible:
 		return
 	_chip_key.key_text = "F"

@@ -135,6 +135,13 @@ func roll_contents(rng: RandomNumberGenerator) -> void:
 	_rolled = true
 
 
+## Adds one piece of gear (an ItemDef id, e.g. &"pistol") as its own slot. Taking it creates the
+## item (Armory.create_item) and puts it in the bag (Bag.add_item). Used by the intro chest.
+func add_gear(def_id: StringName, rarity: int = 0) -> void:
+	_slots.append({"item_id": def_id, "count": 1, "identified": false, "gear": true, "rarity": rarity})
+	_rolled = true
+
+
 ## Starts opening, or resumes identifying an already opened container.
 ## Returns false if someone else is using it.
 func begin_open(interactor: Node3D) -> bool:
@@ -172,6 +179,15 @@ func take(index: int) -> int:
 	var slot := _slots[index]
 	if not slot.identified or slot.count <= 0:
 		return 0
+	if slot.get("gear", false):
+		var uid := Armory.create_item(slot.item_id, int(slot.get("rarity", 0)))
+		if uid == &"" or Bag.add_item(uid) < 0:
+			if uid != &"":
+				Armory.remove_item(uid)
+			return 0
+		slot.count = 0
+		slot_taken.emit(index, slot.item_id, 1)
+		return 1
 	var added := Bag.try_add(slot.item_id, slot.count)
 	if added > 0:
 		slot.count -= added

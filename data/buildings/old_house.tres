@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_r0psp"]
+
+[resource]
+script = ExtResource("1_r0psp")
+id = &"old_house"
+display_name = "낡은 집"
+description = "첫날 마물에게 쫓겨 뛰어든 집이에요. 다친 사람 하나를 지켜 낸 곳."
+category = 0
+size = Vector2i(6, 7)
+effects = Dictionary[StringName, float]({
+&"beds": 2.0
+})
+story_only = true

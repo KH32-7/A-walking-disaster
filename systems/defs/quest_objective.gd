@@ -38,6 +38,9 @@ const GIVER := &"giver"
 ## Field objectives: name of the marker node in the region layout where Lane B puts the goal
 ## (keepsake pickup, crying child ...). &"" = Lane B picks a spot.
 @export var marker: StringName
+## Words under the double yellow diamond on the minimap / M map, e.g. "의사는 이 건물 안에 있다".
+## "" = the objective text.
+@export var marker_label: String = ""
 ## RECOVER: take the recovered resources out of storage when the quest completes (keepsakes).
 @export var consume := false
 ## DEFEND: which day to hold, counted from the day the quest started.

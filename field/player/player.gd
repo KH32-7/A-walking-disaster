@@ -35,6 +35,9 @@ var health: float
 var stamina: float
 var is_aiming := false
 var move_state := MoveState.IDLE
+## Non-empty = a cutscene drives the player with this step() input instead of the keyboard
+## (see step(); "world_move" gives a world direction). Cleared by the cutscene when it ends.
+var script_input: Dictionary = {}
 var is_downed := false
 ## Set by WeaponHolder (B-06): (amount, info) -> damage left after blocking.
 var incoming_damage_filter: Callable
@@ -78,6 +81,10 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	if is_downed:
+		return
+	if not script_input.is_empty():
+		step(delta, script_input)  # a cutscene drives the player (IntroCutscene); no interact
+		move_and_slide()
 		return
 	step(delta, {} if input_blocked() else _read_input())
 	move_and_slide()
@@ -205,8 +212,9 @@ func take_damage(amount: float, info: Dictionary = {}) -> void:
 
 ## One simulation step. Split from input reading so tests can drive it.
 ## input: {"move": Vector2, "aim": bool, "sprint": bool, "dodge": bool}
+## A cutscene may give "world_move": Vector3 (ground direction, length <= 1) instead of "move".
 func step(delta: float, input: Dictionary) -> void:
-	var dir := _to_world(input.get("move", Vector2.ZERO))
+	var dir: Vector3 = input["world_move"] if input.has("world_move") else _to_world(input.get("move", Vector2.ZERO))
 	status.step(delta)
 	if is_downed:
 		return

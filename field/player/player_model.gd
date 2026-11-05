@@ -66,6 +66,9 @@ const MUZZLE_AHEAD := 0.3
 
 var _model: Node3D
 var _tree: AnimationTree
+var _anim_player: AnimationPlayer
+## A cutscene clip played on the whole body instead of the tree (play_clip), &"" = none.
+var _clip_override := &""
 var _player: Player
 var _weapons: WeaponHolder
 var _native := {}  # clip name -> native_speed (m/s)
@@ -111,6 +114,7 @@ func _setup_animation() -> void:
 	if lib == null or players.is_empty():
 		return
 	var anim_player := players[0] as AnimationPlayer
+	_anim_player = anim_player
 	anim_player.add_animation_library(LIB, lib)
 	for clip in lib.get_animation_list():
 		_native[String(clip)] = float(lib.get_animation(clip).get_meta(&"native_speed", 0.0))
@@ -129,8 +133,34 @@ func _setup_animation() -> void:
 		_weapons.reload_started.connect(_on_reload_started)
 
 
+## Cutscenes (IntroCutscene): plays one library clip (&"run", &"cutscene_walk" …) on the whole body
+## instead of the locomotion tree; its speed follows the player's ground speed when the clip knows
+## its native speed. &"" gives the body back to the tree. False when the clip is missing.
+func play_clip(clip: StringName) -> bool:
+	if _tree == null or _anim_player == null:
+		return false
+	if clip == &"":
+		_clip_override = &""
+		_anim_player.speed_scale = 1.0
+		_tree.active = true
+		return true
+	var full := "%s/%s" % [LIB, clip]
+	if not _anim_player.has_animation(full):
+		return false
+	_clip_override = clip
+	_tree.active = false
+	_anim_player.play(full, 0.2)
+	return true
+
+
 func _process(delta: float) -> void:
 	if _tree == null:
+		return
+	if _clip_override != &"":
+		var native: float = _native.get(String(_clip_override), 0.0)
+		var v := Vector2(_player.velocity.x, _player.velocity.z).length()
+		_anim_player.speed_scale = clampf(v / native, 0.6, 1.6) if native > 0.01 and v > MOVE_EPSILON else 1.0
+		_step_turn(delta, Vector3.ZERO)
 		return
 	if _player.is_downed:
 		_tree.set(&"parameters/life/transition_request", "downed")
@@ -297,8 +327,8 @@ func _hold(uid: StringName) -> void:
 ## Puts the gun's grip in the right hand with the barrel along the body's facing (level), after the
 ## animation has posed the skeleton. Hidden while downed.
 func _place_gun() -> void:
-	if _gun == null or _skeleton == null:
-		return
+	if _gun == null or _skeleton == null or not is_inside_tree():
+		return  # out of the tree: the base map being swapped for the field
 	_gun.visible = not _player.is_downed
 	if not _gun.visible:
 		return

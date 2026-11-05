@@ -105,7 +105,7 @@ func note_count() -> int:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not visible or not UI.stack_ids().is_empty():
+	if not is_visible_in_tree() or not UI.stack_ids().is_empty():
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var k := OS.get_keycode_string((event as InputEventKey).keycode)
@@ -262,3 +262,8 @@ class ThreatGauge:
 			x += 7.0
 		var m := w * clampf(value / mx, 0.0, 1.0)
 		draw_rect(Rect2(m - 2, -3, 4, size.y + 6), UiTokens.TEXT)
+
+
+## Bottom dock button by its id (&"build", &"@sortie" …) for the tutorial spotlight. null = none.
+func menu_button(id: StringName) -> Button:
+	return _menu_buttons.get(id, null)

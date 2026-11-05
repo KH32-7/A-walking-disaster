@@ -23,9 +23,9 @@ id = &"main_01_left_behind"
 type = 0
 title = "남겨진 사람들"
 description = "방송실 지기가 대피 명단에 없던 사람들의 오래된 무전 기록을 건넸다. 기록 맨 위에 적힌 곳은 물에 잠긴 상가다."
-trigger = &"day"
+trigger = &"quest"
 trigger_params = {
-"day": 1
+"quest": &"tutorial_doctor"
 }
 giver_id = &"broadcaster"
 objectives = Array[ExtResource("2_qobj")]([SubResource("Resource_visit"), SubResource("Resource_rescue")])

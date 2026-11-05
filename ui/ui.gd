@@ -82,8 +82,12 @@ func _ready() -> void:
 ## and the radio voice (TTS).
 var explore: FieldExplore
 var notice_toast: NoticeToast
-## First-day guide (방송실 지기 안내 카드).
-var tutorial: TutorialGuide
+## New-game tutorial (인트로 → 공원 의사 구출). Steps and spotlights.
+var tutorial: IntroTutorial
+## Dark screen with a hole over the thing to use now (tutorial).
+var spotlight: Spotlight
+## Letterbox, fades, title card, talk box (cutscenes). Its own layer (25).
+var cinematic: CinematicOverlay
 ## [F] chip beside the usable thing + exit diamonds, in the world (field and base).
 var world_prompts: WorldPrompts
 var radio_voice: RadioVoice
@@ -108,9 +112,15 @@ func _add_d16_nodes() -> void:
 	world_prompts = WorldPrompts.new()
 	world_prompts.name = &"WorldPrompts"
 	hud.add_child(world_prompts)
-	tutorial = TutorialGuide.new()
-	tutorial.name = &"TutorialGuide"
-	overlay.add_child(tutorial)
+	cinematic = CinematicOverlay.new()
+	cinematic.name = &"Cinematic"
+	_make_layer(&"CinematicLayer", 25).add_child(cinematic)
+	spotlight = Spotlight.new()
+	spotlight.name = &"Spotlight"
+	overlay.add_child(spotlight)
+	tutorial = IntroTutorial.new()
+	tutorial.name = &"IntroTutorial"
+	add_child(tutorial)
 	notice_toast = NoticeToast.new()
 	notice_toast.name = &"NoticeToast"
 	overlay.add_child(notice_toast)
@@ -250,14 +260,15 @@ var _watched_container: Node = null
 
 
 func _process(_delta: float) -> void:
-	if GameState.flow_state != Enums.FlowState.FIELD:
+	# Field, or a walking player on the base map (the intro house's gun case).
+	if GameState.flow_state != Enums.FlowState.FIELD and get_tree().get_first_node_in_group(IntroCutscene.GROUP) == null:
 		return
 	var p := get_tree().get_first_node_in_group(&"player")
 	if p == null or not p.has_method(&"interacting"):
 		return
 	var c: Node = p.call(&"interacting")
 	if c != _watched_container:
-		if _watched_container != null and is_instance_valid(_watched_container) 				and _watched_container.is_connected(&"opened", _on_container_opened):
+		if _watched_container != null and is_instance_valid(_watched_container) 				and _watched_container.has_signal(&"opened") and _watched_container.is_connected(&"opened", _on_container_opened):
 			_watched_container.disconnect(&"opened", _on_container_opened)
 		_watched_container = c
 		if c != null and c.has_signal(&"opened"):

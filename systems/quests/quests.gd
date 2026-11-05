@@ -190,7 +190,7 @@ func active_field_objectives(region_id: StringName) -> Array[Dictionary]:
 				continue
 			out.append({"quest_id": quest_id, "objective_id": o.id, "kind": QuestObjective.KIND_NAMES[o.kind],
 				"region_id": o.region_id, "marker": o.marker, "target_id": o.target_id, "count": o.count,
-				"remaining": o.count - p, "text": o.text})
+				"remaining": o.count - p, "text": o.text, "marker_label": o.marker_label})
 	return out
 
 

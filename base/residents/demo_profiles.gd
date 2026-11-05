@@ -36,6 +36,22 @@ const PROFILES: Array[Dictionary] = [
 		},
 	},
 	{
+		# New-game intro (사용자 요청 2026-11-06): hiding in the park 관리사무소; makes the 의무실 possible.
+		"id": &"demo_doctor",
+		"name": "윤하진",
+		"age_stage": Enums.AgeStage.ADULT,
+		"former_job": &"doctor",
+		"traits": [&"diligent"],
+		"likes": [&"coffee", &"books"],
+		"dislikes": [&"waiting"],
+		"stats": {&"heart": 7, &"sense": 6},
+		"story": {
+			"background": "공원 관리사무소에 숨어 있던 30대 응급의학과 의사. 대피소로 가던 길에 마물에게 막혔다.",
+			"fragments": ["의무실을 맡겠다고 한다.", "약초로 약을 만드는 법을 안다."],
+			"first_line": "살았네요… 다친 사람이 있다고요? 가요, 지금 바로.",
+		},
+	},
+	{
 		"id": &"demo_child",
 		"name": "린",
 		"age_stage": Enums.AgeStage.CHILD,

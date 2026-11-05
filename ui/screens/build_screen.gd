@@ -326,7 +326,7 @@ static func group_color(category: int) -> Color:
 func _group_defs(key: int) -> Array:
 	var out := []
 	for def: BuildingDef in BaseDB.buildings().values():
-		if def.prebuilt:
+		if def.prebuilt or def.story_only:
 			continue
 		if key >= 0 and group_of(int(def.category)) != key:
 			continue

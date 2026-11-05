@@ -94,7 +94,7 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
 - **SceneRouter**: 하루 흐름의 유일한 진행자. `state()`, `stayed_today`(C: 머무르기 날 생산 +20%), `last_sortie_result`, `last_evening_report`.
   - D(화면): `start_new_game(slot, difficulty)`, `load_game(slot)`, `load_suspended()`, `quit_to_title()`, `open_sortie_prep()`,
     `cancel_sortie_prep()`, `go_to_field(loadout)`, `stay_at_base()`, `end_stay()`, `finish_result()`, `confirm_evening()`, `finish_night()`.
-  - `start_new_game`은 `STARTER_LOADOUT`(기본: MAIN에 `pistol`)을 만들어 `Armory.PLAYER_ID`에 장착한다. 무한 탄 처리는 B.
+  - `start_new_game(slot, difficulty, with_intro := true)`: 기본은 인트로(`IntroCutscene`, 플래그 `intro_pending`)로 시작하고 권총은 집 안 상자에서 얻는다. `with_intro = false`(테스트)면 `STARTER_LOADOUT`(기본: MAIN에 `pistol`)을 만들어 `Armory.PLAYER_ID`에 장착한다. 무한 탄 처리는 B.
   - 임시 진행 프롬프트(`main.tscn`의 `FlowPrompts`, `core/flow_prompts.gd`, A): D 화면이 아직 없는 단계를 대신한다.
     TITLE(새 게임·이어하기·중단한 출격), BASE_STAY(하루 마치기), NIGHT(잠자기), Esc 일시정지(필드·기지, 열린 화면 없을 때).
     D가 `data/ui/screens/`에 화면 id `title` / `stay` / `night` / `pause_menu`를 등록하면 그 단계의 프롬프트는 자동으로 빠지고
@@ -173,7 +173,7 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   `friend`·`lover`·`spouse`(또는 `married`)·`separated`를 읽는다(다르면 `Journal.STAGE_KINDS`에 별칭).
 - **Quests** (A-13): `start(quest_id, giver_id)`, `advance(quest_id, objective_id, amount)`(C: 공동체 퀘스트), `complete(quest_id)`, `fail(quest_id, reason)`,
   `get_status(quest_id)`(-1 = 시작 전, `Quests.Status`), `is_active()`, `is_completed()`, `days_left()`, `get_def()`, `active_quests()`(D: 퀘스트 기록),
-  `active_field_objectives(region_id)`(B: 필드 목표 `{"quest_id", "objective_id", "kind": &"visit"|&"recover"|&"rescue", "region_id", "marker", "target_id", "count", "remaining", "text"}`).
+  `active_field_objectives(region_id)`(B: 필드 목표 `{"quest_id", "objective_id", "kind": &"visit"|&"recover"|&"rescue", "region_id", "marker", "target_id", "count", "remaining", "text", "marker_label"}`). 지도·미니맵은 marker 위치에 노란 이중 마름모와 marker_label(없으면 text)을 그린다.
   진행은 신호로만 한다: 지역 방문·데려가기(`sortie_ended` 탈출), 아이템 회수(`sortie_ended`의 loot), 사람 데려오기(`rescue_completed`의 profile `id`),
   기지 제작(`building_completed`), 특정 날 방어(`raid_resolved`). 유품은 `data/resources/`의 자원(예: `keepsake_plane`)이라 B는 `marker` 자리에 줍는 물건을 두고
   `Bag.try_add`로 넣기만 하면 된다. 보상의 신뢰도는 `Colony.add_trust(resident_id, amount)`(C에 요청)를 부른다. 무전 소문은 Radio 트리거 `quest_rumor`로 말한다.
@@ -322,3 +322,17 @@ levels/base/base_school/
 - 샌드박스에서 쓰는 디버그 UI만 예외(`_sandbox/` 안, 출시 빌드에 안 들어감).
 - 화면은 게임 규칙을 계산하지 않는다. 예: 강화 비용은 `Armory`에 묻고, 습격 예상 결과는 `Colony`에 묻는다.
 - 색만으로 구분하는 정보는 없다(등급·속성·관계는 모양이나 글을 함께).
+
+## 새 게임 인트로·튜토리얼 (2026-11-06)
+
+- `IntroCutscene`(levels/base/intro/): 새 게임(`intro_pending`)이면 base_school이 붙인다. 플래그 `intro_talked`(한도윤 대화), `intro_house_done`(집에서 나옴). `phase()` = `&"cinematic"`/`&"house"`/`&"done"`.
+- `UI.tutorial: IntroTutorial` — 매 프레임 상태로 단계를 정한다. `current_step()`, `skip()`. 끝나면 `tutorial_done`.
+- `UI.spotlight: Spotlight` — `focus_world(node, text, keys, radius, lift)`, `focus_control(c, text, keys)`, `focus_rect(rect, text, keys)`, `clear()`.
+- `UI.cinematic: CinematicOverlay` — `bars(on)`, `fade_to(a)`, `cut(black)`, `title(text, sub)`, `caption(text)`, `talk(lines)`(await), `film`, `skippable` + `skip_requested`.
+- `Player.script_input`: 비어 있지 않으면 컷신이 그 입력으로 step()을 돌린다(`"world_move": Vector3` 가능).
+- `LootContainer.add_gear(def_id, rarity)`: 장비 칸. 꺼내면 Armory.create_item + Bag.add_item.
+- `Bag.equip_entry(entry_id, owner_id)`: 가방 장비를 장착(원래 장비는 가방으로, 자리 없으면 창고). 가방 화면 우클릭 "장착".
+- `RescueSpawn.required_flag`: 그 플래그가 있을 때만 나온다(공원 의사 `intro_talked`).
+- `QuestObjective.marker_label`: 지도·미니맵의 노란 이중 마름모 아래 문구.
+- `BuildingDef.story_only`: 건설 목록에 안 나오고 지을 수 없음(낡은 집 `old_house`, 6×7).
+- 의무실 `infirmary`는 `requires_former_job = &"doctor"`. `main_01_left_behind`는 `tutorial_doctor` 완료 뒤 시작.
