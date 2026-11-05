@@ -89,6 +89,36 @@ func show_base_hud(on: bool) -> void:
 			base_hud.refresh()
 
 
+## Loot hook (D-08): when the player's current interactable (Player.interacting(), B-03) is a
+## container that finishes opening, the bag screen opens with it. Tab opens the bag alone.
+var _watched_container: Node = null
+
+
+func _process(_delta: float) -> void:
+	if GameState.flow_state != Enums.FlowState.FIELD:
+		return
+	var p := get_tree().get_first_node_in_group(&"player")
+	if p == null or not p.has_method(&"interacting"):
+		return
+	var c: Node = p.call(&"interacting")
+	if c != _watched_container:
+		if _watched_container != null and is_instance_valid(_watched_container) 				and _watched_container.is_connected(&"opened", _on_container_opened):
+			_watched_container.disconnect(&"opened", _on_container_opened)
+		_watched_container = c
+		if c != null and c.has_signal(&"opened"):
+			c.connect(&"opened", _on_container_opened)
+
+
+func _on_container_opened(_slot_count: int) -> void:
+	open(&"bag", {"container": _watched_container})
+
+
+func _input(event: InputEvent) -> void:
+	if GameState.flow_state == Enums.FlowState.FIELD and _stack.is_empty() and event.is_action_pressed(&"bag"):
+		open(&"bag")
+		get_viewport().set_input_as_handled()
+
+
 ## Flow screens (D-07): opened when the router enters the state, closed when it leaves.
 const FLOW_SCREENS := {
 	Enums.FlowState.SORTIE_PREP: &"sortie_prep",

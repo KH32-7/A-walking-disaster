@@ -171,7 +171,7 @@ func _fill_loadout() -> void:
 		grid.add_child(box)
 	_mid.add_child(grid)
 	var sum: Dictionary = Armory.get_owner_summary(Armory.PLAYER_ID)
-	var sl := MenuScreen.label("방어 %d  ·  방어구 소음 +%.1fm  ·  최대 체력 +%d" % [int(sum.get("defense", 0)),
+	var sl := MenuScreen.label("방어 %d  ·  방어구 소음 %+.1fm  ·  최대 체력 +%d" % [int(sum.get("defense", 0)),
 		float(sum.get("armor_noise", 0.0)), int(sum.get("max_hp", 0))], &"LabelDim", 14)
 	_mid.add_child(sl)
 	var eb := MenuScreen.button("장비 바꾸기", &"ButtonSoft")
