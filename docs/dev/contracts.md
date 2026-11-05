@@ -131,7 +131,16 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   자세한 사용법은 [field/README.md](../../field/README.md).
 - **FieldState**: `in_sortie()`, `lost_gear`
 - **Audio**: `play(event_id, position)`, `set_music_state(state)`
-- **Fx**: `spawn(effect_id, position, params)`
+- **Fx**: `spawn(effect_id, position, params)`. 이펙트 id 표는 [vfx/README.md](../../vfx/README.md)(D).
+- **마물 모델과 이펙트 (D-17, 이슈 #148)**:
+  - 신호 `Monster.attack_started(info)`(B): 공격이 맞기 `MonsterRules.ATTACK_WINDUP_SEC`(0.4초) 전마다 한 번. info 키 `monster_id`, `target`.
+    D의 `MonsterVisual`이 여기서 공격 클립을 시작한다.
+  - 모델 `art/monsters/<def.id>.tscn`(D 소유): 있으면 Monster가 `_ready`에서 `Visual` 자식으로 붙이고, 회색 상자 메시(직접 자식 MeshInstance3D)를 숨긴다.
+    `WeakPoint/Core`는 그대로 둔다. `Visual`은 부모 몬스터의 공개 신호(`state_changed`, `attack_started`, `damaged`, `died`, 보스 `pattern_started`)와
+    `velocity`, `state`, `hp`, `def`만 읽는다. 처치되면 `Visual`이 몬스터를 떠나 시체로 남았다가 스스로 사라진다.
+  - 이펙트 id: `MonsterDef.attack_fx`(B 데이터)는 공격이 맞을 때 B가 `Fx.spawn`한다. 값은 `monster_claw`, `monster_slam`, `monster_bite`,
+    `monster_splash`, `monster_cast`. 경보 비명은 `monster_scream`, 처치는 `monster_death`(D가 시체와 함께). 보스 패턴이 맞을 때 `boss_<pattern.id>`
+    (`boss_slam`, `boss_root_burst`, `boss_summon_pods`).
 - **UI**: `open(screen_id, args)`, `close(screen_id)`
 - **DebugConsole**: `register(name, callable, help)`, `execute(line)`, `is_open()`, `godmode`(B가 읽음).
   각 레인은 자기 스크립트에서 `register`로 명령을 추가한다(콘솔 파일은 고치지 않음). 같은 이름으로 다시 등록하면 교체된다.
@@ -283,12 +292,17 @@ levels/field/<region_id>/
   <region_id>.tscn   B  (layout + dressing을 인스턴스하는 조립 씬)
   layout.tscn        B  (충돌, 내비메시, 마커)
   dressing.tscn      D  (메시, 조명, 장식, 파티클)
+  buildings.tscn     B  (팩 꾸미기: 건물, 땅, 소품, 나무. 에셋이 있을 때만 <region_id>.gd가 붙임)
+  ground_splat.res   B  (buildings.tscn 땅 셰이더가 읽는 혼합 지도, 생성기가 구움)
 levels/base/base_school/
   base_school.tscn   C
   layout.tscn        C
   dressing.tscn      D
 ```
 
+- `buildings.tscn`, `ground_splat.res`는 `field/build/layout_builder.gd`가 layout.tscn과 같이 생성한다(B-26, 이슈 #144). 손으로 고치지 않는다.
+  `buildings.tscn`은 `assets/` 팩 파일을 경로로만 참조하고 메시 데이터는 넣지 않는다. 에셋이 없는 클론(CI)에서는 붙지 않고 회색 맵으로 돈다.
+  팩 꾸미기가 켜지면 지역 씬이 layout의 회색 박스(그룹 `kit_greybox`)를 숨긴다. 숨긴 CSG도 충돌은 남고, D의 dressing은 그대로 동작한다.
 - **필드 마커**(B-02, `field/markers/`): `PlayerSpawn`, `ExtractPoint`, `LootSpot`, `MonsterNest`, `RescueSpot`,
   `HiddenRoute`, `BossArena`, `Recording`.
 - **기지 마커**(C-01, `base/markers/`): `BuildArea`, `ZoneMarker`, `ResourceNode`(나무·잔해), `RaidSpawnPoint`, `WorkSpot`, `OutpostNode`.
