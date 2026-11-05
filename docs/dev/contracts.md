@@ -21,6 +21,7 @@
 | `Fx` | `vfx/fx.gd` | D | 이펙트 생성 |
 | `UI` | `ui/ui.gd` | D | 화면 열고 닫기, HUD |
 | `SceneRouter` | `core/scene_router.gd` | A | 기지↔필드 씬 전환, 하루 흐름 진행 |
+| `DebugConsole` | `core/debug/debug_console.gd` | A | 개발용 치트 콘솔(백틱 키). 디버그 빌드에서만 동작 |
 
 `_mcp_game_helper`는 Godot AI 플러그인 것이라 건드리지 않는다.
 
@@ -54,6 +55,9 @@
 - **Audio**: `play(event_id, position)`, `set_music_state(state)`
 - **Fx**: `spawn(effect_id, position, params)`
 - **UI**: `open(screen_id, args)`, `close(screen_id)`
+- **DebugConsole**: `register(name, callable, help)`, `execute(line)`, `is_open()`, `godmode`(B가 읽음).
+  각 레인은 자기 스크립트에서 `register`로 명령을 추가한다(콘솔 파일은 고치지 않음). 같은 이름으로 다시 등록하면 교체된다.
+  `raid`, `resident`는 C가, `give`는 A-07이 교체할 자리표시 명령이다. 출시 빌드에서는 등록·실행이 모두 무시된다.
 
 새 공개 함수가 필요하면 그 오토로드의 소유 레인이 추가하고 여기에 한 줄 적는다.
 
