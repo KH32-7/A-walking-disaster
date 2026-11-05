@@ -24,6 +24,7 @@ const INFO := Color("57c2c9")
 const DANGER := Color("d9453b")
 const WARN := Color("e8a23a")
 const GOOD := Color("5fc46b")
+const PING := Color("c77dff")  # map ping only (FieldState.ping)
 const SHADOW := Color(0, 0, 0, 0.7)
 const BACKDROP := Color(0, 0, 0, 0.35)  # menu dim over the blurred scene
 # Duckov accents (menu skin only)

@@ -32,6 +32,11 @@ var companions: Array[StringName] = []
 ## loadout["seed"] of the current sortie (SceneRouter sets it), -1 when the scene runs without
 ## the router. ExtractionManager picks the active extraction points from it (issue #44).
 var sortie_seed := -1
+## Map ping (M map, right click). One at a time. Cleared when the sortie starts or ends,
+## or once the player is within PING_REACH_M of it. Not saved.
+const PING_REACH_M := 3.0
+var has_ping := false
+var ping := Vector3.ZERO
 
 var _down_result: Dictionary = {}
 var _sortie_result: Dictionary = {}
@@ -53,6 +58,20 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if _clock_running:
 		advance_sortie_time(delta)
+	if has_ping:
+		var p := get_tree().get_first_node_in_group(Player.GROUP) as Node3D
+		if p != null and Vector2(p.global_position.x - ping.x, p.global_position.z - ping.z).length() <= PING_REACH_M:
+			clear_ping()
+
+
+## Sets the one map ping (replaces the old one).
+func set_ping(pos: Vector3) -> void:
+	ping = pos
+	has_ping = true
+
+
+func clear_ping() -> void:
+	has_ping = false
 
 
 ## True while the player is inside a field region.
@@ -181,6 +200,7 @@ func _on_sortie_started(loadout: Dictionary) -> void:
 	_down_result = {}
 	# A stale result would leak into this sortie's sortie_ended (issue #44).
 	_sortie_result = {}
+	clear_ping()
 	_reset_clock()
 	_clock_running = true
 	# Gear from another region is gone at once; gear from this region gets its one chance now.
@@ -193,6 +213,7 @@ func _on_sortie_started(loadout: Dictionary) -> void:
 func _on_sortie_ended(_result: Dictionary) -> void:
 	# Back at base: no field night left over for anything that reads is_night().
 	_reset_clock()
+	clear_ping()
 	# Not recovered during its one sortie: gone.
 	_drop_lost_gear(func(e: Dictionary) -> bool: return e.get("offered", false))
 

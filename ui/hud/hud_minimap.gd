@@ -5,7 +5,7 @@ extends Control
 ## render around the player) plus every mark turn and scroll as the player moves and turns.
 ## Kinds and their shape (never colour only): player=arrow, extract=diamond(GOOD),
 ## objective=square(ACCENT), companion=circle(INFO), monster_heard=triangle(DANGER),
-## lost_gear=ring(TEXT). Owner: Lane D (D-04).
+## lost_gear=ring(TEXT), ping=pin(PING, FieldState.ping). Owner: Lane D (D-04).
 ##
 ## Reads only (no game rules here), like MapScreen:
 ##   player: group "player", Player.facing() (falls back to the node's -Z)
@@ -97,6 +97,8 @@ func _collect(p: Node3D) -> void:
 	for n: Node in get_tree().get_nodes_in_group(ExtractionManager.PARTY_GROUP):
 		if n is Node3D:
 			add.call((n as Node3D).global_position, &"companion")
+	if FieldState.has_ping:
+		add.call(FieldState.ping, &"ping")
 	_live_points = out
 
 
@@ -213,3 +215,10 @@ func _draw_mark(at: Vector2, kind: StringName) -> void:
 				at + Vector2(-6, 5)]), UiTokens.DANGER)
 		&"lost_gear":
 			draw_arc(at, 5.0, 0, TAU, 16, UiTokens.TEXT, 2.0, true)
+		&"ping":
+			# Small pin, its point on `at` (map ping, FieldState).
+			var head := at + Vector2(0, -8)
+			draw_colored_polygon(PackedVector2Array([at, head + Vector2(4.5, 2), head + Vector2(-4.5, 2)]),
+				UiTokens.PING)
+			draw_circle(head, 5.0, UiTokens.PING)
+			draw_circle(head, 2.0, UiTokens.INK)
