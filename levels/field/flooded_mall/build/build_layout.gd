@@ -38,8 +38,9 @@ const LAYER_TRIGGER_BIT := 1 << 7
 const NAV_LAYER_WALK := 1
 const NAV_LAYER_WHEELCHAIR := 2
 
-## Floor plan scale over the map file (user feedback 2026-11-05: the map felt cramped, x2).
-const MAP_SCALE := 2.0
+## Floor plan scale over the map file. User feedback 2026-11-05: x1 felt cramped, x2 too big
+## and empty, so x1.5 (0.75 of x2).
+const MAP_SCALE := 1.5
 const MAP_HALF := 75.0 * MAP_SCALE
 const GROUND_DEPTH := 1.0
 const SLAB := 0.3
@@ -117,6 +118,74 @@ const BLOCKERS := [
 	["MartShelf3", -62.0, -53.0, 10.0, 0.8, 2.2, 0.0],
 ]
 
+## Monster density over the map file's nest values (user feedback 2026-11-05: more monsters).
+## Applied to every MonsterNest, map file and EXTRA_NESTS alike. 04 design: 3 min, region cap 40.
+const NEST_INTERVAL_MULT := 2.0 / 3.0 ## spawn_interval_sec 180 -> 120
+const NEST_MAX_MULT := 1.5 ## max_alive rounded up: 6 -> 9, 5 -> 8
+## Nests not in the map file. [id, family, x, z, max_alive, wander_radius], x, z in map file
+## coordinates. Each gets a MONSTER_NEST LootSpot next to it like the map file nests.
+## None on the sortie 1 loop or near an extract point: depot east (65m from the north gate),
+## the woods behind the depot (47m from the east spawn), the pier (dead end).
+const EXTRA_NESTS := [
+	["nest_depot", "GREEN", 28.0, -57.0, 4, 10.0],
+	["nest_ne", "GREEN", 40.0, -72.0, 3, 8.0],
+	["nest_pier", "WATER", 60.0, 28.0, 3, 8.0],
+]
+## Map file nest interval before NEST_INTERVAL_MULT, also used for EXTRA_NESTS.
+const NEST_BASE_INTERVAL := 180.0
+## Nest LootSpot offset from its nest, map file coordinates (along the pier for nest_pier).
+const NEST_LOOT_OFFSET := Vector2(2.0, 0.0)
+
+## Extra LootSpots (user feedback 2026-11-05: more to loot). The map file's spots stay as they are.
+## Indoor zones get one spot per LOOT_AREA_PER_SPOT m2 of scaled floor (at least LOOT_MIN),
+## counting the map file's spots, along the walls. Kinds cycle through ZONE_LOOT (default DRAWER).
+const LOOT_SEED := 20261107
+const LOOT_AREA_PER_SPOT := 300.0
+const LOOT_MIN := {"pharm": 2, "gas_store": 2, "depot_office": 2}
+const ZONE_LOOT := {
+	"mart_in": ["DRAWER"],
+	"pharm": ["MEDICINE"],
+	"gas_store": ["DRAWER"],
+	"depot_office": ["TOOLBOX"],
+	"house2": ["MEDICINE"],
+	"house3": ["TOOLBOX"],
+	# 02: paint and scrap on the mall's 1F, medicine cabinets common in shops.
+	"shop_in": ["TOOLBOX", "DRAWER", "MEDICINE"],
+	"shop2_in": ["DRAWER", "MEDICINE"],
+}
+## Outdoor landmarks: container kinds added on open ground inside the landmark.
+const LANDMARK_LOOT := {
+	"depot_lm": ["TOOLBOX", "TOOLBOX", "DRAWER"],
+	"dock_lm": ["TOOLBOX", "DRAWER"],
+	"gas_lm": ["TOOLBOX"],
+}
+const LOOT_WALL_INSET := 1.0
+const LOOT_SPACING := 4.0
+const LOOT_CLEAR_DOOR := 2.5
+
+## Greybox clutter on open ground so the map is not empty (user feedback 2026-11-05).
+## Seeded clusters (kits). Pieces up to LOW_COVER_MAX_H are low cover, taller ones block.
+## Clusters keep clear of roads, water, buildings, vegetation, markers, doors, extract points
+## and the demo routes. Kit pieces: [name, local_x, local_z, size_x, size_z, height, rot_y_deg].
+const CLUTTER_SEED := 20261106
+## Clusters on the unscaled map; the count grows with the area like the rocks.
+const CLUTTER_CLUSTERS := 26
+const CLUTTER_SPACING := 14.0
+const CLUTTER_CLEAR_ROUTE := 4.0
+const CLUTTER_CLEAR_EXTRACT := 10.0
+const CLUTTER_CLEAR_DOOR := 5.0
+const LOW_COVER_MAX_H := 1.2
+const CLUTTER_KITS := [
+	# [kit, weight, pieces]
+	["Wreck", 3, [["Car", 0.0, 0.0, 2.0, 4.2, 1.2, 0.0], ["Crate", 2.0, 2.5, 1.0, 1.0, 0.9, 15.0]]],
+	["Pileup", 1, [["Car", 0.0, 0.0, 2.0, 4.2, 1.2, 0.0], ["Car", 2.8, 1.2, 2.0, 4.2, 1.2, 25.0]]],
+	["Crates", 2, [["CratePile", 0.0, 0.0, 2.4, 1.2, 1.8, 0.0], ["Crate", 1.9, 0.3, 1.0, 1.0, 0.9, 10.0],
+		["Crate", -0.3, 1.5, 1.0, 1.0, 0.9, -20.0]]],
+	["Barricade", 2, [["Barricade", -2.5, 0.0, 3.0, 0.5, 1.1, 0.0], ["Barricade", 2.5, 0.0, 3.0, 0.5, 1.1, 0.0]]],
+	["LowWall", 2, [["LowWall", 0.0, 0.0, 6.0, 0.4, 1.0, 0.0], ["LowWall", -2.8, 2.0, 0.4, 4.0, 1.0, 0.0]]],
+	["Dumpster", 1, [["Dumpster", 0.0, 0.0, 2.0, 1.2, 1.5, 0.0], ["Crate", 1.8, 0.7, 1.0, 1.0, 0.9, 30.0]]],
+]
+
 const COLORS := {
 	"ground": Color(0.80, 0.76, 0.66),
 	"road": Color(0.62, 0.62, 0.60),
@@ -142,6 +211,10 @@ var _zones := {}
 var _mats := {}
 var _root: Node3D
 var _ramp_poly := PackedVector2Array()
+## Markers made here, not in the map file: {scene, node_name, pos: Vector3, rot: float, props}.
+var _extra_markers: Array[Dictionary] = []
+## Taken ground as (x, z, radius): extra markers and clutter clusters. Rocks and trees keep off.
+var _taken: Array[Vector3] = []
 
 
 func _initialize() -> void:
@@ -165,6 +238,8 @@ func _initialize() -> void:
 	_build_buildings()
 	_build_mall()
 	_build_props()
+	_plan_extra_markers()
+	_build_clutter()
 	_build_nature()
 	_build_bounds()
 	_build_markers()
@@ -390,6 +465,250 @@ func _ramp_top(deck: PackedVector2Array) -> Vector2:
 	return from
 
 
+# --- extra markers and clutter -----------------------------------------------
+
+## Extra nests (EXTRA_NESTS) and LootSpots (indoor zones by area, landmarks), see the constants.
+func _plan_extra_markers() -> void:
+	var nest_scene := _scene_of("MonsterNest")
+	var loot_scene := _scene_of("LootSpot")
+	for n: Array in EXTRA_NESTS:
+		var at := Vector2(n[2], n[3]) * MAP_SCALE
+		_add_extra(nest_scene, "MonsterNest_%s" % n[0], Vector3(at.x, 0.0, at.y), 0.0, {"family": n[1],
+			"spawn_interval_sec": NEST_BASE_INTERVAL, "max_alive": n[4], "wander_radius": n[5]})
+		var spot := (Vector2(n[2], n[3]) + NEST_LOOT_OFFSET) * MAP_SCALE
+		_add_extra(loot_scene, "LootSpot_loot_%s" % n[0], Vector3(spot.x, 0.0, spot.y), 0.0,
+			{"container_type": "MONSTER_NEST", "loot_table_id": ""})
+
+	var rng := RandomNumberGenerator.new()
+	rng.seed = LOOT_SEED
+	var y2: float = _map.floors[1].y
+	var stair := _rect(_link("stairs").rect).grow(2.0)
+	var shaft := _rect(_link("elevator").rect).grow(1.5)
+	var added := 0
+	for zone: Dictionary in _map.zones:
+		if zone.kind != "indoor":
+			continue
+		var poly := _poly(zone)
+		var have := 0
+		for m: Dictionary in _map.markers:
+			if m["class"] == "LootSpot" and m.floor == zone.floor \
+					and Geometry2D.is_point_in_polygon(_xz(m.position), poly):
+				have += 1
+		var want: int = maxi(LOOT_MIN.get(zone.id, 1), ceili(_area(poly) / LOOT_AREA_PER_SPOT)) - have
+		var kinds: Array = ZONE_LOOT.get(zone.id, ["DRAWER"])
+		var ring := _largest(Geometry2D.offset_polygon(poly, -LOOT_WALL_INSET))
+		var doors := _doors(zone.id)
+		var placed := 0
+		for attempt in want * 50:
+			if placed >= want:
+				break
+			var hit := _point_on_ring(ring, rng.randf())
+			var p: Vector2 = hit[0]
+			if not Geometry2D.is_point_in_polygon(p, poly) or stair.has_point(p) or shaft.has_point(p) \
+					or _in_prop(p, 1.0) or _near_door(p, doors, LOOT_CLEAR_DOOR) \
+					or _near_marker(p, zone.floor, LOOT_SPACING):
+				continue
+			var dir: Vector2 = hit[1]
+			placed += 1
+			_add_extra(loot_scene, "LootSpot_loot_%s_%d" % [zone.id, placed],
+				Vector3(p.x, 0.0 if zone.floor == 0 else y2, p.y), atan2(-dir.y, dir.x),
+				{"container_type": kinds[(placed - 1) % kinds.size()], "loot_table_id": ""})
+		if placed < want:
+			push_warning("Loot: %s got %d of %d extra spots" % [zone.id, placed, want])
+		added += placed
+
+	var keep_out := _keep_out_polygons()
+	var routes := _route_segments()
+	for id: String in LANDMARK_LOOT:
+		var poly := _largest(Geometry2D.offset_polygon(_poly(_zones[id]), -2.0))
+		var bounds := _bounds(poly)
+		var placed := 0
+		for kind: String in LANDMARK_LOOT[id]:
+			for attempt in 200:
+				var p := Vector2(rng.randf_range(bounds.position.x, bounds.end.x),
+					rng.randf_range(bounds.position.y, bounds.end.y))
+				if not Geometry2D.is_point_in_polygon(p, poly) or not _open(p, keep_out, routes, CLEAR_ROUTE) \
+						or _in_prop(p, 1.5) or _near_marker(p, 0, LOOT_SPACING):
+					continue
+				placed += 1
+				_add_extra(loot_scene, "LootSpot_loot_%s_%d" % [id, placed], Vector3(p.x, 0.0, p.y),
+					rng.randf() * TAU, {"container_type": kind, "loot_table_id": ""})
+				break
+		if placed < LANDMARK_LOOT[id].size():
+			push_warning("Loot: %s got %d of %d spots" % [id, placed, LANDMARK_LOOT[id].size()])
+		added += placed
+	print("extra markers: %d nests, %d loot spots" % [EXTRA_NESTS.size(), EXTRA_NESTS.size() + added])
+
+
+## Seeded clutter clusters on open ground (CLUTTER_KITS).
+func _build_clutter() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = CLUTTER_SEED
+	var keep_out := _keep_out_polygons()
+	for zone: Dictionary in _map.zones:
+		if zone.kind == "vegetation" and zone.floor == 0:
+			keep_out.append(_poly(zone))
+	var routes := _route_segments()
+	var points := _keep_out_points()
+	var extracts := PackedVector2Array()
+	for m: Dictionary in _map.markers:
+		if m["class"] == "ExtractPoint":
+			extracts.append(_xz(m.position))
+	var doors := []
+	for id: String in DOORS:
+		if id != "shop2_in":
+			doors.append_array(_doors(id))
+	var total_weight := 0
+	for kit: Array in CLUTTER_KITS:
+		total_weight += kit[1]
+	var cover := _root.get_node("LowCover")
+	var blockers := _root.get_node("Props")
+	var centers := PackedVector2Array()
+	var want := roundi(CLUTTER_CLUSTERS * MAP_SCALE * MAP_SCALE)
+	var pieces := 0
+	for attempt in want * 80:
+		if centers.size() >= want:
+			break
+		var kit := _pick_kit(rng.randi_range(0, total_weight - 1))
+		var c := Vector2(rng.randf_range(-MAP_HALF, MAP_HALF), rng.randf_range(-MAP_HALF, MAP_HALF))
+		var yaw := rng.randf() * TAU
+		var radius := _kit_radius(kit[2])
+		if _near(c, centers, CLUTTER_SPACING) or _near(c, extracts, CLUTTER_CLEAR_EXTRACT + radius) \
+				or _near_door(c, doors, CLUTTER_CLEAR_DOOR + radius) \
+				or not _open(c, keep_out, routes, CLUTTER_CLEAR_ROUTE + radius) or _near_points(c, points, radius):
+			continue
+		var fits := true
+		for piece: Array in kit[2]:
+			for corner in _piece_corners(c, yaw, piece):
+				if not _open(corner, keep_out, [], 0.0):
+					fits = false
+		if not fits:
+			continue
+		centers.append(c)
+		_taken.append(Vector3(c.x, c.y, radius + CLEAR_PROP))
+		for i in kit[2].size():
+			var piece: Array = kit[2][i]
+			var at := c + Vector2(piece[1], piece[2]).rotated(-yaw)
+			var low: bool = piece[5] <= LOW_COVER_MAX_H
+			var box := _box("Clutter%d_%s%d" % [centers.size(), piece[0], i], at, Vector2(piece[3], piece[4]), 0.0,
+				piece[5], rad_to_deg(yaw) + piece[6], "cover" if low else "blocked")
+			(cover if low else blockers).add_child(box)
+			pieces += 1
+	print("clutter: %d clusters, %d pieces" % [centers.size(), pieces])
+
+
+func _add_extra(scene: String, node_name: String, pos: Vector3, rot: float, props: Dictionary) -> void:
+	_extra_markers.append({"scene": scene, "node_name": node_name, "pos": pos, "rot": rot, "props": props})
+	_taken.append(Vector3(pos.x, pos.z, CLEAR_MARKER))
+
+
+func _scene_of(marker_class: String) -> String:
+	for m: Dictionary in _map.markers:
+		if m["class"] == marker_class:
+			return m.scene
+	push_error("No %s in the map file" % marker_class)
+	return ""
+
+
+## On the map, off every keep-out polygon and at least route_clear from the demo routes.
+func _open(p: Vector2, keep_out: Array[PackedVector2Array], routes: Array, route_clear: float) -> bool:
+	if absf(p.x) > MAP_HALF - CLEAR_EDGE or absf(p.y) > MAP_HALF - CLEAR_EDGE:
+		return false
+	for poly in keep_out:
+		if Geometry2D.is_point_in_polygon(p, poly):
+			return false
+	for seg: Array in routes:
+		if p.distance_to(Geometry2D.get_closest_point_to_segment(p, seg[0], seg[1])) < route_clear:
+			return false
+	return true
+
+
+## Closer than q.z + pad to any (x, z, radius) point.
+func _near_points(p: Vector2, points: Array[Vector3], pad: float) -> bool:
+	for q in points:
+		if p.distance_to(Vector2(q.x, q.y)) < q.z + pad:
+			return true
+	return false
+
+
+## Within `margin` of a LOW_COVER or BLOCKERS box (rotation included).
+func _in_prop(p: Vector2, margin: float) -> bool:
+	for b: Array in LOW_COVER + BLOCKERS:
+		var local := (p - Vector2(b[1], b[2]) * MAP_SCALE).rotated(deg_to_rad(b[6]))
+		if absf(local.x) <= b[3] * 0.5 + margin and absf(local.y) <= b[4] * 0.5 + margin:
+			return true
+	return false
+
+
+## doors: [[x, z, width], ...] already scaled.
+func _near_door(p: Vector2, doors: Array, clear: float) -> bool:
+	for d: Array in doors:
+		if p.distance_to(Vector2(d[0], d[1])) < clear + d[2] * 0.5:
+			return true
+	return false
+
+
+## Closer than dist to any map file or extra marker on the same floor.
+func _near_marker(p: Vector2, floor_index: int, dist: float) -> bool:
+	for m: Dictionary in _map.markers:
+		if m.floor == floor_index and p.distance_to(_xz(m.position)) < dist:
+			return true
+	for m: Dictionary in _extra_markers:
+		var on_floor := 0 if m.pos.y < 1.0 else 1
+		if on_floor == floor_index and p.distance_to(Vector2(m.pos.x, m.pos.z)) < dist:
+			return true
+	return false
+
+
+## [point, edge direction] at fraction u of the ring's perimeter.
+func _point_on_ring(ring: PackedVector2Array, u: float) -> Array:
+	var total := 0.0
+	for i in ring.size():
+		total += ring[i].distance_to(ring[(i + 1) % ring.size()])
+	var left := u * total
+	for i in ring.size():
+		var a := ring[i]
+		var b := ring[(i + 1) % ring.size()]
+		var length := a.distance_to(b)
+		if left <= length or i == ring.size() - 1:
+			return [a.lerp(b, clampf(left / length, 0.0, 1.0)), (b - a) / length]
+		left -= length
+	return [ring[0], Vector2.RIGHT]
+
+
+func _largest(polys: Array[PackedVector2Array]) -> PackedVector2Array:
+	var best := PackedVector2Array()
+	for p in polys:
+		if best.is_empty() or _area(p) > _area(best):
+			best = p
+	return best
+
+
+func _pick_kit(roll: int) -> Array:
+	for kit: Array in CLUTTER_KITS:
+		roll -= kit[1]
+		if roll < 0:
+			return kit
+	return CLUTTER_KITS[0]
+
+
+func _kit_radius(pieces: Array) -> float:
+	var r := 0.0
+	for piece: Array in pieces:
+		r = maxf(r, Vector2(piece[1], piece[2]).length() + Vector2(piece[3], piece[4]).length() * 0.5)
+	return r
+
+
+func _piece_corners(c: Vector2, yaw: float, piece: Array) -> PackedVector2Array:
+	var at := c + Vector2(piece[1], piece[2]).rotated(-yaw)
+	var turn := yaw + deg_to_rad(piece[6])
+	var half := Vector2(piece[3], piece[4]) * 0.5
+	var out := PackedVector2Array()
+	for s: Vector2 in [Vector2(1, 1), Vector2(-1, 1), Vector2(-1, -1), Vector2(1, -1)]:
+		out.append(at + (half * s).rotated(-turn))
+	return out
+
+
 # --- trees and rocks --------------------------------------------------------
 
 func _build_nature() -> void:
@@ -521,6 +840,7 @@ func _keep_out_points() -> Array[Vector3]:
 	for p: Array in LOW_COVER + BLOCKERS:
 		var at := Vector2(p[1], p[2]) * MAP_SCALE
 		out.append(Vector3(at.x, at.y, CLEAR_PROP + maxf(p[3], p[4]) * 0.5))
+	out.append_array(_taken)
 	return out
 
 
@@ -598,41 +918,54 @@ func _build_markers() -> void:
 	var markers := Node3D.new()
 	markers.name = "Markers"
 	_root.add_child(markers)
-	var element: Dictionary = load("res://core/enums.gd").get_script_constant_map().Element
 	for m: Dictionary in _map.markers:
-		var node := (load(m.scene) as PackedScene).instantiate() as Node3D
-		node.name = m.node_name
+		var node := _marker(m)
 		node.position = _v3(m.position)
 		if m.has("rotation_y_deg"):
 			node.rotation.y = deg_to_rad(m.rotation_y_deg)
-		var enums: Dictionary = node.get_script().get_script_constant_map()
-		for key: String in m.props:
-			var value = m.props[key]
-			match key:
-				"type":
-					value = enums.Type[value]
-				"container_type":
-					value = enums.ContainerType[value]
-				"family":
-					value = element[value]
-				"id", "spawn_id", "recording_id", "required_trait", "loot_table_id":
-					value = StringName(value)
-				"spawn_tags":
-					var tags: Array[StringName] = []
-					for t: String in value:
-						tags.append(StringName(t))
-					value = tags
-				"wait_sec", "noise_radius", "zone_radius", "spawn_interval_sec", "wander_radius":
-					value = float(value)
-				"max_alive":
-					value = int(value)
-			node.set(key, value)
 		if m.has("children"):
 			for child_name: String in m.children:
 				(node.get_node(child_name) as Node3D).position = _v3(m.children[child_name])
 		markers.add_child(node)
 		if m.has("children"):
 			_root.set_editable_instance(node, true)
+	for m: Dictionary in _extra_markers:
+		var node := _marker(m)
+		node.position = m.pos
+		node.rotation.y = m.rot
+		markers.add_child(node)
+
+
+## Marker scene instance with the map file's props (enum names, ids) converted.
+func _marker(m: Dictionary) -> Node3D:
+	var element: Dictionary = load("res://core/enums.gd").get_script_constant_map().Element
+	var node := (load(m.scene) as PackedScene).instantiate() as Node3D
+	node.name = m.node_name
+	var enums: Dictionary = node.get_script().get_script_constant_map()
+	for key: String in m.props:
+		var value = m.props[key]
+		match key:
+			"type":
+				value = enums.Type[value]
+			"container_type":
+				value = enums.ContainerType[value]
+			"family":
+				value = element[value]
+			"id", "spawn_id", "recording_id", "required_trait", "loot_table_id":
+				value = StringName(value)
+			"spawn_tags":
+				var tags: Array[StringName] = []
+				for t: String in value:
+					tags.append(StringName(t))
+				value = tags
+			"wait_sec", "noise_radius", "zone_radius", "wander_radius":
+				value = float(value)
+			"spawn_interval_sec":
+				value = float(value) * NEST_INTERVAL_MULT
+			"max_alive":
+				value = ceili(int(value) * NEST_MAX_MULT)
+		node.set(key, value)
+	return node
 
 
 # --- navigation --------------------------------------------------------------
