@@ -135,7 +135,7 @@ func _process(delta: float) -> void:
 	var dir := Vector2(local.x, -local.z).normalized() if speed > MOVE_EPSILON else Vector2.ZERO
 	_aim_blend = _aim_blend.lerp(dir * amount, k)
 	_stance = lerpf(_stance, 1.0 if gun else 0.0, 1.0 - exp(-STANCE_SHARPNESS * delta))
-	var want_scale := _walk_scale(speed, dir if gun else Vector2.UP) * _move_mult(gun)
+	var want_scale := _walk_scale(speed, dir if gun else Vector2.UP) * _move_mult()
 	if gun:
 		want_scale *= lerpf(1.0, anim_tuning.back_walk_mult, maxf(-dir.y, 0.0))
 	_speed_scale = lerpf(_speed_scale, want_scale, 1.0 - exp(-SPEED_SHARPNESS * delta))
@@ -194,11 +194,12 @@ func _walk_scale(speed: float, dir: Vector2) -> float:
 	return clampf(speed / native, anim_tuning.min_playback, top)
 
 
-## The tuning multiplier for the current move: sprint, gun walk or plain walk.
-func _move_mult(gun: bool) -> float:
+## The tuning multiplier for the current move: sprint or walk, the same with or without a gun
+## (user decision 2026-11-06).
+func _move_mult() -> float:
 	if _player.move_state == Player.MoveState.SPRINT:
 		return anim_tuning.sprint_mult
-	return anim_tuning.aim_walk_mult if gun else anim_tuning.walk_mult
+	return anim_tuning.walk_mult
 
 
 ## Current walk playback speed (1.0 = clip speed). For the debug panel (\ key).
