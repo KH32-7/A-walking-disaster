@@ -31,6 +31,15 @@ func _ready() -> void:
 		return
 	_register_builtins()
 	_build_ui()
+	# Stylized look sliders (debug builds only): \ key or `look`; ] flips the look on/off.
+	var look_panel: Node = preload("res://core/debug/look_panel.gd").new()
+	add_child(look_panel)
+	register(&"look", func(args: PackedStringArray) -> String:
+		if args.size() > 0 and args[0] in ["on", "off"]:
+			Look.tuning.enabled = args[0] == "on"
+			return "화면 스타일 %s" % ("켬" if Look.tuning.enabled else "끔")
+		look_panel.call(&"toggle")
+		return "화면 스타일 패널 (\\ 키로도 열고 닫음, ] 키로 켜기/끄기)", "look [on|off] - 화면 스타일 패널 열기/닫기, 켜기/끄기")
 
 
 func is_open() -> bool:
