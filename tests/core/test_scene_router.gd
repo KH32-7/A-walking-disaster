@@ -37,6 +37,7 @@ func run() -> bool:
 	ok = ok and _check_night_raid()
 	ok = ok and await _check_load_to_prep()
 	ok = ok and _check_merge_loot()
+	ok = ok and _check_result_saved()
 
 	EventBus.phase_changed.disconnect(on_phase)
 	EventBus.flow_state_changed.disconnect(on_flow)
@@ -148,6 +149,18 @@ func _check_load_to_prep() -> bool:
 	var loaded := SceneRouter.load_game(slot)
 	return ok and _expect(loaded and GameState.flow_state == Enums.FlowState.RESULT, "load after result: %s"
 		% Enums.FlowState.keys()[GameState.flow_state])
+
+
+## Continuing a save made on the result screen shows that sortie, not an empty "쓰러졌습니다".
+func _check_result_saved() -> bool:
+	var keep: Dictionary = SceneRouter.last_sortie_result
+	SceneRouter.last_sortie_result = {"extracted": true, "region_id": &"city_park", "duration_sec": 75.0}
+	var data := SceneRouter.save_data()
+	SceneRouter.last_sortie_result = {}
+	SceneRouter.load_data(data)
+	var ok := _expect(SceneRouter.last_sortie_result.get("region_id", &"") == &"city_park", "last sortie result not saved")
+	SceneRouter.last_sortie_result = keep
+	return ok
 
 
 func _check_merge_loot() -> bool:

@@ -104,6 +104,7 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
     TITLE(새 게임·이어하기·중단한 출격), BASE_STAY(하루 마치기), NIGHT(잠자기), Esc 일시정지(필드·기지, 열린 화면 없을 때).
     D가 `data/ui/screens/`에 화면 id `title` / `stay` / `night` / `pause_menu`를 등록하면 그 단계의 프롬프트는 자동으로 빠지고
     `UI.open(id)`가 대신 불린다. 화면은 위 라우터 함수를 부르면 된다.
+    UI 화면이 하나라도 열려 있으면(밤 이벤트, 새 식구, 습격 결과 등) 프롬프트는 숨었다가 다 닫히면 다시 뜬다.
   - C(기지): `start_day_raid(raid)`, `end_day_raid()`, `start_night_event(event_id, participants)`, `end_night_event()`.
   - B(필드)는 라우터 함수를 부르지 않는다. 탈출·쓰러짐 결과를 `FieldState.last_sortie_result()`에 채우고(이슈 #27)
     `extraction_completed`를 보낸다. `player_downed`는 라우터가 그 프레임 끝에 처리하므로 B의 쓰러짐 처리(가방·유실물·결과)가 먼저 끝난다.
@@ -206,6 +207,7 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
 B가 `FieldState.last_sortie_result()`로 내놓는 Dictionary가 바탕이고, 라우터가 `xp`, `rescued_profiles`, `down`을 더하고
 `loot`를 합쳐(B가 탈출 순간 `Bag.unload_to_base()`를 부르고, 라우터가 남은 것—쓰러진 뒤 안전 주머니—을 한 번 더 비움) 보낸다.
 B의 결과가 없으면(디버그 진행) 라우터가 기본값으로 채운다. B는 출격 시작 때 이전 결과를 지워야 한다.
+라우터는 `last_sortie_result`를 세이브에 넣는다(결과 화면에서 저장한 게임을 이어도 같은 결과가 보인다).
 
 ```
 {
@@ -342,6 +344,7 @@ levels/base/base_school/
 
 - `IntroCutscene`(levels/base/intro/): 새 게임(`intro_pending`)이면 base_school이 붙인다. 플래그 `intro_talked`(방송실 지기 대화. 지기는 주민이 아니다), `intro_house_done`(집에서 나옴). `phase()` = `&"cinematic"`/`&"house"`/`&"done"`.
 - `UI.tutorial: IntroTutorial` — 매 프레임 상태로 단계를 정한다. `current_step()`, `skip()`. 끝나면 `tutorial_done`.
+  단계가 가리키는 화면(`SHOWS_OVER`: 가방, 출격 준비) 말고 다른 화면, 컷신 대화, 건물 놓기 중에는 안내를 숨긴다(`current_step()`은 그대로).
 - `UI.spotlight: Spotlight` — `focus_world(node, text, keys, radius, lift)`, `focus_control(c, text, keys)`, `focus_rect(rect, text, keys)`, `clear()`.
 - `UI.cinematic: CinematicOverlay` — `bars(on)`, `fade_to(a)`, `cut(black)`, `title(text, sub)`, `caption(text)`, `talk(lines)`(await), `film`, `skippable` + `skip_requested`.
 - `Player.script_input`: 비어 있지 않으면 컷신이 그 입력으로 step()을 돌린다(`"world_move": Vector3` 가능).

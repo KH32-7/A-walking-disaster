@@ -74,7 +74,8 @@ func _work_out(delta: float) -> StringName:
 	if intro != null and intro.phase() == &"house":
 		return _house_step()
 	if Quests.is_completed(QUEST):
-		if s in [Enums.FlowState.RESULT, Enums.FlowState.EVENING, Enums.FlowState.NIGHT, Enums.FlowState.BASE_MORNING]:
+		# Not at NIGHT: the 잠자기 box is up then (one card at a time).
+		if s in [Enums.FlowState.RESULT, Enums.FlowState.EVENING, Enums.FlowState.BASE_MORNING]:
 			if UI.stack_ids().is_empty():
 				_welcome_t += delta  # counts only while the card can be seen
 			if _welcome_t >= WELCOME_SEC:
@@ -144,6 +145,9 @@ func _show(step: StringName) -> void:
 			sp.clear()
 	if step == &"":
 		return
+	if _blocked(step):
+		sp.clear()
+		return
 	var intro := _intro()
 	match step:
 		&"chest":
@@ -180,7 +184,15 @@ func _show(step: StringName) -> void:
 			var b: Button = hud.menu_button(&"@sortie") if hud != null else null
 			_control(b, "공원으로 의사를 찾으러 가요.", [["Enter", "출격"]], 12.0)
 		&"sortie_go":
-			_card("'숲이 된 도심 공원'을 고르고 출격해요. 해가 지기 전에 돌아와야 해요.", [["클릭", "고르기"], ["Enter", "출격"]])
+			# A hole over 출격 (a card on top sat on the prep panels). The button is rebuilt on every
+			# refresh, so its rect is followed each frame like the bag entry in "equip".
+			var prep := UI.get_screen(&"sortie_prep")
+			var go: Button = prep.call(&"go_button") if prep != null and prep.has_method(&"go_button") else null
+			var r := go.get_global_rect() if go != null and go.is_visible_in_tree() else Rect2()
+			if sp.current_text() != _SORTIE_GO_TEXT:
+				sp.focus_rect(r, _SORTIE_GO_TEXT, [["클릭", "고르기"], ["Enter", "출격"]])
+			else:
+				sp.move_rect(r)
 		&"quest":
 			# No card: WorldMarkers shows the objective's words once at the top, then only the
 			# double yellow diamond over the office and on the minimap.
@@ -197,6 +209,22 @@ func _show(step: StringName) -> void:
 
 
 const _EQUIP_TEXT := "가방에 들어왔어요. 권총을 우클릭하고 '장착'을 눌러요."
+const _SORTIE_GO_TEXT := "'숲이 된 도심 공원'을 고르고 출격해요. 해가 지기 전에 돌아와야 해요."
+
+## Screens a step points into. Any other open screen, a cutscene talk or building placement
+## hides the tutorial until it is gone (it sits on the top layer and covered them).
+const SHOWS_OVER := {&"take_gun": [&"bag"], &"equip": [&"bag"], &"close_bag": [&"bag"],
+	&"sortie_go": [&"sortie_prep"]}
+
+
+func _blocked(step: StringName) -> bool:
+	var allowed: Array = SHOWS_OVER.get(step, [])
+	for id in UI.stack_ids():
+		if not id in allowed:
+			return true
+	if UI.cinematic != null and UI.cinematic.is_talking():
+		return true
+	return is_instance_valid(UI.build_place_hud)
 
 
 func _world(node: Node3D, text: String, keys: Array, radius: float, lift: float) -> void:
@@ -210,9 +238,6 @@ func _control(c: Control, text: String, keys: Array, pad := 10.0) -> void:
 
 
 func _card(text: String, keys: Array) -> void:
-	if not UI.stack_ids().is_empty() and not UI.is_open(&"sortie_prep"):
-		UI.spotlight.clear()  # a goal card waits while the map / journal is open
-		return
 	if UI.spotlight.current_text() != text:
 		UI.spotlight.focus_rect(Rect2(), text, keys)
 

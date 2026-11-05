@@ -314,6 +314,11 @@ func _add_stranded() -> void:
 		_right.add_child(l)
 
 
+## The 출격 button (tutorial spotlight). Rebuilt on every refresh, so ask again each frame.
+func go_button() -> Button:
+	return _go
+
+
 func loadout() -> Dictionary:
 	return {"region_id": _region, "companions": _companions.duplicate(), "gear": {}}
 

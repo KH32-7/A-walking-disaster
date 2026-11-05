@@ -95,7 +95,7 @@ func _play(item: Dictionary) -> void:
 	var raw := String(item.text)
 	if raw.length() > MAX_CHARS:
 		raw = raw.left(MAX_CHARS - 1) + "..."
-	var body := raw.replace("[", "[lb]")
+	var body := _keep_words(raw).replace("[", "[lb]")
 	var head := ("[color=#%s][b]%s[/b][/color]  " % [UiTokens.ACCENT.to_html(false), speaker]) \
 		if show_speaker else ""
 	_label.text = "[center]" + head + body + "[/center]"
@@ -105,6 +105,17 @@ func _play(item: Dictionary) -> void:
 
 func _refresh_visible() -> void:
 	visible = not held and not _current.is_empty() and bool(Settings.get_value(&"subtitles"))
+
+
+## Hangul may break between any two syllables in a RichTextLabel (잡 / 혔습니다). A word joiner
+## (U+2060, zero width) between letters keeps each word whole, so lines break only at spaces.
+static func _keep_words(s: String) -> String:
+	var out := ""
+	for i in s.length():
+		if i > 0 and s[i] != " " and s[i - 1] != " ":
+			out += "⁠"
+		out += s[i]
+	return out
 
 
 func _process(delta: float) -> void:
