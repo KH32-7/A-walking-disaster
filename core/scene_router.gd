@@ -22,8 +22,10 @@ const BASE_SCENE := "res://levels/base/base_school/base_school.tscn"
 ## Field region scenes follow levels/field/<region_id>/<region_id>.tscn (Lane B).
 const REGION_SCENE_FMT := "res://levels/field/%s/%s.tscn"
 const WORLD_PATH := ^"/root/Main/World"
-## Region used by advance() (debug) when nothing else is given.
+## Fallback region id when no field map exists at all (tests, headless). advance() prefers
+## default_region(), the first region that has a map.
 const DEBUG_REGION := &"debug_region"
+const FIELD_LEVELS_DIR := "res://levels/field"
 
 const S := Enums.FlowState
 ## Allowed moves. Anything else is refused with an error.
@@ -276,15 +278,30 @@ func finish_night() -> bool:
 	return true
 
 
+## First region (by folder name) under levels/field/ that has a map scene; DEBUG_REGION if none.
+func default_region() -> StringName:
+	var dir := DirAccess.open(FIELD_LEVELS_DIR)
+	if dir == null:
+		return DEBUG_REGION
+	var names := Array(dir.get_directories())
+	names.sort()
+	for n: String in names:
+		if ResourceLoader.exists(REGION_SCENE_FMT % [n, n]):
+			return StringName(n)
+	return DEBUG_REGION
+
+
 ## Debug / tests: take the default next step (sortie path, extract, no events).
-func advance() -> bool:
+## `region_id` picks the sortie region from SORTIE_PREP; empty means default_region().
+func advance(region_id: StringName = &"") -> bool:
 	match state():
 		S.TITLE:
 			return start_new_game()
 		S.BASE_MORNING:
 			return open_sortie_prep()
 		S.SORTIE_PREP:
-			return go_to_field({"region_id": DEBUG_REGION, "companions": [], "gear": {}})
+			var region := region_id if region_id != &"" else default_region()
+			return go_to_field({"region_id": region, "companions": [], "gear": {}})
 		S.FIELD:
 			EventBus.extraction_completed.emit(&"debug")
 			return true
