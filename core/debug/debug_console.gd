@@ -156,6 +156,7 @@ func _register_builtins() -> void:
 	register(&"phase", _cmd_phase, "phase <%s>" % "|".join(Enums.Phase.keys()).to_lower())
 	register(&"flow", _cmd_flow, "flow <%s>" % "|".join(Enums.FlowState.keys()).to_lower())
 	register(&"godmode", _cmd_godmode, "godmode [on|off] - 플레이어 무적")
+	register(&"weather", _cmd_weather, "weather <clear|rain> - 오늘 날씨")
 	register(&"give", _cmd_give, "give <item_id> [rarity 0-4] - 장비를 무기고에 지급")
 	register(&"raid", _placeholder.bind("레인 C"), "raid now - 즉시 습격 (레인 C가 등록)")
 	register(&"resident", _placeholder.bind("레인 C"), "resident add - 주민 추가 (레인 C가 등록)")
@@ -225,6 +226,14 @@ func _cmd_give(args: PackedStringArray) -> String:
 	var uid := Armory.create_item(StringName(args[0]), rarity)
 	var item := Armory.get_item(uid)
 	return "%s 지급 (%s, 부가 옵션 %d개)" % [uid, Enums.Rarity.keys()[item.rarity], item.affixes.size()]
+
+
+func _cmd_weather(args: PackedStringArray) -> String:
+	var key := args[0].to_upper() if args.size() == 1 else ""
+	if not Enums.Weather.has(key):
+		return "사용법: weather <clear|rain>"
+	GameState.set_weather(Enums.Weather[key])
+	return "weather = " + key
 
 
 func _cmd_godmode(args: PackedStringArray) -> String:

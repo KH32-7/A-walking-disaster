@@ -8,6 +8,7 @@ id = &"pistol"
 name = "권총"
 light = true
 base_stats = {
+"ammo_id": &"ammo_pistol",
 "attack_interval": 0.35,
 "damage": 18,
 "magazine": 12,

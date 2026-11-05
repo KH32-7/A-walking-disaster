@@ -7,6 +7,7 @@ script = ExtResource("1_ijy6p")
 id = &"sniper_rifle"
 name = "저격총"
 base_stats = {
+"ammo_id": &"ammo_rifle",
 "aim_cooldown_mult": 0.5,
 "attack_interval": 1.6,
 "damage": 90,

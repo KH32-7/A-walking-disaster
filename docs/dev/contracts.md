@@ -32,7 +32,7 @@
 
 | 신호 | 쏘는 레인 | 주로 듣는 레인 |
 |---|---|---|
-| `day_started`, `phase_changed`, `flow_state_changed`, `sortie_started`, `sortie_ended`, `evening_settled` | A | 전부 |
+| `day_started`, `phase_changed`, `flow_state_changed`, `weather_changed`, `sortie_started`, `sortie_ended`, `evening_settled` | A | 전부 |
 | `noise_emitted`, `monster_killed`, `player_downed`, `rescue_completed`, `companion_stranded`, `extraction_completed`, `emergency_return_requested` | B | A·C·D |
 | `resident_joined/left/died`, `building_completed/damaged`, `relationship_changed`, `night_event_started`, `raid_warning/started/resolved` | C | A·B·D |
 | `resources_changed`, `item_added/removed`, `equipment_changed`, `bag_changed` | A | D |
@@ -44,7 +44,7 @@
 
 시그니처는 각 오토로드 파일에 있다. 아직 구현 전인 것은 `TODO(태스크ID)`로 표시돼 있고, 시그니처는 그대로 유지한다.
 
-- **GameState**: `day`, `phase`, `flow_state`, `season()`, `has_flag()`, `set_flag()`, `start_next_day()`, `set_phase()`, `set_flow_state()` (SceneRouter 전용)
+- **GameState**: `day`, `phase`, `flow_state`, `weather`, `is_raining()`, `season()`, `has_flag()`, `set_flag()`, `start_next_day()`, `set_phase()`, `set_flow_state()` (SceneRouter 전용)
 - **Economy**: `get_amount(id)`, `can_afford(cost)`, `apply(changes)`, `apply_detailed(changes)`(버려진 양 보고), `get_def(id)`, `storage_cap()`, `capped_total()`, `free_space()`, `uses_cap(id)`, `set_cap_bonus(bonus)`(C: 창고 건물)
 - **Armory**: `get_equipped(owner_id, slot)`, `get_item_stats(item_uid)`, `equip(owner_id, slot, uid)`, `unequip(owner_id, slot)`,
   `list_equipped(owner_id)`, `list_storage(slot)`, `can_go_in_slot(def_id, slot)`, `get_combat_class(owner_id)`,
@@ -52,7 +52,7 @@
   `remove_item(uid)`, `get_item(uid)`(읽기 전용), `get_def(def_id)`, `wear(uid, amount)`(B: 내구도), `set_lost(uid, lost)`(B: 쓰러짐·회수).
   owner_id는 `Armory.PLAYER_ID` 또는 주민 id. 무기고 보관은 `STORAGE_ID`, 유실물은 `LOST_ID`.
   **`get_item_stats().damage`·`defense`는 등급·강화·부가 옵션·내구도까지 반영된 최종값**이다. B의 피해 공식에서 `(1+0.06U)`를 다시 곱하지 않는다.
-- **Bag**: `resize_for_player()`(출격 준비), `add_resource(id, n) -> 못 넣은 양`, `add_item(uid) -> entry_id`, `take_from_storage(id, n)`,
+- **Bag**: 루팅(B-08)용 `try_add(id, n) -> 들어간 양`, `count_of(id)`, `remove_item(id, n) -> bool`(이슈 #6). `resize_for_player()`(출격 준비), `add_resource(id, n) -> 못 넣은 양`, `add_item(uid) -> entry_id`, `take_from_storage(id, n)`,
   `move(entry_id, pos, rotated, area)`, `remove(entry_id, amount)`, `consume(id, n)`, `count(id)`, `entries(area)`, `entry_at(cell, area)`,
   `can_place(size, pos, rotated, area)`, `is_cell(cell, area)`, `unload_to_base()`(탈출: 자원→Economy, 장비→무기고),
   `lose_contents()`(쓰러짐: 안전 주머니 제외 소실. 보호 모드 `keep_bag_on_down`이면 B가 호출하지 않음).
@@ -61,7 +61,9 @@
 - **Settings**: `get_value(key)`, `set_value(key, value)`
 - **SaveSystem**: `register_provider(key, provider)`, `save_slot(slot) -> bool`, `load_slot(slot) -> bool`, `has_slot(slot)`, `delete_slot(slot)`, `slot_info(slot)`(불러오기 화면용), `autosave()`, `save_suspend()`, `has_suspend()`, `load_suspend()`, `current_slot`
 - **SceneRouter**: `go_to_base()`, `go_to_field(loadout)`
-- **Colony**: `get_resident(id)`, `active_resident_ids()`, `base_noise()`, `threat`, `tier`
+- **Colony**: `get_resident(id)`, `active_resident_ids()`, `base_noise()`, `threat`, `tier`,
+  `population()`, `bed_count()`, `free_beds()`, `add_resident(profile) -> id`(구조자 입주도 이것), `assign_bed(resident_id, bed_id)`,
+  `settle_day()`, `roll_raid(time)`, `resolve_raid(raid, mode)`, `predict_raid(raid)` (형식은 아래 "하루 정산과 습격")
 - **FieldState**: `in_sortie()`, `lost_gear`
 - **Audio**: `play(event_id, position)`, `set_music_state(state)`
 - **Fx**: `spawn(effect_id, position, params)`
@@ -79,11 +81,43 @@
   UI가 화면을 고를 때 쓴다. 바꾸는 쪽은 `SceneRouter`뿐이고, 각 FlowState가 어느 Phase에 속하는지는
   `GameState.PHASE_OF_FLOW`에 있다. 바뀔 때 `flow_state_changed`가 먼저, Phase가 바뀌면 `phase_changed`가 뒤따른다.
 
+## 하루 정산과 습격 (C ↔ A-05)
+
+`Colony.settle_day() -> Dictionary` (C-05):
+
+```
+{
+  "changes":  {res_id: int},       # 순변화. A가 Economy.apply_detailed()에 넘김
+  "produced": {res_id: int},
+  "consumed": {res_id: int},
+  "morale":   {resident_id: int},  # 오늘 변화량
+  "events":   [{"type": StringName, "resident_id": StringName, "text": String}]
+}
+```
+
+순서(A-05): `Colony.settle_day()` → `Economy.apply_detailed(report.changes)` → `report["discarded"]`(창고 한도로 버린 양) 추가 →
+`EventBus.evening_settled.emit(report)`. 주민 상태(배고픔·피로·사기)는 `settle_day()` 안에서 C가 갱신하고, Economy는 C가 직접 바꾸지 않는다.
+
+`Colony.roll_raid(time: Enums.RaidTime) -> Dictionary` (C-08):
+`{"occurs": bool, "raid_id": StringName, "time": Enums.RaidTime, "type": StringName, "directions": Array[StringName],
+"strength": float, "target": StringName (&"base" 또는 전초기지 node_id), "warning_sec": float}`. `raid_warning`/`raid_started`의 info도 이 Dictionary.
+
+`Colony.resolve_raid(raid, mode: Enums.RaidMode) -> Dictionary`:
+`{"outcome": Enums.RaidOutcome, "damage": Dictionary, "casualties": Array, "summary": Array[String]}`, `raid_resolved`를 보낸다.
+직접 방어전(C-17)도 끝나면 같은 형식.
+
+`Colony.predict_raid(raid) -> Dictionary`: `{"ratio_min": float, "ratio_max": float, "likely": Enums.RaidOutcome}` (A-14 무전의 예상 결과 구간).
+
+## 날씨
+
+`GameState.weather`(`Enums.Weather`), `GameState.is_raining()`. 매일 아침(`start_next_day`) 계절별 확률로 굴리고
+`EventBus.weather_changed`를 보낸다. 비 오는 날 소음 반경 배율은 `GameState.RAIN_NOISE_MULT`(0.75). 저장은 `game` provider.
+
 ## 공용 enum
 
 `core/enums.gd`에 기획 "데이터 정의" 표의 enum 중 여러 레인이 읽는 것을 모아 둔다:
 `ResourceCategory`, `ExtractType`, `RelationFlag`, `ArrivalMethod`, `RaidTime`, `RaidMode`, `QuestType`,
-`RequestType`, `EndingChoice` 등. 한 레인 안에서만 쓰는 enum은 그 레인의 `defs/` 스크립트에 둬도 된다.
+`RequestType`, `EndingChoice`, `Weather` 등. 한 레인 안에서만 쓰는 enum은 그 레인의 `defs/` 스크립트에 둬도 된다.
 
 ## 저장
 
@@ -96,6 +130,14 @@
 - 슬롯 0~2. 자동 저장은 `current_slot`에: 아침 시작(`day_started`), 출격 직전(`sortie_started`), 탈출 직후(`extraction_completed`).
 - 필드 중 종료는 `save_suspend()`. `load_suspend()`는 불러온 뒤 파일을 지운다.
 - 저장 형식이 호환되지 않게 바뀌면 A가 `SaveSystem.SAVE_VERSION`을 올린다. 버전이 다른 파일은 불러오지 않는다.
+
+## 아이템 id 규칙
+
+- 자원·소모품은 `data/resources/`의 id(`Economy.get_def`). 탄약은 `ammo_pistol`(권총·기관단총), `ammo_rifle`(소총·저격총),
+  `ammo_shell`(산탄총). 총의 `get_item_stats()["ammo_id"]`가 어느 탄약을 쓰는지 알려준다. 소모품: `first_aid_kit`, `bandage`, `noise_lure`.
+- 통조림은 따로 없다. 필드에서 나오는 식량은 `food`.
+- 정수는 `essence_<element>_<grade>`(예: `essence_green_low`). 정의는 A-10, 그 전까지는 한도 없는 자원으로 취급.
+- 장비는 `Armory.create_item(def_id, rarity)`로 만들고 `Bag.add_item(uid)`로 넣는다. def_id는 `data/items/`.
 
 ## 데이터(.tres)와 스키마
 

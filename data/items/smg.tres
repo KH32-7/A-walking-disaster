@@ -7,6 +7,7 @@ script = ExtResource("1_d3xii")
 id = &"smg"
 name = "기관단총"
 base_stats = {
+"ammo_id": &"ammo_pistol",
 "attack_interval": 0.1,
 "damage": 10,
 "full_auto": true,

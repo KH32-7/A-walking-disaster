@@ -53,6 +53,7 @@ enum RaidMode { AUTO, PLAYED }  # 10 RaidResult
 enum QuestType { MAIN, PERSONAL, RUMOR, COMMUNITY, TRADE }  # 13 QuestDef
 enum RequestType { FIND, ESCORT, CRAFT, PROTECT }  # 07/13 personal requests
 enum EndingChoice { LEAVE, STAY }  # 13 EndingState
+enum Weather { CLEAR, RAIN }  # 02 "소음", 13 "아침 방송"
 
 ## Physics layer bit numbers (1-based, matches project.godot [layer_names]).
 const LAYER_WORLD := 1

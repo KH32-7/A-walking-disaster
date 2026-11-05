@@ -54,6 +54,8 @@ func _check_base_stats() -> bool:
 			"pistol %s" % pistol) \
 		and _expect(_near(shotgun["damage"], 9) and shotgun["pellets"] == 8, "shotgun %s" % shotgun) \
 		and _expect(pistol["combat_class"] == Enums.CombatClass.GUN and pistol["light"], "pistol class/light") \
+		and _expect(pistol["ammo_id"] == &"ammo_pistol" and shotgun["ammo_id"] == &"ammo_shell", "ammo ids") \
+		and _expect(Economy.get_def(pistol["ammo_id"]) != null, "ammo has no ResourceDef") \
 		and _expect(_near(vest["defense"], 22) and _near(vest["noise_mod"], 1.5), "flak vest %s" % vest)
 
 

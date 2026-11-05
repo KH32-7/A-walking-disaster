@@ -7,6 +7,7 @@ script = ExtResource("1_35xtt")
 id = &"shotgun"
 name = "산탄총"
 base_stats = {
+"ammo_id": &"ammo_shell",
 "attack_interval": 0.9,
 "damage": 9,
 "knockback": true,

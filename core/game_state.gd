@@ -7,6 +7,11 @@ extends Node
 const DAYS_PER_SEASON := 15
 const SORTIE_DUSK_SEC := 12.0 * 60.0
 const SORTIE_NIGHT_SEC := 15.0 * 60.0
+## Chance of a rainy day (placeholder). Summer is the rainy season (design 01 "계절").
+const RAIN_CHANCE := 0.2
+const RAIN_CHANCE_SUMMER := 0.5
+## Every noise radius is multiplied by this on rainy days (design 02 "소음").
+const RAIN_NOISE_MULT := 0.75
 
 ## Coarse day phase for each fine-grained flow state. TITLE is absent: it keeps the current phase.
 const PHASE_OF_FLOW := {
@@ -25,6 +30,7 @@ const PHASE_OF_FLOW := {
 var day: int = 1
 var phase: Enums.Phase = Enums.Phase.MORNING
 var flow_state: Enums.FlowState = Enums.FlowState.TITLE
+var weather: Enums.Weather = Enums.Weather.CLEAR
 ## Story / unlock flags. Keys are StringName, values are bool or int.
 var flags: Dictionary = {}
 
@@ -51,8 +57,27 @@ func set_flow_state(next: Enums.FlowState) -> void:
 		set_phase(PHASE_OF_FLOW[next])
 
 
+func is_raining() -> bool:
+	return weather == Enums.Weather.RAIN
+
+
+func set_weather(next: Enums.Weather) -> void:
+	if next == weather:
+		return
+	weather = next
+	EventBus.weather_changed.emit(weather)
+
+
+## Rolls today's weather from the season's rain chance. Pass an rng for repeatable rolls.
+func roll_weather(rng: RandomNumberGenerator = null) -> void:
+	var chance := RAIN_CHANCE_SUMMER if season() == Enums.Season.SUMMER else RAIN_CHANCE
+	var roll := rng.randf() if rng != null else randf()
+	set_weather(Enums.Weather.RAIN if roll < chance else Enums.Weather.CLEAR)
+
+
 func start_next_day() -> void:
 	day += 1
+	roll_weather()
 	set_phase(Enums.Phase.MORNING)
 	EventBus.day_started.emit(day)
 
@@ -67,10 +92,11 @@ func set_flag(flag: StringName, value: Variant = true) -> void:
 
 # --- Save provider (see SaveSystem) ---
 func save_data() -> Dictionary:
-	return {"day": day, "phase": phase, "flags": flags}
+	return {"day": day, "phase": phase, "weather": weather, "flags": flags}
 
 
 func load_data(data: Dictionary) -> void:
 	day = int(data.get("day", 1))
 	phase = int(data.get("phase", Enums.Phase.MORNING)) as Enums.Phase
+	weather = int(data.get("weather", Enums.Weather.CLEAR)) as Enums.Weather
 	flags = data.get("flags", {})

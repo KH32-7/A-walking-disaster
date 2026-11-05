@@ -5,7 +5,7 @@ extends RefCounted
 func run() -> bool:
 	var saved := GameState.save_data()
 	var saved_flow := GameState.flow_state
-	var ok := _check_phase_map() and _check_flow_signals() and _check_season()
+	var ok := _check_phase_map() and _check_flow_signals() and _check_season() and _check_weather()
 	GameState.load_data(saved)
 	GameState.flow_state = saved_flow
 	return ok
@@ -43,6 +43,35 @@ func _check_flow_signals() -> bool:
 		and phases == [Enums.Phase.MORNING]
 	if not ok:
 		printerr("flow signals %s, phase signals %s" % [flows, phases])
+	return ok
+
+
+func _check_weather() -> bool:
+	var seen: Array = []
+	var on_weather := func(w): seen.append(w)
+	EventBus.weather_changed.connect(on_weather)
+	GameState.weather = Enums.Weather.CLEAR
+	GameState.set_weather(Enums.Weather.RAIN)
+	GameState.set_weather(Enums.Weather.RAIN)  # no second signal
+	var signals_ok := seen == [Enums.Weather.RAIN] and GameState.is_raining()
+	var saved := GameState.save_data()
+	GameState.set_weather(Enums.Weather.CLEAR)
+	GameState.load_data(saved)
+	var restored := GameState.weather == Enums.Weather.RAIN
+	EventBus.weather_changed.disconnect(on_weather)
+	# Summer rains more often than spring over many rolls.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3
+	var rain := {Enums.Season.SPRING: 0, Enums.Season.SUMMER: 0}
+	for d in [1, 16]:
+		GameState.day = d
+		for i in 400:
+			GameState.roll_weather(rng)
+			rain[GameState.season()] += int(GameState.is_raining())
+	var ok: bool = signals_ok and restored and rain[Enums.Season.SUMMER] > rain[Enums.Season.SPRING] \
+		and rain[Enums.Season.SPRING] > 0
+	if not ok:
+		printerr("weather: signals %s restored %s rain %s" % [seen, restored, rain])
 	return ok
 
 

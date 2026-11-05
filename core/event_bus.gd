@@ -11,11 +11,14 @@ signal phase_changed(phase: Enums.Phase)
 ## Fine-grained flow (title, sortie prep, result, day raid, night raid/event ...).
 ## Lane D opens screens from this. Emitted once per change by GameState.set_flow_state().
 signal flow_state_changed(state: Enums.FlowState)
+## Today's weather, rolled at the start of each day (GameState.set_weather).
+signal weather_changed(weather: Enums.Weather)
 ## loadout: {"region_id": StringName, "companions": Array[StringName], "gear": Dictionary}
 signal sortie_started(loadout: Dictionary)
 ## result: {"extracted": bool, "loot": Array, "rescued": Array, "stranded": Array, "xp": int}
 signal sortie_ended(result: Dictionary)
-## report: {"produced": Dictionary, "consumed": Dictionary, "morale": Dictionary, "events": Array}
+## report: Colony.settle_day() result {"changes", "produced", "consumed", "morale", "events"} plus
+## "discarded": {res_id: int} (storage-cap overflow, added by SceneRouter after Economy.apply_detailed).
 signal evening_settled(report: Dictionary)
 
 # --- Field (emitted by Lane B) ---
@@ -36,7 +39,8 @@ signal building_completed(building_uid: StringName)
 signal building_damaged(building_uid: StringName)
 signal relationship_changed(a: StringName, b: StringName, stage: StringName)
 signal night_event_started(event_id: StringName, participants: Array)
-## info: {"time": Enums.Phase, "direction": StringName, "scale": int, "eta_sec": float}
+## info: the Colony.roll_raid() Dictionary {"raid_id", "time": Enums.RaidTime, "type", "directions",
+## "strength", "target", "warning_sec", ...}.
 signal raid_warning(info: Dictionary)
 signal raid_started(info: Dictionary)
 signal raid_resolved(result: Dictionary)
