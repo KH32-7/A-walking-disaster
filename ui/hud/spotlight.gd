@@ -38,6 +38,7 @@ var _card: PanelContainer
 var _text: Label
 var _keys: HBoxContainer
 var _target_node: Node3D
+var _hole_on := false  # this frame has a hole (false = card only: no dark screen, no ring)
 var _target_control: Control
 var _target_rect := Rect2()
 var _world_radius := 90.0
@@ -169,6 +170,7 @@ func _process(delta: float) -> void:
 		return
 	_iris = move_toward(_iris, 0.0, delta / IRIS_SEC)
 	var on := _find_hole()
+	_hole_on = on
 	var vp := size
 	var ease_out := 1.0 - pow(1.0 - _iris, 3.0)  # big while starting, then settles
 	var grow := ease_out * vp.length() * 0.6
@@ -186,7 +188,9 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-	if _alpha <= 0.0 or _iris > 0.35:
+	# Card only (a goal with nothing to point at): no ring. Without this the ring stayed on the last
+	# hole's screen spot (user report 2026-11-06: a yellow circle around the player after the doctor).
+	if _alpha <= 0.0 or _iris > 0.35 or not _hole_on:
 		return
 	# A thin yellow ring on the hole's rim: "here".
 	var a := _alpha * (1.0 - _iris / 0.35) * (0.55 + 0.25 * sin(_t * 3.2))
