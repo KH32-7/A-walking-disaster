@@ -35,9 +35,10 @@ func run() -> bool:
 		var facing := -player.global_basis.z
 		_expect(gun.global_basis.x.normalized().dot(facing) > 0.9, "the barrel points where the body faces")
 		var length := gun.global_basis.x.length() * PlayerModelGuns.length_units(&"rifle")
-		_expect(absf(length - 0.9 * 1.3) < 0.05, "the rifle is about 0.9 m x model scale (%.2f m)" % length)
+		var want: float = float(PlayerModelGuns.GUNS[&"rifle"]["length"]) * (model.get(&"model_scale") as float)
+		_expect(absf(length - want) < 0.05, "the rifle is its data length x model scale (%.2f m, want %.2f)" % [length, want])
 		var muzzle: Variant = model.call(&"muzzle_point", facing)
-		_expect(muzzle is Vector3 and ((muzzle as Vector3) - grip).dot(facing) > 0.4,
+		_expect(muzzle is Vector3 and ((muzzle as Vector3) - grip).dot(facing) > 0.2,
 			"shots are drawn from the barrel tip, ahead of the grip")
 	var weapons := player.get_node(^"Weapons") as WeaponHolder
 	weapons.switch_to(Enums.EquipSlot.SUB)

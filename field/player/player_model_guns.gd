@@ -1,18 +1,19 @@
 class_name PlayerModelGuns
 extends RefCounted
 ## Gun models the player holds in the right hand (PlayerModel): Quaternius Ultimate Gun Pack (CC0)
-## under res://assets/weapons/quaternius_guns/. Per gun item id: the model file, its real length (m,
-## before PlayerModel.model_scale), and in the model's own units (barrel along +X, up +Y) the grip
+## under res://assets/weapons/quaternius_guns/. Per gun item id: the model file, its drawn length (m,
+## before PlayerModel.model_scale; about 2/3 of real life so it doesn't swamp the 1.3x hero, user
+## feedback 2026-11-06), and in the model's own units (barrel along +X, up +Y) the grip
 ## the hand closes on and the barrel tip. Gun items not listed here use FALLBACK.
 
 const DIR := "res://assets/weapons/quaternius_guns/"
 const FALLBACK := &"rifle"
 const GUNS := {
-	&"pistol": {"file": "pistol_1", "length": 0.24, "grip": Vector3(-0.08, 0.05, 0.0), "muzzle": Vector3(1.48, 0.56, 0.0)},
-	&"rifle": {"file": "assault_rifle_1", "length": 0.9, "grip": Vector3(0.78, 0.2, 0.0), "muzzle": Vector3(2.92, 0.65, 0.0)},
-	&"shotgun": {"file": "shotgun_1", "length": 1.0, "grip": Vector3(0.0, -0.05, 0.0), "muzzle": Vector3(3.8, 0.2, 0.0)},
-	&"smg": {"file": "submachine_gun_1", "length": 0.6, "grip": Vector3(0.05, 0.2, 0.0), "muzzle": Vector3(2.27, 0.62, 0.0)},
-	&"sniper_rifle": {"file": "sniper_rifle_1", "length": 1.2, "grip": Vector3(-0.2, 0.1, 0.0), "muzzle": Vector3(5.25, 0.3, 0.0)},
+	&"pistol": {"file": "pistol_1", "length": 0.2, "grip": Vector3(-0.08, 0.05, 0.0), "muzzle": Vector3(1.48, 0.56, 0.0)},
+	&"rifle": {"file": "assault_rifle_1", "length": 0.6, "grip": Vector3(0.78, 0.2, 0.0), "muzzle": Vector3(2.92, 0.65, 0.0)},
+	&"shotgun": {"file": "shotgun_1", "length": 0.68, "grip": Vector3(0.0, -0.05, 0.0), "muzzle": Vector3(3.8, 0.2, 0.0)},
+	&"smg": {"file": "submachine_gun_1", "length": 0.4, "grip": Vector3(0.05, 0.2, 0.0), "muzzle": Vector3(2.27, 0.62, 0.0)},
+	&"sniper_rifle": {"file": "sniper_rifle_1", "length": 0.8, "grip": Vector3(-0.2, 0.1, 0.0), "muzzle": Vector3(5.25, 0.3, 0.0)},
 }
 ## Where the grip sits from the hand bone (the wrist), in metres before model_scale: a little ahead
 ## along the barrel and down into the palm.
