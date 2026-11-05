@@ -330,5 +330,6 @@ func _cream_label(t: String, s: int, dim := false) -> Label:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"ui_accept"):
-		_depart()
+		# Mark handled first: departing closes this screen, so get_viewport() is null afterwards.
 		get_viewport().set_input_as_handled()
+		_depart()

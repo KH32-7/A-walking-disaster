@@ -38,6 +38,14 @@ func _requested_lanes() -> Array:
 	return LANES
 
 
+## `-- --only=build_enter` runs only test files whose name contains that text (quick reruns).
+func _wanted(file: String) -> bool:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--only="):
+			return arg.trim_prefix("--only=") in file
+	return true
+
+
 func _find_tests(dir_path: String) -> PackedStringArray:
 	var found := PackedStringArray()
 	var dir := DirAccess.open(dir_path)
@@ -45,7 +53,7 @@ func _find_tests(dir_path: String) -> PackedStringArray:
 		return found
 	for file in dir.get_files():
 		# Exported builds may list remapped files; tests only run from source.
-		if file.begins_with("test_") and file.ends_with(".gd"):
+		if file.begins_with("test_") and file.ends_with(".gd") and _wanted(file):
 			found.append("%s/%s" % [dir_path, file])
 	found.sort()
 	return found
