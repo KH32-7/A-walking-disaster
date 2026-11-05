@@ -142,9 +142,10 @@ func _test_raider_does_not_leash() -> void:
 	_check(m.state == Enums.AIState.WANDER, "raider far from home does not return")
 	_check(m.velocity.z < -0.1 and absf(m.velocity.x) < 0.01, "raider marches to the goal")
 	m.free()
-	var field := _spawn(CRUSHER, Vector3(50.0, 0.0, 0.0))
+	var far := MonsterRules.CHASE_RETURN_DISTANCE + 10.0
+	var field := _spawn(CRUSHER, Vector3(far, 0.0, 0.0))
 	field.home = Vector3.ZERO
-	field.chase(_fake_player(Vector3(50.0, 0.0, -3.0), false))
+	field.chase(_fake_player(Vector3(far, 0.0, -3.0), false))
 	field.tick(DT)
 	_check(field.state == Enums.AIState.RETURN, "field monster still leashes home")
 	_clear()

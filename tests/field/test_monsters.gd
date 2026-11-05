@@ -221,6 +221,21 @@ func _test_leash() -> void:
 	m.global_position = Vector3(0.2, 0, 0)
 	_ticks(m, DT)
 	_check(m.state == Enums.AIState.WANDER, "reaching home goes back to wander")
+	_test_chase_past_leash()
+
+
+## A chase is not cut at the search leash (40 m); only past CHASE_RETURN_DISTANCE.
+func _test_chase_past_leash() -> void:
+	var x := MonsterRules.RETURN_DISTANCE + 20.0
+	var m := _spawn(_def(), Vector3(x, 0, 0))
+	m.home = Vector3.ZERO
+	var player := _player(Vector3(x + 3.0, 0, 0))
+	m.chase(player)
+	_ticks(m, DT)
+	_check(m.state in [Enums.AIState.CHASE, Enums.AIState.ATTACK], "chasing past 40 m keeps chasing")
+	m.global_position = Vector3(MonsterRules.CHASE_RETURN_DISTANCE + 5.0, 0, 0)
+	_ticks(m, DT)
+	_check(m.state == Enums.AIState.RETURN, "past the chase leash it goes home")
 
 
 func _test_spawner() -> void:

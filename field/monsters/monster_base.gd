@@ -167,7 +167,7 @@ func tick(delta: float) -> void:
 		# A behavior holds it still (B-18), or staggered / knocked back (B-14).
 		_stop()
 		return
-	if not is_raider() and _is_leash_state() and _flat_distance(home) > MonsterRules.RETURN_DISTANCE:
+	if not is_raider() and _past_leash():
 		_set_state(Enums.AIState.RETURN)
 	match state:
 		Enums.AIState.SLEEP:
@@ -794,6 +794,16 @@ func _face(point: Vector3, delta: float) -> void:
 		return
 	var wanted := atan2(-to.x, -to.z)
 	rotation.y = rotate_toward(rotation.y, wanted, deg_to_rad(MonsterRules.TURN_SPEED_DEG) * delta)
+
+
+## Searching leashes at RETURN_DISTANCE; an active chase only at CHASE_RETURN_DISTANCE.
+func _past_leash() -> bool:
+	if not _is_leash_state():
+		return false
+	var limit := MonsterRules.RETURN_DISTANCE
+	if state in [Enums.AIState.CHASE, Enums.AIState.ATTACK]:
+		limit = MonsterRules.CHASE_RETURN_DISTANCE
+	return _flat_distance(home) > limit
 
 
 func _is_leash_state() -> bool:

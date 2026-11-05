@@ -17,7 +17,6 @@ const PATHS := {
 const FIELDS := [
 	[&"anim", &"walk_mult", "걷기 애니 배속", 0.1, 4.0, 0.05],
 	[&"anim", &"sprint_mult", "달리기 애니 배속", 0.1, 4.0, 0.05],
-	[&"anim", &"aim_walk_mult", "총 걷기 애니 배속", 0.1, 4.0, 0.05],
 	[&"anim", &"back_walk_mult", "뒷걸음 애니 배속", 0.1, 4.0, 0.05],
 	[&"anim", &"dodge_mult", "구르기 애니 배속", 0.1, 4.0, 0.05],
 	[&"anim", &"min_playback", "최소 재생 속도", 0.1, 2.0, 0.05],
