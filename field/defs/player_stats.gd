@@ -27,3 +27,7 @@ extends Resource
 @export var dodge_duration_sec: float = 0.35
 @export var dodge_invuln_sec: float = 0.3
 @export var dodge_stamina: float = 25.0
+
+@export_group("Interaction")
+## Reach for loot containers and other interactables (가안, not in the design doc).
+@export var interact_range: float = 1.5

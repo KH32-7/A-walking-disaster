@@ -15,6 +15,16 @@ signal downed()
 enum MoveState { IDLE, WALK, SPRINT, AIM_WALK, DODGE }
 
 const GROUP := &"player"
+## NoiseTable action per move state. Footsteps repeat every table.continuous_interval_sec;
+## the dodge is one "roll" noise. States not listed make no noise (AIM_WALK is 0m anyway).
+const MOVE_NOISE := {
+	MoveState.WALK: &"walk",
+	MoveState.SPRINT: &"sprint",
+}
+const DODGE_NOISE := &"roll"
+## Interaction query: sphere centered at body height, at most this many candidates.
+const INTERACT_HEIGHT := 0.9
+const INTERACT_MAX_HITS := 8
 
 @export var stats: PlayerStats = preload("res://data/classes/player_base.tres")
 
@@ -32,7 +42,10 @@ var _dodge_elapsed := 0.0
 var _dodge_dir := Vector3.ZERO
 var _facing := Vector3.FORWARD
 var _aim_point: Variant = null
+var _bound_left := 0.0
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
+
+@onready var _noise: NoiseEmitter = $Noise
 
 
 func _ready() -> void:
@@ -50,6 +63,35 @@ func _physics_process(delta: float) -> void:
 		return
 	step(delta, _read_input())
 	move_and_slide()
+	if Input.is_action_just_pressed(&"interact"):
+		interact()
+
+
+## Starts using the nearest interactable in reach (loot containers for now).
+## Returns false when nothing is in reach or it refused.
+## Uses a shape query, not an Area3D: Jolt areas do not report static bodies by default.
+func interact() -> bool:
+	var sphere := SphereShape3D.new()
+	sphere.radius = stats.interact_range
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = sphere
+	query.transform = Transform3D(Basis(), global_position + Vector3.UP * INTERACT_HEIGHT)
+	query.collision_mask = 1 << (Enums.LAYER_INTERACTABLE - 1)
+	var best: Node3D = null
+	var best_dist := INF
+	for hit in get_world_3d().direct_space_state.intersect_shape(query, INTERACT_MAX_HITS):
+		var body := hit.collider as Node3D
+		if body == null or not body.has_method("begin_open"):
+			continue
+		var dist := global_position.distance_squared_to(body.global_position)
+		if dist < best_dist:
+			best = body
+			best_dist = dist
+	return best != null and best.begin_open(self)
+
+
+func is_bound() -> bool:
+	return _bound_left > 0.0
 
 
 ## World point to face while aiming (B-04 camera sets it from the cursor or stick).
@@ -65,11 +107,13 @@ func is_invulnerable() -> bool:
 	return move_state == MoveState.DODGE and _dodge_elapsed < stats.dodge_invuln_sec
 
 
-## Damage entry point for monsters and hazards. info is reserved for B-06/B-14
-## (element, knockback, status effects).
-func take_damage(amount: float, _info: Dictionary = {}) -> void:
-	if is_downed or is_invulnerable() or amount <= 0.0:
+## Damage entry point for monsters and hazards. Reads info["bind_sec"] (vine tendril);
+## other keys (element, knockback, status effects) are for B-06/B-14.
+## DebugConsole `godmode` blocks everything.
+func take_damage(amount: float, info: Dictionary = {}) -> void:
+	if is_downed or is_invulnerable() or amount <= 0.0 or DebugConsole.godmode:
 		return
+	_bound_left = maxf(_bound_left, info.get("bind_sec", 0.0))
 	health = maxf(health - amount, 0.0)
 	health_changed.emit(health, stats.max_health)
 	if health == 0.0:
@@ -83,6 +127,11 @@ func take_damage(amount: float, _info: Dictionary = {}) -> void:
 ## input: {"move": Vector2, "aim": bool, "sprint": bool, "dodge": bool}
 func step(delta: float, input: Dictionary) -> void:
 	var dir := _to_world(input.get("move", Vector2.ZERO))
+	if _bound_left > 0.0:
+		# Bound (B-14 will own status effects): no moving or dodging, aiming still works.
+		_bound_left = maxf(_bound_left - delta, 0.0)
+		dir = Vector3.ZERO
+		input = input.merged({"dodge": false, "sprint": false}, true)
 	if move_state == MoveState.DODGE:
 		_step_dodge(delta)
 	elif input.get("dodge", false) and stamina >= stats.dodge_stamina:
@@ -199,6 +248,19 @@ func _update_facing(dir: Vector3) -> void:
 
 
 func _set_move_state(state: MoveState) -> void:
-	if state != move_state:
-		move_state = state
-		move_state_changed.emit(state)
+	if state == move_state:
+		return
+	move_state = state
+	move_state_changed.emit(state)
+	_update_noise(state)
+
+
+func _update_noise(state: MoveState) -> void:
+	if _noise == null:
+		return
+	if MOVE_NOISE.has(state):
+		_noise.start_continuous(MOVE_NOISE[state])
+		return
+	_noise.stop_continuous()
+	if state == MoveState.DODGE:
+		_noise.emit(DODGE_NOISE)
