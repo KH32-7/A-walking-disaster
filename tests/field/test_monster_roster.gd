@@ -364,6 +364,8 @@ func _test_signal_wraith() -> void:
 	_check(field != null, "the orb leaves a shock field")
 	if field == null:
 		return
+	# Drive time only through advance(): a real physics frame here added an extra zap now and then.
+	field.set_physics_process(false)
 	await tree.physics_frame
 	for i in ceili(MonsterRules.SHOCK_FIELD_SEC / DT) + 1:
 		field.advance(DT)
