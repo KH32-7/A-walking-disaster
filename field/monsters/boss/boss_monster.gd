@@ -221,6 +221,8 @@ func _hit_area(pattern: BossPattern, area: Dictionary) -> void:
 	var amount := attack_damage() * pattern.damage_mult
 	var fx := area.duplicate()
 	fx["element"] = def.family
+	if float(area.get("length", 0.0)) > 0.0:  # line patterns: D's effect runs to the far end
+		fx["to"] = area["position"] + area["direction"] * float(area["length"])
 	Fx.spawn(StringName("boss_%s" % pattern.id), area["position"], fx)
 	for body in _area_targets(area):
 		body.take_damage(amount, info.duplicate(true))
