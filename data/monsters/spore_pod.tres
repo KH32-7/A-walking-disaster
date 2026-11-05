@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="MonsterDef" format=3]
+
+[ext_resource type="Script" path="res://field/defs/monster_def.gd" id="1_def"]
+[ext_resource type="PackedScene" path="res://field/monsters/spore_pod.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"spore_pod"
+name = "포자 꽃망울"
+family = 1
+hp = 30.0
+defense = 0.0
+attack = 6.0
+move_speed = 0.0
+hearing_mult = 1.5
+sight_range = 10.0
+behaviors = Array[StringName]([&"alarm"])
+weak_point_shape = 0
+regions = Array[StringName]([&"flooded_mall"])
+group_min = 1
+group_max = 1
+scene = ExtResource("2_scene")
+attack_range = 6.0
+attack_interval = 2.0
