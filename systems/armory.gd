@@ -1,5 +1,7 @@
 extends Node
 ## Autoload `Armory`. Owner: Lane A (tasks A-07 .. A-09).
+## A-09: upgrade (preview_upgrade / upgrade), upgrade transfer, repair, auto repair, crafting.
+## Formulas live in UpgradeRules (systems/upgrade_rules.gd), recipes in data/recipes/.
 ## Owns every equipment ItemInstance (player's and residents') and who wears what.
 ## Lane B reads the player's equipped stats; Lane C reads residents' equipped stats.
 ## Player and residents use the same API: owner_id is PLAYER_ID or a resident id.
@@ -15,6 +17,7 @@ const BAG_ID := &"bag"
 
 const ITEMS_DIR := "res://data/items"
 const AFFIXES_DIR := "res://data/items/affixes"
+const RECIPES_DIR := "res://data/recipes"
 
 ## Per rarity (design 05 "등급"): stat multiplier, affix count, essence slots.
 const RARITY_MULT := [1.0, 1.15, 1.3, 1.5, 1.75]
@@ -38,6 +41,10 @@ const ARMOR_SLOTS := [Enums.EquipSlot.HEAD, Enums.EquipSlot.BODY, Enums.EquipSlo
 var defs: Dictionary = {}
 ## affix id -> Affix
 var affixes: Dictionary = {}
+## recipe id -> Recipe (A-09)
+var recipes: Dictionary = {}
+## Design 05 "자동 수리": repair gear at the evening settlement (run_auto_repair). Saved.
+var auto_repair_enabled := false
 
 ## uid -> ItemInstance
 var _items: Dictionary = {}
@@ -297,18 +304,383 @@ func get_owner_summary(owner_id: StringName) -> Dictionary:
 	return summary
 
 
+# --- Facilities (A-09) ---
+
+## Facility state for upgrades, repair and crafting, read from Colony:
+## {"level": highest level among completed buildings of `facility` (0 = none built),
+##  "dex": best dexterity among its active workers (0 = nobody assigned)}.
+## Every A-09 function that takes `ctx` accepts overrides {"facility_level": int, "dex": int}
+## (previews of "what if", tests, debug). Upgrade previews also accept {"family_mat": id}.
+func facility_context(facility: StringName, ctx: Dictionary = {}) -> Dictionary:
+	if ctx.has("facility_level") and ctx.has("dex"):
+		return {"level": int(ctx["facility_level"]), "dex": int(ctx["dex"])}
+	var level := 0
+	var dex := 0
+	for building_uid: StringName in Colony.building_ids(facility):
+		var b: Dictionary = Colony.get_building(building_uid)
+		level = maxi(level, int(b.get("level", 1)))
+		for worker in b.get("workers", []):
+			var r: Dictionary = Colony.get_resident(StringName(worker))
+			if r.is_empty() or int(r.get("status", Enums.ResidentStatus.ACTIVE)) != Enums.ResidentStatus.ACTIVE:
+				continue
+			var stats: Dictionary = r.get("stats", {})
+			dex = maxi(dex, int(stats.get(&"dex", 0)))
+	return {"level": int(ctx.get("facility_level", level)), "dex": int(ctx.get("dex", dex))}
+
+
+# --- Upgrade (A-09) ---
+
+## For the upgrade screen (D-12). Always returns:
+##   ok, reason (&"" when ok; else no_item, lost, max_level, no_facility, facility_level,
+##   no_worker, cost), uid, current_level, next_level, max_level (facility cap), facility,
+##   facility_level, dex, discount (dex >= 8: -20%), cost {res: n} (empty at +10),
+##   missing {res: shortfall}, family_options (Array of ids; non-empty from +9), family_mat,
+##   stats (now), stats_after (at next_level; empty at +10).
+func preview_upgrade(item_uid: StringName, ctx: Dictionary = {}) -> Dictionary:
+	var out := {"ok": false, "reason": &"", "uid": item_uid, "cost": {}, "missing": {},
+		"family_options": [], "family_mat": &"", "stats": {}, "stats_after": {}}
+	var item := get_item(item_uid)
+	if item == null:
+		out["reason"] = &"no_item"
+		return out
+	var def := get_def(item.def_id)
+	var facility := UpgradeRules.facility_for_slot(def.slot)
+	var fac := facility_context(facility, ctx)
+	var next := item.upgrade_level + 1
+	out["current_level"] = item.upgrade_level
+	out["next_level"] = next
+	out["facility"] = facility
+	out["facility_level"] = fac["level"]
+	out["max_level"] = UpgradeRules.facility_cap(fac["level"])
+	out["dex"] = fac["dex"]
+	out["discount"] = UpgradeRules.has_discount(fac["dex"])
+	out["stats"] = get_item_stats(item_uid)
+	if next <= MAX_UPGRADE:
+		if next >= UpgradeRules.FAMILY_FROM:
+			var options := _family_options(item)
+			var chosen := StringName(ctx.get("family_mat", &""))
+			out["family_options"] = options
+			out["family_mat"] = chosen if chosen in options else options[0]
+		out["cost"] = UpgradeRules.upgrade_cost(next, fac["dex"], out["family_mat"])
+		out["missing"] = _missing(out["cost"])
+		out["stats_after"] = _stats_at_level(item, next)
+
+	if item.owner == LOST_ID:
+		out["reason"] = &"lost"
+	elif next > MAX_UPGRADE:
+		out["reason"] = &"max_level"
+	elif fac["level"] <= 0:
+		out["reason"] = &"no_facility"
+	elif next > out["max_level"]:
+		out["reason"] = &"facility_level"
+	elif fac["dex"] <= 0:
+		out["reason"] = &"no_worker"
+	elif not out["missing"].is_empty():
+		out["reason"] = &"cost"
+	out["ok"] = out["reason"] == &""
+	return out
+
+
+## Raises the item one level and pays through Economy. False (nothing changes) when
+## preview_upgrade() says it is not possible.
+func upgrade(item_uid: StringName, ctx: Dictionary = {}) -> bool:
+	var preview := preview_upgrade(item_uid, ctx)
+	if not preview["ok"] or not Economy.apply(_negated(preview["cost"])):
+		return false
+	var item := get_item(item_uid)
+	item.upgrade_level = preview["next_level"]
+	_emit_changed(item)
+	return true
+
+
+## Moving an upgrade to another item of the same slot (design 05 "강화 옮기기"):
+## the target gets source level - 2, the source drops to +0, costs scrap 20.
+## Returns ok, reason (&"" or no_item, same_item, lost, slot_mismatch, no_facility, no_worker,
+## no_gain, cost), from_level, to_level, result_level, facility, facility_level, cost, missing.
+func preview_transfer(from_uid: StringName, to_uid: StringName, ctx: Dictionary = {}) -> Dictionary:
+	var out := {"ok": false, "reason": &"", "cost": {UpgradeRules.SCRAP: UpgradeRules.TRANSFER_SCRAP},
+		"missing": {}}
+	var from := get_item(from_uid)
+	var to := get_item(to_uid)
+	if from == null or to == null:
+		out["reason"] = &"no_item"
+		return out
+	var from_def := get_def(from.def_id)
+	var to_def := get_def(to.def_id)
+	var facility := UpgradeRules.facility_for_slot(to_def.slot)
+	var fac := facility_context(facility, ctx)
+	out["from_level"] = from.upgrade_level
+	out["to_level"] = to.upgrade_level
+	out["result_level"] = maxi(from.upgrade_level - UpgradeRules.TRANSFER_LOSS, 0)
+	out["facility"] = facility
+	out["facility_level"] = fac["level"]
+	out["missing"] = _missing(out["cost"])
+	if from_uid == to_uid:
+		out["reason"] = &"same_item"
+	elif from.owner == LOST_ID or to.owner == LOST_ID:
+		out["reason"] = &"lost"
+	elif from_def.slot != to_def.slot:
+		out["reason"] = &"slot_mismatch"
+	elif fac["level"] <= 0:
+		out["reason"] = &"no_facility"
+	elif fac["dex"] <= 0:
+		out["reason"] = &"no_worker"
+	elif out["result_level"] <= to.upgrade_level:
+		out["reason"] = &"no_gain"
+	elif not out["missing"].is_empty():
+		out["reason"] = &"cost"
+	out["ok"] = out["reason"] == &""
+	return out
+
+
+func transfer_upgrade(from_uid: StringName, to_uid: StringName, ctx: Dictionary = {}) -> bool:
+	var preview := preview_transfer(from_uid, to_uid, ctx)
+	if not preview["ok"] or not Economy.apply(_negated(preview["cost"])):
+		return false
+	var from := get_item(from_uid)
+	var to := get_item(to_uid)
+	to.upgrade_level = preview["result_level"]
+	from.upgrade_level = 0
+	_emit_changed(from)
+	_emit_changed(to)
+	return true
+
+
+# --- Repair (A-09) ---
+
+## 1 scrap per 10 lost durability, at the workshop (weapons) or sewing room (armor, bags).
+## Returns ok, reason (&"" or no_item, lost, full, no_facility, cost), lost, facility, cost, missing.
+func preview_repair(item_uid: StringName, ctx: Dictionary = {}) -> Dictionary:
+	var out := {"ok": false, "reason": &"", "lost": 0.0, "cost": {}, "missing": {}}
+	var item := get_item(item_uid)
+	if item == null:
+		out["reason"] = &"no_item"
+		return out
+	var def := get_def(item.def_id)
+	var facility := UpgradeRules.facility_for_slot(def.slot)
+	var lost := maxf(def.durability_max - item.durability, 0.0)
+	out["lost"] = lost
+	out["facility"] = facility
+	if lost > 0.0:
+		out["cost"] = {UpgradeRules.SCRAP: UpgradeRules.repair_cost(lost)}
+		out["missing"] = _missing(out["cost"])
+	if item.owner == LOST_ID:
+		out["reason"] = &"lost"
+	elif lost <= 0.0:
+		out["reason"] = &"full"
+	elif facility_context(facility, ctx)["level"] <= 0:
+		out["reason"] = &"no_facility"
+	elif not out["missing"].is_empty():
+		out["reason"] = &"cost"
+	out["ok"] = out["reason"] == &""
+	return out
+
+
+## Restores full durability and pays the scrap.
+func repair(item_uid: StringName, ctx: Dictionary = {}) -> bool:
+	var preview := preview_repair(item_uid, ctx)
+	if not preview["ok"] or not Economy.apply(_negated(preview["cost"])):
+		return false
+	var item := get_item(item_uid)
+	item.durability = get_def(item.def_id).durability_max
+	_emit_changed(item)
+	return true
+
+
+## Player toggle (design 05 "자동 수리"). Saved with the armory.
+func set_auto_repair(enabled: bool) -> void:
+	auto_repair_enabled = enabled
+
+
+## Evening settlement: repairs damaged gear that belongs to `facility` (UpgradeRules.WEAPON_FACILITY
+## or GEAR_FACILITY), worn gear first, then most damaged. Needs auto repair on, the facility built and
+## someone working there (maintenance / tailoring). Spends scrap through Economy itself (do not add it
+## to the settlement "changes" again); runs out gracefully with partial repairs.
+## scrap_budget < 0 = whatever is in storage. Returns {"reason": &"" or disabled / no_facility /
+## no_worker, "repaired": {uid: durability restored}, "scrap": spent}.
+func run_auto_repair(facility: StringName, scrap_budget: int = -1, ctx: Dictionary = {}) -> Dictionary:
+	var result := {"reason": &"", "repaired": {}, "scrap": 0}
+	var fac := facility_context(facility, ctx)
+	if not auto_repair_enabled:
+		result["reason"] = &"disabled"
+	elif fac["level"] <= 0:
+		result["reason"] = &"no_facility"
+	elif fac["dex"] <= 0:
+		result["reason"] = &"no_worker"
+	if result["reason"] != &"":
+		return result
+	var budget := Economy.get_amount(UpgradeRules.SCRAP)
+	if scrap_budget >= 0:
+		budget = mini(budget, scrap_budget)
+
+	var damaged: Array[ItemInstance] = []
+	for uid: StringName in _items:
+		var item: ItemInstance = _items[uid]
+		var def := get_def(item.def_id)
+		if item.owner != LOST_ID and item.durability < def.durability_max \
+				and UpgradeRules.facility_for_slot(def.slot) == facility:
+			damaged.append(item)
+	damaged.sort_custom(_repair_order)
+
+	var plan := {}
+	var spent := 0
+	for item in damaged:
+		var lost := get_def(item.def_id).durability_max - item.durability
+		var pay := mini(UpgradeRules.repair_cost(lost), budget - spent)
+		if pay <= 0:
+			break
+		plan[item.uid] = minf(lost, UpgradeRules.repair_amount(pay))
+		spent += pay
+	if spent == 0 or not Economy.apply({UpgradeRules.SCRAP: -spent}):
+		return result
+	for uid: StringName in plan:
+		var item := get_item(uid)
+		item.durability = minf(item.durability + plan[uid], get_def(item.def_id).durability_max)
+		_emit_changed(item)
+	result["repaired"] = plan
+	result["scrap"] = spent
+	return result
+
+
+# --- Crafting (A-09) ---
+
+func get_recipe(recipe_id: StringName) -> Recipe:
+	return recipes.get(recipe_id)
+
+
+## Recipe ids, sorted. facility &"" = all; by_worker: -1 all, 0 player-crafted only, 1 worker only.
+func list_recipes(facility: StringName = &"", by_worker: int = -1) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for id: StringName in recipes:
+		var recipe: Recipe = recipes[id]
+		if (facility == &"" or recipe.facility == facility) \
+				and (by_worker < 0 or recipe.by_worker == (by_worker == 1)):
+			out.append(id)
+	out.sort()
+	return out
+
+
+## GameState flag that unlocks a blueprint recipe: blueprint_<ItemDef.blueprint_id>, or
+## blueprint_<output_id> when the def has no blueprint_id.
+func blueprint_flag(recipe_id: StringName) -> StringName:
+	var recipe := get_recipe(recipe_id)
+	if recipe == null:
+		return &""
+	var def := get_def(recipe.output_id)
+	var key := def.blueprint_id if def != null and def.blueprint_id != &"" else recipe.output_id
+	return StringName("blueprint_%s" % key)
+
+
+## Morning crafting by the player (equipment). Returns ok, reason (&"" or no_recipe, worker_only,
+## blueprint, no_facility, facility_level, no_worker, cost), recipe_id, output_id, output_qty,
+## equipment (bool), facility, facility_level, dex, cost, missing, blueprint_flag,
+## higher_chance (equipment: chance of Uncommon or better).
+func preview_craft(recipe_id: StringName, ctx: Dictionary = {}) -> Dictionary:
+	var out := {"ok": false, "reason": &"", "recipe_id": recipe_id, "cost": {}, "missing": {}}
+	var recipe := get_recipe(recipe_id)
+	if recipe == null:
+		out["reason"] = &"no_recipe"
+		return out
+	var fac := facility_context(recipe.facility, ctx)
+	var equipment := get_def(recipe.output_id) != null
+	out["output_id"] = recipe.output_id
+	out["output_qty"] = recipe.output_qty
+	out["equipment"] = equipment
+	out["facility"] = recipe.facility
+	out["facility_level"] = fac["level"]
+	out["dex"] = fac["dex"]
+	out["cost"] = Dictionary(recipe.inputs).duplicate()
+	out["missing"] = _missing(out["cost"])
+	out["blueprint_flag"] = blueprint_flag(recipe_id) if recipe.blueprint_required else &""
+	out["higher_chance"] = UpgradeRules.craft_higher_chance(fac["dex"]) if equipment else 0.0
+	if recipe.by_worker:
+		out["reason"] = &"worker_only"
+	elif recipe.blueprint_required and not GameState.has_flag(out["blueprint_flag"]):
+		out["reason"] = &"blueprint"
+	elif fac["level"] <= 0:
+		out["reason"] = &"no_facility"
+	elif fac["level"] < recipe.facility_level:
+		out["reason"] = &"facility_level"
+	elif fac["dex"] <= 0:
+		out["reason"] = &"no_worker"
+	elif not out["missing"].is_empty():
+		out["reason"] = &"cost"
+	out["ok"] = out["reason"] == &""
+	return out
+
+
+## Crafts once and pays through Economy. Equipment goes to storage with a rarity rolled from the
+## worker's dexterity (pass an rng for repeatable rolls). Returns {"ok", "reason", "uid" (equipment),
+## "rarity", "resources" {id: n} (resource outputs)}.
+func craft(recipe_id: StringName, ctx: Dictionary = {}, rng: RandomNumberGenerator = null) -> Dictionary:
+	var preview := preview_craft(recipe_id, ctx)
+	var out := {"ok": false, "reason": preview["reason"], "uid": &"", "rarity": -1, "resources": {}}
+	if not preview["ok"]:
+		return out
+	if not Economy.apply(_negated(preview["cost"])):
+		out["reason"] = &"cost"
+		return out
+	var recipe := get_recipe(recipe_id)
+	if preview["equipment"]:
+		if rng == null:
+			rng = RandomNumberGenerator.new()
+		var def := get_def(recipe.output_id)
+		var rarity := UpgradeRules.roll_craft_rarity(preview["dex"], rng, def.rarity_min)
+		out["uid"] = create_item(recipe.output_id, rarity, rng)
+		out["rarity"] = rarity
+	else:
+		Economy.apply({recipe.output_id: recipe.output_qty})
+		out["resources"] = {recipe.output_id: recipe.output_qty}
+	out["ok"] = true
+	return out
+
+
+## Lane C's evening settlement: what `count` crafts of a worker recipe (ammo, consumables) would use
+## and make, limited by `stock` (resource_id -> amount; empty = current Economy amounts).
+## Does NOT change Economy: add "changes" to the settlement report and A applies it.
+## Returns {"ok", "reason" (&"" or no_recipe, not_worker_recipe), "count" (crafts possible),
+## "consumed" {id: n}, "produced" {id: n}, "changes" {id: net}}.
+func craft_by_worker(recipe_id: StringName, count: int, stock: Dictionary = {}) -> Dictionary:
+	var out := {"ok": false, "reason": &"", "count": 0, "consumed": {}, "produced": {}, "changes": {}}
+	var recipe := get_recipe(recipe_id)
+	if recipe == null:
+		out["reason"] = &"no_recipe"
+		return out
+	if not recipe.by_worker:
+		out["reason"] = &"not_worker_recipe"
+		return out
+	var made := maxi(count, 0)
+	for id: StringName in recipe.inputs:
+		var have := int(stock.get(id, 0)) if not stock.is_empty() else Economy.get_amount(id)
+		made = mini(made, have / maxi(recipe.inputs[id], 1))
+	out["ok"] = true
+	out["count"] = made
+	if made == 0:
+		return out
+	var consumed: Dictionary = out["consumed"]
+	var produced: Dictionary = out["produced"]
+	var changes: Dictionary = out["changes"]
+	for id: StringName in recipe.inputs:
+		consumed[id] = recipe.inputs[id] * made
+		changes[id] = changes.get(id, 0) - recipe.inputs[id] * made
+	produced[recipe.output_id] = recipe.output_qty * made
+	changes[recipe.output_id] = changes.get(recipe.output_id, 0) + recipe.output_qty * made
+	return out
+
+
 # --- Save provider ---
 
 func save_data() -> Dictionary:
 	var items := []
 	for uid: StringName in _items:
 		items.append(_items[uid].to_dict())
-	return {"next_id": _next_id, "items": items}
+	return {"next_id": _next_id, "items": items, "auto_repair": auto_repair_enabled}
 
 
 func load_data(data: Dictionary) -> void:
 	_items.clear()
 	_next_id = int(data.get("next_id", 1))
+	auto_repair_enabled = bool(data.get("auto_repair", false))
 	for entry: Dictionary in data.get("items", []):
 		var item := ItemInstance.from_dict(entry)
 		if get_def(item.def_id) == null:
@@ -318,6 +690,62 @@ func load_data(data: Dictionary) -> void:
 
 
 # --- Internals ---
+
+## Equipped items changed stats: tell whoever shows that owner.
+func _emit_changed(item: ItemInstance) -> void:
+	if item.slot >= 0:
+		EventBus.equipment_changed.emit(item.owner, item.slot)
+
+
+## {id: shortfall} for everything in `cost` that Economy does not have enough of.
+func _missing(cost: Dictionary) -> Dictionary:
+	var missing := {}
+	for id: StringName in cost:
+		var short := int(cost[id]) - Economy.get_amount(id)
+		if short > 0:
+			missing[id] = short
+	return missing
+
+
+func _negated(cost: Dictionary) -> Dictionary:
+	var out := {}
+	for id: StringName in cost:
+		out[id] = -int(cost[id])
+	return out
+
+
+## get_item_stats() as if the item were at `level`.
+func _stats_at_level(item: ItemInstance, level: int) -> Dictionary:
+	var saved := item.upgrade_level
+	item.upgrade_level = level
+	var stats := get_item_stats(item.uid)
+	item.upgrade_level = saved
+	return stats
+
+
+## Auto repair order: worn gear first, then lowest durability, then uid.
+func _repair_order(a: ItemInstance, b: ItemInstance) -> bool:
+	if (a.slot >= 0) != (b.slot >= 0):
+		return a.slot >= 0
+	if a.durability != b.durability:
+		return a.durability < b.durability
+	return String(a.uid) < String(b.uid)
+
+
+## Family materials allowed for the +9/+10 cost: the item's element material once it has one
+## (A-10), otherwise any of the four, the one with the most in storage first.
+func _family_options(item: ItemInstance) -> Array:
+	var element: int = get_item_stats(item.uid).get("element", Enums.Element.NONE)
+	var own := UpgradeRules.family_material(element)
+	if own != &"":
+		return [own]
+	var options: Array = []
+	for i in UpgradeRules.FAMILY_MATERIALS.size():
+		options.append([UpgradeRules.FAMILY_MATERIALS[i], Economy.get_amount(UpgradeRules.FAMILY_MATERIALS[i]), i])
+	options.sort_custom(func(a: Array, b: Array) -> bool:
+		return a[1] > b[1] if a[1] != b[1] else a[2] < b[2])
+	return options.map(func(entry: Array) -> StringName: return entry[0])
+
 
 func _to_storage(item_uid: StringName) -> void:
 	var item := get_item(item_uid)
@@ -366,3 +794,11 @@ func _load_defs() -> void:
 				push_error("Armory: %s is not an Affix with an id" % file)
 				continue
 			affixes[affix.id] = affix
+	recipes.clear()
+	for file in ResourceLoader.list_directory(RECIPES_DIR):
+		if file.ends_with(".tres"):
+			var recipe := load(RECIPES_DIR.path_join(file)) as Recipe
+			if recipe == null or recipe.id == &"":
+				push_error("Armory: %s is not a Recipe with an id" % file)
+				continue
+			recipes[recipe.id] = recipe
