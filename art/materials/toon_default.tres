@@ -1,0 +1,21 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Material" path="res://art/materials/outline.tres" id="1_jjayr"]
+[ext_resource type="Shader" path="res://art/shaders/toon.gdshader" id="2_qi4x0"]
+
+[resource]
+render_priority = 0
+next_pass = ExtResource("1_jjayr")
+shader = ExtResource("2_qi4x0")
+shader_parameter/albedo = null
+shader_parameter/shade_color = null
+shader_parameter/bands = null
+shader_parameter/band_softness = null
+shader_parameter/shadow_threshold = null
+shader_parameter/mid_threshold = null
+shader_parameter/rim_color = null
+shader_parameter/rim_amount = null
+shader_parameter/rim_width = null
+shader_parameter/specular_amount = null
+shader_parameter/emission_color = null
+shader_parameter/emission_energy = null

@@ -1,0 +1,15 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://art/shaders/roof_fade.gdshader" id="1_g1xda"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_g1xda")
+shader_parameter/albedo = null
+shader_parameter/shade_color = null
+shader_parameter/player_position = null
+shader_parameter/fade_radius = null
+shader_parameter/fade_softness = null
+shader_parameter/fade_height = null
+shader_parameter/fade_amount = null
+shader_parameter/min_alpha = null

@@ -1,0 +1,13 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://art/shaders/element_glow.gdshader" id="1_838gx"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_838gx")
+shader_parameter/glow_color = Color(0.37254903, 0.7607843, 1, 1)
+shader_parameter/energy = null
+shader_parameter/core_amount = null
+shader_parameter/fresnel_power = null
+shader_parameter/pulse_speed = null
+shader_parameter/pulse_amount = null
