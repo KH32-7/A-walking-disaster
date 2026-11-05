@@ -28,6 +28,7 @@
 | `ResidentPool` | `systems/resident_pool.gd` | A | 손으로 쓴 생존자 풀(`data/resident_pool/`), 검수된 프로필만 꺼냄 |
 | `Quests` | `systems/quests/quests.gd` | A | 퀘스트·개인 요청·무전 소문 진행과 보상 (스토리 플래그는 `GameState`) |
 | `Journal` | `ai/journal.gd` | A | 생존 일지·엔딩 에필로그 (템플릿) |
+| `Look` | `core/look/look.gd` | A | 화면 전체 스타일 후처리(붓터치·외곽선·색 보정) 시안과 주인공 밝은 외곽선. 값은 `data/look/look_tuning.tres`, 화면 스타일은 기본 꺼짐, 주인공 외곽선은 기본 켜짐. 전역 셰이더 값 `toon_amount`(툰 셰이딩 0~1)도 여기서 넣는다. 디버그: `\` 패널(스타일·툰·맵 조명 슬라이더, 맵 조명은 그 맵 dressing.tscn에 저장), `]` 켜기/끄기, 콘솔 `look` |
 
 `_mcp_game_helper`는 Godot AI 플러그인 것이라 건드리지 않는다.
 

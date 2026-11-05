@@ -38,6 +38,7 @@ Progression="*res://systems/progression.gd"
 Journal="*res://ai/journal.gd"
 ResidentPool="*res://systems/resident_pool.gd"
 Quests="*res://systems/quests/quests.gd"
+Look="*res://core/look/look.gd"
 
 [editor_plugins]
 
@@ -53,6 +54,13 @@ enabled=PackedStringArray("res://addons/Godot-MToon-Shader/plugin.cfg", "res://a
 3d_physics/layer_6="monster_projectile"
 3d_physics/layer_7="interactable"
 3d_physics/layer_8="trigger"
+
+[shader_globals]
+
+toon_amount={
+"type": "float",
+"value": 0.0
+}
 
 [rendering]
 
