@@ -75,6 +75,7 @@ func _ready() -> void:
 	dof.dof_blur_amount = DOF_AMOUNT
 	attributes = dof
 	make_current()
+	add_child(VisionShade.new())
 	if target != null:
 		snap()
 
