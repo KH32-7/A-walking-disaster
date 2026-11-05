@@ -15,9 +15,9 @@ const NAV_WALK := 1
 const NAV_WHEELCHAIR := 2
 const REACH := 1.5 ## path end within this distance (xz) of the target
 ## Map file markers plus the generator's extras (build_layout.gd EXTRA_NESTS, extra LootSpots):
-## loot 12 + 11 (3 nests, 1 greenhouse, 7 landmarks), nests 3 + 3.
+## loot 12 + 18 (3 nests, greenhouse and landmarks; B-26 halved the m2 per indoor spot), nests 3 + 3.
 const MARKER_COUNTS := {
-	PlayerSpawn.GROUP: 2, ExtractPoint.GROUP: 3, LootSpot.GROUP: 23, MonsterNest.GROUP: 6,
+	PlayerSpawn.GROUP: 2, ExtractPoint.GROUP: 3, LootSpot.GROUP: 30, MonsterNest.GROUP: 6,
 	RescueSpot.GROUP: 3, HiddenRoute.GROUP: 1, Recording.GROUP: 2, BossArena.GROUP: 1,
 }
 const EXTRACT_IDS := [&"park_south_gate", &"park_east_bus", &"park_north_gate"]

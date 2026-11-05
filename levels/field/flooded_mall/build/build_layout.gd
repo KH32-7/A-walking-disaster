@@ -13,10 +13,23 @@ extends "res://field/build/layout_builder.gd"
 ## (size, rise, slope), so the ramp ends short of the scaled route end and the rest is ground.
 ## Stairs are cut out of the navmesh and joined by a layer-1-only NavigationLink3D, so a
 ## wheelchair path from the mall's 2F can only use the hidden ramp.
+##
+## B-26: the houses, the pharmacy, the gas station store and the depot office follow the plans in
+## build/kit_buildings.gd; the pack dressing goes to buildings.tscn (see layout_builder.gd). This
+## file adds the mall's pack shopfronts and roofs and the special places (_build_pois).
 
 const MAP_PATH := "res://levels/field/flooded_mall/build/flooded_mall_map.json"
 const OUT_SCENE := "res://levels/field/flooded_mall/layout.tscn"
 const OUT_NAVMESH := "res://levels/field/flooded_mall/layout_navmesh.res"
+const OUT_KIT := "res://levels/field/flooded_mall/buildings.tscn"
+const OUT_SPLAT := "res://levels/field/flooded_mall/ground_splat.res"
+const KitBuildings := preload("res://levels/field/flooded_mall/build/kit_buildings.gd")
+## Greybox cover and blockers drawn with pack meshes: name -> kind (layout_builder.gd _kit_cover).
+const KIT_COVER := {"Car1": "car", "Car2": "car", "Car3": "car", "GateBarricadeW": "barricade",
+	"GateBarricadeE": "barricade", "TruckA": "truck", "TruckB": "truck", "MartShelf1": "shelves",
+	"MartShelf2": "shelves", "MartShelf3": "shelves", "Pump1": "pump", "Pump2": "pump"}
+## Mall interiors: shelf rows on 1F (3 back-to-back pairs), cafe tables on 2F. [zone, kind, m2 per item]
+const SHOP_FILL := [["shop_in", "shelves", 170.0], ["shop2_in", "tables", 110.0]]
 
 const WALL_H := {"mart_in": 4.0}
 const UPPER_WALL_H := 3.5
@@ -27,15 +40,8 @@ const RAMP_WIDTH := 3.5
 ## Placed from the demo routes and the roads/bridges each building faces.
 const DOORS := {
 	"mart_in": [[-33.0, -58.0, 3.0], [-56.0, -43.0, 3.0]],
-	"pharm": [[-24.0, -45.0, 2.0], [-21.0, -52.0, 2.0]],
-	"depot_office": [[25.0, -48.0, 2.0]],
-	"gas_store": [[-20.0, 25.0, 2.0], [-13.0, 30.0, 2.0]],
-	"house1": [[-20.0, 41.0, 2.0]],
-	"house2": [[-16.0, 42.0, 2.0]],
-	"house3": [[-20.5, 57.0, 2.0]],
-	"house4": [[-15.5, 57.0, 2.0]],
-	"house5": [[-21.0, 69.0, 2.0]],
-	"house6": [[-16.0, 68.0, 2.0]],
+	# B-26: the kit buildings (houses, pharm, gas_store, depot_office) take their doors from their
+	# plans in kit_buildings.gd.
 	# Mall 1F: north road, east pier, south dock, west footbridge.
 	"shop_in": [[29.0, 17.9, 4.0], [49.9, 29.0, 3.0], [38.0, 49.0, 4.0], [21.0, 27.5, 5.0]],
 	# Mall 2F wall between the food court and the roof deck.
@@ -86,10 +92,14 @@ const ZONE_LOOT := {
 	"shop_in": ["TOOLBOX", "DRAWER", "MEDICINE"],
 	"shop2_in": ["DRAWER", "MEDICINE"],
 }
+## B-26 (user feedback 2026-11-05: farming felt thin): more spots, a locked supply crate at the depot
+## checkpoint and the dock, and the flooded park and the pier get spots too.
 const LANDMARK_LOOT := {
-	"depot_lm": ["TOOLBOX", "TOOLBOX", "DRAWER"],
-	"dock_lm": ["TOOLBOX", "DRAWER"],
-	"gas_lm": ["TOOLBOX"],
+	"depot_lm": ["TOOLBOX", "TOOLBOX", "DRAWER", "SUPPLY_CRATE", "MEDICINE"],
+	"dock_lm": ["TOOLBOX", "DRAWER", "SUPPLY_CRATE", "TOOLBOX"],
+	"gas_lm": ["TOOLBOX", "DRAWER", "TOOLBOX"],
+	"veg_sw": ["DRAWER", "TOOLBOX", "MEDICINE"],
+	"pier_lm": ["TOOLBOX", "DRAWER"],
 }
 
 const CLUTTER_SEED := 20261106
@@ -102,6 +112,10 @@ const CLUTTER_KITS := [
 	["Barricade", 2, [["Barricade", -2.5, 0.0, 3.0, 0.5, 1.1, 0.0], ["Barricade", 2.5, 0.0, 3.0, 0.5, 1.1, 0.0]]],
 	["LowWall", 2, [["LowWall", 0.0, 0.0, 6.0, 0.4, 1.0, 0.0], ["LowWall", -2.8, 2.0, 0.4, 4.0, 1.0, 0.0]]],
 	["Dumpster", 1, [["Dumpster", 0.0, 0.0, 2.0, 1.2, 1.5, 0.0], ["Crate", 1.8, 0.7, 1.0, 1.0, 0.9, 30.0]]],
+	# B-26: barrel and junk heaps like the reference game's yards.
+	["Barrels", 3, [["Crate", 0.0, 0.0, 0.8, 0.8, 1.0, 0.0], ["Crate", 0.9, 0.1, 0.8, 0.8, 1.0, 20.0],
+		["Crate", 0.4, 0.9, 0.8, 0.8, 1.0, -15.0], ["Crate", -0.6, 0.8, 0.8, 0.8, 1.0, 40.0],
+		["CratePile", 2.2, -0.4, 2.4, 1.2, 1.8, 10.0]]],
 ]
 
 
@@ -124,6 +138,11 @@ func _init() -> void:
 	loot_seed = LOOT_SEED
 	clutter_seed = CLUTTER_SEED
 	custom_buildings = ["shop_in"]
+	kit_buildings = KitBuildings.BUILDINGS
+	out_kit = OUT_KIT
+	out_splat = OUT_SPLAT
+	kit_cover = KIT_COVER
+	shop_fill = SHOP_FILL
 
 
 
@@ -153,6 +172,11 @@ func _build_structures() -> void:
 	mall.add_child(walls1)
 	_add_walls(walls1, shop_in, 0.0, y2 - SLAB, _doors("shop_in"), [])
 	walls1.add_child(_box("ElevatorShaft1F", el_rect.get_center(), el_rect.size, 0.0, y2 - SLAB, 0.0, "wall"))
+	# B-26: pack shopfront and tiles over the hidden greybox 1F.
+	walls1.add_to_group(KIT_GREYBOX_GROUP, true)
+	_kit_ring(shop_in, 0.0, y2 - SLAB, _doors("shop_in"), [], "shop")
+	_kit_ring(_rect_poly(el_rect), 0.0, y2 - SLAB, [], [], "plain")
+	_kit_floor(shop_in, CityKit.FLOOR_Y, "", [stair_rect, el_rect])
 
 	# Stairs: one flight, foot on the south side of the stair rect, top on the north side.
 	var stair_x := stair_rect.get_center().x
@@ -210,7 +234,21 @@ func _build_structures() -> void:
 	var ramp_top := _ramp_top(deck)
 	_add_walls(walls2, deck, y2, LOW_WALL_H, [[ramp_top.x, ramp_top.y, RAMP_WIDTH + 0.5]], [0])
 
-	upper.add_child(_roof("Roof2F", shop2_in, y2 + UPPER_WALL_H, &"shop2_in"))
+	var roof2 := _roof("Roof2F", shop2_in, y2 + UPPER_WALL_H, &"shop2_in")
+	upper.add_child(roof2)
+	# B-26: the 2F in pack pieces, hidden with the 1F roofs like the greybox Upper node.
+	walls2.add_to_group(KIT_GREYBOX_GROUP, true)
+	roof2.add_to_group(KIT_GREYBOX_GROUP, true)
+	var up := "roof:shop_in"
+	_kit_ring(shop2_in, y2, UPPER_WALL_H, _doors("shop2_in"), [], "shop", up)
+	_kit_ring(_rect_poly(el_rect), y2, UPPER_WALL_H, [[el_rect.get_center().x, el_rect.end.y, ELEVATOR_DOOR_W]],
+		[], "plain", up)
+	_kit_ring(well, y2, LOW_WALL_H, [], [0], "railing", up)
+	_kit_ring(deck, y2, LOW_WALL_H, [[ramp_top.x, ramp_top.y, RAMP_WIDTH + 0.5]], [0], "railing", up)
+	_kit_floor(shop2_in, y2 + 0.01, up, [stair_rect, el_rect])
+	_kit_slab(deck, y2 + 0.01, KIT_TERRAIN.road, 6.0, up)
+	_kit_roof(shop2_in, y2 + UPPER_WALL_H + ROOF_T, up + "/roof:shop2_in")
+	_kit_skins["Mall/Stairs"] = [KIT_TERRAIN.road, 3.0]
 
 	# Hidden loading ramp: from the deck edge down toward the dock (map hidden_routes[0].to).
 	# Its length (so its slope) is the unscaled one; the scaled rest of the route is ground.
@@ -221,12 +259,153 @@ func _build_structures() -> void:
 	var side := Vector2(-dir.y, dir.x) * RAMP_WIDTH * 0.5
 	_structure_keep_out.append(PackedVector2Array([ramp_top + side, foot + side, foot - side, ramp_top - side]))
 	var ramp := _ramp("LoadingRamp", ramp_top - dir * 0.15, foot, RAMP_WIDTH, 0.0, y2, "road")
+	_kit_skins["Mall/LoadingRamp"] = [KIT_TERRAIN.road, 6.0]
 	_nav(ramp)
 	mall.add_child(ramp)
 
 	var zones_node := _root.get_node("IndoorZones")
 	zones_node.add_child(_indoor_zone(&"shop_in", [shop_in], 0.0, y2 - SLAB))
 	zones_node.add_child(_indoor_zone(&"shop2_in", [shop2_in], y2, y2 + UPPER_WALL_H))
+
+
+## B-26 special places, from the landmark looks in the map file (user feedback 2026-11-05: nothing
+## to head for). Pieces that stand in the way get collision (cover up to 1.2 m, else blockers).
+func _build_pois() -> void:
+	var keep_out := _keep_out_polygons()
+	var routes := _route_segments()
+	var y2: float = _map.floors[1].y
+	var placed := 0
+
+	# 잠긴 놀이공원: a playground swallowed by the bush (veg_sw).
+	var park := _poly(_zones.veg_sw)
+	for piece: String in ["big_kids_slide", "big_kids_slide", "small_kids_slide", "small_kids_slide", "wooden_swing",
+			"wooden_swing", "backyard_trampoline", "backyard_trampoline", "round_swimming_pool", "basketball_hoop",
+			"plastic_table", "plastic_table", "patio_umbrella", "garden_gnome_01", "garden_gnome_02",
+			"garden_gnome_01", "campaign_yard_sign_01"]:
+		placed += int(_poi_try(piece, park, keep_out, routes, piece not in ["patio_umbrella", "garden_gnome_01",
+			"garden_gnome_02", "campaign_yard_sign_01"]))
+
+	# 주유소: one tilted canopy over the two pumps, the emergency generator and fuel by the store.
+	var pumps: Array = cover_props.filter(func(p: Array) -> bool: return String(p[0]).begins_with("Pump"))
+	if pumps.size() == 2:
+		var mid := (Vector2(pumps[0][1], pumps[0][2]) + Vector2(pumps[1][1], pumps[1][2])) * 0.5 * MAP_SCALE
+		var part := CityKit.prop_part("gas_station_canopy", mid, 0.0)
+		var pivot := Vector3(mid.x, 0.0, mid.y)
+		var xf: Transform3D = Transform3D(Basis(Vector3.FORWARD, deg_to_rad(4.0)), pivot) \
+			* Transform3D(Basis.IDENTITY, -pivot) * part.xf
+		_kit_items.append({"piece": "gas_station_canopy", "folder": part.folder, "xf": xf, "holder": ""})
+		var gas := _poly(_zones.gas_lm)
+		for piece: String in ["conditioner_07", "compact_power_station", "fuel_canister", "fuel_canister",
+				"fuel_tank_covers", "fuel_price_sign_01"]:
+			placed += int(_poi_try(piece, gas, keep_out, routes, piece in ["conditioner_07", "fuel_price_sign_01"]))
+
+	# 해솔마트: the sign half off its post by the front door, overgrowth inside.
+	var mart_doors := _doors("mart_in")
+	if not mart_doors.is_empty():
+		var mart := _poly(_zones.mart_in)
+		var d := Vector2(mart_doors[0][0], mart_doors[0][1])
+		var out := (d - _bounds(mart).get_center()).normalized()
+		var at := d + out * 4.5
+		if not _near_points(at, _keep_out_points(), 1.0):
+			var part := CityKit.prop_part("store_signboard", at, atan2(-out.y, out.x))
+			var xf: Transform3D = part.xf
+			var tilt := Transform3D(Basis(Vector3(out.y, 0.0, -out.x), deg_to_rad(28.0)), Vector3(at.x, 0.0, at.y))
+			xf = tilt * Transform3D(Basis.IDENTITY, -Vector3(at.x, 0.0, at.y)) * xf
+			_kit_items.append({"piece": "store_signboard", "folder": part.folder, "xf": xf, "holder": ""})
+			_root.get_node("PropsKit").add_child(_box("MartSign", at, Vector2(0.8, 0.8), 0.0, 2.0, 0.0, "blocked"))
+		var inner := _largest(Geometry2D.offset_polygon(mart, -1.0))
+		var b := _bounds(inner)
+		for i in int(_area(inner) * 0.12):
+			var p := Vector2(_kit_rng.randf_range(b.position.x, b.end.x), _kit_rng.randf_range(b.position.y, b.end.y))
+			if Geometry2D.is_point_in_polygon(p, inner) and not _near_door(p, mart_doors, 2.0) and not _in_prop(p, 0.3):
+				_kit_plant(KIT_EDGE_PLANTS[_kit_rng.randi_range(0, KIT_EDGE_PLANTS.size() - 1)], p, CityKit.FLOOR_Y)
+
+	# 옥상 주차 데크: cars left parked on the mall roof deck.
+	var deck := _largest(Geometry2D.offset_polygon(_poly(_zones.shop2_deck), -2.5))
+	var deck_cars := 0
+	var db := _bounds(deck)
+	var ramp_top := _ramp_top(_poly(_zones.shop2_deck))
+	for attempt in 200:
+		if deck_cars >= 5:
+			break
+		var p := Vector2(_kit_rng.randf_range(db.position.x, db.end.x), _kit_rng.randf_range(db.position.y, db.end.y))
+		var yaw := PI * 0.5 * _kit_rng.randi_range(0, 3) + _kit_rng.randf_range(-0.1, 0.1)
+		var car: String = KIT_CARS[_kit_rng.randi_range(0, KIT_CARS.size() - 1)]
+		var size := _kit_size(car, yaw)
+		var corners := _rect_poly(Rect2(p - Vector2(size.x, size.z) * 0.5, Vector2(size.x, size.z)))
+		if Array(corners).any(func(q: Vector2) -> bool: return not Geometry2D.is_point_in_polygon(q, deck)) \
+				or p.distance_to(ramp_top) < 7.0 or _near_marker(p, 1, 4.0) or _near_door(p, _doors("shop2_in"), 4.0) \
+				or _kit_items.any(func(it: Dictionary) -> bool: return it.has("deck") and (it.deck as Vector2).distance_to(p) < 5.5):
+			continue
+		deck_cars += 1
+		_kit_add(car, p, yaw, y2)
+		_kit_items[-1]["deck"] = p
+		_root.get_node("PropsKit").add_child(_box("DeckCar%d" % deck_cars, p, Vector2(size.x, size.z), y2, size.y, 0.0, "blocked"))
+	placed += deck_cars
+
+	# 선착장: wooden planks on the pier, a camper van half sunk off its end.
+	var pier := _poly(_zones.pier)
+	var pb := _bounds(pier)
+	var z := pb.position.y
+	while z < pb.end.y - 0.5:
+		var x := pb.position.x
+		while x < pb.end.x - 0.5:
+			var r := Rect2(x, z, 4.0, 4.0)
+			if Geometry2D.is_point_in_polygon(r.get_center(), pier):
+				_kit_items.append({"piece": "house_wooden_deck_c_4x4m", "folder": CityKit.MODULES,
+					"xf": Transform3D(Basis.IDENTITY, Vector3(r.end.x, OVERLAY_Y.road - 0.15, r.end.y)), "holder": ""})
+			x += 4.0
+		z += 4.0
+	# Wrecks half under water: deep water near its banks, away from bridges.
+	var wrecks := 0
+	for attempt in 400:
+		if wrecks >= 9:
+			break
+		var w: PackedVector2Array = _kit_ground.water[_kit_rng.randi_range(0, _kit_ground.water.size() - 1)]
+		var wb := _bounds(w)
+		var p := Vector2(_kit_rng.randf_range(wb.position.x, wb.end.x), _kit_rng.randf_range(wb.position.y, wb.end.y))
+		var bank := _dist_to_ring(p, w)
+		if not Geometry2D.is_point_in_polygon(p, w) or bank < 2.5 or bank > 9.0 \
+				or _kit_ground.road.any(func(rp: PackedVector2Array) -> bool: return Geometry2D.is_point_in_polygon(p, rp)) \
+				or _kit_items.any(func(it: Dictionary) -> bool: return it.has("wreck") and (it.wreck as Vector2).distance_to(p) < 12.0):
+			continue
+		var piece: String = ["school_bus", "motorhome", "ice_cream_truck", "car_sedan_01", "car_crossover_02",
+			"police_sedan", "car_minivan_01"][_kit_rng.randi_range(0, 6)]
+		var part := CityKit.prop_part(piece, p, _kit_rng.randf() * TAU)
+		var sink := Transform3D(Basis(Vector3(_kit_rng.randf_range(-1, 1), 0.0, _kit_rng.randf_range(-1, 1)).normalized(),
+			deg_to_rad(_kit_rng.randf_range(8.0, 22.0))), Vector3(p.x, WATER_SURFACE_Y - (part.box as AABB).size.y * 0.45, p.y))
+		var xf: Transform3D = sink * Transform3D(Basis.IDENTITY, -Vector3(p.x, 0.0, p.y)) * part.xf
+		_kit_items.append({"piece": piece, "folder": part.folder, "xf": xf, "holder": "", "wreck": p})
+		wrecks += 1
+
+	# 버스 차고지: an abandoned army checkpoint in the yard (tents, sandbags, vehicles, supplies).
+	var depot := _poly(_zones.depot_lm)
+	placed += _poi_row(["military_truck_01", "military_apc", "military_utility_vehicle"], 3, 3.6, depot, keep_out, routes)
+	for piece: String in ["military_arched_tent_exterior", "military_command_tent_exterior", "military_field_canopy_01",
+			"guard_booth", "checkpoint_sign_trailer", "military_light_tower_big", "military_generator_large",
+			"portable_field_toilet", "hesco_barrier_01", "hesco_barrier_02", "hesco_barrier_01", "hesco_barrier_02",
+			"sandbag_pile_02", "sandbag_pile_04", "sandbag_pile_06", "sandbag_pile_01", "anti_tank_hedgehog",
+			"anti_tank_hedgehog", "anti_tank_hedgehog", "concrete_road_barrier", "striped_concrete_barrier",
+			"road_barricade", "military_sign_stop", "military_ammo_crate_large", "military_rifle_crate",
+			"military_meal_crate", "military_equipment_case", "military_vehicle_parts_crate", "military_fuel_barrel",
+			"military_fuel_barrel", "military_fuel_barrel", "military_folding_table", "military_folding_chair",
+			"spike_strip"]:
+		placed += int(_poi_try(piece, depot, keep_out, routes, piece not in ["spike_strip", "military_folding_chair"]))
+	# 하역장: a trailer yard by the stalled trucks, pallets and junk between them.
+	var dock := _poly(_zones.dock_lm)
+	placed += _poi_row(["dry_van_trailer"], 3, 3.4, dock, keep_out, routes)
+	placed += _poi_row(["dry_van_trailer"], 2, 3.4, dock, keep_out, routes)
+	for piece: String in ["pallet", "pallet", "commercial_dumpster_01", "pile_garbage_03", "curbside_trash_bin_01",
+			"wheelbarrow", "pallet", "military_fuel_barrel", "barrel_01", "barrel_02", "barrel_01", "hesco_barrier_01",
+			"store_inventory_stack_02", "store_inventory_stack_01"]:
+		placed += int(_poi_try(piece, dock, keep_out, routes, piece not in ["pallet"]))
+	# 해솔마트 앞: rows of cars left in the car park.
+	var mart_lot := _poly(_zones.mart_lm)
+	for k in 3:
+		placed += _poi_row(KIT_CARS, 4, 2.9, mart_lot, keep_out, routes)
+	# 주유소: a tanker and a mail truck stalled by the pumps.
+	placed += _poi_row(["tanker_truck", "ice_cream_truck"], 1, 0.0, _poly(_zones.gas_lm), keep_out, routes)
+	print("pois: %d pieces, %d deck cars, %d wrecks" % [placed, deck_cars, wrecks])
 
 
 ## Where the ramp line (map hidden route) leaves the deck polygon.
