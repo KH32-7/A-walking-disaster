@@ -44,12 +44,22 @@
 ## 머지 전 확인
 
 ```sh
-godot --headless --path . --import
-godot --headless --path . --quit-after 5
+GODOT=/path/to/godot bash tools/headless_check.sh
 ```
 
-두 번째 명령 출력에 `SCRIPT ERROR`나 `Parse Error`가 없어야 한다. A-02가 끝나면 GitHub Actions가 PR마다 같은 검사를 돌린다.
-Windows에서 Steam판 Godot 실행 파일 이름은 `godot.windows.opt.tools.64.exe`다.
+임포트 → 5프레임 실행 → 모든 스크립트 로드(`tools/check_scripts.gd`, `addons/` 제외) → 테스트(`tests/run_tests.gd`) 순서로 돌고,
+`SCRIPT ERROR`·`Parse Error`가 나오거나 테스트가 하나라도 실패하면 `OK` 대신 `FAILED`로 끝난다.
+GitHub Actions(`.github/workflows/check.yml`)가 PR마다 같은 스크립트를 돌린다. CI는 비공개 `assets/` 서브모듈 없이 돌기 때문에
+`res://assets/...` 누락 경고는 실패로 치지 않는다.
+
+Windows(Git Bash)에서 Steam판:
+
+```sh
+GODOT="/c/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windows.opt.tools.64.exe" bash tools/headless_check.sh
+```
+
+테스트만 돌리기: `godot --headless --path . --script res://tests/run_tests.gd -- --lane=field`
+(테스트 파일은 `tests/<lane>/test_*.gd`, `run() -> bool`. RefCounted나 Node 상속, `await` 가능)
 
 ## Claude Code에게 일 맡기는 법
 
