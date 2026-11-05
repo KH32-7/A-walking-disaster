@@ -10,6 +10,16 @@ const MAX_CHARS := 70
 const CHARS_PER_SEC := 14.0
 const MIN_SEC := 2.5
 
+## True while a film or a talk owns the screen (CinematicOverlay): nothing shows and the current
+## line's time does not run, so the broadcast waits for the scene to end. Set this instead of
+## `visible`; the box shows itself only while it has a line.
+var held := false:
+	set(v):
+		if v == held:
+			return
+		held = v
+		_refresh_visible()
+
 var _queue: Array[Dictionary] = []
 var _current: Dictionary = {}
 var _left := 0.0
@@ -70,7 +80,7 @@ func show_line(speaker_name: String, text: String, priority: int = 0) -> void:
 func clear() -> void:
 	_queue.clear()
 	_current = {}
-	visible = false
+	_refresh_visible()
 
 
 func current_text() -> String:
@@ -90,17 +100,21 @@ func _play(item: Dictionary) -> void:
 		if show_speaker else ""
 	_label.text = "[center]" + head + body + "[/center]"
 	_label.add_theme_constant_override(&"line_separation", 4)
-	visible = bool(Settings.get_value(&"subtitles"))
+	_refresh_visible()
+
+
+func _refresh_visible() -> void:
+	visible = not held and not _current.is_empty() and bool(Settings.get_value(&"subtitles"))
 
 
 func _process(delta: float) -> void:
-	if _current.is_empty():
+	if _current.is_empty() or held:
 		return
 	_left -= delta
 	if _left <= 0.0:
 		_current = {}
 		if _queue.is_empty():
-			visible = false
+			_refresh_visible()
 		else:
 			_play(_queue.pop_front())
 
@@ -113,8 +127,7 @@ func _apply_settings() -> void:
 	_label.add_theme_font_override(&"normal_font", UiThemeBuilder.font_kr(500))
 	_label.add_theme_font_override(&"bold_font", UiThemeBuilder.font_kr(700))
 	_bg.bg_color = Color(0, 0, 0, float(Settings.get_value(&"subtitle_bg_alpha")) * 0.6)
-	if not bool(Settings.get_value(&"subtitles")):
-		visible = false
+	_refresh_visible()
 
 
 func _on_settings_changed(key: StringName) -> void:

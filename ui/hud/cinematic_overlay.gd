@@ -4,7 +4,7 @@ extends Control
 ## Letterbox bars, a black fade, a vignette, a title card, captions in the lower bar and a talk box
 ## that types its lines and waits for F / Enter / click. Hold Esc to skip a skippable scene.
 ## Everything is awaitable:  await UI.cinematic.fade_to(1.0, 0.6)
-##                           await UI.cinematic.talk([["한도윤", "문 잘 잠갔지?"], ...])
+##                           await UI.cinematic.talk([["방송실 지기", "문 잘 닫았지?"], ...])
 ## Lives on its own layer (25): above the HUD and menus, below the overlay (spotlight, toasts).
 
 signal skip_requested
@@ -189,7 +189,7 @@ func bars(on: bool, sec := 0.8) -> Tween:
 	if UI.hud != null:
 		UI.hud.visible = not on
 	if UI.subtitle != null:
-		UI.subtitle.visible = not on  # the base's morning broadcast waits for the film to end
+		UI.subtitle.held = on  # radio lines wait for the film / talk to end
 	return tw
 
 
@@ -265,7 +265,7 @@ func reset() -> void:
 	if UI.hud != null:
 		UI.hud.visible = true
 	if UI.subtitle != null:
-		UI.subtitle.visible = true
+		UI.subtitle.held = false
 
 
 # ---------------- internals ----------------
@@ -294,10 +294,8 @@ func _next_line() -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
-	if UI.subtitle != null and film:
-		UI.subtitle.visible = false
-	elif UI.subtitle != null and _bars <= 0.0:
-		UI.subtitle.visible = true
+	if UI.subtitle != null:
+		UI.subtitle.held = film or _bars > 0.0
 	if _talking and _line >= 0 and _line < _lines.size():
 		var total := _talk_text.get_total_character_count()
 		if _talk_text.visible_characters >= 0 and _talk_text.visible_characters < total:

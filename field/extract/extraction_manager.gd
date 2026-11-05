@@ -120,6 +120,8 @@ func activate(seed_value: int) -> void:
 		candidates[i] = candidates[j]
 		candidates[j] = swap
 	_active = candidates.slice(0, ACTIVE_COUNT)
+	for c in candidates:
+		c.set_active(c in _active)
 	active_points_changed.emit(active_point_ids())
 
 

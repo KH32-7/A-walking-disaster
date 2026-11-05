@@ -103,7 +103,14 @@ func morning_broadcast() -> void:
 
 func _on_day_started(_day: int) -> void:
 	_used_day.clear()
-	morning_broadcast()
+	if not in_tutorial():
+		morning_broadcast()
+
+
+## True while the new-game tutorial runs (intro house → park doctor). No morning broadcast then
+## (사용자 요청 2026-11-06): the 방송실 지기 is talking to the hero in person.
+static func in_tutorial() -> bool:
+	return GameState.has_flag(IntroCutscene.FLAG_PENDING) and not GameState.has_flag(IntroTutorial.FLAG_DONE)
 
 
 func _on_sortie_started(loadout: Dictionary) -> void:

@@ -1,11 +1,12 @@
 class_name IntroTutorial
 extends Node
 ## New-game tutorial (사용자 요청 2026-11-06), replacing the old first-day guide card. Owner: Lane D.
-##   house (IntroCutscene): open the case → take the 권총 → equip it → close the bag → talk to 한도윤
+##   house (IntroCutscene): open the case → take the 권총 → equip it → close the bag → talk to the 방송실 지기
 ##                          → walk out.
 ##   base:  출격 → pick the park.
-##   park:  quest 「의사를 찾아서」 shown on arrival (Quests.start) → go to the 관리사무소 (double yellow
-##          diamond on the minimap and M map) → kill the blobs around it → help the doctor up → extract.
+##   park:  quest 「의사를 찾아서」 shown on arrival (Quests.start) → go to the 관리사무소: no card; a
+##          short top banner "◆ 의사는 이 건물 안에 있다" (WorldMarkers), then just the double yellow
+##          diamond over it and on the minimap → kill the blobs around it → help the doctor up → extract.
 ##   after: the doctor joins; 의무실 can be built (infirmary requires_former_job = doctor).
 ## Every frame the step is worked out again from the game state (flags, open screens, bag, quest),
 ## never from a stored index, so closing the bag early, dying in the park or loading a save all land
@@ -19,15 +20,23 @@ const FLAG_DONE := &"tutorial_done"
 const FLAG_WELCOMED := &"tutorial_welcomed"
 const GUARD_DEF := "res://data/monsters/vine_tendril.tres"
 const GUARD_COUNT := 4
-## The guards stand this far around the office door (m); "near the office" for the hints.
-const GUARD_RING := 7.0
-const NEAR_OFFICE := 26.0
+## The guards stand outside the office (사용자 요청 2026-11-06: outside reads better than inside):
+## this far out from its walls (m), spread by this angle (rad) on the side facing the player when
+## they spawn, and wander only this far from their spot. "near the office" for the hints.
+const GUARD_OUTSIDE := 4.0
+const GUARD_SPREAD := 0.35
+const GUARD_WANDER := 5.0
+const NEAR_OFFICE := 40.0
+## The fight card comes up as soon as a guard is this close (m), before they reach the player.
+const NEAR_GUARD := 24.0
+## "Help the doctor up" waits until the player is inside the office, or this close to the doctor.
 const NEAR_DOCTOR := 6.0
 const WELCOME_SEC := 9.0
 
 var _step := &""
 var _guards: Array = []
 var _guards_sortie := -1
+var _office_rect := Rect2()  # the office floor (x/z), found when the guards spawn
 var _welcome_t := 0.0
 
 
@@ -103,7 +112,7 @@ func _field_step() -> StringName:
 	if FieldState.region_id != REGION or not GameState.has_flag(IntroCutscene.FLAG_TALKED):
 		return &""
 	if not Quests.is_active(QUEST) and not Quests.is_completed(QUEST):
-		Quests.start(QUEST, &"intro_doyun")  # Quests posts the "새 의뢰" toast itself
+		Quests.start(QUEST, &"broadcaster")  # Quests posts the "새 의뢰" toast itself
 	_spawn_guards()
 	var p := get_tree().get_first_node_in_group(&"player") as Node3D
 	var doctor := _doctor()
@@ -112,10 +121,13 @@ func _field_step() -> StringName:
 	if doctor != null and doctor.is_rescued():
 		return &"extract"
 	var office := _office_pos()
+	var at := p.global_position
 	var alive := _guards.filter(func(m) -> bool: return is_instance_valid(m) and not m.is_queued_for_deletion() and m.hp > 0.0)
-	if not alive.is_empty() and p.global_position.distance_to(office) < NEAR_OFFICE:
+	if not alive.is_empty() and (at.distance_to(office) < NEAR_OFFICE
+			or alive.any(func(m) -> bool: return at.distance_to(m.global_position) < NEAR_GUARD)):
 		return &"fight"
-	if doctor != null and p.global_position.distance_to(doctor.global_position) < NEAR_OFFICE:
+	if doctor != null and (_office_rect.has_point(Vector2(at.x, at.z))
+			or at.distance_to(doctor.global_position) < NEAR_DOCTOR):
 		return &"rescue"
 	return &"quest"
 
@@ -135,7 +147,7 @@ func _show(step: StringName) -> void:
 	var intro := _intro()
 	match step:
 		&"chest":
-			_world(intro.interior.chest if intro else null, "총이 든 가방이에요. 가까이 가서 열어 봐요.",
+			_world(intro.interior.chest if intro else null, "구조대가 두고 간 보급 상자예요. 가까이 가서 열어 봐요.",
 				[["WASD", "이동"], ["F", "열기"]], 90.0, 0.4)
 		&"chest_again":
 			_world(intro.interior.chest if intro else null, "권총을 아직 안 들었어요. 상자를 다시 열면 가방이 열려요.",
@@ -158,7 +170,7 @@ func _show(step: StringName) -> void:
 			var cell: Control = bag.call(&"equip_cell", Enums.EquipSlot.MAIN) if bag != null else null
 			_control(cell, "손에 들었어요. 가방을 닫아요.", [["Esc", "닫기"]])
 		&"talk":
-			_world(intro.interior.patient if intro else null, "다친 사람이 있어요. 말을 걸어 봐요.",
+			_world(intro.interior.patient if intro else null, "방송을 하던 사람이에요. 말을 걸어 봐요.",
 				[["F", "이야기하기"]], 120.0, 0.6)
 		&"exit":
 			_world(intro.interior.door if intro else null, "공원에 의사가 있대요. 밖으로 나가요.",
@@ -170,8 +182,9 @@ func _show(step: StringName) -> void:
 		&"sortie_go":
 			_card("'숲이 된 도심 공원'을 고르고 출격해요. 해가 지기 전에 돌아와야 해요.", [["클릭", "고르기"], ["Enter", "출격"]])
 		&"quest":
-			_card("새 의뢰 / 의사를 찾아서\n의사는 관리사무소 건물 안에 있어요. 미니맵과 지도의 노란 이중 마름모로 가요.",
-				[["WASD", "이동"], ["M", "지도"], ["Shift", "달리기"]])
+			# No card: WorldMarkers shows the objective's words once at the top, then only the
+			# double yellow diamond over the office and on the minimap.
+			sp.clear()
 		&"fight":
 			_card("관리사무소를 마물이 지키고 있어요! 조준하고 쏴요.",
 				[["우클릭", "조준"], ["클릭", "사격"], ["R", "재장전"], ["Space", "구르기"]])
@@ -180,7 +193,7 @@ func _show(step: StringName) -> void:
 		&"extract":
 			_card("의사 선생님이 따라와요. 초록 마름모 탈출 지점에 잠깐 서 있으면 기지로 돌아가요.", [["M", "탈출 지점 찾기"]])
 		&"welcome":
-			_card("의사가 기지에 왔어요! 이제 '건설'에서 의무실을 지을 수 있어요. 한도윤의 다리도 고칠 수 있겠어요.", [])
+			_card("의사가 기지에 왔어요! 이제 '건설'에서 의무실을 지을 수 있어요. 이제 다친 사람도 받을 수 있어요.", [])
 
 
 const _EQUIP_TEXT := "가방에 들어왔어요. 권총을 우클릭하고 '장착'을 눌러요."
@@ -217,9 +230,45 @@ func _spawn_guards() -> void:
 	_guards_sortie = FieldState.sortie_seed
 	_guards.clear()
 	var def := load(GUARD_DEF) as MonsterDef
+	var p := get_tree().get_first_node_in_group(&"player") as Node3D
+	_office_rect = _building_rect(office)
+	for at: Vector3 in guard_spots(_office_rect, office, p.global_position if p else office):
+		for m in spawner.spawn_group(at, 1, def):
+			m.wander_radius = GUARD_WANDER
+			_guards.append(m)
+
+
+## Spots just outside `rect` (the office's floor, x/z) on the side facing `from`, GUARD_SPREAD apart.
+## Without a rect: a ring around `office` instead.
+static func guard_spots(rect: Rect2, office: Vector3, from: Vector3) -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	var room := rect.grow(GUARD_OUTSIDE) if rect.has_area() else Rect2(Vector2(office.x, office.z), Vector2.ZERO).grow(GUARD_OUTSIDE + 4.0)
+	var c := room.get_center()
+	var to := Vector2(from.x, from.z) - c
+	var base := to.angle() if to.length() > 0.5 else 0.0
+	var half := room.size * 0.5
 	for i in GUARD_COUNT:
-		var a := TAU * float(i) / GUARD_COUNT + 0.4
-		_guards.append_array(spawner.spawn_group(office + Vector3(cos(a), 0, sin(a)) * GUARD_RING, 1, def))
+		var d := Vector2.from_angle(base + (float(i) - (GUARD_COUNT - 1) * 0.5) * GUARD_SPREAD)
+		var t := minf(half.x / maxf(absf(d.x), 0.001), half.y / maxf(absf(d.y), 0.001))
+		var at := c + d * t
+		out.append(Vector3(at.x, office.y, at.y))
+	return out
+
+
+## Floor of the building around `pos` (x/z), from the IndoorZone whose shape holds it; empty if none.
+func _building_rect(pos: Vector3) -> Rect2:
+	for z: Node in get_tree().root.find_children("IndoorZone*", "Area3D", true, false):
+		if not z is IndoorZone:
+			continue
+		for cs: Node in z.get_children():
+			var col := cs as CollisionShape3D
+			if col == null or col.shape == null:
+				continue
+			var box := col.global_transform * col.shape.get_debug_mesh().get_aabb()
+			var r := Rect2(box.position.x, box.position.z, box.size.x, box.size.z)
+			if r.has_point(Vector2(pos.x, pos.z)):
+				return r
+	return Rect2()
 
 
 func _office_pos() -> Vector3:
