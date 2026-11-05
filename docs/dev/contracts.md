@@ -1,7 +1,8 @@
 # 공용 계약
 
-레인끼리 맞물리는 지점은 이 문서에 적힌 것뿐이다. 바꾸려면 A에게 PR을 보내고, 영향받는 레인이 같은 PR을 확인한다.
-**추가는 쉽게, 변경·삭제는 모든 사용처를 같이 고칠 때만.**
+기능끼리 맞물리는 공개 함수·신호의 정리다. M2 이후로 레인 구분이 없어서 누구든 고칠 수 있다.
+표의 "소유" 칸과 본문의 레인 글자(A~D)는 처음 만든 쪽을 적은 기록이고, 수정 권한을 뜻하지 않는다.
+**추가는 쉽게, 변경·삭제는 모든 사용처를 같이 고칠 때만.** 바꾸면 같은 PR에서 이 문서도 고친다.
 
 ## 오토로드 (project.godot에 등록 완료, 순서대로 로드)
 
@@ -129,7 +130,13 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   `field_rules`, `guard_post`, `Monster.raid_goal`, `is_raider()`, `drop_mult`, `died`, `attack_landed`. 구조물 그룹 `raid_structures`, `raid_gates`
   (`RaidMarch` 상수), 구조물과 주민의 `take_damage(amount, info)`, 구조물 info 키 `structure_damage_mult`, `charges_gates`, `monster_id`, `source`, `element`.
   자세한 사용법은 [field/README.md](../../field/README.md).
-- **FieldState**: `in_sortie()`, `lost_gear`
+- **FieldState**: `in_sortie()`, `lost_gear`, `boss_ready(boss_id)`, `boss_kill_count(boss_id)`.
+  보스 부활 날짜 `boss_respawn_day`는 **보스 id별**이다(한 지역에 보스가 여럿일 수 있다). 지역 id로 저장된 옛 세이브는 불러올 때 그 지역의 `boss_id`로 옮긴다.
+- **보스 (B-19)**: `BossSpawner`가 `BossArena`마다 그 보스의 부활 날짜를 따로 본다. 보스마다의 공략 규칙은 `BossDef.mechanic`(`BossMechanic` 스크립트)에 둔다.
+  훅: `on_added`, `on_tick`, `can_use(pattern)`, `on_pattern_started(pattern, area)`, `land_pattern(pattern, area)`(true면 공통 범위 타격·소환 생략),
+  `filter_damage(amount, info)`(0이면 무시), `on_phase_changed`, `on_reset`, `on_died`. `BossPattern.action`이 있는 패턴은 mechanic이 직접 처리하고
+  숫자는 `BossPattern.params`에 둔다. mechanic이 쓰는 BossMonster 공개 함수: `hold(sec)`(AI와 패턴 정지, mechanic이 몸을 움직임), `is_held()`,
+  `area_for(pattern, target_pos)`, `hit_area(pattern, area)`, `summon(pattern)`.
 - **Audio**: `play(event_id, position)`, `set_music_state(state)`
 - **Fx**: `spawn(effect_id, position, params)`. 이펙트 id 표는 [vfx/README.md](../../vfx/README.md)(D).
 - **마물 모델과 이펙트 (D-17, 이슈 #148)**:
@@ -143,7 +150,7 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
     (`boss_slam`, `boss_root_burst`, `boss_summon_pods`).
 - **UI**: `open(screen_id, args)`, `close(screen_id)`
 - **DebugConsole**: `register(name, callable, help)`, `execute(line)`, `is_open()`, `godmode`(B가 읽음).
-  각 레인은 자기 스크립트에서 `register`로 명령을 추가한다(콘솔 파일은 고치지 않음). 같은 이름으로 다시 등록하면 교체된다.
+  기능마다 자기 스크립트에서 `register`로 명령을 추가한다. 같은 이름으로 다시 등록하면 교체된다.
   `raid`, `resident`는 C가, `give`는 A-07이 교체할 자리표시 명령이다. 출시 빌드에서는 등록·실행이 모두 무시된다.
 - **Progression**: `level`, `xp`, `xp_needed()`, `xp_to_next(level)`, `max_hp()`(레벨 기본 체력. 장비 보너스 `Armory.get_owner_summary().max_hp`는 B가 더함),
   `award(action, count)`(A-13: `&"personal_request"` 등 `Progression.XP_TABLE`의 키), `add_xp(amount, reason)`,
@@ -170,7 +177,7 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   기지 제작(`building_completed`), 특정 날 방어(`raid_resolved`). 유품은 `data/resources/`의 자원(예: `keepsake_plane`)이라 B는 `marker` 자리에 줍는 물건을 두고
   `Bag.try_add`로 넣기만 하면 된다. 보상의 신뢰도는 `Colony.add_trust(resident_id, amount)`(C에 요청)를 부른다. 무전 소문은 Radio 트리거 `quest_rumor`로 말한다.
 
-새 공개 함수가 필요하면 그 오토로드의 소유 레인이 추가하고 여기에 한 줄 적는다.
+새 공개 함수가 필요하면 그 오토로드에 바로 추가하고 여기에 한 줄 적는다.
 
 ## 하루 단계와 흐름 상태
 
@@ -306,12 +313,11 @@ levels/base/base_school/
 - **필드 마커**(B-02, `field/markers/`): `PlayerSpawn`, `ExtractPoint`, `LootSpot`, `MonsterNest`, `RescueSpot`,
   `HiddenRoute`, `BossArena`, `Recording`.
 - **기지 마커**(C-01, `base/markers/`): `BuildArea`, `ZoneMarker`, `ResourceNode`(나무·잔해), `RaidSpawnPoint`, `WorkSpot`, `OutpostNode`.
-- D는 dressing을 만들 때 layout을 참고용으로 인스턴스할 수 있지만 layout을 저장하지 않는다.
-  마커 위치를 바꾸고 싶으면 B·C에 요청한다.
+- dressing을 만들 때 layout을 인스턴스해서 본다. 마커 위치를 바꾸려면 layout을 고치고, 그 마커를 읽는 테스트·생성기도 같이 고친다.
 
-## UI와 게임플레이의 경계
+## UI와 게임플레이의 경계 (구조 원칙)
 
-- 게임플레이 레인(A·B·C)은 `Control` 노드를 만들지 않는다. 필요한 정보는 신호와 getter로 내놓는다.
+- 게임플레이 코드(core·systems·field·base)는 `Control` 노드를 만들지 않는다. 필요한 정보는 신호와 getter로 내놓고, 화면은 `ui/`에 둔다.
 - 샌드박스에서 쓰는 디버그 UI만 예외(`_sandbox/` 안, 출시 빌드에 안 들어감).
-- D는 게임 규칙을 계산하지 않는다. 예: 강화 비용은 `Armory`에 묻고, 습격 예상 결과는 `Colony`에 묻는다.
+- 화면은 게임 규칙을 계산하지 않는다. 예: 강화 비용은 `Armory`에 묻고, 습격 예상 결과는 `Colony`에 묻는다.
 - 색만으로 구분하는 정보는 없다(등급·속성·관계는 모양이나 글을 함께).

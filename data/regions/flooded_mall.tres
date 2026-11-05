@@ -15,5 +15,126 @@ loot_table_id = &"flooded_mall"
 boss_id = &"sunken_sign_serpent"
 extract_candidates = Array[StringName]([&"mall_dock", &"mall_gas_station", &"mall_north_gate"])
 hidden_routes = Array[StringName]([&"mall_loading_ramp"])
+map_labels = Array[Dictionary]([{
+"kind": &"landmark",
+"pos": Vector2(21, -85.5),
+"text": "버스 차고지"
+}, {
+"kind": &"landmark",
+"pos": Vector2(55.5, 94.5),
+"text": "하역장"
+}, {
+"kind": &"landmark",
+"pos": Vector2(-33, 21),
+"text": "주유소"
+}, {
+"kind": &"landmark",
+"pos": Vector2(-76.5, -84),
+"text": "해솔마트"
+}, {
+"kind": &"landmark",
+"pos": Vector2(91.5, 42),
+"text": "선착장"
+}, {
+"kind": &"landmark",
+"pos": Vector2(54, 49.5),
+"text": "해솔 상가"
+}, {
+"kind": &"water",
+"pos": Vector2(9, 53.25),
+"text": "잠긴 골목 물길"
+}, {
+"kind": &"water",
+"pos": Vector2(-19.5, -21),
+"text": "넘친 옛 하천"
+}, {
+"kind": &"water",
+"pos": Vector2(90, 13.5),
+"text": "바다"
+}, {
+"kind": &"spot",
+"pos": Vector2(-30, 45),
+"text": "편의점"
+}, {
+"kind": &"spot",
+"pos": Vector2(-36.75, 60.75),
+"text": "파란 대문 집"
+}, {
+"kind": &"spot",
+"pos": Vector2(-18, 62.25),
+"text": "동네 의원"
+}, {
+"kind": &"spot",
+"pos": Vector2(-36.75, 85.5),
+"text": "철물 창고"
+}, {
+"kind": &"spot",
+"pos": Vector2(-18, 86.25),
+"text": "반지하 집"
+}, {
+"kind": &"spot",
+"pos": Vector2(-38.25, 103.5),
+"text": "세탁소"
+}, {
+"kind": &"spot",
+"pos": Vector2(-18, 102),
+"text": "구멍가게"
+}, {
+"kind": &"spot",
+"pos": Vector2(-37.5, -79.5),
+"text": "해솔약국"
+}, {
+"kind": &"road",
+"pos": Vector2(-27, 82.5),
+"text": "주택가 골목"
+}, {
+"kind": &"road",
+"pos": Vector2(36.75, -18),
+"text": "해솔대교"
+}, {
+"kind": &"road",
+"pos": Vector2(-69, -21),
+"text": "서쪽 다리"
+}, {
+"kind": &"road",
+"pos": Vector2(6, 42),
+"text": "반쯤 잠긴 보도교"
+}, {
+"kind": &"road",
+"pos": Vector2(91.5, 42),
+"text": "나무 잔교"
+}, {
+"kind": &"road",
+"pos": Vector2(0, -74.25),
+"text": "강변로"
+}, {
+"kind": &"road",
+"pos": Vector2(-22.5, -82.5),
+"text": "북쪽 진입로"
+}, {
+"kind": &"road",
+"pos": Vector2(40.5, 16.5),
+"text": "상가 앞길"
+}, {
+"kind": &"road",
+"pos": Vector2(-60.75, 57.75),
+"text": "주유소 길"
+}, {
+"kind": &"area",
+"pos": Vector2(-72, -34.5),
+"text": "강변 덤불 둑"
+}, {
+"kind": &"area",
+"pos": Vector2(75, 91.5),
+"text": "덩굴 언덕"
+}, {
+"kind": &"area",
+"pos": Vector2(73.5, -99),
+"text": "차고지 뒤 숲"
+}, {
+"kind": &"area",
+"pos": Vector2(-87, 66),
+"text": "잠긴 놀이공원"
+}])
 unlock_text = "공원 탈출 1회"
 unlock_flags = Array[StringName]([&"extracted_city_park"])

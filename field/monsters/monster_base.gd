@@ -18,6 +18,11 @@ signal died(monster: Monster)
 const GROUP := &"field_monsters"
 ## Lane D's model for def.id (D-17 MonsterVisual). Added as the "Visual" child; the grey-box meshes hide.
 const VISUAL_DIR := "res://art/monsters/"
+## Enemy outline around the model's silhouette (user feedback 2026-11-06). Red means enemy and nothing
+## else. Godot's stencil outline: only the outer edge, not every crease where parts overlap.
+const OUTLINE_COLOR := Color("e03a2f")
+## Outline width in metres (stencil outline grows the mesh in world space).
+const OUTLINE_THICKNESS := 0.05
 ## B-03 puts the player in this group.
 const PLAYER_GROUP := &"player"
 ## MonsterDef.behaviors id -> MonsterBehavior script.
@@ -64,6 +69,12 @@ var attack_mult: float = 1.0
 ## home, march here when idle (charges_gates: nearest gate first), follow the navmesh and hit
 ## raid structures in the way (RaidMarch). Vector3.INF = field monster.
 var raid_goal: Vector3 = Vector3.INF
+## True once MonsterRules.SIZE_MULT is in `scale`. Split children copy the parent's scale, so they
+## start true.
+var size_applied := false
+
+## One red outline material shared by every monster.
+static var _outline: StandardMaterial3D
 
 var _behaviors: Array[MonsterBehavior] = []
 var _dead := false
@@ -83,6 +94,8 @@ var _attack_cooldown := 0.0
 var _windup_sent := false
 var _sight_timer := 0.0
 var _raid: RaidMarch
+## Collision body radius before scale (attack_reach).
+var _body_radius := 0.0
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)
 
 ## Status effects (B-14). Lane D listens to its signals for icons over the head.
@@ -97,11 +110,16 @@ func _ready() -> void:
 	add_to_group(GROUP)
 	collision_layer = 1 << (Enums.LAYER_MONSTER - 1)
 	collision_mask = (1 << (Enums.LAYER_WORLD - 1)) | (1 << (Enums.LAYER_MONSTER - 1))
+	if not size_applied and def.tier != Enums.MonsterTier.BOSS:
+		scale *= MonsterRules.SIZE_MULT
+	size_applied = true
+	_body_radius = _measure_body_radius()
 	max_hp = def.hp * hp_scale
 	hp = max_hp
 	if home == Vector3.INF:
 		home = global_position
 	_add_visual()
+	_set_outline(true)
 	for id in def.behaviors:
 		_add_behavior(id)
 	if elite:
@@ -317,6 +335,12 @@ func sight_range() -> float:
 	return def.sight_range * sight_mult * (status.sight_mult() if status else 1.0)
 
 
+## Attack distance (center to center): def.attack_range plus how much the body grew past its
+## scene size (MonsterRules.SIZE_MULT, elite, split), so the edge-to-target gap stays as designed.
+func attack_reach() -> float:
+	return def.attack_range + _body_radius * (scale.x - 1.0)
+
+
 ## One hit's damage: def.attack x attack_mult (elite x1.5).
 func attack_damage() -> float:
 	return def.attack * attack_mult
@@ -354,6 +378,7 @@ func vanish() -> void:
 	if _dead:
 		return
 	_dead = true
+	_set_outline(false)
 	died.emit(self)
 	if pack:
 		pack.remove(self)
@@ -428,7 +453,7 @@ func _tick_chase(delta: float) -> void:
 	elif _clock - _last_seen > MonsterRules.LOSE_TARGET_SEC:
 		_lose_target()
 		return
-	if seen_now and _distance_to(target) <= def.attack_range:
+	if seen_now and _distance_to(target) <= attack_reach():
 		_set_state(Enums.AIState.ATTACK)
 		return
 	if can_move():
@@ -444,7 +469,7 @@ func _tick_attack(delta: float) -> void:
 		_lose_target()
 		return
 	_face(target.global_position, delta)
-	if _distance_to(target) > def.attack_range * MonsterRules.ATTACK_EXIT_MULT or not _senses(target):
+	if _distance_to(target) > attack_reach() * MonsterRules.ATTACK_EXIT_MULT or not _senses(target):
 		_set_state(Enums.AIState.CHASE)
 		return
 	_perceive(target)
@@ -471,7 +496,7 @@ func _tick_return(delta: float) -> void:
 ## No art file, or its model is missing (clone without assets access) -> the grey box stays.
 func _add_visual() -> void:
 	var path := VISUAL_DIR + String(def.id) + ".tscn"
-	if has_node(^"Visual") or not ResourceLoader.exists(path):
+	if has_node(^"Visual") or not ResourceLoader.exists(path) or not _dependencies_present(path):
 		return
 	var scene := load(path) as PackedScene
 	if scene == null:
@@ -486,6 +511,69 @@ func _add_visual() -> void:
 	for child in get_children():
 		if child is MeshInstance3D:
 			(child as MeshInstance3D).visible = false
+
+
+## The visual scene references its model under res://assets/ (private submodule). On a clone without
+## it, loading the scene logs a "Parse Error" for the missing file (the headless check fails on that),
+## so look at the dependencies first and keep the grey box when one is missing.
+static func _dependencies_present(path: String) -> bool:
+	for dep in ResourceLoader.get_dependencies(path):
+		var dep_path := dep.get_slice("::", dep.get_slice_count("::") - 1)
+		if dep_path.begins_with("res://") and not ResourceLoader.exists(dep_path):
+			return false
+	return true
+
+
+## Red enemy outline on the model's meshes (the grey-box meshes without a model). The weak point core
+## keeps its own look. Turned off before `died` so the corpse the visual leaves has none.
+func _set_outline(on: bool) -> void:
+	var mat: Material = null
+	if on:
+		if _outline == null:
+			# An invisible overlay that marks the body in the stencil buffer; its outline pass draws
+			# only outside the marked pixels.
+			_outline = StandardMaterial3D.new()
+			_outline.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			_outline.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			_outline.albedo_color = Color(0.0, 0.0, 0.0, 0.0)
+			_outline.stencil_mode = BaseMaterial3D.STENCIL_MODE_OUTLINE
+			_outline.stencil_color = OUTLINE_COLOR
+			_outline.stencil_outline_thickness = OUTLINE_THICKNESS
+		mat = _outline
+	for look in outline_meshes():
+		look.material_overlay = mat
+
+
+## The meshes that carry the enemy outline.
+func outline_meshes() -> Array[GeometryInstance3D]:
+	var found: Array[GeometryInstance3D] = []
+	var visual := get_node_or_null(^"Visual")
+	if visual != null:
+		for node in visual.find_children("*", "GeometryInstance3D", true, false):
+			found.append(node as GeometryInstance3D)
+	else:
+		for child in get_children():
+			if child is GeometryInstance3D:
+				found.append(child as GeometryInstance3D)
+	return found
+
+
+## Unscaled radius of the body collision shape on the ground plane.
+func _measure_body_radius() -> float:
+	var node := get_node_or_null(^"CollisionShape3D") as CollisionShape3D
+	if node == null:
+		return 0.0
+	var shape := node.shape
+	if shape is SphereShape3D:
+		return (shape as SphereShape3D).radius
+	if shape is CapsuleShape3D:
+		return (shape as CapsuleShape3D).radius
+	if shape is CylinderShape3D:
+		return (shape as CylinderShape3D).radius
+	if shape is BoxShape3D:
+		var size := (shape as BoxShape3D).size
+		return maxf(size.x, size.z) * 0.5
+	return 0.0
 
 
 func _add_behavior(id: StringName) -> void:
@@ -505,7 +593,7 @@ func _add_behavior(id: StringName) -> void:
 func _senses(who: Node3D) -> bool:
 	if status.sight_mult() <= 0.0:
 		return false
-	return can_see(who, false) 			or _distance_to(who) <= minf(def.attack_range, MonsterRules.TOUCH_SENSE_RANGE)
+	return can_see(who, false) 			or _distance_to(who) <= minf(attack_reach(), MonsterRules.TOUCH_SENSE_RANGE)
 
 
 func _set_state(new_state: Enums.AIState) -> void:
@@ -578,7 +666,7 @@ func _perform_attack() -> void:
 		target.take_damage(attack_damage(), info)
 	if def.attack_fx != &"" and not _dead:
 		Fx.spawn(def.attack_fx, global_position, {"direction": -global_basis.z, "element": def.family,
-			"range": def.attack_range})
+			"range": attack_reach()})
 	attack_landed.emit(target, info)
 
 
@@ -588,6 +676,7 @@ func _die() -> void:
 		behavior.on_died()
 	MonsterDrops.drop_for(self)
 	EventBus.monster_killed.emit(def.id, def.family, global_position)
+	_set_outline(false)
 	died.emit(self)
 	if pack:
 		pack.remove(self)

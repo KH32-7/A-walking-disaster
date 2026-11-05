@@ -18,3 +18,4 @@ contribution = "말이 다른 주민들 사이를 통역하고 방송을 받아 
 first_line = "Спасибо. 아, 고맙다는 뜻이에요."
 rescue_lines = Array[String](["저 표지판, 제가 읽을게요.", "방송 들리면 말해 줘요. 받아 적을게요.", "조금만 쉬어요. 숨이 차서요."])
 situation = "이주민 센터 상담실"
+reviewed = true

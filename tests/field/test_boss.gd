@@ -2,6 +2,7 @@ extends RefCounted
 ## B-19: boss common rules and the ancient tree giant. Ticks are driven by hand.
 ## Data (04 table), telegraph shapes, patterns (slam, root burst, spore pod summon), phases,
 ## arena leash, out-of-combat recovery, first kill reward, drops, 3-day respawn, spawner, HUD key.
+## Respawn days are kept per boss (old per-region saves are moved over). BossMechanic hooks and hold().
 
 const DT := 0.1
 const BOSS_ID := &"ancient_tree_giant"
@@ -13,6 +14,38 @@ var _ok := true
 var _saved_kills: Dictionary
 var _saved_respawn: Dictionary
 var _saved_flags: Dictionary
+
+
+## Records the BossMechanic hooks; runs `action` patterns itself and ignores hits while `immune`.
+class FakeMechanic extends BossMechanic:
+	var calls: Array[StringName] = []
+	var immune := false
+	var landed: Array[StringName] = []
+
+	func on_added() -> void:
+		calls.append(&"added")
+
+	func can_use(pattern: BossPattern) -> bool:
+		return pattern.id != &"root_burst"
+
+	func on_pattern_started(pattern: BossPattern, _area: Dictionary) -> void:
+		calls.append(StringName("start_%s" % pattern.id))
+
+	func land_pattern(pattern: BossPattern, _area: Dictionary) -> bool:
+		if pattern.action == &"":
+			return false
+		landed.append(pattern.action)
+		boss.hold(2.0)
+		return true
+
+	func filter_damage(amount: float, _info: Dictionary) -> float:
+		return 0.0 if immune else amount
+
+	func on_phase_changed(phase: int) -> void:
+		calls.append(StringName("phase_%d" % phase))
+
+	func on_died() -> void:
+		calls.append(&"died")
 
 
 class FakeTarget extends Node3D:
@@ -46,6 +79,7 @@ func run() -> bool:
 		_test_park_wiring,
 		_test_hud,
 		_test_save,
+		_test_mechanic,
 	]
 	for test in tests:
 		FieldState.boss_kills = {}
@@ -254,7 +288,7 @@ func _test_first_kill() -> void:
 	_check(defeated == [true], "defeated as a first kill")
 	_check(GameState.has_flag(FLAG), "first kill sets blueprint_essence_workshop")
 	_check(FieldState.boss_kill_count(BOSS_ID) == 1, "kill counted")
-	_check(FieldState.boss_respawn_day.get(&"city_park") == GameState.day + 3, "park boss back in 3 days")
+	_check(FieldState.boss_respawn_day.get(BOSS_ID) == GameState.day + 3, "park boss back in 3 days")
 	_check(notes.size() == 1 and notes[0].contains("정수 공방 설계도"), "first kill notice %s" % [notes])
 	await (Engine.get_main_loop() as SceneTree).process_frame
 	var pile := _pile()
@@ -303,7 +337,8 @@ func _test_spawner_respawn() -> void:
 	FieldState.record_boss_kill(&"test_region", BOSS_ID, GameState.day + 3)
 	spawner.spawn_all()
 	_check(spawner.boss_at(arena) == null, "no boss before the respawn day")
-	FieldState.boss_respawn_day[&"test_region"] = GameState.day
+	_check(FieldState.boss_ready(&"sunken_sign_serpent"), "the day is kept per boss: another boss of the region is up")
+	FieldState.boss_respawn_day[BOSS_ID] = GameState.day
 	spawner.spawn_all()
 	_check(spawner.boss_at(arena) != null, "boss is back on the respawn day")
 
@@ -339,10 +374,58 @@ func _test_save() -> void:
 	FieldState.record_boss_kill(&"city_park", BOSS_ID, 9)
 	var data := FieldState.save_data()
 	FieldState.load_data({})
-	_check(FieldState.boss_kill_count(BOSS_ID) == 0 and FieldState.boss_ready(&"city_park"), "new game: no kills")
+	_check(FieldState.boss_kill_count(BOSS_ID) == 0 and FieldState.boss_ready(BOSS_ID), "new game: no kills")
 	FieldState.load_data(data)
-	_check(FieldState.boss_kill_count(BOSS_ID) == 1 and FieldState.boss_respawn_day.get(&"city_park") == 9,
+	_check(FieldState.boss_kill_count(BOSS_ID) == 1 and FieldState.boss_respawn_day.get(BOSS_ID) == 9,
 			"kills and respawn day survive a save")
+	FieldState.load_data({"boss_respawn_day": {&"city_park": 11}})
+	_check(FieldState.boss_respawn_day == {BOSS_ID: 11}, "an old per-region day moves to the region's boss %s"
+			% [FieldState.boss_respawn_day])
+
+
+func _test_mechanic() -> void:
+	var def := load("res://data/monsters/ancient_tree_giant.tres") as MonsterDef
+	var data := BossDef.for_monster(BOSS_ID).duplicate() as BossDef
+	data.mechanic = FakeMechanic
+	var special := BossPattern.new()
+	special.id = &"special"
+	special.action = &"dive"
+	special.range_max = 20.0
+	special.shape = &""
+	var patterns: Array[BossPattern] = [special]
+	patterns.append_array(data.patterns)
+	data.patterns = patterns
+	var giant := def.scene.instantiate() as BossMonster
+	giant.def = def
+	giant.boss = data
+	_root.add_child(giant)
+	giant.set_physics_process(false)
+	var m := giant.mechanic as FakeMechanic
+	_check(m != null and m.calls == [&"added"], "BossDef.mechanic is made and told it was added")
+	if m == null:
+		return
+	var player := _player(Vector3(0, 0, -8))
+	giant.chase(player)
+	giant.tick(DT)
+	_check(giant.casting() != null and giant.casting().id == &"special", "action pattern starts like any other")
+	_check(m.calls.has(&"start_special"), "mechanic hears the windup")
+	_tick(giant, 1.1)
+	_check(m.landed == [&"dive"] and player.hits.is_empty(), "mechanic lands the action, no common hit")
+	_check(giant.is_held(), "hold() hands the body to the mechanic")
+	_tick(giant, 1.0)
+	_check(giant.is_held() and giant.casting() == null, "no pattern while held")
+	_tick(giant, 1.2)
+	_check(not giant.is_held(), "the hold ends")
+	_tick(giant, 0.2)
+	_check(giant.casting() == null or giant.casting().id != &"root_burst", "can_use() false skips root burst")
+	m.immune = true
+	giant.take_damage(1000.0)
+	_check(is_equal_approx(giant.hp, giant.max_hp), "filter_damage 0 ignores the hit")
+	m.immune = false
+	giant.take_damage(400.0)
+	_check(m.calls.has(&"phase_2"), "mechanic hears the phase change")
+	giant.take_damage(100000.0)
+	_check(m.calls.back() == &"died", "mechanic hears the death")
 
 
 # --- Helpers --------------------------------------------------------------

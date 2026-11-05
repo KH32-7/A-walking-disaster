@@ -6,7 +6,6 @@
 script = ExtResource("1_region")
 id = &"city_park"
 name = "숲이 된 도심 공원"
-danger = 1
 map_scene = "res://levels/field/city_park/city_park.tscn"
 monster_families = Array[int]([1])
 family_shares = Array[float]([1.0])
@@ -15,4 +14,109 @@ loot_table_id = &"city_park"
 boss_id = &"ancient_tree_giant"
 extract_candidates = Array[StringName]([&"park_south_gate", &"park_east_bus", &"park_north_gate"])
 hidden_routes = Array[StringName]([&"park_old_underpass"])
+map_labels = Array[Dictionary]([{
+"kind": &"landmark",
+"pos": Vector2(-63, -7.5),
+"text": "야외 공연장"
+}, {
+"kind": &"landmark",
+"pos": Vector2(67.5, -58.5),
+"text": "유리 온실"
+}, {
+"kind": &"landmark",
+"pos": Vector2(-57, 72),
+"text": "관리사무소"
+}, {
+"kind": &"landmark",
+"pos": Vector2(57, 69),
+"text": "덩굴 놀이터"
+}, {
+"kind": &"landmark",
+"pos": Vector2(-4.5, -52.5),
+"text": "고목 광장"
+}, {
+"kind": &"landmark",
+"pos": Vector2(3, 37.5),
+"text": "연못과 아치 다리"
+}, {
+"kind": &"water",
+"pos": Vector2(3, 37.5),
+"text": "큰 연못"
+}, {
+"kind": &"water",
+"pos": Vector2(36, -42),
+"text": "개울"
+}, {
+"kind": &"spot",
+"pos": Vector2(22.5, 66),
+"text": "매점"
+}, {
+"kind": &"spot",
+"pos": Vector2(54.75, -27),
+"text": "관리 창고"
+}, {
+"kind": &"spot",
+"pos": Vector2(-85.5, -7.5),
+"text": "무대 뒤 대기실"
+}, {
+"kind": &"road",
+"pos": Vector2(1.5, 39),
+"text": "아치 다리"
+}, {
+"kind": &"road",
+"pos": Vector2(79.5, -29.25),
+"text": "온실 동쪽 길"
+}, {
+"kind": &"road",
+"pos": Vector2(-12, 76.5),
+"text": "중앙 산책로"
+}, {
+"kind": &"road",
+"pos": Vector2(-3, -97.5),
+"text": "북문 길"
+}, {
+"kind": &"road",
+"pos": Vector2(49.5, 64.5),
+"text": "놀이터 길"
+}, {
+"kind": &"road",
+"pos": Vector2(8.25, -28.5),
+"text": "광장 남쪽 길"
+}, {
+"kind": &"road",
+"pos": Vector2(-48.75, 22.5),
+"text": "서쪽 산책로"
+}, {
+"kind": &"road",
+"pos": Vector2(105, -7.5),
+"text": "동쪽 길"
+}, {
+"kind": &"road",
+"pos": Vector2(0, 105),
+"text": "남쪽 대로"
+}, {
+"kind": &"area",
+"pos": Vector2(42, 91.5),
+"text": "울타리 덤불"
+}, {
+"kind": &"area",
+"pos": Vector2(90, -6),
+"text": "동쪽 숲띠"
+}, {
+"kind": &"area",
+"pos": Vector2(57, -97.5),
+"text": "북쪽 숲"
+}, {
+"kind": &"area",
+"pos": Vector2(-63, -90),
+"text": "북서쪽 숲"
+}, {
+"kind": &"area",
+"pos": Vector2(-94.5, 69),
+"text": "남서쪽 덤불"
+}, {
+"kind": &"area",
+"pos": Vector2(-100.5, -13.5),
+"text": "서쪽 숲"
+}])
 unlock_text = "시작부터"

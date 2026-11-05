@@ -11,7 +11,9 @@ extends Monster
 ## - Phases only go up during a fight (healing above 50% does not undo phase 2).
 ## - Every attack is a pattern with a 1 s ground warning; there is no plain melee hit.
 ## - First kill: BossDef.first_kill_flags (the park boss: blueprint_essence_workshop) on the kill
-##   itself, not on extraction. Respawn: FieldState.boss_respawn_day[region] = day + respawn_days.
+##   itself, not on extraction. Respawn: FieldState.boss_respawn_day[boss id] = day + respawn_days.
+## - A boss's own rules live in BossDef.mechanic (BossMechanic hooks). hold(sec) hands it the body for a
+##   while (dive, stance): no AI, no patterns, only the mechanic's on_tick and statuses.
 ## Design: docs/design/04-monsters.md "보스", "드롭"; 06-magic-essence.md (정수 공방 설계도)
 
 signal phase_changed(phase: int)
@@ -36,6 +38,8 @@ var arena_radius: float = 15.0
 ## Region the respawn day is kept for.
 var region_id: StringName = &""
 var phase := 1
+## BossDef.mechanic instance, or null.
+var mechanic: BossMechanic
 
 ## pattern id -> seconds until it can be used again
 var _cooldowns: Dictionary = {}
@@ -45,6 +49,7 @@ var _cast_left := 0.0
 var _cast_area: Dictionary = {}
 var _summons: Array[Monster] = []
 var _first_kill := false
+var _hold_left := 0.0
 
 
 func _ready() -> void:
@@ -56,10 +61,25 @@ func _ready() -> void:
 		boss = BossDef.for_monster(def.id)
 	if boss == null:
 		push_error("%s has no BossDef in %s" % [def.id, BossDef.DIR])
+	elif boss.mechanic:
+		mechanic = boss.mechanic.new() as BossMechanic
+		if mechanic == null:
+			push_error("%s: BossDef.mechanic is not a BossMechanic" % def.id)
+		else:
+			mechanic.boss = self
+			mechanic.on_added()
 
 
 func tick(delta: float) -> void:
 	if is_dead():
+		return
+	if mechanic:
+		mechanic.on_tick(delta)
+		if is_dead():
+			return
+	if _hold_left > 0.0:
+		_hold_left -= delta
+		status.step(delta)
 		return
 	if _cast != null:
 		_step_cast(delta)
@@ -77,6 +97,10 @@ func tick(delta: float) -> void:
 
 
 func take_damage(amount: float, info: Dictionary = {}) -> void:
+	if mechanic and not is_dead():
+		amount = mechanic.filter_damage(amount, info)
+		if amount <= 0.0:
+			return
 	super.take_damage(amount, info)
 	if is_dead() or boss == null or max_hp <= 0.0:
 		return
@@ -84,6 +108,20 @@ func take_damage(amount: float, info: Dictionary = {}) -> void:
 	if next > phase:
 		phase = next
 		phase_changed.emit(phase)
+		if mechanic:
+			mechanic.on_phase_changed(phase)
+
+
+## Hands the body to the mechanic for `sec` seconds (dive, stance, stunned): the AI and patterns pause,
+## the mechanic's on_tick keeps running and moves the boss itself. 0 ends it early.
+func hold(sec: float) -> void:
+	_hold_left = maxf(sec, 0.0)
+	if _hold_left > 0.0:
+		_stop()
+
+
+func is_held() -> bool:
+	return _hold_left > 0.0
 
 
 ## Fighting: noticed someone, chasing, attacking or mid-pattern.
@@ -154,6 +192,8 @@ func _try_pattern() -> void:
 			continue
 		if pattern.is_summon() and _alive_summons() >= pattern.summon_max_alive:
 			continue
+		if mechanic and not mechanic.can_use(pattern):
+			continue
 		_start(pattern)
 		return
 
@@ -167,11 +207,13 @@ func _start(pattern: BossPattern) -> void:
 	to.y = 0.0
 	if to.length() > 0.01:
 		rotation.y = atan2(-to.x, -to.z)
-	_cast_area = {} if pattern.shape == &"" else _area_for(pattern, target.global_position)
+	_cast_area = {} if pattern.shape == &"" else area_for(pattern, target.global_position)
 	pattern_started.emit(pattern.id)
 	if not _cast_area.is_empty():
 		telegraph_started.emit(_cast_area)
 		Fx.spawn(FX_TELEGRAPH, _cast_area["position"], _cast_area)
+	if mechanic:
+		mechanic.on_pattern_started(pattern, _cast_area)
 
 
 ## Windup: the boss stands still (statuses still tick), then the pattern lands.
@@ -188,13 +230,16 @@ func _step_cast(delta: float) -> void:
 	_cast = null
 	_cast_area = {}
 	_gap = boss.pattern_gap_sec
+	if mechanic and mechanic.land_pattern(pattern, area):
+		return
 	if pattern.is_summon():
-		_summon(pattern)
-	else:
-		_hit_area(pattern, area)
+		summon(pattern)
+	elif not area.is_empty():
+		hit_area(pattern, area)
 
 
-func _area_for(pattern: BossPattern, target_pos: Vector3) -> Dictionary:
+## The telegraph area of `pattern` aimed at `target_pos` (Fx boss_telegraph params + position, pattern_id).
+func area_for(pattern: BossPattern, target_pos: Vector3) -> Dictionary:
 	var dir := target_pos - global_position
 	dir.y = 0.0
 	if dir.length() < 0.01:
@@ -213,7 +258,8 @@ func _area_for(pattern: BossPattern, target_pos: Vector3) -> Dictionary:
 		"kind": pattern.kind}
 
 
-func _hit_area(pattern: BossPattern, area: Dictionary) -> void:
+## Damages everyone inside `area` and plays boss_<pattern.id>. Mechanics may call it for their own hits.
+func hit_area(pattern: BossPattern, area: Dictionary) -> void:
 	var info := {"source": self, "element": def.family, "monster_id": def.id,
 		"pattern_id": pattern.id, "position": area["position"]}
 	if not pattern.status.is_empty():
@@ -250,7 +296,8 @@ func _area_targets(area: Dictionary) -> Array[Node3D]:
 	return inside
 
 
-func _summon(pattern: BossPattern) -> void:
+## Spawns pattern.summon_id around the target (inside the arena). Mechanics may call it too.
+func summon(pattern: BossPattern) -> void:
 	var summon_def := load(MONSTER_DIR + String(pattern.summon_id) + ".tres") as MonsterDef
 	var parent := get_parent() as Node3D
 	if summon_def == null or summon_def.scene == null or parent == null:
@@ -308,6 +355,7 @@ func _recover(delta: float) -> void:
 func _reset_fight() -> void:
 	_cooldowns.clear()
 	_gap = 0.0
+	_hold_left = 0.0
 	for m in _summons:
 		if is_instance_valid(m):
 			m.vanish()
@@ -315,6 +363,8 @@ func _reset_fight() -> void:
 	if phase != 1:
 		phase = 1
 		phase_changed.emit(phase)
+	if mechanic:
+		mechanic.on_reset()
 
 
 ## Patterns replace the plain melee hit (ATTACK state only keeps the boss close and facing).
@@ -324,6 +374,8 @@ func _perform_attack() -> void:
 
 func _die() -> void:
 	_first_kill = boss != null and FieldState.boss_kill_count(def.id) == 0
+	if mechanic:
+		mechanic.on_died()
 	super._die()
 	if boss == null:
 		return

@@ -59,7 +59,9 @@ func build(def: FxDef, p: Dictionary, reduced_flash: bool) -> bool:
 			lifetime = maxf(lifetime, _layer_end(layer))
 		elif layer.kind == FxLayer.Kind.TELEGRAPH:
 			lifetime += layer.lifetime  # stays solid through the wind-up, then lingers this long
-	if _parts.is_empty():
+	# Lights need no texture, so on a clone without assets/ an effect can end up as a lone light.
+	# That counts as "assets missing" too: skip it like the rest (Fx docs, test_monster_visuals).
+	if _parts.is_empty() or _parts.all(func(part): return part["layer"].kind == FxLayer.Kind.LIGHT):
 		return false
 	advance(0.0)
 	return true

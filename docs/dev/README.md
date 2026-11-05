@@ -1,18 +1,21 @@
-# 개발 분업 개요
+# 개발 개요
 
-목표: 튜토리얼을 뺀 **코어 기능이 전부 돌아가는 빌드**. 팀원 4명이 레인 하나씩, 각자 Claude Code로 작업한다.
-규칙은 루트 [CLAUDE.md](../../CLAUDE.md), 레인 사이의 연결은 [contracts.md](contracts.md)에 있다.
+목표: 튜토리얼을 뺀 **코어 기능이 전부 돌아가는 빌드**. 규칙은 루트 [CLAUDE.md](../../CLAUDE.md),
+기능 사이의 공개 함수·신호는 [contracts.md](contracts.md)에 있다.
 
-## 레인
+**M2까지는 4명이 레인(A~D)을 나눠 파일 소유권을 지켰다. M2 이후로 레인 구분과 소유권은 없다.**
+누구든 어느 파일이든 고치고, 다른 사람 파일이라고 요청 이슈를 거치지 않는다.
 
-| 레인 | 한 줄 요약 | 작업 목록 | 담당자 |
-|---|---|---|---|
-| A 코어·시스템 | 하루 흐름·저장·자원·아이템·강화·각인·퀘스트·AI 무전/생성 | [lane-a-core.md](lane-a-core.md) | (미정) |
-| B 필드 | 플레이어·전투·클래스·소음·마물·루팅·구조·탈출·필드 맵 레이아웃 | [lane-b-field.md](lane-b-field.md) | (미정) |
-| C 기지 | 건설·주민·관계·인구·습격·방어·기지 맵 레이아웃 | [lane-c-base.md](lane-c-base.md) | (미정) |
-| D 표현·콘텐츠 | 모든 UI·아트 임포트·셰이더·맵 꾸미기·VFX·사운드·에셋 | [lane-d-presentation.md](lane-d-presentation.md) | (미정) |
+## 작업 목록 (기록)
 
-담당자가 정해지면 위 표와 `.github/CODEOWNERS`를 채운다(A 담당).
+M0~M2 태스크는 아래 문서에 기능별로 남아 있다. 앞으로의 할 일도 기능에 맞는 문서에 이어 적는다.
+
+| 기능 | 한 줄 요약 | 작업 목록 |
+|---|---|---|
+| 코어·시스템 (A) | 하루 흐름·저장·자원·아이템·강화·각인·퀘스트·무전 | [lane-a-core.md](lane-a-core.md) |
+| 필드 (B) | 플레이어·전투·클래스·소음·마물·루팅·구조·탈출·필드 맵 | [lane-b-field.md](lane-b-field.md) |
+| 기지 (C) | 건설·주민·관계·인구·습격·방어·기지 맵 | [lane-c-base.md](lane-c-base.md) |
+| 표현·콘텐츠 (D) | UI·아트·셰이더·맵 꾸미기·VFX·사운드·에셋 | [lane-d-presentation.md](lane-d-presentation.md) |
 
 ## 마일스톤
 
@@ -25,21 +28,13 @@
 
 튜토리얼은 이번 범위가 아니다(나중에 별도).
 
-## 의존 순서 (먼저 끝나야 하는 것)
-
-- **A-01 계약**, **B-02 필드 마커**, **C-01 기지 마커**, **D-01 UI 테마**는 M0 첫날 끝낸다. 다른 레인이 기다린다.
-- B와 C는 A의 `Armory`(A-07)·`Economy`(A-06)가 나오기 전엔 contracts.md의 함수 시그니처대로 **가짜 값**을 돌려주는
-  자기 샌드박스용 스텁을 `_sandbox/`에 두고 작업한다. 실제 오토로드를 고치지 않는다.
-- D는 B·C의 신호와 getter만 보고 UI를 만든다. 데이터가 아직 없으면 `ui/_preview/`의 가짜 데이터로 화면을 만든다.
-- 통합(main.tscn에서 하루 한 바퀴)은 A-05가 맡는다.
-
 ## 브랜치·PR
 
 1. `git pull --rebase origin main`
-2. `git switch -c lane-<x>/<태스크ID>-<짧은설명>`
-3. 작업, 커밋 메시지는 `[태스크ID] 내용`
-4. 머지 전 확인(아래) → PR → 같은 레인이 아닌 팀원 1명이 훑어본다 → squash 머지
-5. 자기 레인 문서의 체크박스를 같은 PR에서 체크한다
+2. `git switch -c <태스크ID 또는 종류>-<짧은설명>` (예: `C-22-migration`, `fix/fx-light`)
+3. 작업, 커밋 메시지는 `[태스크ID] 내용` (태스크가 없으면 `[fix]`, `[docs]` 등)
+4. 머지 전 확인(아래) → PR → squash 머지
+5. 작업 목록 문서에 그 태스크가 있으면 같은 PR에서 체크한다
 
 ## 머지 전 확인
 
@@ -59,10 +54,10 @@ GODOT="/c/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windows.
 ```
 
 테스트만 돌리기: `godot --headless --path . --script res://tests/run_tests.gd -- --lane=field`
-(테스트 파일은 `tests/<lane>/test_*.gd`, `run() -> bool`. RefCounted나 Node 상속, `await` 가능)
+(테스트 파일은 `tests/<core|field|base|ui>/test_*.gd`, `run() -> bool`. RefCounted나 Node 상속, `await` 가능)
 
 ## Claude Code에게 일 맡기는 법
 
-- 한 세션에 태스크 하나. "B-05 해줘. 레인 문서의 완료 조건을 지켜."처럼 태스크 ID로 시킨다.
-- 끝나면 완료 조건을 하나씩 확인시키고, 샌드박스 씬에서 실행해 본다.
-- 다른 레인 파일을 고쳐야 한다고 하면 멈추고 요청 이슈로 돌린다.
+- 한 세션에 할 일 하나. "C-22 해줘. 작업 목록의 완료 조건을 지켜."처럼 태스크 ID나 내용으로 시킨다.
+- 끝나면 완료 조건을 하나씩 확인시키고, 샌드박스 씬이나 main.tscn에서 실행해 본다.
+- 필요한 파일은 어느 폴더든 바로 고친다. 공개 함수·신호를 바꾸면 쓰는 곳과 contracts.md를 같이 고친다.

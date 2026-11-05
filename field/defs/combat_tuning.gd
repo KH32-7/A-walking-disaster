@@ -42,7 +42,8 @@ extends Resource
 @export var perfect_block_stun_sec: float = 1.0
 
 @export_group("Shooting")
-@export var aim_spread_mult: float = 0.5
+## User decision 2026-11-06: aimed shots go exactly where you aim (no spread, no bloom).
+@export var aim_spread_mult: float = 0.0
 @export var moving_spread_mult: float = 1.5
 ## Flat speed above this counts as moving for spread.
 @export var moving_speed_threshold: float = 0.5
@@ -57,6 +58,14 @@ extends Resource
 ## Damage x this when the shot crossed low cover within cover_near_target_m of the target.
 @export var cover_damage_mult: float = 0.5
 @export var cover_near_target_m: float = 2.0
+## Monsters are hit at any height on the shot line (short split slimes, rubble bugs): a box from
+## this far below the shot height ...
+@export var shot_hit_below: float = 1.5
+## ... to this far above it. Walls are still found by the ray at muzzle_height.
+@export var shot_hit_above: float = 2.0
+## Aim help: half width (m) of the shot box against monsters. Index = Settings `aim_assist`
+## (0 off = thin line, 1..3).
+@export var shot_radius_by_assist: Array[float] = [0.0, 0.25, 0.4, 0.55]
 ## Starting pistol has infinite ammo (03 "사격"). TODO: a "starter" flag on the item once A adds one.
 @export var infinite_ammo_defs: Array[StringName] = [&"pistol"]
 

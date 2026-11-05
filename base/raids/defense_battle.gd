@@ -16,6 +16,11 @@ signal finished(result: Dictionary)
 
 const COMPANION_SCENE := preload("res://field/companion/field_companion.tscn")
 const STRUCTURE_HEIGHT := 2.6
+## Guards per spot (초소 경비 2명, 10 탭 표). The gathering point takes more.
+const SPOT_CAP := 2
+const GATHER_CAP := 4
+## D-14's warning card (RaidFlow.WARNING): while it is open the player has not chosen yet.
+const WARNING_SCREEN := &"raid_warning"
 
 enum State { IDLE, PREP, WAVE, DONE }
 
@@ -40,7 +45,9 @@ var _player: Node
 var _crowd: ResidentCrowd
 var _views: Node3D
 var _guards := {}         # resident_id -> FieldCompanion
+var _guard_spot := {}     # resident_id -> post name
 var _posts := {}          # post name -> Marker3D
+var _post_def := {}       # post name -> building def id (gather has none)
 var _structures := {}     # building uid -> RaidStructure
 var _rng := RandomNumberGenerator.new()
 
@@ -66,6 +73,10 @@ func start() -> void:
 	_spawn_structures()
 	_spawn_guards()
 	_place_residents(true)
+	# 방어전 탄약·소모품 (A, issue #121/#110): 창고에서 장착 무기 탄과 방어전 소모품을 가방에.
+	Bag.load_for_defense()
+	Colony._attach_battle(self)
+	Colony.defense_cancelled.connect(_on_cancelled)
 	_begin_prep()
 
 
@@ -76,6 +87,8 @@ func _process(delta: float) -> void:
 func tick(delta: float) -> void:
 	if state == State.DONE or state == State.IDLE:
 		return
+	if _choice_pending():
+		return  # 경보 카드에서 직접 방어 / 자동 판정을 고르는 동안 시간이 흐르지 않음
 	elapsed += delta
 	if _lost():
 		_finish(false)
@@ -114,12 +127,56 @@ func post_names() -> Array:
 	return _posts.keys()
 
 
-## Moves a guard to another post (D: drag between waves).
+## Moves a guard to another post (D: drag between waves). A spot holds SPOT_CAP guards.
 func move_guard(resident_id: StringName, post_name: StringName) -> bool:
 	if not _guards.has(resident_id) or not _posts.has(post_name):
 		return false
+	if _guard_spot.get(resident_id, &"") != post_name and _guards_at(post_name) >= _spot_cap(post_name):
+		return false
 	_guards[resident_id].set(&"guard_post", _posts[post_name])
+	_guard_spot[resident_id] = post_name
 	return true
+
+
+## "준비 끝내고 바로 시작" (D-14): the next wave comes now. False outside the prep.
+func skip_prep() -> bool:
+	if state != State.PREP or _choice_pending():
+		return false
+	prep_left = 0.0
+	_start_wave()
+	return true
+
+
+## State for the D-14 defence HUD (Colony.defense_state()).
+func hud_state() -> Dictionary:
+	var door := {}
+	for uid in _structures:
+		if Colony.get_building(uid).get("def_id", &"") == DefenseRules.SHELTER:
+			var def := BaseDB.get_building(DefenseRules.SHELTER)
+			door = {"hp": int(Colony.get_building(uid).get("durability", 0)), "max": def.durability}
+	var traps_total := 0
+	var traps_ready := 0
+	for uid in Colony.building_ids(&"spike_trap", true):
+		traps_total += 1
+		var b := Colony.get_building(uid)
+		if not b["damaged"] and int(b["durability"]) > 0:
+			traps_ready += 1
+	var guards: Array = []
+	var powers: Dictionary = Colony.defense_breakdown()["guards"]
+	for id in _guards:
+		var r := Colony.get_resident(id)
+		guards.append({"id": id, "name": String(r.get("nickname", "")) if String(r.get("nickname", "")) != "" else String(r.get("name", "")),
+			"power": float(powers.get(id, 0.0)), "spot": _guard_spot.get(id, &""), "down": _guard_down(_guards[id])})
+	var spots: Array = []
+	for name in _posts:
+		spots.append({"id": name, "name": _spot_label(name), "kind": _spot_kind(name), "cap": _spot_cap(name)})
+	var phase: StringName = {State.PREP: &"prep", State.WAVE: &"fight", State.DONE: &"done"}.get(state, &"prep")
+	return {
+		"wave": wave + 1 if state == State.PREP else wave, "waves": DefenseRules.WAVES, "phase": phase,
+		"time_left": maxf(prep_left, 0.0), "prep_sec": DefenseRules.PREP_SEC,
+		"hold_left": maxf(DefenseRules.SURVIVE_SEC - elapsed, 0.0), "monsters_left": alive.filter(func(m): return is_instance_valid(m)).size(),
+		"shelter_door": door, "traps": {"ready": traps_ready, "total": traps_total}, "guards": guards, "spots": spots,
+	}
 
 
 ## 함정 재설치 during the prep: every used-up trap that can be paid for. Returns how many.
@@ -227,6 +284,49 @@ func _cleanup() -> void:
 		if is_instance_valid(_structures[uid]):
 			_structures[uid].queue_free()
 	_place_residents(false)
+	Bag.unload_to_base()  # 남은 탄·소모품은 창고로 (A)
+	Colony._detach_battle(self)
+	if Colony.defense_cancelled.is_connected(_on_cancelled):
+		Colony.defense_cancelled.disconnect(_on_cancelled)
+
+
+## The defence ended by a judgment (경보 카드의 자동 판정): step down without a result of our own.
+func _on_cancelled() -> void:
+	if state == State.DONE:
+		return
+	state = State.DONE
+	_cleanup()
+	finished.emit({})
+	queue_free()
+
+
+## The D-14 warning card is still asking 직접 방어 / 자동 판정.
+func _choice_pending() -> bool:
+	return UI.has_method(&"is_open") and bool(UI.call(&"is_open", WARNING_SCREEN))
+
+
+func _guards_at(post_name: StringName) -> int:
+	return _guard_spot.values().filter(func(p): return p == post_name).size()
+
+
+func _spot_kind(post_name: StringName) -> StringName:
+	var def_id: StringName = _post_def.get(post_name, &"")
+	if def_id == DefenseRules.SHELTER:
+		return &"shelter"
+	if def_id in DefenseRules.GATES:
+		return &"gate"
+	return &"post"
+
+
+func _spot_cap(post_name: StringName) -> int:
+	return GATHER_CAP if post_name == &"gather" else SPOT_CAP
+
+
+func _spot_label(post_name: StringName) -> String:
+	if post_name == &"gather":
+		return "모임터"
+	var def := BaseDB.get_building(_post_def.get(post_name, &""))
+	return def.display_name + " 앞" if def != null else String(post_name)
 
 
 # --- Setup of the map ---------------------------------------------------------
@@ -245,6 +345,7 @@ func _make_posts() -> void:
 			add_child(post)
 			post.global_position = view.global_position
 			_posts[StringName(post.name)] = post
+			_post_def[StringName(post.name)] = def_id
 
 
 func _spawn_structures() -> void:
@@ -265,12 +366,14 @@ func _spawn_structures() -> void:
 
 
 func _spawn_guards() -> void:
-	var post_list := _posts.values().filter(func(p): return String(p.name) != "Post_gather")
+	var post_names: Array = _posts.keys().filter(func(n): return n != &"gather")
 	var i := 0
 	for id in Colony.active_resident_ids():
 		if Colony.job_of(id) != &"guard" or not WorkRules.can_work(Colony.get_resident(id)):
 			continue
-		var post: Marker3D = post_list[i % post_list.size()] if not post_list.is_empty() else _posts[&"gather"]
+		var post_name: StringName = post_names[i % post_names.size()] if not post_names.is_empty() else &"gather"
+		var post: Marker3D = _posts[post_name]
+		_guard_spot[id] = post_name
 		i += 1
 		var guard := COMPANION_SCENE.instantiate() as FieldCompanion
 		guard.setup(id, Colony.get_resident(id))

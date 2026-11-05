@@ -12,6 +12,10 @@ enum Anchor {
 }
 
 @export var id: StringName = &""
+## Empty: the common area hit (shape) or summon (summon_id). Set: BossDef.mechanic runs it
+## (dive, flash, clones...) from the same windup and telegraph; `params` holds its own numbers.
+@export var action: StringName = &""
+@export var params: Dictionary = {}
 
 @export_group("Use")
 ## Picked only while the target is this far from the boss (flat meters).

@@ -67,7 +67,7 @@ func next_corner(point: Vector3, delta: float) -> Vector3:
 ## Raid structure right in front (along `dir`, within attack range), or null.
 func blocking_structure(dir: Vector3) -> Node3D:
 	var origin := monster.global_position + Vector3.UP * MonsterRules.RAID_BLOCK_RAY_HEIGHT
-	var to := origin + dir.normalized() * monster.def.attack_range
+	var to := origin + dir.normalized() * monster.attack_reach()
 	var query := PhysicsRayQueryParameters3D.create(origin, to, WORLD_MASK, [monster.get_rid()])
 	var hit := monster.get_world_3d().direct_space_state.intersect_ray(query)
 	return structure_of(hit.get("collider")) if not hit.is_empty() else null

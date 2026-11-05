@@ -17,8 +17,8 @@ const WARNING := &"raid_warning"
 const RESULT := &"raid_result"
 const EMERGENCY := &"emergency_return"
 
-## Proposed C-17 API: the player picked 직접 방어 on the warning card. Until Colony has it the
-## direct button is disabled.
+## C-17 API: the player picked 직접 방어 on the warning card (Colony.start_defense). Without it the
+## direct button is disabled. 자동 판정 = Colony.resolve_raid(PLAYED), which also ends a prepared defence.
 const DIRECT_API := &"start_defense"
 
 const TYPE_NAMES := {&"swarm": "무리 습격", &"wave": "파도 습격", &"siege": "공성 습격",

@@ -15,6 +15,9 @@ const DIR := "res://data/monsters/bosses/"
 @export var patterns: Array[BossPattern] = []
 ## Wait after one pattern ends before the next can start.
 @export var pattern_gap_sec: float = 1.0
+## The boss's own rules (a BossMechanic script): special patterns (BossPattern.action), immunity, guard...
+## Empty: only the common area and summon patterns.
+@export var mechanic: Script
 @export var respawn_days: int = 3
 
 @export_group("First kill")

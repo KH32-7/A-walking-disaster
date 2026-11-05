@@ -10,7 +10,7 @@ uniform vec4 foam : source_color = vec4(0.86, 0.95, 0.94, 1.0);
 uniform float scale = 0.12;
 uniform float speed = 0.04;
 uniform float band = 0.55;
-uniform float sparkle_amount : hint_range(0.0, 1.0) = 0.6;
+uniform float sparkle_amount : hint_range(0.0, 1.0) = 0.35;
 uniform float foam_width = 0.35;
 uniform sampler2D depth_tex : hint_depth_texture, filter_linear;
 
@@ -32,7 +32,8 @@ void fragment() {
 	vec2 p = v_world.xz * scale;
 	float n = noise(p + TIME * speed * vec2(1.0, 0.6)) * 0.6 + noise(p * 2.3 - TIME * speed * vec2(0.7, 1.2)) * 0.4;
 	vec3 col = mix(deep.rgb, shallow.rgb, step(band, n));
-	float sp = step(0.985, noise(p * 9.0 + TIME * 0.35)) * sparkle_amount;
+	// Sparkles: small (p * 40, about 0.2 m cells) so bloom does not turn them into glowing blocks.
+	float sp = step(0.99, noise(p * 40.0 + TIME * 0.35)) * sparkle_amount;
 	float d = texture(depth_tex, SCREEN_UV).r;
 	vec4 world = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, d, 1.0);
 	world.xyz /= world.w;

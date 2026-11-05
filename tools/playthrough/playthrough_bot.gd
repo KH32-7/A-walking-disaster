@@ -143,7 +143,7 @@ func _day2() -> bool:
 	await _shot("field_flooded_mall")
 	UI.open(&"map")
 	await _frames(15)
-	_check(UI.is_open(&"map") and UI.get_screen(&"map").map.areas.size() >= 20, "침수 상가 지도에 지명이 뜸")
+	_check(UI.is_open(&"map") and UI.get_screen(&"map").map.place_labels.size() >= 10, "침수 상가 지도에 지명이 뜸")
 	await _shot("map_flooded_mall")
 	UI.close(&"map")
 	await _frames(5)

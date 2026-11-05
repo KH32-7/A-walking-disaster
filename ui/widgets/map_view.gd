@@ -32,6 +32,13 @@ var routes: Array = []:
 	set(v):
 		routes = v
 		queue_redraw_all()
+## Place names (RegionDef.map_labels): [{"text", "pos": Vector2 world x/z, "kind"}].
+## Drawn after the marks and skipped where they would cover a mark or its label, most important
+## kind first, so a crowded spot keeps its landmark and loses the small names.
+var place_labels: Array = []:
+	set(v):
+		place_labels = v
+		queue_redraw_all()
 var player_pos := Vector3.ZERO
 var player_dir := Vector2(0, -1)  # x/z forward
 var has_player := false
@@ -145,28 +152,20 @@ func _blank() -> Texture2D:
 ## (the side panels list everything anyway).
 ## Region name drawn big at the top of the map (덕코프 지도처럼).
 var title := ""
-## Place names on the map: [{"pos": Vector3, "text": String, "big": bool}]. Text only, under the marks.
-var areas: Array = []
 var _labels: Array[Rect2] = []
 
 
 func _draw_ink() -> void:
 	_labels.clear()
 	var font := UiThemeBuilder.font_kr(600)
-	for a: Dictionary in areas:
-		var big := bool(a.get("big", false))
-		var fs := 20 if big else 13
-		var txt := String(a.text)
-		var at := to_map(a.pos)
-		var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		_text(Vector2(at.x - w * 0.5, at.y + fs * 0.35), txt, font, fs, UiTokens.TEXT if big else Color(UiTokens.TEXT, 0.82))
 	for r: Dictionary in routes:
 		_draw_route(to_map(r.from), to_map(r.to), String(r.get("label", "숨은 경로")), font)
 	for m: Dictionary in marks:
 		_draw_mark(to_map(m.pos), StringName(m.kind), String(m.get("label", "")), font)
+	_draw_place_labels()
 	if has_player:
 		_draw_player(to_map(player_pos))
-	if title != "" and areas.is_empty():  # with place names the header already names the region
+	if title != "" and place_labels.is_empty():  # with place names the header already names the region
 		var tw := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 34).x
 		_text(Vector2((size.x - tw) * 0.5, 52), title, font, 34, UiTokens.TEXT)
 	# frame, north tick, scale bar
@@ -192,18 +191,65 @@ func _draw_ink() -> void:
 func _draw_mark(at: Vector2, kind: StringName, label: String, font: Font) -> void:
 	draw_symbol(_ink, at, kind)
 	if label != "":
-		_place_label(at, label, font, UiTokens.TEXT)
+		if kind == &"extract":
+			# Exits are what the player looks for first: bigger, bolder, in the exit colour.
+			_place_label(at, label, UiThemeBuilder.font_kr(700), UiTokens.GOOD.lightened(0.35), 17)
+		else:
+			_place_label(at, label, font, UiTokens.TEXT)
+	# After its own label: keeps place names (drawn later) off the symbol.
+	_labels.append(Rect2(at - Vector2(16, 16), Vector2(32, 32)))
 
 
-func _place_label(at: Vector2, label: String, font: Font, color: Color) -> void:
-	var w := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+func _place_label(at: Vector2, label: String, font: Font, color: Color, fs := 15) -> void:
+	var w := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	for dy in [30.0, -20.0]:
-		var rect := Rect2(at.x - w * 0.5 - 2, at.y + dy - 15, w + 4, 20)
+		var rect := Rect2(at.x - w * 0.5 - 2, at.y + dy - fs, w + 4, fs + 5)
 		if _labels.any(func(r: Rect2) -> bool: return r.intersects(rect)):
 			continue
 		_labels.append(rect)
-		_text(Vector2(at.x - w * 0.5, at.y + dy), label, font, 15, color)
+		_text(Vector2(at.x - w * 0.5, at.y + dy), label, font, fs, color)
 		return
+
+
+## Place-name look per kind: [font weight, size, colour, outline]. The words carry the meaning;
+## colour only groups them (landmark white, water blue, green areas green, roads and spots dim).
+const PLACE_STYLE := {
+	&"landmark": [700, 19, UiTokens.TEXT, 6],
+	&"water": [600, 16, Color("bfe6f2"), 5],
+	&"area": [600, 15, Color("cfe3b4"), 5],
+	&"road": [500, 13, UiTokens.TEXT_DIM, 4],
+	&"spot": [500, 12, UiTokens.TEXT_DIM, 4],
+}
+
+
+func _draw_place_labels() -> void:
+	var order := place_labels.duplicate()
+	order.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return _kind_rank(a.get("kind", &"")) < _kind_rank(b.get("kind", &"")))
+	var area := Rect2(Vector2.ZERO, size)
+	for l: Dictionary in order:
+		var kind := StringName(l.get("kind", &"spot"))
+		var st: Array = PLACE_STYLE.get(kind, PLACE_STYLE[&"spot"])
+		var font := UiThemeBuilder.font_kr(st[0])
+		var fs: int = st[1]
+		var text := String(l.get("text", ""))
+		var p: Vector2 = l.get("pos", Vector2.ZERO)
+		var at := to_map(Vector3(p.x, 0.0, p.y))
+		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var rect := Rect2(at.x - w * 0.5 - 3, at.y - fs * 0.5 - 3, w + 6, fs + 6)
+		if not area.encloses(rect) or _labels.any(func(r: Rect2) -> bool: return r.intersects(rect)):
+			continue
+		_labels.append(rect)
+		var base := Vector2(at.x - w * 0.5, at.y + fs * 0.35)
+		if kind == &"spot":
+			_ink.draw_circle(Vector2(at.x - w * 0.5 - 7, at.y), 2.5, st[2])
+		_ink.draw_string_outline(font, base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, st[3], Color(0, 0, 0, 0.8))
+		_ink.draw_string(font, base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, st[2])
+
+
+static func _kind_rank(kind: StringName) -> int:
+	var i := RegionDef.MAP_LABEL_KINDS.find(kind)
+	return i if i >= 0 else RegionDef.MAP_LABEL_KINDS.size()
 
 
 ## Draws one map symbol centred on `at`. Static so the legend draws the very same shapes.

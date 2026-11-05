@@ -40,24 +40,6 @@ const OVERVIEWS := {
 	&"flooded_mall": ["res://art/maps/flooded_mall_overview_2k.webp", Rect2(-112.5, -112.5, 225.0, 225.0)],
 }
 
-## Place names per region, in the planning board's metres (0..150, north-west corner = 0, 0).
-## World = (m − 75) × PLACE_SCALE on x / z. Source: 기획판 "해솔 침수 상가 지구, 1층 지형".
-const PLACE_SCALE := 1.5
-const PLACES := {
-	&"flooded_mall": [
-		["해솔마트", 18, 12, true], ["버스 차고지", 77, 4, true], ["주유소", 46, 78, true],
-		["해솔 상가", 102, 88, true], ["선착장", 128, 94, true], ["하역장", 102, 126, true],
-		["해솔약국", 50, 15, false], ["북쪽 진입로", 60, 20, false], ["정비실", 103, 25, false],
-		["차고지 뒤 숲", 121, 7, false], ["강변로", 81, 37, false], ["강변 덤불 둑", 27, 51, false],
-		["서쪽 다리", 29, 61, false], ["넘친 옛 하천", 62, 62, false], ["해솔대교", 100, 63, false],
-		["무너진 주택가", 13, 80, false], ["바다", 139, 83, false], ["편의점", 55, 101, false],
-		["반쯤 잠긴 보도교", 79, 103, false], ["나무 잔교", 136, 103, false], ["잠긴 골목 물길", 81, 110, false],
-		["주유소 길", 36, 113, false], ["파란 대문 집", 50, 112, false], ["동네 의원", 63, 113, false],
-		["잠긴 놀이공원", 15, 119, false], ["철물 창고", 50, 129, false], ["반지하 집", 63, 129, false],
-		["덩굴 언덕", 124, 135, false], ["세탁소", 50, 141, false], ["구멍가게", 63, 140, false],
-	],
-}
-
 var region_id: StringName = &""
 var _revealed_override: Array = []
 var _explore: FieldExplore
@@ -66,6 +48,8 @@ var map: MapView
 var _sub: SubViewport
 var _goals: VBoxContainer
 var _exits: VBoxContainer
+## RegionDef.map_labels of this region (place names on the map, names for the exits).
+var _place_labels: Array = []
 var _dusk: Label
 var _seen_label: Label
 var _t := 0.0
@@ -146,6 +130,9 @@ func _build_body(b: Control) -> void:
 	map.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	b.resized.connect(_fit_map.bind(b))
 	_fit_map(b)
+	var def := RegionDef.load_def(region_id)
+	_place_labels = def.map_labels if def != null else []
+	map.place_labels = _place_labels
 	var art: Array = OVERVIEWS.get(region_id, [])
 	if not art.is_empty() and ResourceLoader.exists(art[0]):
 		map.set_art(load(art[0]) as Texture2D, art[1])
@@ -166,16 +153,6 @@ func _fit_map(b: Control) -> void:
 
 
 ## Region display name. Journal keeps the only Korean region names for now (TODO(B): RegionDef name).
-## "동쪽 탈출 · 열쇠 필요": side of the map from the point id (park_east_bus → 동쪽) + its type.
-static func exit_name(p: ExtractPoint) -> String:
-	var kind := String(EXTRACT_TYPES[clampi(int(p.type), 0, EXTRACT_TYPES.size() - 1)])
-	var id := String(p.id)
-	for pair: Array in [["north", "북쪽"], ["south", "남쪽"], ["east", "동쪽"], ["west", "서쪽"]]:
-		if pair[0] in id:
-			return "%s %s" % [pair[1], kind]
-	return kind
-
-
 static func region_name(id: StringName) -> String:
 	if id == &"":
 		return "필드"
@@ -253,6 +230,29 @@ func _bounds() -> Rect2:
 	return Rect2(r.get_center() - Vector2(s, s) * 0.5, Vector2(s, s))
 
 
+## "하역장 탈출", "주유소 탈출 · 발전기"; just the type words when no place is near.
+static func exit_label(type: int, place: String) -> String:
+	var kind := String(EXTRACT_TYPES[clampi(type, 0, EXTRACT_TYPES.size() - 1)])
+	return kind if place.is_empty() else "%s %s" % [place, kind]
+
+
+## Name of the closest landmark or road (then any place) within `max_m` metres, "" if none.
+static func place_near(labels: Array, pos: Vector3, max_m := 30.0) -> String:
+	var best := ""
+	var best_score := INF
+	for l: Dictionary in labels:
+		var p: Vector2 = l.get("pos", Vector2.ZERO)
+		var d := p.distance_to(Vector2(pos.x, pos.z))
+		if d > max_m:
+			continue
+		# Landmarks and roads name a spot best; areas, water and small spots only when nothing else.
+		var score := d if StringName(l.get("kind", &"")) in [&"landmark", &"road"] else d + max_m
+		if score < best_score:
+			best_score = score
+			best = String(l.get("text", ""))
+	return best
+
+
 func _extraction() -> Node:
 	return get_tree().get_first_node_in_group(ExtractionManager.GROUP)
 
@@ -269,7 +269,7 @@ func _collect() -> void:
 	for p: ExtractPoint in _markers(ExtractPoint.GROUP):
 		if em != null and not p.id in active:
 			continue
-		var label := exit_name(p)
+		var label := exit_label(int(p.type), place_near(_place_labels, p.global_position))
 		marks.append({"pos": p.global_position, "kind": &"extract", "label": label})
 		exits.append({"pos": p.global_position, "label": label, "wait": p.wait_sec, "noise": p.noise_radius, "id": p.id})
 	for n in _markers(MonsterNest.GROUP):
@@ -277,11 +277,6 @@ func _collect() -> void:
 	for a in _markers(BossArena.GROUP):
 		marks.append({"pos": a.global_position, "kind": &"danger", "label": "보스 구역"})
 	map.title = region_name(region_id)
-	var areas: Array = []
-	for p: Array in PLACES.get(region_id, []):
-		areas.append({"pos": Vector3((float(p[1]) - 75.0) * PLACE_SCALE, 0.0, (float(p[2]) - 75.0) * PLACE_SCALE),
-			"text": String(p[0]), "big": bool(p[3])})
-	map.areas = areas
 	var objectives: Array = []
 	for o: Dictionary in Quests.active_field_objectives(region_id):
 		var node := _find_marker(StringName(o.get("marker", &"")))

@@ -28,6 +28,13 @@ const FMT := "res://data/regions/%s.tres"
 @export var extract_candidates: Array[StringName] = []
 ## HiddenRoute ids on the map.
 @export var hidden_routes: Array[StringName] = []
+## Place names drawn on the field map and minimap (Lane D). Generated from the map file by
+## field/build/export_map_labels.gd; edit the map file and run that again rather than this list.
+## [{"text": String, "pos": Vector2 (world x/z, metres), "kind": StringName}]
+## kind, most important first: landmark, water, area, road, spot (MAP_LABEL_KINDS).
+@export var map_labels: Array[Dictionary] = []
+
+const MAP_LABEL_KINDS: Array[StringName] = [&"landmark", &"water", &"area", &"road", &"spot"]
 
 @export_group("Unlock")
 ## Shown on the sortie prep screen (02 "해금 조건").
