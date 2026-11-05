@@ -16,12 +16,17 @@ extends Node
 ##   - festival: festival stems over base on the wedding night event and on the festival day.
 ##   - night: low strings. raid: percussion.
 ## music_layers_changed(ids) / sound_played(ev, pos) are for captions and visual cues.
+## Ambience: looping beds under the music, AudioEventDefs whose id is in AMBIENCE (amb_*). Audio starts and
+## fades them itself from the music state and GameState.is_raining() (weather_changed); play() ignores them.
+## They need a real file (no synth fallback). ambience_changed(ids) is for captions.
 ## Design reference: docs/design/16-art-sound.md
 
 ## A sound event started (2D: position is Vector3.INF). For captions / visual cues (AudioEventDef.visual_cue_id).
 signal sound_played(event: AudioEventDef, position: Vector3)
 ## The audible music layers changed (ids in layer_order).
 signal music_layers_changed(layer_ids: Array[StringName])
+## The ambience loops heard changed.
+signal ambience_changed(ambience_ids: Array[StringName])
 
 const EVENTS_DIR := "res://data/ui/audio_events"
 const LAYERS_DIR := "res://data/ui/music_layers"
@@ -42,6 +47,13 @@ const CHASE_POLL_SEC := 0.25
 const MONSTER_GROUP := &"field_monsters"
 const CHASE_STATES := [Enums.AIState.CHASE, Enums.AIState.ATTACK]
 const WEDDING_EVENT := &"wedding"
+## Ambience loop id -> music states it plays in. Rain plays in every state while GameState.is_raining().
+const AMB_RAIN := &"amb_rain"
+const AMBIENCE := {
+	&"amb_base_school": [&"base"],
+	AMB_RAIN: [],
+}
+const AMBIENCE_FADE_SEC := 2.0
 const FLOW_MUSIC := {
 	Enums.FlowState.BASE_MORNING: &"base", Enums.FlowState.BASE_STAY: &"base", Enums.FlowState.SORTIE_PREP: &"base",
 	Enums.FlowState.EVENING: &"base", Enums.FlowState.FIELD: &"field", Enums.FlowState.NIGHT: &"night",
@@ -77,6 +89,9 @@ var _timeline: StringName = &""
 var _layer_players: Dictionary = {}
 var _layer_tweens: Dictionary = {}
 var _audible: Array[StringName] = []
+## Ambience loops playing: id -> AudioStreamPlayer.
+var _amb_players: Dictionary = {}
+var _amb_tweens: Dictionary = {}
 var _monster_states: Dictionary = {}
 var _chase_left := 0.0
 ## -1 not started, -2 finished and waited for, else the WorkerThreadPool task id.
@@ -111,6 +126,8 @@ func _ready() -> void:
 		_check_festival()
 		set_music_state(FLOW_MUSIC.get(s, &"")))
 	EventBus.day_started.connect(func(_d: int) -> void: _check_festival())
+	EventBus.weather_changed.connect(func(_w: Enums.Weather) -> void: refresh_ambience())
+	EventBus.game_loaded.connect(func(_slot: int) -> void: refresh_ambience.call_deferred())
 	EventBus.game_loaded.connect(func(_slot: int) -> void: _check_festival())
 	EventBus.night_event_started.connect(func(event_id: StringName, _p: Array) -> void:
 		if event_id == WEDDING_EVENT:
@@ -151,6 +168,8 @@ func _prewarm_music() -> void:
 
 
 func play(event_id: StringName, position: Vector3 = Vector3.INF) -> void:
+	if AMBIENCE.has(event_id):
+		return  # loops are started by refresh_ambience()
 	var ev := get_event(event_id)
 	if ev == null:
 		return
@@ -190,6 +209,67 @@ func set_music_state(state: StringName) -> void:
 	music_state = state
 	_start_prewarm()
 	refresh_music()
+	refresh_ambience()
+
+
+## Ambience ids heard in a music state (pure: no playback).
+static func ambience_for(state: StringName, raining: bool) -> Array[StringName]:
+	var out: Array[StringName] = []
+	if state == &"":
+		return out
+	for id: StringName in AMBIENCE:
+		if state in AMBIENCE[id] or (id == AMB_RAIN and raining):
+			out.append(id)
+	return out
+
+
+## Ambience loops playing now (fading in or at full volume).
+func audible_ambience() -> Array[StringName]:
+	var out: Array[StringName] = []
+	out.assign(_amb_players.keys())
+	return out
+
+
+## Start the ambience loops wanted now and fade out the rest. Loops without a file (no assets) stay silent.
+func refresh_ambience() -> void:
+	var want := ambience_for(music_state, GameState.is_raining())
+	var changed := false
+	for id: StringName in _amb_players.keys():
+		if id in want:
+			continue
+		var old: AudioStreamPlayer = _amb_players[id]
+		_amb_players.erase(id)
+		_fade_amb(id, old, SILENT_DB).tween_callback(old.queue_free)
+		changed = true
+	for id in want:
+		if _amb_players.has(id):
+			continue
+		var ev := get_event(id)
+		if ev == null or ev.stream.is_empty() or not ResourceLoader.exists(ev.stream):
+			continue
+		var stream: AudioStream = load(ev.stream)
+		if &"loop" in stream:
+			stream.set(&"loop", true)
+		var p := AudioStreamPlayer.new()
+		p.stream = stream
+		p.bus = BUSES[ev.bus]
+		p.volume_db = SILENT_DB
+		add_child(p)
+		p.play()
+		_amb_players[id] = p
+		_fade_amb(id, p, ev.volume_db)
+		changed = true
+	if changed:
+		ambience_changed.emit(audible_ambience())
+
+
+func _fade_amb(id: StringName, p: AudioStreamPlayer, target_db: float) -> Tween:
+	if _amb_tweens.has(id):
+		(_amb_tweens[id] as Tween).kill()
+	var tw := create_tween()
+	tw.tween_property(p, ^"volume_db", target_db, AMBIENCE_FADE_SEC)
+	_amb_tweens[id] = tw
+	return tw
 
 
 ## Layer ids heard for a music state, population and overlays (pure: no playback).

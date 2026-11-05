@@ -1,5 +1,5 @@
 extends Node
-## D-11: audio events load (20+), unknown gunshot ids fall back, synth makes streams, music state.
+## D-11: audio events load (20+), unknown gunshot ids fall back, synth makes streams, music state, ambience loops.
 
 
 func run() -> bool:
@@ -15,7 +15,17 @@ func run() -> bool:
 	ok = _expect(Audio.music_state == &"base", "music state set") and ok
 	for b in Audio.BUSES:
 		ok = _expect(AudioServer.get_bus_index(b) >= 0, "bus %s exists" % b) and ok
+	# Ambience loops: birds on base days, rain in any state while raining, nothing on the title.
+	ok = _expect(Audio.ambience_for(&"base", false) == [&"amb_base_school"], "base ambience") and ok
+	ok = _expect(Audio.ambience_for(&"field", false).is_empty(), "no field ambience on a dry day") and ok
+	ok = _expect(&"amb_rain" in Audio.ambience_for(&"field", true) and &"amb_rain" in Audio.ambience_for(&"base", true),
+		"rain ambience while raining") and ok
+	ok = _expect(Audio.ambience_for(&"", true).is_empty(), "no ambience on the title") and ok
+	for id in Audio.AMBIENCE:
+		ok = _expect(Audio.get_event(id) != null and not Audio.get_event(id).stream.is_empty(), "ambience %s has a file" % id) and ok
+	Audio.play(&"amb_rain")  # ignored: loops are started by refresh_ambience()
 	Audio.set_music_state(&"")
+	ok = _expect(Audio.audible_ambience().is_empty(), "ambience stops on the title") and ok
 	return ok
 
 
