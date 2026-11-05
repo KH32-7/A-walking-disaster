@@ -2,7 +2,8 @@ extends Control
 ## Emergency return choice in the field (D-14). Owner: Lane D. Design 10 "출격 중 습격과 긴급 귀환",
 ## 02 "긴급 귀환", 14 "시간 제한이 있는 선택은 없습니다(긴급 귀환도 선택 전까지 게임이 멈춤)".
 ## Opened by RaidFlow when B-22's EmergencyReturn offers a return (return_offered / state OFFERED).
-## The game is paused (ScreenDef pauses_game). Answers with EmergencyReturn.answer(go_back), which
+## ScreenDef pauses_game: the base pauses, the field keeps running with player input blocked
+## (user decision 2026-11-06). Answers with EmergencyReturn.answer(go_back), which
 ## emits emergency_return_requested itself; the expected outcome comes from Colony.predict_raid().
 ## args: {"raid": raid_warning info, "node": EmergencyReturn (optional; looked up by group)}
 

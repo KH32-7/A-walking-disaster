@@ -31,8 +31,12 @@ const LOSE_TARGET_SEC := 8.0
 const ATTACK_EXIT_MULT := 1.2
 ## Delay before the first hit after entering attack.
 const ATTACK_WINDUP_SEC := 0.4
-## Leash: farther than this from home returns to the nest.
+## Leash: farther than this from home returns to the nest, while searching (suspicious /
+## investigate). A chase is not cut off here (user feedback 2026-11-06: it read as an invisible
+## wall); it ends when the target is lost (LOSE_TARGET_SEC), then the search leashes.
 const RETURN_DISTANCE := 40.0
+## Hard leash while chasing / attacking, so a monster is not dragged across the whole map.
+const CHASE_RETURN_DISTANCE := 120.0
 ## Fraction of max hp healed per second while returning.
 const RETURN_REGEN_RATIO := 0.05
 

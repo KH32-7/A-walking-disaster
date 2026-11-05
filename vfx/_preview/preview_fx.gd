@@ -27,7 +27,8 @@ func _ready() -> void:
 		&"boss_telegraph:circle", &"boss_telegraph:ring", &"boss_telegraph:cone", &"boss_telegraph:line",
 		&"monster_claw", &"monster_bite", &"monster_slam", &"monster_splash", &"monster_scream", &"monster_cast",
 		&"monster_death", &"boss_slam", &"boss_root_burst", &"boss_summon_pods",
-		&"boss_dive", &"boss_splash", &"boss_tail_swing"]
+		&"boss_dive", &"boss_splash", &"boss_tail_swing", &"boss_scalpels", &"boss_flash", &"boss_clones",
+		&"boss_decoy_pop"]
 	for i in ids.size():
 		var pos := Vector3((i % COLUMNS) * SPACING, 0.0, (i / COLUMNS) * SPACING)
 		_spots.append({"id": ids[i], "pos": pos})
@@ -117,6 +118,11 @@ func _replay() -> void:
 				p.erase("radius")  # D-17: authored at their default size
 			&"boss_splash":
 				p["radius"] = 7.0
+			&"boss_flash":
+				p["radius"] = 9.0
+			&"boss_scalpels":
+				pos += Vector3(-3.5, 1.6, 0.0)
+				p["to"] = pos + Vector3(7.0, 0.0, 0.0)
 			&"boss_root_burst", &"boss_dive":
 				pos += Vector3(-3.5, 0.0, 0.0)
 				p["to"] = pos + Vector3(7.0, 0.0, 0.0)

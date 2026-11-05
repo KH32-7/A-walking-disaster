@@ -49,7 +49,8 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	# Tap V. Holding it switches companion modes instead (B-17 CompanionManager).
-	if _press.update(Input.is_action_pressed(&"companion_command"), delta) == CommandPress.Result.TAP:
+	var held := Input.is_action_pressed(&"companion_command") and not Player.input_blocked()
+	if _press.update(held, delta) == CommandPress.Result.TAP:
 		toggle_command()
 
 
