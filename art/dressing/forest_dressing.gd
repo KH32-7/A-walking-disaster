@@ -35,6 +35,8 @@ const CAMP_PROPS := ["food_supplies_crat", "water_canister", "hiking_backpack", 
 const CAMP_PROP_SIZE := Vector2(1.9, 1.6)
 const CAMP_PROP_MAX_SCALE := 2.6
 const CAMP_PROP_SPACING := 2.3
+## Quarry rock piles on the rock ResourceNodes (halved, user feedback 2026-11-06).
+const RESOURCE_ROCK_SCALE := 0.5
 
 const MAP_MIN := Vector2(-110.0, -90.0)
 const MAP_MAX := Vector2(110.0, 82.0)
@@ -142,14 +144,8 @@ func _read_layout() -> void:
 		for body in water.get_children():
 			if body is Node3D and body.has_meta(&"radii"):
 				_waters.append({"centre": Vector2(body.global_position.x, body.global_position.z), "radii": body.get_meta(&"radii")})
-	# A dirt trail from the clearing to every raid spawn (raids come down these).
-	for node in _layout.find_children("*", "Marker3D", true, false):
-		if node is RaidSpawnPoint:
-			var to := Vector2(node.global_position.x, node.global_position.z)
-			var from := Vector2(clampf(to.x, _clearing.position.x + 6, _clearing.end.x - 6),
-				clampf(to.y, _clearing.position.y + 6, _clearing.end.y - 6))
-			var mid := (from + to) * 0.5 + (to - from).orthogonal().normalized() * _rng.randf_range(-3.0, 3.0)
-			_trails.append(PackedVector2Array([from, from.lerp(mid, 0.5), mid, mid.lerp(to, 0.5), to]))
+	# No dirt trails to the raid spawns any more (user feedback 2026-11-06: the brown strips read as
+	# boxes). _trails stays empty, so the forest also grows where they ran.
 
 
 func in_clearing(p: Vector2, pad := 0.0) -> bool:
@@ -298,9 +294,11 @@ func _water_mesh(radii: Vector2) -> ArrayMesh:
 			var p01 := Vector3(cos(a1) * radii.x * t0, 0, sin(a1) * radii.y * t0)
 			var p10 := Vector3(cos(a0) * radii.x * t1, 0, sin(a0) * radii.y * t1)
 			var p11 := Vector3(cos(a1) * radii.x * t1, 0, sin(a1) * radii.y * t1)
+			# The inner ring is a fan: p00 == p01 there, so only [p00, p10, p11] has an area. (It used to
+			# draw the empty one instead, leaving a hole in the middle that showed the mud shore below.)
+			_tri_depth(st, [p00, p10, p11], [t0, t1, t1])
 			if r > 0:
-				_tri_depth(st, [p00, p10, p11], [t0, t1, t1])
-			_tri_depth(st, [p00, p11, p01], [t0, t1, t0])
+				_tri_depth(st, [p00, p11, p01], [t0, t1, t0])
 	return st.commit()
 
 
@@ -531,9 +529,9 @@ func _pick_tree(p: Vector2) -> Array:
 func _pick_floor(_p: Vector2) -> Array:
 	var r := _rng.randf()
 	if r < 0.32:
-		return _pick(FERNS, 0.8, 1.3)
+		return _pick(FERNS, 0.4, 0.65)  # grass and ferns halved (user feedback 2026-11-06)
 	if r < 0.52:
-		return _pick(GRASS, 0.9, 1.3)
+		return _pick(GRASS, 0.45, 0.65)
 	if r < 0.62:
 		return _pick(["dead_leaves_1", "dead_leaves_2"], 0.8, 1.2)
 	if r < 0.67:
@@ -548,9 +546,9 @@ func _pick_floor(_p: Vector2) -> Array:
 func _pick_rock(_p: Vector2) -> Array:
 	var r := _rng.randf()
 	if r < 0.2:
-		return _pick(BIG_BOULDERS, 0.3, 0.5)  # rocks halved (user feedback 2026-11-06)
+		return _pick(BIG_BOULDERS, 0.15, 0.25)  # rocks halved twice (user feedback 2026-11-06)
 	if r < 0.5:
-		return _pick(BOULDERS, 0.35, 0.65)
+		return _pick(BOULDERS, 0.18, 0.33)
 	if r < 0.65:
 		return _pick(LOGS, 0.8, 1.1)
 	return []
@@ -558,13 +556,13 @@ func _pick_rock(_p: Vector2) -> Array:
 
 func _pick_pebble(_p: Vector2) -> Array:
 	if _rng.randf() < 0.5:
-		return _pick(PEBBLES, 0.2, 0.45)
+		return _pick(PEBBLES, 0.1, 0.22)
 	return []
 
 
 func _pick_trail_grass(_p: Vector2) -> Array:
 	if _rng.randf() < 0.6:
-		return _pick(GRASS + CLOVERS, 0.9, 1.3)
+		return _pick(GRASS + CLOVERS, 0.45, 0.65)
 	return []
 
 
@@ -580,11 +578,11 @@ func _clearing_ok(p: Vector2) -> bool:
 func _pick_clearing(p: Vector2) -> Array:
 	var r := _rng.randf()
 	if not in_clearing(p, 0.0):
-		return _pick(GRASS + ["thin_fern1", "thin_fern2"], 1.0, 1.4)
+		return _pick(GRASS + ["thin_fern1", "thin_fern2"], 0.5, 0.7)
 	if r < 0.3:
-		return _pick(GRASS, 0.6, 1.0)
+		return _pick(GRASS, 0.3, 0.5)
 	if r < 0.42:
-		return _pick(CLOVERS, 0.8, 1.2)
+		return _pick(CLOVERS, 0.4, 0.6)
 	return []
 
 
@@ -600,14 +598,14 @@ func _resource_props() -> void:
 			if (node as ResourceNode).kind == ResourceNode.Kind.TREE:
 				trees.append(t.scaled_local(Vector3.ONE * tree_scale))
 			else:
-				rocks.append(t)
+				rocks.append(t.scaled_local(Vector3.ONE * RESOURCE_ROCK_SCALE))
 	if not trees.is_empty():
 		_multimesh(self, "red_fir3", trees, true)
 	if not rocks.is_empty():
 		_multimesh(self, "big_boulders_2", rocks, true)
 		var rubble: Array = []
 		for t: Transform3D in rocks:
-			rubble.append(t.translated(Vector3(2.0, 0, 1.5)))
+			rubble.append(t.translated(Vector3(2.0, 0, 1.5) * RESOURCE_ROCK_SCALE))
 		_multimesh(self, "rubble_dense_1", rubble, false)
 
 
