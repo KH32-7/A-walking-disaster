@@ -9,4 +9,5 @@ synth = &"monster_alert"
 bus = 0
 priority = 3
 positional = true
+visual_cue_id = &"monster_chase"
 caption = "경고음"

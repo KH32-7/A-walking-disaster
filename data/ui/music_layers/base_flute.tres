@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="MusicLayerDef" format=3]
+
+[ext_resource type="Script" path="res://audio/defs/music_layer_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+state = &"base"
+id = &"base_flute"
+unlock_population = 10
+synth = &"mus_base_flute"
+volume_db = -9.0
+caption = "♪ 휘파람 선율이 더해짐"
+visual_cue_id = &"music_base"
