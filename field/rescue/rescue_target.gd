@@ -26,6 +26,9 @@ signal downed()
 signal revived()
 ## Not helped up in time: stays on the spot, leaves the party.
 signal isolated()
+## Heard the player while waiting to be found (tuning callout_far_m, through walls). Lane D shows
+## `text` in a speech bubble at this person. near = the player is close, they beg for help.
+signal called_out(text: String, near: bool)
 
 enum State { WAITING, LOCKPICKING, CARDS, DEFEND, WARY, FOLLOW, HIDE, DOWNED, ISOLATED }
 
@@ -81,6 +84,11 @@ var _path_index := 0
 var _path_goal := Vector3.INF
 var _repath_left := 0.0
 var _noisy := false
+var _callout_left := 0.0
+## How close the player was last step: 0 out of range, 1 far, 2 near.
+var _callout_tier := 0
+## near (bool) -> how many lines of that kind were said.
+var _callout_said := {false: 0, true: 0}
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
 @onready var _noise: NoiseEmitter = $Noise
@@ -105,6 +113,8 @@ func _ready() -> void:
 	if spawn.rescue_type == RescueSpawn.Type.TRAPPED:
 		_make_door()
 	_apply_layers()
+	# Pack character model (Lane D, ResidentModel). Missing assets: the greybox stays.
+	($Model as ResidentModel).show_resident(profile, spawn.move_type)
 
 
 func _exit_tree() -> void:
@@ -307,6 +317,7 @@ func is_startled() -> bool:
 ## One step (timers, following, noise). _physics_process calls it; tests can call it directly.
 func tick(delta: float) -> void:
 	status.step(delta)
+	_tick_callout(delta)
 	match state:
 		State.LOCKPICKING:
 			_tick_lockpick(delta)
@@ -402,6 +413,36 @@ func _remove_door() -> void:
 	_door.collision_layer = 0
 	_door.queue_free()
 	_door = null
+
+
+# --- Call out ------------------------------------------------------------------
+
+## While waiting to be found: call out when the player comes within callout_far_m, again every
+## callout_interval_sec, and at once when the player first comes within callout_near_m.
+func _tick_callout(delta: float) -> void:
+	_callout_left = maxf(_callout_left - delta, 0.0)
+	if state != State.WAITING:
+		_callout_tier = 0
+		return
+	var player := _player if _player else _find_player()
+	if player == null:
+		return
+	var d := global_position.distance_to(player.global_position)
+	var tier := 2 if d <= tuning.callout_near_m else (1 if d <= tuning.callout_far_m else 0)
+	if tier > 0 and (_callout_left <= 0.0 or (tier == 2 and _callout_tier < 2)):
+		_call_out(tier == 2)
+	_callout_tier = tier
+
+
+func _call_out(near: bool) -> void:
+	var table := tuning.callout_near_lines if near else tuning.callout_far_lines
+	var lines: PackedStringArray = table.get(spawn.rescue_type, PackedStringArray())
+	if lines.is_empty():
+		return
+	var said: int = _callout_said[near]
+	_callout_said[near] = said + 1
+	_callout_left = tuning.callout_interval_sec
+	called_out.emit(lines[said % lines.size()], near)
 
 
 # --- Escort --------------------------------------------------------------------

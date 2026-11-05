@@ -28,6 +28,8 @@ var _agent: NavigationAgent3D
 var _label: Label3D
 var _model_root: Node3D
 var _look: Node3D  # CharacterLook (art/characters/character.tscn), or null → greybox capsule
+## Pack character model (Lane D, ResidentModel). While it shows a model, _model_root is hidden.
+var _pack: ResidentModel
 var _applied_look: Dictionary = {}
 var _last_states: Array = []
 
@@ -83,6 +85,10 @@ func _ready() -> void:
 		mat.albedo_color = Color(0.85, 0.6, 0.45)
 		mesh.material_override = mat
 		_model_root.add_child(mesh)
+	_pack = ResidentModel.new()
+	_pack.name = "Pack"
+	_pack.fallback = ^"../Model"
+	add_child(_pack)
 	_label = Label3D.new()
 	_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_label.font_size = 36
@@ -123,6 +129,8 @@ func refresh_from_colony() -> void:
 	if r.is_empty():
 		return
 	var age := int(r["age_stage"])
+	if _pack != null:
+		_pack.show_resident(r)  # picks again when age or needs change; no assets = keeps the look below
 	if _look != null:
 		_look.set(&"age_stage", age)  # CharacterLook sizes the body by age (D-09)
 		var appearance := Colony.appearance_for_look(resident_id)  # 입주 의식 choices (C-13)
