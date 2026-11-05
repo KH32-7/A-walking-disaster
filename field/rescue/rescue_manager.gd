@@ -20,8 +20,12 @@ const EXTRACTION_GROUP := ExtractionManager.GROUP
 const TARGET_SCENE := preload("res://field/rescue/rescue_target.tscn")
 
 @export var spawns: Array[RescueSpawn] = []
-## 02: 출격당 0~2명, 구조자 최대 2명.
-@export var max_per_sortie := 2
+## 02: 출격당 0~2명. Raised to 5 (사용자 요청 2026-11-06: 필드에 사람을 더 뿌려 주민을 더 구하게).
+@export var max_per_sortie := 5
+## After the fixed `spawns`, this many more survivors drawn from ResidentPool (unused, reviewed, not
+## demo, this region or any) go on the free spots. They are hurt but need no item: F 일으켜 세우기.
+@export var pool_count := 3
+@export var region_id: StringName = &""
 ## -1 = the sortie's loadout seed (FieldState.sortie_seed), or random without SceneRouter.
 @export var sortie_seed := -1
 ## Tests turn this off and call spawn() themselves.
@@ -82,7 +86,37 @@ func spawn(rng: RandomNumberGenerator) -> Array[RescueTarget]:
 		placed.append(t)
 		targets.append(t)
 		target_spawned.emit(t)
+	_spawn_pool(rng, spots, placed)
 	return placed
+
+
+## Pool survivors on the spots the fixed spawns left free.
+func _spawn_pool(rng: RandomNumberGenerator, spots: Array[RescueSpot], placed: Array[RescueTarget]) -> void:
+	var taken: Array = placed.map(func(t: RescueTarget) -> StringName: return StringName(t.profile.get("id", &"")))
+	var filter := {"demo": false, "exclude": taken}
+	if region_id != &"":
+		filter["region_id"] = region_id
+	var ids := ResidentPool.available_ids(filter).filter(func(id: StringName) -> bool:
+		return Colony.get_resident(id).is_empty())
+	var n := 0
+	while n < pool_count and not ids.is_empty() and not spots.is_empty() and placed.size() < max_per_sortie:
+		var id: StringName = ids.pop_at(rng.randi_range(0, ids.size() - 1))
+		var s := RescueSpawn.new()
+		s.template_id = id
+		s.rescue_type = RescueSpawn.Type.INJURED
+		s.move_type = RescueSpawn.Move.WALK
+		var profile := profile_for(s)
+		if profile.is_empty():
+			continue
+		var spot: RescueSpot = spots.pop_at(rng.randi_range(0, spots.size() - 1))
+		var t: RescueTarget = TARGET_SCENE.instantiate()
+		t.setup(s, profile, spot.spawn_tags.duplicate())
+		add_child(t)
+		t.global_transform = spot.global_transform
+		placed.append(t)
+		targets.append(t)
+		target_spawned.emit(t)
+		n += 1
 
 
 ## Hide everyone following; if nobody follows, call the hidden back. Returns true if anyone obeyed.
@@ -124,6 +158,10 @@ static func profile_for(s: RescueSpawn) -> Dictionary:
 			# Fixed here (not rolled by Colony later) so the model seen in the field is the one at the base.
 			profile["gender"] = ResidentModel.gender_of(profile)
 			return profile
+	var pooled := ResidentPool.get_profile(s.template_id)
+	if not pooled.is_empty():
+		pooled["gender"] = ResidentModel.gender_of(pooled)
+		return pooled
 	push_warning("RescueManager: no rescue profile '%s'" % s.template_id)
 	return {}
 

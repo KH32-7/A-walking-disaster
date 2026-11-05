@@ -13079,6 +13079,30 @@ gizmo_extents = 0.5
 script = ExtResource("17_ygtdd")
 spawn_tags = Array[StringName]([&"shop_interior"])
 
+
+[node name="RescueSpot_rs_mart" type="Marker3D" parent="Markers" unique_id=1636139311 instance=ExtResource("16_413ns")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -76.5, 0, -78)
+gizmo_extents = 0.5
+script = ExtResource("17_ygtdd")
+spawn_tags = Array[StringName]([&"shop_interior"])
+
+[node name="RescueSpot_rs_gas" type="Marker3D" parent="Markers" unique_id=826463039 instance=ExtResource("16_413ns")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 0, 45)
+gizmo_extents = 0.5
+script = ExtResource("17_ygtdd")
+spawn_tags = Array[StringName]([&"shop_interior"])
+
+[node name="RescueSpot_rs_house" type="Marker3D" parent="Markers" unique_id=1544027316 instance=ExtResource("16_413ns")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -36.75, 0, 60.75)
+gizmo_extents = 0.5
+script = ExtResource("17_ygtdd")
+spawn_tags = Array[StringName]([&"hiding_spot"])
+
+[node name="RescueSpot_rs_depot" type="Marker3D" parent="Markers" unique_id=945421175 instance=ExtResource("16_413ns")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42, 0, -72)
+gizmo_extents = 0.5
+script = ExtResource("17_ygtdd")
+spawn_tags = Array[StringName]([&"shop_interior"])
 [node name="RescueSpot_rs_spare" type="Marker3D" parent="Markers" unique_id=1489524942 instance=ExtResource("16_413ns")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13.5, 0, 46.5)
 gizmo_extents = 0.5

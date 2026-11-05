@@ -822,7 +822,7 @@ func preview_output(resident_id: StringName) -> Dictionary:
 	var f := WorkRules.efficiency(r, job, _works_alone(resident_id)) * access_multiplier(resident_id)
 	var out := {}
 	for res: StringName in job.base_output:
-		out[res] = job.base_output[res] * f
+		out[res] = job.base_output[res] * f * WorkRules.pace
 	return out
 
 
@@ -874,12 +874,12 @@ func settle_day() -> Dictionary:
 		elif job.id == WorkRules.CONSTRUCTION_JOB and buildings.has(uid) and buildings[uid]["completed"]:
 			_maintenance_work(id, uid, f, events)
 		elif job.id == WorkRules.CONSTRUCTION_JOB:
-			if add_build_progress(uid, roundi(WorkRules.BUILD_PROGRESS_BASE * f)) and buildings.has(uid):
+			if add_build_progress(uid, roundi(WorkRules.build_progress() * f)) and buildings.has(uid):
 				events.append(_event(&"building_completed", id, "%s 완성" % _def_name(buildings[uid]["def_id"])))
 			if buildings.has(uid) and buildings[uid]["completed"]:
 				unassign_job(id)
 		for res: StringName in job.base_output:
-			out[res] = job.base_output[res] * f
+			out[res] = job.base_output[res] * f * WorkRules.pace
 		for res: StringName in job.base_input:
 			consumed[res] = consumed.get(res, 0.0) + job.base_input[res] * f
 		for res in out:
@@ -891,7 +891,7 @@ func settle_day() -> Dictionary:
 	# Stay day: the player builds too (09 "건설 규칙": 기지에 머무르면 +20) on the oldest site.
 	if stayed and not festival:
 		var site := _oldest_site()
-		if site != &"" and add_build_progress(site, WorkRules.STAY_BUILD_PROGRESS):
+		if site != &"" and add_build_progress(site, WorkRules.stay_build_progress()):
 			events.append(_event(&"building_completed", &"", "%s 완성" % _def_name(buildings[site]["def_id"])))
 
 	# 2. Inputs that are not in stock reduce that job's output proportionally.
@@ -990,7 +990,7 @@ func _grow(id: StringName, job: JobDef, events: Array) -> void:
 	var r: Dictionary = residents[id]
 	var days: int = r["job_days"].get(job.id, 0) + 1
 	r["job_days"][job.id] = days
-	if days % WorkRules.DAYS_PER_SKILL == 0 and int(r["job_skill"].get(job.id, 0)) < WorkRules.SKILL_MAX:
+	if days % WorkRules.days_per_skill() == 0 and int(r["job_skill"].get(job.id, 0)) < WorkRules.SKILL_MAX:
 		r["job_skill"][job.id] = int(r["job_skill"].get(job.id, 0)) + 1
 		events.append(_event(&"skill_up", id, "%s의 %s 숙련 %d" % [r["name"], job.display_name, r["job_skill"][job.id]]))
 	var stat := job.main_stat_key()
@@ -998,7 +998,7 @@ func _grow(id: StringName, job: JobDef, events: Array) -> void:
 		return
 	var stat_days: int = r["stat_days"].get(stat, 0) + 1
 	r["stat_days"][stat] = stat_days
-	if stat_days % WorkRules.DAYS_PER_STAT == 0 and int(r["stats"][stat]) < ResidentData.STAT_MAX:
+	if stat_days % WorkRules.days_per_stat() == 0 and int(r["stats"][stat]) < ResidentData.STAT_MAX:
 		r["stats"][stat] = int(r["stats"][stat]) + 1
 		events.append(_event(&"stat_up", id, "%s의 %s +1" % [r["name"], stat]))
 
@@ -1172,7 +1172,7 @@ func _maintenance_work(resident_id: StringName, uid: StringName, f: float, event
 	var b: Dictionary = buildings[uid]
 	var def := BaseDB.get_building(b["def_id"])
 	if b["damaged"] and int(b["repair_progress"]) >= 0:
-		b["repair_progress"] = int(b["repair_progress"]) + roundi(WorkRules.BUILD_PROGRESS_BASE * f)
+		b["repair_progress"] = int(b["repair_progress"]) + roundi(WorkRules.build_progress() * f)
 		if b["repair_progress"] >= repair_work_needed(uid):
 			b["damaged"] = false
 			b["repair_progress"] = -1
@@ -2774,7 +2774,7 @@ func _study(events: Array) -> void:
 			if stat != &"":
 				var sd := int(r["stat_days"].get(stat, 0)) + mult
 				r["stat_days"][stat] = sd
-				if sd / WorkRules.DAYS_PER_STAT > (sd - mult) / WorkRules.DAYS_PER_STAT and int(r["stats"][stat]) < ResidentData.STAT_MAX:
+				if sd / WorkRules.days_per_stat() > (sd - mult) / WorkRules.days_per_stat() and int(r["stats"][stat]) < ResidentData.STAT_MAX:
 					r["stats"][stat] = int(r["stats"][stat]) + 1
 			if days == ChildRules.STUDY_DAYS and int(r["job_skill"].get(work, 0)) < ChildRules.TEACH_SKILL:
 				r["job_skill"][work] = ChildRules.TEACH_SKILL

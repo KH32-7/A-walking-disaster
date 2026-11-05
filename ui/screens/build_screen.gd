@@ -243,7 +243,7 @@ func _show_site() -> void:
 	_detail.add_child(ph)
 	_detail.add_child(_cream_bar(_ratio(prog, need), UiTokens.TEXT_ON_CREAM))
 	var how := MenuScreen.label("주민 한 명이 하루에 %d쯤 지어요(힘이 세면 더). 기지에 머무르면 하루 +%d." % [
-		roundi(WorkRules.BUILD_PROGRESS_BASE), WorkRules.STAY_BUILD_PROGRESS], &"LabelOnCreamDim", 14)
+		roundi(WorkRules.build_progress()), WorkRules.stay_build_progress()], &"LabelOnCreamDim", 14)
 	how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	how.custom_minimum_size = Vector2(520, 0)
 	_detail.add_child(how)

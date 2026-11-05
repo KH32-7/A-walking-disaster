@@ -6,6 +6,14 @@ extends Node
 ## Raids and the played defence are switched off in the game for now (RaidRules.RAIDS /
 ## DIRECT_DEFENSE); these rules are still tested with them on.
 func run() -> bool:
+	var old_pace := WorkRules.pace
+	WorkRules.pace = 1.0  # design numbers
+	var ok: bool = await _run_design()
+	WorkRules.pace = old_pace
+	return ok
+
+
+func _run_design() -> bool:
 	var was := [RaidRules.RAIDS, RaidRules.DIRECT_DEFENSE]
 	RaidRules.RAIDS = true
 	RaidRules.DIRECT_DEFENSE = true

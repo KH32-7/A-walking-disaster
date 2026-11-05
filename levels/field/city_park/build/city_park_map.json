@@ -3670,10 +3670,99 @@
       ],
       "props": {
         "spawn_tags": [
-          "shop_interior"
+          "shop_interior",
+          "doctor_office"
         ]
       },
       "note": "관리사무소 숙직실."
+    },
+    {
+      "id": "rs_kiosk",
+      "class": "RescueSpot",
+      "scene": "res://field/markers/rescue_spot.tscn",
+      "node_name": "RescueSpot_rs_kiosk",
+      "floor": 0,
+      "position": [
+        15.0,
+        0.0,
+        44.0
+      ],
+      "plan_position": [
+        90,
+        119
+      ],
+      "props": {
+        "spawn_tags": [
+          "shop_interior"
+        ]
+      },
+      "note": "매점 계산대 뒤. (구조 대상 늘림, 사용자 요청 2026-11-06)"
+    },
+    {
+      "id": "rs_shed",
+      "class": "RescueSpot",
+      "scene": "res://field/markers/rescue_spot.tscn",
+      "node_name": "RescueSpot_rs_shed",
+      "floor": 0,
+      "position": [
+        36.5,
+        0.0,
+        -18.0
+      ],
+      "plan_position": [
+        111,
+        57
+      ],
+      "props": {
+        "spawn_tags": [
+          "shop_interior"
+        ]
+      },
+      "note": "관리 창고 안 선반 사이. (구조 대상 늘림, 사용자 요청 2026-11-06)"
+    },
+    {
+      "id": "rs_stage",
+      "class": "RescueSpot",
+      "scene": "res://field/markers/rescue_spot.tscn",
+      "node_name": "RescueSpot_rs_stage",
+      "floor": 0,
+      "position": [
+        -57.0,
+        0.0,
+        -2.0
+      ],
+      "plan_position": [
+        18,
+        73
+      ],
+      "props": {
+        "spawn_tags": [
+          "hiding_spot"
+        ]
+      },
+      "note": "무대 뒤 대기실 소품 상자 뒤. (구조 대상 늘림, 사용자 요청 2026-11-06)"
+    },
+    {
+      "id": "rs_gh",
+      "class": "RescueSpot",
+      "scene": "res://field/markers/rescue_spot.tscn",
+      "node_name": "RescueSpot_rs_gh",
+      "floor": 0,
+      "position": [
+        42.0,
+        0.0,
+        -36.0
+      ],
+      "plan_position": [
+        117,
+        39
+      ],
+      "props": {
+        "spawn_tags": [
+          "hiding_spot"
+        ]
+      },
+      "note": "유리 온실 화분대 아래. (구조 대상 늘림, 사용자 요청 2026-11-06)"
     },
     {
       "id": "rs_pg",

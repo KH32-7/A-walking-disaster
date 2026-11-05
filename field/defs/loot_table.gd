@@ -11,6 +11,17 @@ extends Resource
 @export_range(0, 20) var roll_min: int = 1
 @export_range(0, 20) var roll_max: int = 1
 @export var entries: Array[LootEntry] = []
+## Low chance of one finished weapon (사용자 요청 2026-11-06), on top of the slots: 0..1 per container.
+## The weapon is picked evenly from gear_pool (ItemDef ids); its grade is rolled by Armory.
+@export_range(0.0, 1.0) var gear_chance: float = 0.0
+@export var gear_pool: Array[StringName] = []
+
+
+## A weapon def id to add to this container, or &"" (no luck / no pool).
+func roll_gear(rng: RandomNumberGenerator) -> StringName:
+	if gear_pool.is_empty() or rng.randf() >= gear_chance:
+		return &""
+	return gear_pool[rng.randi_range(0, gear_pool.size() - 1)]
 
 
 ## Returns one container's contents: [{"item_id": StringName, "count": int}, ...].

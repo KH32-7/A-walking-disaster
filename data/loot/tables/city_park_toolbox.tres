@@ -39,3 +39,5 @@ container_type = 2
 roll_min = 1
 roll_max = 3
 entries = Array[ExtResource("2_entry")]([SubResource("Entry_0"), SubResource("Entry_1"), SubResource("Entry_2"), SubResource("Entry_3")])
+gear_chance = 0.08
+gear_pool = Array[StringName]([&"pistol", &"dagger", &"machete", &"baseball_bat", &"club", &"spear"])

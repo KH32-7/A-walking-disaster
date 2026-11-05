@@ -47,6 +47,28 @@ const FUEL_PER_GENERATOR_WINTER := 3
 const CRAFT_JOBS: Array[StringName] = [&"carpentry", &"maintenance", &"tailoring", &"essence_research"]
 const REST_JOB := &"rest"
 const CONSTRUCTION_JOB := &"construction"
+## Game pace (사용자 요청 2026-11-06: 전체 진행을 빠르게): build progress, job output and resident growth
+## are multiplied by this; the consts below stay the design numbers. Tests set it to 1.0.
+static var pace := 1.5
+
+
+static func build_progress() -> float:
+	return BUILD_PROGRESS_BASE * pace
+
+
+static func stay_build_progress() -> int:
+	return roundi(STAY_BUILD_PROGRESS * pace)
+
+
+## Days of the same work for +1 (skill / stat), shorter with a faster pace.
+static func days_per_skill() -> int:
+	return maxi(roundi(DAYS_PER_SKILL / pace), 1)
+
+
+static func days_per_stat() -> int:
+	return maxi(roundi(DAYS_PER_STAT / pace), 1)
+
+
 ## Base build progress per construction worker per day (09 "건설 규칙": 하루 10 + 힘 보정).
 const BUILD_PROGRESS_BASE := 10.0
 

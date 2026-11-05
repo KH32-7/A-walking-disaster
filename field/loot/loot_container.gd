@@ -132,6 +132,9 @@ func roll_contents(rng: RandomNumberGenerator) -> void:
 	if loot_table:
 		for drop in loot_table.roll(rng):
 			_slots.append({"item_id": drop.item_id, "count": drop.count, "identified": false})
+		var gear := loot_table.roll_gear(rng)
+		if gear != &"":
+			_slots.append({"item_id": gear, "count": 1, "identified": false, "gear": true, "rarity": -1})
 	_rolled = true
 
 
