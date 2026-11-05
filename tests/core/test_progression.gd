@@ -13,6 +13,8 @@ var _old_autosave: bool
 
 
 func run() -> bool:
+	var old_pace := Progression.xp_pace
+	Progression.xp_pace = 1.0  # design numbers
 	_saved = Progression.save_data().duplicate(true)
 	_old_dir = SaveSystem.save_dir
 	_old_slot = SaveSystem.current_slot
@@ -33,6 +35,7 @@ func run() -> bool:
 	SaveSystem.current_slot = _old_slot
 	SaveSystem.autosave_enabled = _old_autosave
 	Progression.load_data(_saved)
+	Progression.xp_pace = old_pace
 	return ok
 
 

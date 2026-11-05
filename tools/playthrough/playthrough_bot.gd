@@ -460,6 +460,9 @@ func _quick_intro() -> void:
 	_check(Quests.is_active(&"tutorial_doctor"), "공원에 오면 '의사를 찾아서' 의뢰가 시작됨")
 	var doctor: RescueTarget = UI.tutorial._doctor()
 	_check(doctor != null, "관리사무소에 의사가 있음")
+	var people := get_tree().get_nodes_in_group(RescueTarget.GROUP)
+	print("[bot] park survivors: ", people.map(func(t) -> String: return "%s(%s)" % [t.profile.get("name", "?"), t.interact_label()]))
+	_check(people.size() >= 3, "공원에 구할 사람이 여럿 있음 (%d명)" % people.size())
 	var office_rect: Rect2 = UI.tutorial._building_rect(UI.tutorial._office_pos())
 	var inside := UI.tutorial._guards.filter(func(m) -> bool:
 		return is_instance_valid(m) and office_rect.has_point(Vector2(m.global_position.x, m.global_position.z)))

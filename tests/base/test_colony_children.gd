@@ -8,6 +8,14 @@ var _arrived: Array = []
 
 
 func run() -> bool:
+	var old_pace := WorkRules.pace
+	WorkRules.pace = 1.0  # design numbers
+	var ok: bool = await _run_design()
+	WorkRules.pace = old_pace
+	return ok
+
+
+func _run_design() -> bool:
 	var colony_snapshot := JSON.stringify(Colony.save_data())
 	var economy_snapshot := Economy.save_data().duplicate(true)
 	var game_snapshot := GameState.save_data().duplicate(true)

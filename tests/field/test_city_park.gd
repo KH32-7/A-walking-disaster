@@ -19,7 +19,7 @@ const REACH := 1.5 ## path end within this distance (xz) of the target
 ## + 11 (B-26 filler scenes in dead space), nests 3 + 3.
 const MARKER_COUNTS := {
 	PlayerSpawn.GROUP: 2, ExtractPoint.GROUP: 3, LootSpot.GROUP: 41, MonsterNest.GROUP: 6,
-	RescueSpot.GROUP: 3, HiddenRoute.GROUP: 1, Recording.GROUP: 2, BossArena.GROUP: 1,
+	RescueSpot.GROUP: 7, HiddenRoute.GROUP: 1, Recording.GROUP: 2, BossArena.GROUP: 1,
 }
 const EXTRACT_IDS := [&"park_south_gate", &"park_east_bus", &"park_north_gate"]
 const NAV_SYNC_MAX_FRAMES := 300

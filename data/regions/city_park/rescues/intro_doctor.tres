@@ -6,5 +6,5 @@
 script = ExtResource("1_spawn")
 template_id = &"demo_doctor"
 rescue_type = 1
-spawn_tags = Array[StringName]([&"shop_interior"])
+spawn_tags = Array[StringName]([&"doctor_office"])
 required_flag = &"intro_talked"

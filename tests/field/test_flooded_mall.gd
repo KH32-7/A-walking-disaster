@@ -15,7 +15,7 @@ const REACH := 1.5 ## path end within this distance (xz) of the target
 ## fillers out since 2026-11-06), nests 3 + 3.
 const MARKER_COUNTS := {
 	PlayerSpawn.GROUP: 2, ExtractPoint.GROUP: 3, LootSpot.GROUP: 82, MonsterNest.GROUP: 6,
-	RescueSpot.GROUP: 4, HiddenRoute.GROUP: 1, Recording.GROUP: 2, BossArena.GROUP: 4,
+	RescueSpot.GROUP: 8, HiddenRoute.GROUP: 1, Recording.GROUP: 2, BossArena.GROUP: 4,
 }
 const EXTRACT_IDS := [&"mall_dock", &"mall_gas_station", &"mall_north_gate"]
 const BOSS_IDS := [&"sunken_sign_serpent", &"surgical_lamp_wraith", &"neon_colossus", &"breakwater_golem"]

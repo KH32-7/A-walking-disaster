@@ -12938,8 +12938,32 @@ recording_id = &"rec_park_01"
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -52.5, 0, 67.5)
 gizmo_extents = 0.5
 script = ExtResource("17_wouxe")
+spawn_tags = Array[StringName]([&"shop_interior", &"doctor_office"])
+
+
+[node name="RescueSpot_rs_kiosk" type="Marker3D" parent="Markers" unique_id=31821455 instance=ExtResource("16_hv5m0")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.5, 0, 66)
+gizmo_extents = 0.5
+script = ExtResource("17_wouxe")
 spawn_tags = Array[StringName]([&"shop_interior"])
 
+[node name="RescueSpot_rs_shed" type="Marker3D" parent="Markers" unique_id=1681548504 instance=ExtResource("16_hv5m0")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 54.75, 0, -27)
+gizmo_extents = 0.5
+script = ExtResource("17_wouxe")
+spawn_tags = Array[StringName]([&"shop_interior"])
+
+[node name="RescueSpot_rs_stage" type="Marker3D" parent="Markers" unique_id=283470214 instance=ExtResource("16_hv5m0")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -85.5, 0, -3)
+gizmo_extents = 0.5
+script = ExtResource("17_wouxe")
+spawn_tags = Array[StringName]([&"hiding_spot"])
+
+[node name="RescueSpot_rs_gh" type="Marker3D" parent="Markers" unique_id=1569289668 instance=ExtResource("16_hv5m0")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 63, 0, -54)
+gizmo_extents = 0.5
+script = ExtResource("17_wouxe")
+spawn_tags = Array[StringName]([&"hiding_spot"])
 [node name="RescueSpot_rs_pg" type="Marker3D" parent="Markers" unique_id=613482567 instance=ExtResource("16_hv5m0")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55.5, 0, 75)
 gizmo_extents = 0.5

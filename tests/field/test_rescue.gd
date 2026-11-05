@@ -405,6 +405,7 @@ func _manager(max_count: int) -> RescueManager:
 	var m := RescueManager.new()
 	m.spawn_on_ready = false
 	m.max_per_sortie = max_count
+	m.pool_count = 0  # fixed spawns only; pool survivors are checked by the playthrough bot
 	m.spawns = _load_spawns()
 	add_child(m)
 	return m

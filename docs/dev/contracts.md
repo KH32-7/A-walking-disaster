@@ -344,3 +344,5 @@ levels/base/base_school/
 - `QuestObjective.marker_label`: 지도·미니맵의 노란 이중 마름모 아래 문구.
 - `BuildingDef.story_only`: 건설 목록에 안 나오고 지을 수 없음(낡은 집 `old_house`, 6×7).
 - 의무실 `infirmary`는 `requires_former_job = &"doctor"`. `main_01_left_behind`는 `tutorial_doctor` 완료 뒤 시작.
+- 구조 인원(2026-11-06): `RescueManager.max_per_sortie = 5`, `pool_count = 3` — 고정 spawns 뒤에 `ResidentPool`에서 안 쓴 생존자를 빈 RescueSpot에 더 놓는다(부상, 아이템 없이 F 일으켜 세우기). `profile_for`는 DemoProfiles 다음 ResidentPool을 찾는다. 공원 의사는 `doctor_office` 태그(관리사무소)에만 나온다.
+- 진행 속도(2026-11-06): `WorkRules.pace`(1.5) — 건설 진행·직업 생산·성장 일수에 곱한다(`build_progress()`, `stay_build_progress()`, `days_per_skill()`, `days_per_stat()`). `Progression.xp_pace`(1.5)는 경험치. 기획 수치 테스트는 둘 다 1.0으로 돌린다.

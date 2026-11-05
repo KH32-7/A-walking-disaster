@@ -15,6 +15,8 @@ const MAX_LEVEL := 30
 ## XP_need(L) = floor(XP_BASE * L^XP_EXPONENT), L = current level (design 12 "경험치").
 const XP_BASE := 100.0
 const XP_EXPONENT := 1.4
+## Faster pace (사용자 요청 2026-11-06): every XP gain × this. 1.0 = design (tests set it).
+var xp_pace := 1.5
 const BASE_MAX_HP := 100
 const HP_PER_LEVEL := 5
 ## A perk pick is earned at every multiple of this level (3, 6, ... 30).
@@ -109,6 +111,7 @@ func award(action: StringName, count: int = 1) -> int:
 func add_xp(amount: int, reason: StringName = &"") -> int:
 	if amount <= 0 or level >= MAX_LEVEL:
 		return 0
+	amount = roundi(amount * xp_pace)
 	xp += amount
 	total_xp += amount
 	_sortie_xp += amount

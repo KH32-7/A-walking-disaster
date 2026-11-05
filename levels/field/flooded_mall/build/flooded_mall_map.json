@@ -4372,6 +4372,94 @@
       "note": "해솔약국 안쪽, 부상 노인. 진입로에서 18m. 첫 구조는 짧고 안전하게."
     },
     {
+      "id": "rs_mart",
+      "class": "RescueSpot",
+      "scene": "res://field/markers/rescue_spot.tscn",
+      "node_name": "RescueSpot_rs_mart",
+      "floor": 0,
+      "position": [
+        -51.0,
+        0.0,
+        -52.0
+      ],
+      "plan_position": [
+        50,
+        25
+      ],
+      "props": {
+        "spawn_tags": [
+          "shop_interior"
+        ]
+      },
+      "note": "대형 마트 계산대 뒤. (구조 대상 늘림, 사용자 요청 2026-11-06)"
+    },
+    {
+      "id": "rs_gas",
+      "class": "RescueSpot",
+      "scene": "res://field/markers/rescue_spot.tscn",
+      "node_name": "RescueSpot_rs_gas",
+      "floor": 0,
+      "position": [
+        -20.0,
+        0.0,
+        30.0
+      ],
+      "plan_position": [
+        50,
+        25
+      ],
+      "props": {
+        "spawn_tags": [
+          "shop_interior"
+        ]
+      },
+      "note": "주유소 편의점 창고. (구조 대상 늘림, 사용자 요청 2026-11-06)"
+    },
+    {
+      "id": "rs_house",
+      "class": "RescueSpot",
+      "scene": "res://field/markers/rescue_spot.tscn",
+      "node_name": "RescueSpot_rs_house",
+      "floor": 0,
+      "position": [
+        -24.5,
+        0.0,
+        40.5
+      ],
+      "plan_position": [
+        50,
+        25
+      ],
+      "props": {
+        "spawn_tags": [
+          "hiding_spot"
+        ]
+      },
+      "note": "첫 번째 주택 다락 아래. (구조 대상 늘림, 사용자 요청 2026-11-06)"
+    },
+    {
+      "id": "rs_depot",
+      "class": "RescueSpot",
+      "scene": "res://field/markers/rescue_spot.tscn",
+      "node_name": "RescueSpot_rs_depot",
+      "floor": 0,
+      "position": [
+        28.0,
+        0.0,
+        -48.0
+      ],
+      "plan_position": [
+        50,
+        25
+      ],
+      "props": {
+        "spawn_tags": [
+          "shop_interior"
+        ]
+      },
+      "note": "차고 사무실. (구조 대상 늘림, 사용자 요청 2026-11-06)"
+    },
+    {
       "id": "rs_spare",
       "class": "RescueSpot",
       "scene": "res://field/markers/rescue_spot.tscn",
