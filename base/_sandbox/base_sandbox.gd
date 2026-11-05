@@ -3,9 +3,11 @@ extends Node3D
 ## Debug only: shows marker helpers in game, a quarter-view camera you can pan/zoom, and a
 ## debug panel. Nothing here ships (docs/dev/contracts.md "UI와 게임플레이의 경계").
 ##
-## Controls: WASD / arrows = pan, wheel = zoom, F1 = toggle marker helpers.
+## Controls: WASD / arrows = pan, wheel = zoom, F1 = toggle marker helpers,
+## ` (backtick) = DebugConsole (resident / build / job / settle / raid commands).
 
 const PAN_SPEED := 20.0
+const INFO_REFRESH_SEC := 0.5
 const ZOOM_MIN := 15.0
 const ZOOM_MAX := 200.0
 const PITCH_DEG := 55.0 ## quarter view, docs/dev/lane-b-field.md B-04
@@ -23,6 +25,7 @@ const PEOPLE := [
 
 var _focus := Vector3(0.0, 0.0, 0.0)
 var _distance := 150.0
+var _info_timer := 0.0
 
 @onready var _camera: Camera3D = $Camera3D
 @onready var _info: Label = $Debug/Info
@@ -40,6 +43,10 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_info_timer -= delta
+	if _info_timer <= 0.0:
+		_info_timer = INFO_REFRESH_SEC
+		_update_info()
 	var dir := Vector3.ZERO
 	if Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP):
 		dir.z -= 1.0
@@ -97,8 +104,8 @@ func _update_camera() -> void:
 func _update_info() -> void:
 	var tree := get_tree()
 	var lines: PackedStringArray = [
-		"Base sandbox (Lane C)  |  WASD 이동 · 휠 줌 · F1 마커 표시 %s" % ("켜짐" if ColonyMarker.show_in_game else "꺼짐"),
-		"Colony: 주민 %d명, 위협도 %d, 단계 %s" % [
+		"Base sandbox (Lane C)  |  WASD 이동 · 휠 줌 · F1 마커 표시 %s · ` 콘솔" % ("켜짐" if ColonyMarker.show_in_game else "꺼짐"),
+		"%d일차 · Colony: 주민 %d명, 위협도 %d, 단계 %s" % [GameState.day,
 			Colony.active_resident_ids().size(), Colony.threat, Enums.BaseTier.keys()[Colony.tier]],
 		"마커: Zone %d · BuildArea %d · Resource %d · RaidSpawn %d · Work %d · Outpost %d" % [
 			tree.get_node_count_in_group(ZoneMarker.MARKER_GROUP),
@@ -108,4 +115,14 @@ func _update_info() -> void:
 			tree.get_node_count_in_group(WorkSpot.MARKER_GROUP),
 			tree.get_node_count_in_group(OutpostNode.MARKER_GROUP)],
 	]
+	# Later Colony features (C-02, C-04) — read only when the Colony on this branch has them.
+	# call()/get() so this file still compiles against the C-01 Colony stub.
+	if Colony.has_method(&"bed_count") and Colony.has_method(&"power_supply"):
+		var beds: int = Colony.call(&"bed_count")
+		var free: Array = Colony.call(&"free_beds")
+		var buildings: Dictionary = Colony.get(&"buildings")
+		lines.append("침상 %d/%d · 건물 %d · 전력 %.1f/%d · 소음도 %.1f" % [beds - free.size(), beds,
+			buildings.size(), Colony.call(&"power_supply"), Colony.call(&"power_demand"), Colony.base_noise()])
+	lines.append("창고: 나무 %d · 돌 %d · 고철 %d · 식량 %d (한도 %d)" % [Economy.get_amount(&"wood"),
+		Economy.get_amount(&"stone"), Economy.get_amount(&"scrap"), Economy.get_amount(&"food"), Economy.storage_cap()])
 	_info.text = "\n".join(lines)
