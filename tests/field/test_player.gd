@@ -28,6 +28,10 @@ func _test_gun_faces_cursor() -> void:
 	p.set_aim_point(p.global_position + Vector3(5.0, 0.0, 0.0))
 	_steps(p, 0.2, {"move": Vector2.UP})
 	_expect(p.facing().dot(Vector3.RIGHT) > 0.99, "gun: faces the cursor while walking away from it")
+	_expect_near(_flat_speed(p), p.stats.walk_speed, "gun: walking sideways to the cursor is full speed")
+	_steps(p, 0.5, {"move": Vector2.LEFT})
+	_expect_near(_flat_speed(p), p.stats.walk_speed * p.stats.backpedal_speed_mult,
+			"gun: walking straight away from the cursor is backpedal speed")
 	var blade := Armory.create_item(&"dagger", Enums.Rarity.COMMON)
 	Armory.equip(Armory.PLAYER_ID, Enums.EquipSlot.MAIN, blade)
 	_steps(p, 0.2, {"move": Vector2.UP})

@@ -31,6 +31,12 @@ func _ready() -> void:
 		return
 	_register_builtins()
 	_build_ui()
+	# Live player animation speed sliders (debug builds only): \ key or `anim`.
+	var anim_panel: Node = preload("res://core/debug/anim_tuning_panel.gd").new()
+	add_child(anim_panel)
+	register(&"anim", func(_args: PackedStringArray) -> String:
+		anim_panel.call(&"toggle")
+		return "애니메이션 속도 패널 (\\ 키로도 열고 닫음)", "anim - 애니메이션 속도 패널 열기/닫기")
 
 
 func is_open() -> bool:
