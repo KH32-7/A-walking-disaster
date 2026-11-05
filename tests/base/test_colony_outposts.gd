@@ -43,7 +43,11 @@ func _active(node_id: StringName) -> Array[StringName]:
 func _test_nodes_and_build() -> bool:
 	_fresh()
 	var nodes := Colony.outpost_nodes().map(func(n): return n["node_id"])
-	var ok := _check(nodes.size() == 5 and &"outpost_north" in nodes and &"outpost_flooded_mall" in nodes, "노드: 4방향 + 지역 입구: %s" % [nodes])
+	# 4 directions + one entrance per field region (the region list grows with B's data, issue #123).
+	var regions := _region_ids()
+	var ok := _check(nodes.size() == OutpostRules.DIRECTION_NODES.size() + regions.size(), "노드: 4방향 + 지역 %d곳 입구: %s" % [regions.size(), nodes])
+	ok = _check(OutpostRules.DIRECTION_NODES.keys().all(func(id): return id in nodes) and &"outpost_flooded_mall" in nodes, "4방향과 침수 상가 입구는 항상 있음") and ok
+	ok = _check(regions.all(func(r): return StringName(OutpostRules.REGION_NODE_PREFIX + r) in nodes), "지역마다 입구 노드") and ok
 	ok = _check(not Colony.build_outpost(&"outpost_north"), "자원이 없으면 못 지음") and ok
 	Economy.apply(OutpostRules.COST)
 	ok = _check(Colony.build_outpost(&"outpost_north") and Economy.get_amount(&"wood") == 0, "나무 60·돌 30·고철 20을 내고 건설 시작") and ok
@@ -118,6 +122,22 @@ func _test_settle_and_save() -> bool:
 	Colony.load_data(JSON.parse_string(JSON.stringify(Colony.save_data())))
 	ok = _check(Colony.outpost_nodes() == saved and Colony.is_outpost_active(&"outpost_east"), "저장 후 전초기지·주둔 유지") and ok
 	return ok
+
+
+## Field regions on disk: data/regions/<id>.tres and/or data/regions/<id>/ folders.
+func _region_ids() -> Array[String]:
+	var out: Array[String] = []
+	var dir := DirAccess.open(OutpostRules.REGIONS_DIR)
+	if dir == null:
+		return out
+	for f in dir.get_files():
+		var file := f.trim_suffix(".remap")
+		if file.ends_with(".tres") and not file.get_basename() in out:
+			out.append(file.get_basename())
+	for d in dir.get_directories():
+		if not d in out:
+			out.append(d)
+	return out
 
 
 func _check(cond: bool, what: String) -> bool:
