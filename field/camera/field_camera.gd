@@ -62,6 +62,7 @@ var _use_stick := false
 var _tween: Tween
 ## B-27: shot kick (decays to zero) and shake trauma (CombatFeel).
 var _kick := Vector3.ZERO
+var _fov_punch := 0.0  # B-28: degrees narrower than FOV_DEG, springs back with the kick
 var _trauma := 0.0
 var _shake_time := 0.0
 
@@ -89,6 +90,8 @@ func _physics_process(delta: float) -> void:
 	var want: float = ZOOM_DISTANCES[_zoom] * lerpf(1.0, AIM_ZOOM_MULT, _aim_zoom)
 	_distance = lerpf(_distance, want, 1.0 - exp(-ZOOM_SHARPNESS * delta))
 	_kick = _kick.lerp(Vector3.ZERO, 1.0 - exp(-CombatFeel.KICK_RETURN_SHARPNESS * delta))
+	_fov_punch = lerpf(_fov_punch, 0.0, 1.0 - exp(-CombatFeel.KICK_RETURN_SHARPNESS * delta))
+	fov = FOV_DEG - _fov_punch
 	_trauma = maxf(_trauma - CombatFeel.SHAKE_DECAY * delta, 0.0)
 	_shake_time += delta
 	_place()
@@ -248,8 +251,9 @@ func _place() -> void:
 
 
 ## B-27: pushes the view by `v` (m); it springs back on its own.
-func add_kick(v: Vector3) -> void:
+func add_kick(v: Vector3, fov_punch_deg := 0.0) -> void:
 	_kick += v
+	_fov_punch = minf(_fov_punch + fov_punch_deg, CombatFeel.FOV_PUNCH_MAX)
 
 
 ## B-27: adds shake trauma (0..1 total).

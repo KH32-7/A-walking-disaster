@@ -8,12 +8,12 @@ script = ExtResource("2_layer")
 kind = 0
 texture = "res://assets/vfx/magic_arsenal/textures/modular/glow01.png"
 amount = 1
-size = Vector2(0.45, 0.45)
+size = Vector2(0.8, 0.8)
 speed = Vector2(0.0, 0.0)
 lifetime = 0.12
-end_scale = 1.6
+end_scale = 1.8
 spin = false
-color = Color(1.0, 0.9, 0.7, 0.85)
+color = Color(1.0, 0.9, 0.7, 0.9)
 flash = true
 fade_out = 0.8
 tint_element = true
@@ -21,34 +21,47 @@ tint_element = true
 [sub_resource type="Resource" id="layer_1"]
 script = ExtResource("2_layer")
 kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/glowring.png"
+amount = 1
+size = Vector2(0.3, 0.3)
+end_scale = 2.2
+speed = Vector2(0.0, 0.0)
+spin = false
+lifetime = 0.12
+color = Color(1.0, 0.95, 0.85, 0.7)
+flash = true
+
+[sub_resource type="Resource" id="layer_2"]
+script = ExtResource("2_layer")
+kind = 0
 texture = "res://assets/vfx/magic_arsenal/textures/modular/smallglow01.png"
-amount = 7
+amount = 10
 align = 1
-stretch = 4.0
-size = Vector2(0.04, 0.07)
-speed = Vector2(4.0, 8.0)
+stretch = 5.0
+size = Vector2(0.07, 0.12)
+speed = Vector2(5.0, 10.0)
 gravity = 9.0
-lifetime = 0.22
+lifetime = 0.25
 color = Color(1.0, 0.82, 0.55, 1.0)
 spin = false
 fade_out = 0.5
 tint_element = true
 
-[sub_resource type="Resource" id="layer_2"]
+[sub_resource type="Resource" id="layer_3"]
 script = ExtResource("2_layer")
 kind = 0
 texture = ""
 element_textures = PackedStringArray("", "res://assets/vfx/magic_arsenal/textures/life_drops.png", "res://assets/vfx/magic_arsenal/textures/earth_spray.png", "res://assets/vfx/magic_arsenal/textures/water_droplets.png", "res://assets/vfx/magic_arsenal/textures/storm_spark.png")
 blend = 1
 tint_element = true
-amount = 5
-size = Vector2(0.12, 0.25)
-speed = Vector2(1.5, 3.0)
+amount = 6
+size = Vector2(0.18, 0.35)
+speed = Vector2(1.5, 3.5)
 gravity = 4.0
-lifetime = 0.4
+lifetime = 0.45
 end_scale = 0.5
 
-[sub_resource type="Resource" id="layer_3"]
+[sub_resource type="Resource" id="layer_4"]
 script = ExtResource("2_layer")
 kind = 0
 texture = "res://assets/vfx/magic_arsenal/textures/modular/glowring.png"
@@ -56,15 +69,15 @@ when = {
 "crit": true
 }
 amount = 1
-size = Vector2(0.4, 0.4)
-end_scale = 3.0
+size = Vector2(0.6, 0.6)
+end_scale = 3.5
 speed = Vector2(0.0, 0.0)
 spin = false
 lifetime = 0.25
-color = Color(1.0, 0.85, 0.3, 0.9)
+color = Color(1.0, 0.85, 0.3, 0.95)
 flash = true
 
-[sub_resource type="Resource" id="layer_4"]
+[sub_resource type="Resource" id="layer_5"]
 script = ExtResource("2_layer")
 kind = 0
 texture = "res://assets/vfx/magic_arsenal/textures/modular/glowspiky.png"
@@ -72,10 +85,10 @@ when = {
 "weak_point": true
 }
 amount = 1
-size = Vector2(0.7, 0.7)
+size = Vector2(1.0, 1.0)
 speed = Vector2(0.0, 0.0)
 lifetime = 0.18
-color = Color(1.0, 1.0, 1.0, 0.8)
+color = Color(1.0, 1.0, 1.0, 0.85)
 flash = true
 
 [resource]
@@ -84,4 +97,4 @@ id = &"hit_spark"
 sound = &"hit_impact"
 sound_crit = &"hit_crit"
 max_alive = 24
-layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1"), SubResource("layer_2"), SubResource("layer_3"), SubResource("layer_4")])
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1"), SubResource("layer_2"), SubResource("layer_3"), SubResource("layer_4"), SubResource("layer_5")])

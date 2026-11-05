@@ -15,6 +15,8 @@ signal weapon_changed(slot: Enums.EquipSlot, item_uid: StringName)
 ## reserve = -1 for infinite ammo, 0 for melee weapons.
 signal ammo_changed(in_magazine: int, reserve: int)
 signal reload_started(duration_sec: float)
+## Trigger pulled on an empty magazine with nothing to reload (aim reticle shake).
+signal dry_fired()
 signal reload_finished()
 ## kind: &"shot" or &"swing". combo_step: 1..3 for swings, 0 for shots.
 signal attacked(kind: StringName, combo_step: int)
@@ -69,6 +71,8 @@ var _ready_at := 0.0
 var _reload_done_at := 0.0
 var _last_shot_at := -INF
 var _bloom := 0.0
+## Set during fire(): where its muzzle flash and tracers are drawn from (_visual_muzzle).
+var _draw_from := Vector3.INF
 var _block_started := 0.0
 var _stun_until := 0.0
 ## Guard break: aim must be released once before blocking again.
@@ -199,6 +203,7 @@ func fire() -> bool:
 	if rounds <= 0:
 		if not start_reload():
 			Audio.play(&"dry_fire", global_position)
+			dry_fired.emit()
 		return false
 	_magazines[uid] = rounds - 1
 	_ready_at = _clock + float(stats.get("attack_interval", 0.3))
@@ -211,6 +216,7 @@ func fire() -> bool:
 	var amount := _attacker_damage(stats, crit)
 	var origin := _player.global_position + Vector3.UP * tuning.muzzle_height
 	var forward := _player.facing()
+	_draw_from = _visual_muzzle(origin, forward)
 	for i in maxi(int(stats.get("pellets", 1)), 1):
 		var angle := deg_to_rad(rng.randf_range(-spread * 0.5, spread * 0.5))
 		shoot_ray(origin, forward.rotated(Vector3.UP, angle), float(stats.get("range", 10.0)),
@@ -218,11 +224,27 @@ func fire() -> bool:
 	Armory.wear(uid, tuning.gun_wear)
 	_emit_noise(stats)
 	Audio.play(StringName("gunshot_%s" % stats["def_id"]), origin)
-	Fx.spawn(&"muzzle_flash", origin + forward * 0.5, {"direction": forward})
+	Fx.spawn(&"muzzle_flash", _draw_from, {"direction": forward})
+	_draw_from = Vector3.INF
 	CombatFeel.kick(self, forward, stats["def_id"])
 	attacked.emit(&"shot", 0)
 	_emit_ammo()
 	return true
+
+
+## Where this shot is drawn from: the model's hand (PlayerModel.muzzle_point), else the old spot.
+## Only the look: the hitscan stays at tuning.muzzle_height so low cover works the same.
+func _visual_muzzle(origin: Vector3, forward: Vector3) -> Vector3:
+	var model := _player.get_node_or_null(^"Model")
+	if model != null and model.has_method(&"muzzle_point"):
+		var p: Variant = model.call(&"muzzle_point", forward)
+		if p is Vector3 and (p as Vector3).is_finite():
+			return p
+	return origin + forward * 0.5
+
+
+func _tracer_from(origin: Vector3) -> Vector3:
+	return _draw_from if _draw_from.is_finite() else origin
 
 
 ## One hitscan shot along the flat `direction`. Walls: a ray at the shot height that passes over low
@@ -253,11 +275,11 @@ func shoot_ray(origin: Vector3, direction: Vector3, max_range: float, amount: fl
 		if first == null:
 			first = target
 		if not shot_pierces:
-			Fx.spawn(&"bullet_tracer", origin, {"to": hit["position"]})
+			Fx.spawn(&"bullet_tracer", _tracer_from(origin), {"to": hit["position"]})
 			shot_traced.emit(origin, hit["position"], true)
 			return first
 	var stopped := wall.has("collider")
-	Fx.spawn(&"bullet_tracer", origin, {"to": end})
+	Fx.spawn(&"bullet_tracer", _tracer_from(origin), {"to": end})
 	shot_traced.emit(origin, end, stopped)
 	if stopped:
 		var target := _damage_target(wall["collider"])
@@ -381,6 +403,9 @@ func swing() -> bool:
 	_emit_noise(stats)
 	Audio.play(&"swing_blade" if combat_class == Enums.CombatClass.BLADE else &"swing_blunt",
 			global_position)
+	Fx.spawn(&"melee_swing", _player.global_position, {"direction": _player.facing(),
+		"radius": float(stats.get("range", 1.5)), "element": stats.get("element", Enums.Element.NONE),
+		"combat_class": combat_class, "finisher": combo_step == tuning.combo_hits})
 	attacked.emit(&"swing", combo_step)
 	return true
 

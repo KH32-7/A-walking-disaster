@@ -146,6 +146,7 @@ func _on_died(_m = null) -> void:
 	if not has_clip(&"Death"):
 		return
 	reparent(world, true)
+	CombatFeel.corpse_knock(self, _monster.get("last_hit") if "last_hit" in _monster else {})
 	anim.play(&"Death", BLEND)
 	var tw := create_tween()
 	tw.tween_interval(anim.get_animation(&"Death").length + CORPSE_HOLD)

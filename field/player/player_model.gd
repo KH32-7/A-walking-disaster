@@ -51,6 +51,10 @@ const UPPER_FADE := 0.12
 const DOWNED_FADE := 0.25
 ## A single shot keeps the firing pose this long before easing back.
 const SHOT_HOLD_SEC := 0.3
+## Where shots are drawn from (muzzle flash, tracers): this hand bone, pushed this far along the aim.
+## The hitscan itself stays at CombatTuning.muzzle_height (cover rules use that height).
+const MUZZLE_BONE := "mixamorig_RightHand"
+const MUZZLE_AHEAD := 0.3
 
 var _model: Node3D
 var _tree: AnimationTree
@@ -64,6 +68,7 @@ var _speed_scale := 1.0
 var _model_yaw := 0.0  # world yaw of the model, eased toward the player's
 var _was_dodging := false
 var _shot_left := 0.0
+var _hand := -2  # bone index of MUZZLE_BONE, -2 = not looked up yet, -1 = missing
 
 
 func _ready() -> void:
@@ -204,6 +209,20 @@ func walk_playback() -> float:
 func _clip_length(clip: String) -> float:
 	var ap := _tree.get_node(_tree.anim_player) as AnimationPlayer
 	return ap.get_animation(LIB + "/" + clip).length
+
+
+## World point the shot is drawn from (hand + MUZZLE_AHEAD along `forward`), or null without a model.
+func muzzle_point(forward: Vector3) -> Variant:
+	if _model == null:
+		return null
+	var skeleton := _model.get_node_or_null(SKELETON) as Skeleton3D
+	if skeleton == null:
+		return null
+	if _hand == -2:
+		_hand = skeleton.find_bone(MUZZLE_BONE)
+	if _hand < 0:
+		return null
+	return skeleton.global_transform * skeleton.get_bone_global_pose(_hand).origin + forward * MUZZLE_AHEAD
 
 
 func _on_attacked(kind: StringName, _combo_step: int) -> void:

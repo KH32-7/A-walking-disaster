@@ -7,10 +7,15 @@ extends RefCounted
 ## Settings `reduce_shake` turns kick and shake off; hit-stop is not motion and stays.
 ## All numbers are placeholders (가안) and live here.
 
-## Camera kick per shot (m, opposite the aim), by weapon def id.
-const KICK := {&"pistol": 0.08, &"smg": 0.05, &"rifle": 0.12, &"shotgun": 0.25, &"sniper_rifle": 0.35}
-const KICK_DEFAULT := 0.1
-const KICK_RETURN_SHARPNESS := 22.0
+## Camera kick per shot (m, opposite the aim), by weapon def id. Sized for the 10~18 m camera:
+## 0.25 m at the middle zoom is about 17 px (B-28, the B-27 values were too small to feel).
+const KICK := {&"pistol": 0.25, &"smg": 0.15, &"rifle": 0.35, &"shotgun": 0.7, &"sniper_rifle": 0.9}
+const KICK_DEFAULT := 0.3
+const KICK_RETURN_SHARPNESS := 18.0
+## Field of view punch per shot (degrees narrower, springs back with the kick): the view "leans in".
+const FOV_PUNCH := {&"pistol": 0.8, &"smg": 0.4, &"rifle": 1.0, &"shotgun": 2.2, &"sniper_rifle": 3.0}
+const FOV_PUNCH_DEFAULT := 0.8
+const FOV_PUNCH_MAX := 5.0  # SMG bursts must not zoom in forever
 
 ## Hit-stop lengths in real seconds, and the time scale while stopped.
 const STOP_MELEE_HIT := 0.035
@@ -32,13 +37,18 @@ const SHAKE_HURT_MIN_RATIO := 0.08  # smaller hits on the player do not shake
 const SHAKE_RELEASE := 0.35
 const SHAKE_SLAM := 0.4
 
-## Monster flinch: its Body is pushed away from the attacker and squashed, then springs back.
-const FLINCH_SEC := 0.12
-const FLINCH_PUSH := 0.12  # m, shots
-const FLINCH_PUSH_MELEE := 0.25
-const FLINCH_SQUASH := 0.12
+## Monster flinch: its model ("Visual", else the grey-box "Body") is pushed away from the attacker
+## and squashed, then springs back.
+const FLINCH_SEC := 0.14
+const FLINCH_PUSH := 0.2  # m, shots
+const FLINCH_PUSH_MELEE := 0.35
+const FLINCH_SQUASH := 0.15
 const FLINCH_CRIT_MULT := 1.6
+const VISUAL_NODE := ^"Visual"
 const BODY_NODE := ^"Body"
+## Corpse knock on a kill: the model slides this far along the killing hit (crit x FLINCH_CRIT_MULT).
+const CORPSE_KNOCK := 0.5
+const CORPSE_KNOCK_SEC := 0.18
 
 static var _stop_until_ms := 0
 static var _stop_token := 0
@@ -49,7 +59,8 @@ static var _ended_token := 0
 static func kick(from: Node, aim_dir: Vector3, def_id: StringName) -> void:
 	var cam := _camera(from)
 	if cam != null:
-		cam.add_kick(-aim_dir.normalized() * float(KICK.get(def_id, KICK_DEFAULT)))
+		cam.add_kick(-aim_dir.normalized() * float(KICK.get(def_id, KICK_DEFAULT)),
+				float(FOV_PUNCH.get(def_id, FOV_PUNCH_DEFAULT)))
 
 
 ## Adds shake trauma. With `at`, it fades to nothing SHAKE_RANGE m from the camera's target.
@@ -103,7 +114,9 @@ static func _end_stop(token: int) -> void:
 
 ## Pushes the monster's Body away from info.source (or just squashes it) and springs it back.
 static func flinch(monster: Node3D, info: Dictionary) -> void:
-	var body := monster.get_node_or_null(BODY_NODE) as Node3D
+	var body := monster.get_node_or_null(VISUAL_NODE) as Node3D
+	if body == null or not body.visible:
+		body = monster.get_node_or_null(BODY_NODE) as Node3D
 	if body == null or not body.is_inside_tree():
 		return
 	if not body.has_meta(&"flinch_rest"):
@@ -114,12 +127,7 @@ static func flinch(monster: Node3D, info: Dictionary) -> void:
 		old.kill()
 	var k := FLINCH_CRIT_MULT if info.get("crit", false) else 1.0
 	var push := (FLINCH_PUSH_MELEE if info.has("combo_step") else FLINCH_PUSH) * k
-	var dir := Vector3.ZERO
-	var source := info.get("source") as Node3D
-	if source != null and is_instance_valid(source):
-		dir = monster.global_position - source.global_position
-		dir.y = 0.0
-		dir = dir.normalized() if dir.length() > 0.001 else Vector3.ZERO
+	var dir := push_dir(monster, info)
 	var squash := FLINCH_SQUASH * k
 	var hit := rest
 	hit.origin += monster.global_basis.inverse() * dir * push
@@ -128,6 +136,33 @@ static func flinch(monster: Node3D, info: Dictionary) -> void:
 	var tw := body.create_tween()
 	tw.tween_property(body, ^"transform", rest, FLINCH_SEC).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	body.set_meta(&"flinch_tween", tw)
+
+
+## Flat direction a hit pushes `target` (away from info.source), or ZERO.
+static func push_dir(target: Node3D, info: Dictionary) -> Vector3:
+	var source := info.get("source") as Node3D
+	if source == null or not is_instance_valid(source):
+		return Vector3.ZERO
+	var dir := target.global_position - source.global_position
+	dir.y = 0.0
+	return dir.normalized() if dir.length() > 0.001 else Vector3.ZERO
+
+
+## Kill: slides a corpse (already detached from the monster) along the killing hit.
+## A flinch still springing back would pull the corpse to the monster's local rest, so it stops first.
+static func corpse_knock(corpse: Node3D, info: Dictionary) -> void:
+	var flinch_tw: Tween = corpse.get_meta(&"flinch_tween") if corpse.has_meta(&"flinch_tween") else null
+	if flinch_tw != null and flinch_tw.is_valid():
+		flinch_tw.kill()
+	if corpse.has_meta(&"flinch_rest"):
+		corpse.basis = corpse.basis.orthonormalized()  # drop the squash (the model's rest scale is 1)
+	var dir := push_dir(corpse, info)
+	if dir == Vector3.ZERO or not corpse.is_inside_tree():
+		return
+	var dist := CORPSE_KNOCK * (FLINCH_CRIT_MULT if info.get("crit", false) else 1.0)
+	var tw := corpse.create_tween()
+	tw.tween_property(corpse, ^"global_position", corpse.global_position + dir * dist,
+			CORPSE_KNOCK_SEC).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
 static func _camera(from: Node) -> FieldCamera:
