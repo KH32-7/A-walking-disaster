@@ -18,3 +18,4 @@ dodge_distance = 3.5
 dodge_duration_sec = 0.35
 dodge_invuln_sec = 0.3
 dodge_stamina = 25.0
+interact_range = 1.5

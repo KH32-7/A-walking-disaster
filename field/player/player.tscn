@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://field/player/player.gd" id="1_player"]
+[ext_resource type="Script" path="res://field/noise/noise_emitter.gd" id="2_noise"]
 
 [sub_resource type="CapsuleShape3D" id="Shape_body"]
 radius = 0.35
@@ -37,3 +38,8 @@ mesh = SubResource("Mesh_body")
 [node name="Nose" type="MeshInstance3D" parent="Greybox"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, -0.4)
 mesh = SubResource("Mesh_nose")
+
+[node name="Noise" type="Node3D" parent="."]
+script = ExtResource("2_noise")
+armory_owner_id = &"player"
+
