@@ -1167,7 +1167,7 @@ func _effects(stats: Dictionary) -> void:
 		_detail.add_child(h)
 
 
-## Essences by element (녹 석 수 광), then grade (하급 중급 상급): one row per element in a 3-column grid.
+## Essences by element (풀 돌 물 번개), then grade (하급 중급 상급): one row per element in a 3-column grid.
 func _essences_ordered() -> Array[StringName]:
 	var out := EssenceRules.list_essences()
 	out.sort_custom(func(a: StringName, b: StringName) -> bool:

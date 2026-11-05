@@ -53,7 +53,7 @@ const ELEMENT_COLORS: Array[Color] = [
 	Color("a4abb1"), Color("7bd86a"), Color("b9a27a"), Color("5fc2ff"), Color("ffd84a"),
 ]
 const ELEMENT_SHAPES: Array[Shape] = [Shape.CIRCLE, Shape.PETAL, Shape.SQUARE, Shape.DROP, Shape.BOLT]
-const ELEMENT_NAMES: Array[String] = ["없음", "초록", "돌", "물", "빛"]
+const ELEMENT_NAMES: Array[String] = ["없음", "풀", "돌", "물", "번개"]
 
 # --- type scale (§3), 1920x1080 at text size "보통" ---
 const SIZE_TITLE := 30
