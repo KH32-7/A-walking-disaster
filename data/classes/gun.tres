@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ClassDef" format=3]
+
+[ext_resource type="Script" path="res://field/defs/class_def.gd" id="1_class"]
+[ext_resource type="Resource" path="res://data/classes/skills/precision_shot.tres" id="2_q"]
+[ext_resource type="Resource" path="res://data/classes/skills/suppressive_fire.tres" id="3_e"]
+
+[resource]
+script = ExtResource("1_class")
+id = 0
+skill_q = ExtResource("2_q")
+skill_e = ExtResource("3_e")
+passive_5 = &"reload_fast"
+passive_10 = &"weak_point_bonus"
+weapon_types = Array[StringName]([&"pistol", &"smg", &"rifle", &"shotgun", &"sniper_rifle"])
+passive_5_value = 0.25
+passive_10_value = 0.3

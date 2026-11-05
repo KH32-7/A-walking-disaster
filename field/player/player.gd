@@ -55,6 +55,8 @@ var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 @onready var _noise: NoiseEmitter = $Noise
 ## Status effects (B-14): bleed, stagger, bind, slow ... Lane D listens to its signals.
 @onready var status: StatusHolder = StatusHolder.attach(self)
+## Class skills, passives and mastery (B-13). It hooks the Weapons node and incoming_damage_filter.
+@onready var skills: ClassSkills = ClassSkills.attach(self)
 
 
 func _ready() -> void:

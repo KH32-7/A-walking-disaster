@@ -4,7 +4,8 @@ extends RefCounted
 ## this returns; missing keys fall back to HUD defaults. Filled now: hp, stamina, weapons,
 ## heading and compass (extraction points), hold bar, interact prompt, dusk_left_sec (B-21,
 ## left out when night is off so the demo has no dusk timer).
-## Later: armor (B-06 armor), consumables (B-16), skills/mana (B-13/B-15),
+## skills (B-13: [{key, left, max}] of enabled class skills).
+## Later: armor (B-06 armor), consumables (B-16), mana (B-15),
 ## companions (B-17), objectives (A-13), minimap.
 
 const PROMPT_KEY := "F"
@@ -19,6 +20,7 @@ static func build(player: Player) -> Dictionary:
 		"stamina": player.stamina / player.stats.max_stamina,
 	}
 	_add_weapons(player, state)
+	state["skills"] = ClassSkills.hud_list(player)
 	_add_heading(player, state)
 	var extraction := player.get_tree().get_first_node_in_group(ExtractionManager.GROUP) as ExtractionManager
 	_add_compass(player, extraction, state)

@@ -47,6 +47,13 @@ var is_reloading := false
 ## Step of the last swing (1..tuning.combo_hits), 0 before any swing.
 var combo_step := 0
 var rng := RandomNumberGenerator.new()
+## B-13 ClassSkills: (target, amount, info) -> amount, called for every hit before take_damage.
+## It may add info["status"] (class on-hit effects, skills, passives).
+var hit_filter: Callable
+## B-13 precision shot: shots keep going through the monsters they hit.
+var shot_pierces := false
+## B-13 gun passive: reload time x this.
+var reload_mult := 1.0
 
 var _player: Player
 ## item uid -> rounds in the magazine. Unknown uid = full magazine.
@@ -213,20 +220,22 @@ func fire() -> bool:
 
 
 ## One hitscan ray. Passes over low cover, stops at other world colliders and damages the first
-## thing with take_damage(). Returns the node it damaged, or null.
+## thing with take_damage() (every monster on the line while shot_pierces). Returns the first node
+## it damaged, or null.
 func shoot_ray(origin: Vector3, direction: Vector3, max_range: float, amount: float,
 		info: Dictionary) -> Node:
 	var space := get_world_3d().direct_space_state
 	var target_point := origin + direction.normalized() * max_range
 	var exclude: Array[RID] = [_player.get_rid()]
 	var cover_points: Array[Vector3] = []
+	var pierced: Node = null
 	for pass_index in MAX_COVER_PASSES + 1:
 		var query := PhysicsRayQueryParameters3D.create(origin, target_point, SHOT_MASK, exclude)
 		var hit := space.intersect_ray(query)
 		if hit.is_empty():
 			Fx.spawn(&"bullet_tracer", origin, {"to": target_point})
 			shot_traced.emit(origin, target_point, false)
-			return null
+			return pierced
 		var collider := hit["collider"] as Node
 		if _is_low_cover(collider) and pass_index < MAX_COVER_PASSES:
 			cover_points.append(hit["position"])
@@ -238,7 +247,7 @@ func shoot_ray(origin: Vector3, direction: Vector3, max_range: float, amount: fl
 		var target := _damage_target(collider)
 		if target == null:
 			Fx.spawn(&"bullet_impact", point, {"normal": hit["normal"]})
-			return null
+			return pierced
 		var hit_info := info.duplicate()
 		hit_info["position"] = point
 		for cover_point in cover_points:
@@ -252,8 +261,12 @@ func shoot_ray(origin: Vector3, direction: Vector3, max_range: float, amount: fl
 			if weak != null:
 				target = weak
 		_deal(target, amount, hit_info)
-		return target
-	return null
+		if not shot_pierces:
+			return target
+		exclude.append(hit["rid"])
+		if pierced == null:
+			pierced = target
+	return pierced
 
 
 ## Starts reloading the active gun. False when full, already reloading or out of reserve ammo.
@@ -264,7 +277,7 @@ func start_reload() -> bool:
 	if ammo_in_magazine() >= int(stats.get("magazine", 0)) or ammo_reserve() == 0:
 		return false
 	var duration: float = _weapon_value(stats, "reload_sec", 1.5) \
-			* (1.0 - float(stats.get("reload_pct", 0)) / 100.0)
+			* (1.0 - float(stats.get("reload_pct", 0)) / 100.0) * reload_mult
 	is_reloading = true
 	_reload_done_at = _clock + duration
 	Audio.play(&"reload", global_position)
@@ -306,6 +319,17 @@ func swing() -> bool:
 			global_position)
 	attacked.emit(&"swing", combo_step)
 	return true
+
+
+## B-13 skills: one hit on `target` with the active weapon's damage x mult (mastery and crit as
+## usual), through the same path as shots and swings (hit_filter, hit_landed).
+func skill_hit(target: Node3D, mult: float, extra_info: Dictionary = {}) -> void:
+	var stats := current_stats()
+	var crit := _roll_crit(stats)
+	var info := _hit_info(stats, crit)
+	info["position"] = target.global_position
+	info.merge(extra_info, true)
+	_deal(target, _attacker_damage(stats, crit, mult), info)
 
 
 ## Monsters whose body is within `reach` of the player and inside the swing arc.
@@ -429,9 +453,10 @@ func _attacker_damage(stats: Dictionary, crit_mult: float, extra: float = 1.0) -
 			tuning.mastery_per_level, crit_mult, extra)
 
 
-## TODO(A-11): class mastery of stats.combat_class for the owner. Fixed until progression exists.
-func _mastery(_stats: Dictionary) -> int:
-	return tuning.default_mastery
+## Class mastery (A-11 Progression) of the weapon's family. The holder is always the player's.
+func _mastery(stats: Dictionary) -> int:
+	var family := int(stats.get("combat_class", -1))
+	return ClassMastery.level(family) if family >= 0 else tuning.default_mastery
 
 
 func _roll_crit(stats: Dictionary) -> float:
@@ -450,6 +475,8 @@ func _hit_info(stats: Dictionary, crit_mult: float) -> Dictionary:
 
 
 func _deal(target: Node, amount: float, info: Dictionary) -> void:
+	if hit_filter.is_valid():
+		amount = hit_filter.call(target, amount, info)
 	target.take_damage(amount, info)
 	Fx.spawn(&"hit_spark", info.get("position", global_position), {
 		"element": info.get("element", Enums.Element.NONE),
