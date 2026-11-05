@@ -35,6 +35,7 @@ var _defs: Dictionary = {}  # StringName -> ScreenDef
 var _scenes: Dictionary = {}  # StringName -> PackedScene (registered in code)
 var _stack: Array[Dictionary] = []  # [{id, node, def}], last = top
 var _paused_by_ui := false
+var _blocks_play := false
 
 
 func _ready() -> void:
@@ -419,6 +420,13 @@ func is_open(screen_id: StringName) -> bool:
 	return _index_of(screen_id) >= 0
 
 
+## True while a screen that would pause the game is open (pause menu, settings, journal, dialog,
+## emergency return ...). In the field the game keeps running, so field input readers ignore
+## player input while this is true.
+func blocks_play() -> bool:
+	return _blocks_play
+
+
 func top() -> StringName:
 	return &"" if _stack.is_empty() else _stack.back().id
 
@@ -550,6 +558,11 @@ func _refresh_visibility() -> void:
 		pause = pause or def.pauses_game
 		hide_hud = hide_hud or def.hides_hud
 	hud.visible = not hide_hud
+	_blocks_play = pause
+	# The field never stops for a screen (user decision 2026-11-06): monsters and time keep going.
+	# Field input readers check blocks_play() instead, so the player stands still under the menu.
+	if pause and GameState.flow_state == Enums.FlowState.FIELD:
+		pause = false
 	if pause != _paused_by_ui:
 		_paused_by_ui = pause
 		get_tree().paused = pause

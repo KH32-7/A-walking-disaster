@@ -104,7 +104,7 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	for i in SLOT_COUNT:
-		if Input.is_action_just_pressed(SLOT_ACTIONS[i]):
+		if Input.is_action_just_pressed(SLOT_ACTIONS[i]) and not Player.input_blocked():
 			use_slot(i)
 	step(delta)
 

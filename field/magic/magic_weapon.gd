@@ -80,7 +80,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if _player.is_downed:
 		return
-	step(delta, {"release": Input.is_action_just_pressed(&"essence_release")})
+	step(delta, {"release": Input.is_action_just_pressed(&"essence_release") and not Player.input_blocked()})
 
 
 ## One step. Split from input reading so tests can drive it. input: {"release": bool}

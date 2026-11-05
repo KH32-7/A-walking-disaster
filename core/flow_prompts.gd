@@ -104,7 +104,8 @@ func _show_night() -> void:
 
 func _show_pause() -> void:
 	_pause_open = true
-	get_tree().paused = true
+	# The field keeps running under the pause box (user decision 2026-11-06).
+	get_tree().paused = GameState.flow_state != Enums.FlowState.FIELD
 	var dim := ColorRect.new()
 	dim.name = &"Pause"
 	dim.color = Color(0, 0, 0, 0.5)
