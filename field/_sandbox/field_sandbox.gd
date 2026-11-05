@@ -12,6 +12,11 @@ const CAMERA_DISTANCE := 22.0
 const CAMERA_FOCUS := Vector3.ZERO
 ## The sandbox stands in for a sortie, so FieldState.in_sortie() is true here.
 const SIMULATE_SORTIE := true
+## Real gear the player wears in the sandbox when nothing is equipped (A-07 items).
+const SANDBOX_LOADOUT := {
+	Enums.EquipSlot.MAIN: &"pistol",
+	Enums.EquipSlot.SUB: &"dagger",
+}
 
 @onready var _camera: Camera3D = $Camera3D
 @onready var _debug_label: Label = $DebugLayer/DebugLabel
@@ -36,11 +41,17 @@ func _process(_delta: float) -> void:
 	]
 
 
-## Swap fake values onto empty A autoloads. The autoload files themselves are never edited.
+## Give the player gear when nothing is equipped. The autoload files themselves are never edited.
 func _install_stubs() -> void:
-	if Armory.get_equipped(Armory.PLAYER_ID, Enums.EquipSlot.MAIN) == &"":
-		Armory.set_script(ARMORY_STUB)
-		_armory_stubbed = true
+	if Armory.get_equipped(Armory.PLAYER_ID, Enums.EquipSlot.MAIN) != &"":
+		return
+	if Armory.get_def(&"pistol") != null:
+		# A-07 is in: equip real items. set_script() would wipe the defs Armory loaded in _ready.
+		for slot: Enums.EquipSlot in SANDBOX_LOADOUT:
+			Armory.equip(Armory.PLAYER_ID, slot, Armory.create_item(SANDBOX_LOADOUT[slot]))
+		return
+	Armory.set_script(ARMORY_STUB)
+	_armory_stubbed = true
 
 
 func _place_camera() -> void:
