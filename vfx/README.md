@@ -12,7 +12,7 @@
 | `fx_node.gd` | 살아 있는 이펙트 하나. 레이어를 조립하고 수명이 끝나면 스스로 지운다 |
 | `defs/fx_def.gd`, `defs/fx_layer.gd` | 데이터 스키마. 정의는 `data/ui/effects/<id>.tres` |
 | `shaders/fx_common.gdshaderinc` | 빌보드, 속도 방향 늘이기, 플립북, 채널 모드(RGBA, 빨강=알파 마스크, 슛힛 묶음 채널 R 모양/G 디졸브/A 알파) |
-| `fx_feedback.gd` | 피해 숫자와 피격 번쩍임. 게임플레이가 부르지 않는다(`Monster.damaged`, `Player.health_changed`를 듣는다) |
+| `fx_feedback.gd` | 피해 숫자와 흰색 피격 번쩍임. 게임플레이가 부르지 않는다(`Monster.damaged`, `Player.health_changed`, `FieldCompanion.damaged`, `RescueTarget.damaged`, `ResidentAgent.hurt`를 듣는다). 적 외곽선 위에서도 번쩍인다 |
 | `_preview/preview_fx.tscn` | 모든 id 미리보기 |
 
 레이어 종류: `PARTICLES`, `MESH`(팩 메시 + 텍스처, 방향을 따라 돈다), `GROUND`(바닥 원판), `BEAM`(두 점 사이 띠,

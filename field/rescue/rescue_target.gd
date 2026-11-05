@@ -24,6 +24,8 @@ signal card_round_started(round_index: int, prompt_id: StringName, options: Arra
 signal card_answered(correct: bool, strikes: int)
 signal downed()
 signal revived()
+## A landed hit (amount after status scaling), the same shape as Monster.damaged. FxFeedback flashes it.
+signal damaged(amount: float, info: Dictionary)
 ## Not helped up in time: stays on the spot, leaves the party.
 signal isolated()
 ## Heard the player while waiting to be found (tuning callout_far_m, through walls). Lane D shows
@@ -285,6 +287,7 @@ func take_damage(amount: float, info: Dictionary = {}) -> void:
 	amount = status.scale_damage(amount, info)
 	status.apply_hit(info)
 	health = maxf(health - amount, 0.0)
+	damaged.emit(amount, info)
 	if not _low_health_said and health > 0.0 and health <= tuning.max_health * tuning.low_health_ratio:
 		_low_health_said = true
 		Radio.say(&"rescuee_low_health", {"name": display_name})

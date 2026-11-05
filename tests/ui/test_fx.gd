@@ -66,6 +66,25 @@ func run() -> bool:
 	var label := Fx.feedback.show_number(at, "12", UiTokens.TEXT)
 	ok = _expect(label != null and label.text == "12", "damage number shows") and ok
 	label.queue_free()
+
+	# Hit flash: white over every mesh, the enemy outline chained under it and put back after.
+	var body := Node3D.new()
+	var plain := MeshInstance3D.new()
+	var outlined := MeshInstance3D.new()
+	outlined.material_overlay = Monster.OUTLINE_MATERIAL
+	body.add_child(plain)
+	body.add_child(outlined)
+	Fx.feedback.flash(body, FxFeedback.HIT_FLASH)
+	var tw := Fx.feedback.flash(body, FxFeedback.HIT_FLASH)  # a second hit cuts the first short
+	var top := outlined.material_overlay
+	ok = _expect(plain.material_overlay != null and plain.material_overlay.has_meta(&"fx_flash"), "flash covers a plain mesh") and ok
+	ok = _expect(top != null and top.has_meta(&"fx_flash") and top.next_pass == Monster.OUTLINE_MATERIAL,
+			"flash covers an outlined mesh and keeps the outline under it once") and ok
+	if tw != null:
+		tw.custom_step(1.0)
+	ok = _expect(plain.material_overlay == null and outlined.material_overlay == Monster.OUTLINE_MATERIAL,
+			"after the flash the meshes have their own overlay back") and ok
+	body.free()
 	return ok
 
 

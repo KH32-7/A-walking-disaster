@@ -31,6 +31,8 @@ signal stranded()
 ## Q skill used (CompanionSkill runs the effect: 정조준 / 돌진 베기 / 내려찍기).
 signal skill_used(combat_class: int)
 signal attacked(target: Node3D)
+## A landed hit (amount after status scaling), the same shape as Monster.damaged. FxFeedback flashes it.
+signal damaged(amount: float, info: Dictionary)
 ## A line in a speech bubble (same shape as RescueTarget.called_out; WorldMarkers shows it).
 ## Now only the signature skill's line.
 signal called_out(text: String, near: bool)
@@ -224,6 +226,7 @@ func take_damage(amount: float, info: Dictionary = {}) -> void:
 		# 신중 does not start fights, but fights back against whatever attacks it (decided 2026-11-05).
 		_marked[source.get_instance_id()] = true
 	health = maxf(health - amount, 0.0)
+	damaged.emit(amount, info)
 	if health == 0.0:
 		_go_down()
 
