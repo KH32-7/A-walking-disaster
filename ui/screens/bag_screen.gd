@@ -14,6 +14,10 @@ var _bag: BagGrid
 var _pocket: BagGrid
 var _bag_count: Label
 var _shimmer_t := 0.0
+## Loot slots identified just now that flash once on the next _fill_loot (rare gear, blueprints).
+var _flash := {}
+## Seconds of that flash.
+const FLASH_SEC := 0.7
 
 
 func _init() -> void:
@@ -33,14 +37,14 @@ func open_with(args: Dictionary) -> void:
 
 func _bind(c: Node) -> void:
 	if container != null and is_instance_valid(container):
-		for pair in [[&"slot_revealed", _on_loot_changed3], [&"slot_taken", _on_loot_changed3],
+		for pair in [[&"slot_revealed", _on_revealed], [&"slot_taken", _on_loot_changed3],
 				[&"reveal_finished", _fill_loot], [&"session_ended", close]]:
 			if container.is_connected(pair[0], pair[1]):
 				container.disconnect(pair[0], pair[1])
 	container = c
 	if c == null:
 		return
-	c.connect(&"slot_revealed", _on_loot_changed3)
+	c.connect(&"slot_revealed", _on_revealed)
 	c.connect(&"slot_taken", _on_loot_changed3)
 	c.connect(&"reveal_finished", _fill_loot)
 	c.connect(&"session_ended", close)
@@ -128,6 +132,19 @@ func _on_loot_changed3(_i: int, _id: StringName, _n: int) -> void:
 	_fill_loot()
 
 
+## Rare (희귀 or better) gear or a blueprint gets one flash and a chime when it is identified.
+func _on_revealed(i: int, _id: StringName, _n: int) -> void:
+	var slots: Array = container.call(&"get_slots") if container != null and is_instance_valid(container) else []
+	if i < slots.size() and _is_jackpot(slots[i]):
+		_flash[i] = true
+		Audio.play(&"loot_rare")
+	_fill_loot()
+
+
+static func _is_jackpot(s: Dictionary) -> bool:
+	return s.has("blueprint") or int(s.get("rarity", -1)) >= Enums.Rarity.RARE
+
+
 func _fill_loot() -> void:
 	if _loot_box == null or container == null or not is_instance_valid(container):
 		return
@@ -163,18 +180,31 @@ func _loot_cell(i: int, s: Dictionary) -> Control:
 		b.modulate.a = 0.35
 		b.disabled = true
 	else:
-		var info := ItemInfo.for_resource(StringName(s.item_id))
-		var tex := ItemInfo.icon(StringName(s.item_id))
+		var info := _loot_info(s)
+		var tex := ItemInfo.icon(StringName(s.get("output_id", s.item_id)))
+		# Gear shows its rarity as text too (ui rule: never colour alone), blueprints say so in the name.
+		var line2: String = info.get("line2", "×%d" % int(s.count))
 		if tex != null:
 			b.icon = tex
 			b.expand_icon = true
 			b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-			b.text = "%s ×%d" % [info.name, int(s.count)]
+			b.text = ("%s %s" % [info.name, line2]).strip_edges()
 		else:
-			b.text = "%s\n×%d" % [info.name, int(s.count)]
+			b.text = ("%s\n%s" % [info.name, line2]).strip_edges()
 		b.add_theme_font_size_override(&"font_size", 13)
 		b.add_theme_color_override(&"font_color", UiTokens.TEXT)
+		var flash := Color.TRANSPARENT
+		if s.has("rarity"):
+			flash = UiTokens.rarity_color(int(s.rarity))
+			sb.bg_color = Color(flash, 0.35)
+		elif s.has("blueprint"):
+			flash = UiTokens.CREAM
+			sb.bg_color = Color(UiTokens.CREAM, 0.85)
+			b.add_theme_color_override(&"font_color", UiTokens.TEXT_ON_CREAM)
+		if _flash.has(i):
+			_flash.erase(i)
+			_play_flash(b, flash)
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		b.pressed.connect(func() -> void:
 			if int(container.call(&"take", i)) <= 0:
@@ -184,6 +214,39 @@ func _loot_cell(i: int, s: Dictionary) -> Control:
 			_tip.show_info(info.tooltip, b.global_position + Vector2(b.size.x + 10, 0)))
 		b.mouse_exited.connect(func() -> void: _tip.visible = false)
 	return b
+
+
+## Name, second line and tooltip for an identified loot slot: resource, gear (item_id = def id) or blueprint.
+func _loot_info(s: Dictionary) -> Dictionary:
+	if s.has("blueprint"):
+		var bdef := Armory.get_def(StringName(s.output_id))
+		var bname := String(bdef.name) if bdef != null else String(s.output_id)
+		return {"name": bname, "line2": "설계도", "tooltip": {"title": "%s 설계도" % bname, "rarity": -1,
+			"tags": ["설계도"], "desc": "꺼내면 바로 익혀요. 기지에서 만들 수 있게 돼요.", "stats": []}}
+	if s.has("rarity"):
+		var def := Armory.get_def(StringName(s.item_id))
+		var name := String(def.name) if def != null else String(s.item_id)
+		var rname: String = UiTokens.RARITY_NAMES[clampi(int(s.rarity), 0, UiTokens.RARITY_NAMES.size() - 1)]
+		var tags := [rname]
+		if def != null:
+			tags.append(ItemInfo.SLOT_NAMES[clampi(int(def.slot), 0, ItemInfo.SLOT_NAMES.size() - 1)])
+		return {"name": name, "line2": rname, "tooltip": {"title": name, "rarity": int(s.rarity), "tags": tags,
+			"desc": "", "stats": []}}
+	return ItemInfo.for_resource(StringName(s.item_id))
+
+
+## One bright pulse over the cell that fades out. Off with reduce_flash (the colour stays as the cue).
+func _play_flash(b: Button, color: Color) -> void:
+	if color.a <= 0.0 or bool(Settings.get_value(&"reduce_flash")):
+		return
+	var glow := ColorRect.new()
+	glow.color = Color(color, 0.9)
+	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	glow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	b.add_child(glow)
+	var tw := glow.create_tween()
+	tw.tween_property(glow, ^"color:a", 0.0, FLASH_SEC).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(glow.queue_free)
 
 
 func take_all() -> void:

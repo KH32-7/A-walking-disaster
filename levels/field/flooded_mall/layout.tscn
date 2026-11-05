@@ -13362,7 +13362,7 @@ script = ExtResource("9_vxjvn")
 transform = Transform3D(-0.97751075, 0, 0.21088569, 0, 1, 0, -0.21088569, 0, -0.97751075, 45.37045, 0, 87.20805)
 gizmo_extents = 0.5
 script = ExtResource("9_vxjvn")
-container_type = 3
+container_type = 2
 
 [node name="LootSpot_loot_dock_lm_4" type="Marker3D" parent="Markers" unique_id=546941650 instance=ExtResource("8_q0pft")]
 transform = Transform3D(0.8979701, 0, -0.4400565, 0, 1, 0, 0.4400565, 0, 0.8979701, 39.772102, 0, 97.27219)
@@ -13402,7 +13402,7 @@ container_type = 2
 transform = Transform3D(-0.83741647, 0, -0.5465653, 0, 1, 0, 0.5465653, 0, -0.83741647, -80.04501, 0, 92.92529)
 gizmo_extents = 0.5
 script = ExtResource("9_vxjvn")
-container_type = 1
+container_type = 3
 
 [node name="LootSpot_loot_pier_lm_1" type="Marker3D" parent="Markers" unique_id=765864309 instance=ExtResource("8_q0pft")]
 transform = Transform3D(0.5551518, 0, 0.831749, 0, 1, 0, -0.831749, 0, 0.5551518, 78.16326, 0, 38.583363)
@@ -13414,12 +13414,13 @@ container_type = 2
 transform = Transform3D(0.5187084, 0, 0.8549512, 0, 1, 0, -0.8549512, 0, 0.5187084, 82.862755, 0, 38.84868)
 gizmo_extents = 0.5
 script = ExtResource("9_vxjvn")
+container_type = 3
 
 [node name="LootSpot_fill_3" type="Marker3D" parent="Markers" unique_id=940792348 instance=ExtResource("8_q0pft")]
 transform = Transform3D(-0.4980404, 0, -0.8671538, 0, 1, 0, 0.8671538, 0, -0.4980404, -81.84429, 0, 28.160408)
 gizmo_extents = 0.5
 script = ExtResource("9_vxjvn")
-container_type = 3
+container_type = 2
 
 [node name="LootSpot_fill_6" type="Marker3D" parent="Markers" unique_id=2003640408 instance=ExtResource("8_q0pft")]
 transform = Transform3D(-0.73236495, 0, 0.6809123, 0, 1, 0, -0.6809123, 0, -0.73236495, 85.546974, 0, 98.524185)
@@ -13435,7 +13436,7 @@ script = ExtResource("9_vxjvn")
 transform = Transform3D(-0.34922653, 0, 0.93703836, 0, 1, 0, -0.93703836, 0, -0.34922653, 77.84643, 0, -3.2302504)
 gizmo_extents = 0.5
 script = ExtResource("9_vxjvn")
-container_type = 3
+container_type = 2
 
 [node name="LootSpot_fill_11" type="Marker3D" parent="Markers" unique_id=1492120668 instance=ExtResource("8_q0pft")]
 transform = Transform3D(0.33349922, 0, 0.9427504, 0, 1, 0, -0.9427504, 0, 0.33349922, -0.015497446, 0, -29.27542)
