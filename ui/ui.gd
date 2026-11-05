@@ -48,6 +48,7 @@ func _ready() -> void:
 	EventBus.settings_changed.connect(_on_settings_changed)
 	EventBus.radio_message.connect(_on_radio_message)
 	EventBus.flow_state_changed.connect(_on_flow_state_changed)
+	Colony.night_events_ready.connect(_on_night_events_ready)
 	_on_flow_state_changed(GameState.flow_state)
 
 
@@ -137,6 +138,20 @@ func _on_flow_state_changed(state: Enums.FlowState) -> void:
 				open(id)
 		elif is_open(id):
 			close(id)
+	# D-13: 입주 의식 for survivors brought home, on top of the evening screen.
+	if state == Enums.FlowState.EVENING and _in_game() and has_screen(&"welcome") and not is_open(&"welcome") 			and not Colony.pending_arrivals().is_empty():
+		open(&"welcome")
+
+
+## D-13: tonight's events (C-14) play in the night event screen.
+func _on_night_events_ready(_events: Array) -> void:
+	if _in_game() and has_screen(&"night_event") and not is_open(&"night_event"):
+		open(&"night_event")
+
+
+## Auto-opened scenes (welcome, night events) only inside a running scene, not in --script test runs.
+func _in_game() -> bool:
+	return get_tree().current_scene != null
 
 
 # --- public API (contracts.md) ---
