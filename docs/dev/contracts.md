@@ -26,6 +26,7 @@
 | `Progression` | `systems/progression.gd` | A | 플레이어 레벨·경험치·특기, 클래스 숙련 저장 |
 | `ResidentPool` | `systems/resident_pool.gd` | A | 손으로 쓴 생존자 풀(`data/resident_pool/`), 검수된 프로필만 꺼냄 |
 | `Quests` | `systems/quests/quests.gd` | A | 퀘스트·개인 요청·무전 소문 진행과 보상 (스토리 플래그는 `GameState`) |
+| `Journal` | `ai/journal.gd` | A | 생존 일지·엔딩 에필로그 (템플릿) |
 
 `_mcp_game_helper`는 Godot AI 플러그인 것이라 건드리지 않는다.
 
@@ -61,7 +62,15 @@
   `preview_repair(uid, ctx)`, `repair(uid, ctx)`, `set_auto_repair(on)`, `run_auto_repair(facility, scrap_budget, ctx)`(저녁 정산),
   `list_recipes(facility, by_worker)`, `get_recipe(id)`, `blueprint_flag(recipe_id)`, `preview_craft(recipe_id, ctx)`, `craft(recipe_id, ctx, rng)`,
   `craft_by_worker(recipe_id, count, stock)`(C 정산용: Economy를 바꾸지 않고 `changes`를 돌려줌). 시설 레벨·담당 주민 손재주는 Armory가 Colony에서 읽는다.
-  막힌 이유는 `reason` StringName. 설계도 플래그는 `blueprint_<output_id>`.
+  막힌 이유는 `reason` StringName. 설계도 플래그는 `blueprint_<output_id>`. 자동 수리는 SceneRouter가 저녁 정산 때 정비소·재봉실 순서로 부르고
+  결과를 정산 보고 `repairs`에 붙인다.
+  A-10: `preview_engrave(uid, essence_id, slot, ctx)`(D-12 각인 화면), `engrave(uid, essence_id, slot, ctx)`(덮어쓰기 포함, 기존 정수 소멸),
+  `preview_remove_engraving(uid, slot, ctx)`, `remove_engraving(uid, slot, ctx)`, `preview_open_slot(uid, ctx)`, `open_slot(uid, ctx)`,
+  `preview_refine(essence_id, times, ctx)`, `refine(essence_id, times, ctx)`, `preview_disassemble(uid, ctx)`, `disassemble(uid, ctx, rng)`,
+  `essence_slot_count(uid)`, `get_engravings(uid)`, `is_engravable(uid)`, `essence_context(ctx)`. 수치·효과 계산은 `EssenceRules`(`systems/essence_rules.gd`).
+  `get_item_stats()`의 `element`(무기 공격 속성 = 첫 번째로 채워진 슬롯), `essence_effects`([{element, essence_ids, grade, mult, params}]),
+  `combo`({id, name, elements, proc_rate, trigger(hit|kill), params} 또는 null), 장신구 `element_resist`. `get_owner_summary().element_resist`.
+  B(B-15)는 같은 속성 2개가 이미 합쳐진 효과(`mult` 1.5)로 오므로 다시 곱하지 않고, `combo.proc_rate`도 정해진 값을 그대로 쓴다.
 - **Bag**: 루팅(B-08)용 `try_add(id, n) -> 들어간 양`, `count_of(id)`, `remove_item(id, n) -> bool`(이슈 #6). `resize_for_player()`(출격 준비), `add_resource(id, n) -> 못 넣은 양`, `add_item(uid) -> entry_id`, `take_from_storage(id, n)`,
   `move(entry_id, pos, rotated, area)`, `remove(entry_id, amount)`, `consume(id, n)`, `count(id)`, `entries(area)`, `entry_at(cell, area)`,
   `can_place(size, pos, rotated, area)`, `is_cell(cell, area)`, `unload_to_base()`(탈출: 자원→Economy, 장비→무기고),
@@ -111,6 +120,11 @@
   주민이 들어오면(`resident_joined`, 주민 id = 풀 id) 자동으로 사용 표시된다. filter 키: `demo`, `age_stage`, `access_need`, `former_job`,
   `region_id`, `exclude`. 프로필의 추가 키 `contribution`, `first_line`, `rescue_lines`(호위 대사 3줄), `situation`은 Colony가 무시하고
   구조 연출·UI가 읽는다. `reviewed = true`이고 검증(`ResidentTemplate.validate`, 금지어 `tools/resident_banned_words.txt`)을 통과한 항목만 나온다.
+- **Journal** (A-17): `record(kind, context) -> bool`(신호 없는 사건: C-16 `prejudice_resolved {resident_id, other_id}`. 개인 요청 완료는
+  `quest_completed`를 듣고 스스로 기록), `days()`, `entries_for_day(day)`, `entries_for_resident(id)`, `all_entries()`, `people()`,
+  `resident_name(id)`, `epilogue(ending)`(D: 일지 화면·엔딩). 하루 최대 `Journal.MAX_ENTRIES_PER_DAY`줄이고 더 중요한 사건이 낮은 줄을 대신하므로,
+  D는 `journal_entry_added`를 받으면 그 날을 `entries_for_day()`로 다시 그린다. `relationship_changed`의 stage는
+  `friend`·`lover`·`spouse`(또는 `married`)·`separated`를 읽는다(다르면 `Journal.STAGE_KINDS`에 별칭).
 - **Quests** (A-13): `start(quest_id, giver_id)`, `advance(quest_id, objective_id, amount)`(C: 공동체 퀘스트), `complete(quest_id)`, `fail(quest_id, reason)`,
   `get_status(quest_id)`(-1 = 시작 전, `Quests.Status`), `is_active()`, `is_completed()`, `days_left()`, `get_def()`, `active_quests()`(D: 퀘스트 기록),
   `active_field_objectives(region_id)`(B: 필드 목표 `{"quest_id", "objective_id", "kind": &"visit"|&"recover"|&"rescue", "region_id", "marker", "target_id", "count", "remaining", "text"}`).
@@ -203,13 +217,15 @@ loadout의 `"seed": int`는 라우터가 없으면 만들어 넣고 저장한다
 - `progression`(A) provider: 레벨·경험치·특기·클래스 숙련.
 - `resident_pool`(A): 생존자 풀에서 이미 구조한 항목 id 목록(`{"used": [...]}`).
 - 키 `quests`(A, A-13): 퀘스트 상태·진행도·진행 중인 출격의 지역과 동행.
+- `journal`(A, A-17): 일지 항목, 만난 주민과 그들의 순간, 마지막 날.
 
 ## 아이템 id 규칙
 
 - 자원·소모품은 `data/resources/`의 id(`Economy.get_def`). 탄약은 `ammo_pistol`(권총·기관단총), `ammo_rifle`(소총·저격총),
   `ammo_shell`(산탄총). 총의 `get_item_stats()["ammo_id"]`가 어느 탄약을 쓰는지 알려준다. 소모품: `first_aid_kit`, `bandage`, `noise_lure`.
 - 통조림은 따로 없다. 필드에서 나오는 식량은 `food`.
-- 정수는 `essence_<element>_<grade>`(예: `essence_green_low`). 정의는 A-10, 그 전까지는 한도 없는 자원으로 취급.
+- 정수는 `essence_<element>_<grade>`(예: `essence_green_low`). 정의는 `data/essences/`(EssenceDef, `EssenceRules.make_id(element, grade)`).
+  개수는 Economy에 같은 id로, 창고 한도 없음.
 - 장비는 `Armory.create_item(def_id, rarity)`로 만들고 `Bag.add_item(uid)`로 넣는다. def_id는 `data/items/`.
 
 ## 데이터(.tres)와 스키마
