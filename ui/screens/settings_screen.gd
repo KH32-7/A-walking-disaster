@@ -122,7 +122,7 @@ func _build_body(b: Control) -> void:
 
 func _build_tabs() -> void:
 	var bar := HBoxContainer.new()
-	bar.add_theme_constant_override(&"separation", 6)
+	bar.add_theme_constant_override(&"separation", 10)
 	var group := ButtonGroup.new()
 	for t: Array in SettingsCatalog.TABS:
 		var btn := MenuScreen.button(String(t[1]), &"TabText")

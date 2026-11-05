@@ -383,7 +383,7 @@ func _detail_new() -> void:
 	row.add_theme_constant_override(&"separation", 18)
 	v.add_child(row)
 	var pv := VBoxContainer.new()
-	pv.add_theme_constant_override(&"separation", 6)
+	pv.add_theme_constant_override(&"separation", 10)
 	pv.custom_minimum_size = Vector2(380, 0)
 	row.add_child(pv)
 	pv.add_child(MenuScreen.label("보호 모드", &"LabelSection", 18))
@@ -435,7 +435,7 @@ func _protect_toggle(item: Dictionary) -> Control:
 func _summary_card() -> Control:
 	var card := MenuScreen.cream_card(400)
 	var v: VBoxContainer = card[1]
-	v.add_theme_constant_override(&"separation", 6)
+	v.add_theme_constant_override(&"separation", 10)
 	v.add_child(_cream_title(new_difficulty_name(), 20))
 	var pr: Dictionary = (Settings.PRESETS[new_preset] as Dictionary).duplicate()
 	pr.merge(protect_overrides(), true)
