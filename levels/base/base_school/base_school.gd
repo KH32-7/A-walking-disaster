@@ -30,6 +30,10 @@ func _ready() -> void:
 	UI.build_requested.connect(_on_build_requested)
 	build_mode.placed.connect(func(uid: StringName) -> void:
 		EventBus.notification_posted.emit("%s 건설 현장을 놓았다" % BaseDB.get_building(Colony.get_building(uid)["def_id"]).display_name, &"info"))
+	# 직접 방어전 (C-17): Colony asks this scene to play a raid on the base map.
+	Colony.defense_requested.connect(_on_defense_requested)
+	if not Colony.direct_defense().is_empty():  # asked before this scene was loaded (긴급 귀환)
+		_on_defense_requested.call_deferred(Colony.direct_defense()["raid"], Colony.direct_defense()["first_wave"])
 	if ResourceLoader.exists(DRESSING):
 		var dressing := (load(DRESSING) as PackedScene).instantiate()
 		dressing.name = "Dressing"
@@ -37,6 +41,21 @@ func _ready() -> void:
 	else:
 		_add_greybox_lighting()
 	_place_player()
+
+
+## The battle node runs the waves and reports to Colony; D-14 finds it with get_battle().
+func _on_defense_requested(raid: Dictionary, first_wave: int) -> void:
+	if get_battle() != null:
+		return
+	var battle := DefenseBattle.new()
+	battle.name = "DefenseBattle"
+	add_child(battle)
+	battle.setup(raid, first_wave, layout, player, residents, building_views)
+	battle.start()
+
+
+func get_battle() -> DefenseBattle:
+	return get_node_or_null(^"DefenseBattle") as DefenseBattle
 
 
 func _on_build_requested(def_id: StringName) -> void:

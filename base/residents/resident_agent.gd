@@ -8,6 +8,8 @@ extends CharacterBody3D
 
 signal needs_changed(resident_id: StringName, states: Array)
 signal arrived(resident_id: StringName)
+## Hit by a raider during a played defence (C-17). The resident is then out of reach (layer 3 off).
+signal hurt(resident_id: StringName)
 
 const GROUP := &"base_resident"
 const SPEED := 2.5
@@ -169,6 +171,23 @@ func needs_state() -> Array:
 	if r["bed_id"] == &"":
 		out.append(&"no_bed")
 	return out
+
+
+## Raiders hit residents on layer 3 (B-23). One hit hurts them (부상은 방어전 결과에서 처리) and they
+## stop being a target; so do residents who reached the shelter (set_reachable(false)).
+func take_damage(amount: float, _info: Dictionary = {}) -> void:
+	if amount <= 0.0 or not is_reachable():
+		return
+	set_reachable(false)
+	hurt.emit(resident_id)
+
+
+func is_reachable() -> bool:
+	return collision_layer & (1 << (Enums.LAYER_ALLY - 1)) != 0
+
+
+func set_reachable(on: bool) -> void:
+	collision_layer = (1 << (Enums.LAYER_ALLY - 1)) if on else 0
 
 
 func _physics_process(_delta: float) -> void:

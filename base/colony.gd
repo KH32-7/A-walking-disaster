@@ -30,6 +30,9 @@ signal funeral_ready(resident_ids: Array)
 signal guardian_changed(child_id: StringName, guardian_id: StringName)
 ## 전초기지 (C-19): built, garrison changed, damaged or repaired.
 signal outposts_changed
+## 직접 방어전 (C-17): the base scene should play this raid (DefenseBattle). first_wave 2 after an
+## emergency return. It answers with finish_direct_defense() or skip_direct_defense().
+signal defense_requested(raid: Dictionary, first_wave: int)
 ## Autoload `Colony`. Owner: Lane C.
 ## Residents, buildings, relationships, raids threat - everything that lives in the base.
 ## Other lanes read through the getters below; they never edit resident data directly.
@@ -91,6 +94,8 @@ var _outpost_nodes_cache: Dictionary = {}
 ## 출격 중 낮 습격 (C-21): see field_day_raid().
 var _field_raid: Dictionary = {}
 var _emergency_requested := false
+## The played defence in progress (C-17): {raid, first_wave, on_done}.
+var _defense: Dictionary = {}
 
 var _next_resident_num := 1
 var _next_building_num := 1
@@ -1529,8 +1534,137 @@ func _roll_stay_day_raid() -> void:
 	if not SceneRouter.start_day_raid(raid):
 		return
 	start_raid(raid)
-	resolve_raid(raid, Enums.RaidMode.PLAYED)
-	SceneRouter.end_day_raid()
+	# Played on the base map from wave 1 (C-17); falls back to the +20% judgment without a base scene.
+	begin_direct_defense(raid, 1, SceneRouter.end_day_raid)
+
+
+# --- 직접 방어전 (C-17, 10 "직접 방어전") -----------------------------------------------------
+## Colony asks the base scene for a played defence (defense_requested). The base scene (C-17
+## DefenseBattle) runs the waves with Lane B's combat parts and reports back with
+## finish_direct_defense() or skip_direct_defense() (자동 판정으로 넘기기, +20%). Without a base scene
+## listening (headless, tests) the player-present judgment decides at once.
+
+## The defence being played: {} = none, else {"raid", "first_wave"}.
+func direct_defense() -> Dictionary:
+	return {"raid": _defense["raid"], "first_wave": _defense["first_wave"]} if not _defense.is_empty() else {}
+
+
+## Starts a played defence of `raid` (already started with start_raid). `on_done` runs after the result.
+## A (night raids, SceneRouter) can call this instead of resolve_raid(AUTO) to let the player fight.
+func begin_direct_defense(raid: Dictionary, first_wave: int, on_done: Callable) -> void:
+	if defense_requested.get_connections().is_empty():
+		resolve_raid(raid, Enums.RaidMode.PLAYED)
+		on_done.call()
+		return
+	_defense = {"raid": raid, "first_wave": first_wave, "on_done": on_done}
+	defense_requested.emit(raid, first_wave)
+
+
+## 자동 판정으로 넘기기: the same formula with the player bonus (+20%).
+func skip_direct_defense() -> Dictionary:
+	if _defense.is_empty():
+		return {}
+	var d := _defense
+	_defense = {}
+	var result := resolve_raid(d["raid"], Enums.RaidMode.PLAYED)
+	d["on_done"].call()
+	return result
+
+
+## The played defence ended. report = {"won": bool, "broken": Array (building uids),
+## "guards_down": Array (resident ids still down at the end), "hurt": Array (residents hit)}.
+## Facilities already lost their durability during the fight (damage_building). Returns the
+## same result format as resolve_raid() with "direct": true.
+func finish_direct_defense(report: Dictionary) -> Dictionary:
+	if _defense.is_empty():
+		return {}
+	var d := _defense
+	_defense = {}
+	var raid: Dictionary = d["raid"]
+	var broken: Array = report.get("broken", [])
+	var guards_down: Array = report.get("guards_down", [])
+	var hurt: Array = report.get("hurt", [])
+	var harm := broken.size() + guards_down.size() + hurt.size()
+	var outcome := DefenseRules.outcome(bool(report.get("won", false)), harm)
+	var used := _use_defense_consumables()
+	var casualties: Array = []
+	var loot := {}
+	var damage := {"damaged": broken.duplicate(), "durability_loss": {}, "resources_lost": {}}
+	var summary: Array[String] = ["%s에서 마물이 몰려왔다. 직접 막아섰다." % _direction_text(raid.get("directions", []))]
+	match outcome:
+		Enums.RaidOutcome.FLAWLESS:
+			var material: StringName = RaidRules.FAMILY_MATERIAL.get(int(raid.get("family", Enums.Element.NONE)), &"")
+			if material != &"":
+				loot[material] = roundi(float(raid.get("strength", 0.0)) * RaidRules.FLAWLESS_LOOT_SHARE)
+			summary.append("피해 없이 막아냈다.")
+		Enums.RaidOutcome.WIN, Enums.RaidOutcome.NARROW:
+			_hurt(guards_down, 1.0, 0.0, 0.0, casualties)
+			_hurt(hurt, 1.0, 0.0, 0.0, casualties)
+			summary.append("막아냈다. 시설 %d곳이 부서졌다." % broken.size() if outcome == Enums.RaidOutcome.WIN else "간신히 버텼다.")
+		Enums.RaidOutcome.LOSS:
+			for res: StringName in Economy.amounts:
+				var n := floori(Economy.get_amount(res) * RaidRules.LOSS_STORAGE_SHARE)
+				if Economy.uses_cap(res) and n > 0:
+					damage["resources_lost"][res] = n
+			_hurt(guards_down, 1.0 - RaidRules.LOSS_GUARD_SERIOUS - RaidRules.LOSS_GUARD_DEATH, RaidRules.LOSS_GUARD_SERIOUS, RaidRules.LOSS_GUARD_DEATH, casualties)
+			_hurt(hurt, 1.0 - RaidRules.LOSS_CIVILIAN_DEATH, 0.0, RaidRules.LOSS_CIVILIAN_DEATH, casualties)
+			for id in active_resident_ids():
+				residents[id]["morale"] = clampi(int(residents[id]["morale"]) + RaidRules.LOSS_MORALE, 0, 100)
+			summary.append("막지 못했다. 창고가 털렸다.")
+	for c in casualties:
+		summary.append("%s %s." % [residents[c["resident_id"]]["name"],
+			{&"injured": "다침", &"serious": "크게 다침", &"dead": "목숨을 잃음"}[c["kind"]]])
+	if summary.size() > 5:
+		summary.resize(5)
+	var economy_change := loot.duplicate()
+	for res in damage["resources_lost"]:
+		economy_change[res] = -int(damage["resources_lost"][res])
+	if not economy_change.is_empty():
+		Economy.apply(economy_change)
+	threat = RaidRules.THREAT_AFTER_LOSS if outcome == Enums.RaidOutcome.LOSS else RaidRules.THREAT_AFTER_WIN
+	_refresh_effects()
+	var result := {
+		"raid_id": raid.get("raid_id", &""), "day": GameState.day, "time": raid.get("time", Enums.RaidTime.NIGHT),
+		"mode": Enums.RaidMode.PLAYED, "ratio": -1.0, "outcome": outcome, "damage": damage, "used": used,
+		"casualties": casualties, "loot": loot, "summary": summary, "direct": true,
+	}
+	active_raid = {}
+	EventBus.raid_resolved.emit(result)
+	d["on_done"].call()
+	return result
+
+
+## A raider hit a facility (RaidStructure). Returns the durability left; at 0 the building is damaged.
+func damage_building(uid: StringName, amount: int) -> int:
+	if not buildings.has(uid) or amount <= 0:
+		return int(buildings.get(uid, {}).get("durability", 0))
+	var b: Dictionary = buildings[uid]
+	b["durability"] = maxi(int(b["durability"]) - amount, 0)
+	if int(b["durability"]) == 0 and not b["damaged"]:
+		b["damaged"] = true
+		EventBus.building_damaged.emit(uid)
+		_refresh_effects()
+		buildings_changed.emit()
+	return int(b["durability"])
+
+
+## 함정 재설치 between waves: a used-up or damaged trap is set again for the repair cost (C-18).
+func reinstall_trap(uid: StringName) -> bool:
+	var b: Dictionary = buildings.get(uid, {})
+	var def := BaseDB.get_building(b.get("def_id", &""))
+	if b.is_empty() or def == null or not def.effects.has(&"trap_damage"):
+		return false
+	if not b["damaged"] and int(b["durability"]) >= def.durability:
+		return false
+	var cost := repair_cost(uid)
+	if not Economy.can_afford(cost):
+		return false
+	Economy.apply(_negated(cost))
+	b["damaged"] = false
+	b["durability"] = def.durability
+	_refresh_effects()
+	buildings_changed.emit()
+	return true
 
 
 # --- 출격 중 낮 습격 (C-21, 10 "출격 중 습격과 긴급 귀환") -------------------------------------
@@ -1616,8 +1750,11 @@ func _finish_field_raid(result: Dictionary) -> void:
 func _play_field_day_raid() -> void:
 	if SceneRouter.state() != Enums.FlowState.BASE_DAY_RAID or _field_raid.is_empty() or _field_raid["phase"] == &"done":
 		return
-	_resolve_returned_field_raid()
-	SceneRouter.end_day_raid()
+	if _field_raid["phase"] == &"warned":
+		start_raid(_field_raid["raid"])
+	_field_raid["phase"] = &"done"
+	# 긴급 귀환: the player joins from wave 2 (wave 1 counts as judged), C-17.
+	begin_direct_defense(_field_raid["raid"], DefenseRules.EMERGENCY_FIRST_WAVE, SceneRouter.end_day_raid)
 
 
 func _resolve_returned_field_raid() -> Dictionary:
