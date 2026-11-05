@@ -1105,7 +1105,7 @@ func _cmd_build(args: PackedStringArray) -> String:
 		for uid: StringName in buildings:
 			var b: Dictionary = buildings[uid]
 			lines.append("  %s Lv%d %s%s" % [uid, b["level"], "완성" if b["completed"] else "건설 중 %d" % b["progress"],
-				"" if b["powered"] else " (전력 없음)"])
+				" (파손)" if b["damaged"] else ("" if b["powered"] else " (전력 없음)")])
 		return "\n".join(lines)
 	var def_id := StringName(sub)
 	if BaseDB.get_building(def_id) == null:
