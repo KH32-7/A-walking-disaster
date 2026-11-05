@@ -36,6 +36,9 @@ const SHAKE_PLAYER_HURT := 0.9  # x (damage / max health)
 const SHAKE_HURT_MIN_RATIO := 0.08  # smaller hits on the player do not shake
 const SHAKE_RELEASE := 0.35
 const SHAKE_SLAM := 0.4
+## A companion's signature skill (고유 스킬): the one big moment a companion gets.
+const STOP_SIGNATURE := 0.12
+const SHAKE_SIGNATURE := 0.5
 
 ## Monster flinch: its model ("Visual", else the grey-box "Body") is pushed away from the attacker
 ## and squashed, then springs back.
