@@ -154,6 +154,15 @@ const BOSS_WANDER_RADIUS := 6.0
 ## Player.hud_state()["boss"] is filled while the player is within the arena radius plus this.
 const BOSS_HUD_MARGIN := 10.0
 
+# --- Essence glow (elites and bosses, user feedback 2026-11-06). Not in the design yet. ---
+## Rim glow strength in the family colour (element_glow energy). The body centre stays unlit.
+const ESSENCE_GLOW_ENERGY := 1.2
+const ESSENCE_GLOW_FRESNEL := 2.0
+## Family-coloured light on the ground around the monster (local height, before its scale).
+const ESSENCE_LIGHT_ENERGY := 2.0
+const ESSENCE_LIGHT_RANGE := 3.0
+const ESSENCE_LIGHT_HEIGHT := 1.0
+
 # --- Elite (04 "정예") ---
 const ELITE_HP_MULT := 3.0
 const ELITE_ATTACK_MULT := 1.5
