@@ -31,6 +31,8 @@ func _on_notification(text: String, severity: StringName) -> void:
 
 
 func push(text: String, severity: StringName = &"info") -> void:
+	if text.begins_with("@") and text.find(" ") > 0:  # "@screen_id text" (BaseHud click target)
+		text = text.substr(text.find(" ") + 1)
 	var tag: Array = TAGS.get(severity, TAGS[&"info"])
 	var card := PanelContainer.new()
 	card.theme_type_variation = &"CardCream"
