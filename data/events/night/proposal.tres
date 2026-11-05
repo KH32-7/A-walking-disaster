@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="NightEventDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/night_event_def.gd" id="1_night"]
+
+[resource]
+script = ExtResource("1_night")
+id = &"proposal"
+display_name = "청혼"
+description = "연인 10일 이상, 관계 80 이상, 둘 다 사기 50 이상. 결혼식 준비(식량 20, 천 5, 빈 가족 숙소)"
+weight = 10
+priority = false
+choices = Array[StringName]([&"watch"])

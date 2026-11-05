@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="NightEventDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/night_event_def.gd" id="1_night"]
+
+[resource]
+script = ExtResource("1_night")
+id = &"quarrel"
+display_name = "다툼"
+description = "사이가 나쁜 둘이 다툰다. 중재하면 두 사람 신뢰도 평균 확률로 화해"
+weight = 20
+priority = false
+choices = Array[StringName]([&"watch", &"mediate"])

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="NightEventDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/night_event_def.gd" id="1_night"]
+
+[resource]
+script = ExtResource("1_night")
+id = &"confession"
+display_name = "고백"
+description = "관계 50 이상인 미혼 성인 둘. 연인이 된다"
+weight = 15
+priority = false
+choices = Array[StringName]([&"watch", &"cheer"])
