@@ -4,22 +4,24 @@ extends Node3D
 ## container. Sandbox-only debug keys (raw keycodes, not project actions):
 ##   T: take every identified slot of the container you opened (stand-in for the D-08 screen)
 ##   K: kill monsters within KILL_RADIUS (stand-in until B-06 weapons)
+## Camera (B-04): Z/C rotate, wheel zoom, hold right click to aim at the cursor. Walk into the
+## DemoHouse corner (northwest) to see its roof hide.
 
 const KILL_RADIUS := 4.0
 const KILL_DAMAGE := 9999.0
+const SandboxCameraInput := preload("res://field/_sandbox/sandbox_camera_input.gd")
 
 @onready var _player: Player = $Player
-@onready var _camera: Camera3D = $FieldSandbox/Camera3D
+@onready var _camera: FieldCamera = $FieldCamera
 @onready var _label: Label = $DebugLayer/InfoLabel
 
-var _camera_offset := Vector3.ZERO
 var _container: LootContainer
 var _last_noise := "-"
 var _last_event := "-"
 
 
 func _ready() -> void:
-	_camera_offset = _camera.global_position - _player.global_position
+	SandboxCameraInput.ensure()
 	EventBus.noise_emitted.connect(_on_noise)
 	EventBus.player_downed.connect(func() -> void: _last_event = "player downed")
 	EventBus.monster_killed.connect(func(id: StringName, _e: Enums.Element, _p: Vector3) -> void:
@@ -30,7 +32,6 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	_camera.global_position = _player.global_position + _camera_offset
 	_label.text = "\n".join([
 		"Move: %s  Bound: %s  Godmode: %s" % [
 			Player.MoveState.keys()[_player.move_state], _player.is_bound(), DebugConsole.godmode],
@@ -40,7 +41,8 @@ func _process(_delta: float) -> void:
 		"Container: %s" % _container_text(),
 		"Bag: %s" % _bag_text(),
 		"Event: %s" % _last_event,
-		"F open, T take all, K kill near, ` console",
+		"Camera: view %d  zoom %d  Aiming: %s" % [_camera.yaw_index(), _camera.zoom_level(), _player.is_aiming],
+		"F open, T take all, K kill near, Z/C rotate, wheel zoom, ` console",
 	])
 
 
