@@ -104,9 +104,9 @@ const OUTSKIRT_BUILDINGS := ["motel", "roadside_fast_food", "sheriff_substation"
 	"exterior_only_house_08"]
 const OUTSKIRT_FAR_COLOR := Color(0.1, 0.13, 0.11)
 const WATER_SHADER := preload("res://art/shaders/water_toon.gdshader")
-## Roads: pack sidewalk with curb along every road edge that meets land, lane lines down the middle
-## of straight roads, power poles with wires along long edges.
-const SIDEWALK := {8: "sidewalk_curbstone_a_8m", 4: "sidewalk_curbstone_a_4m", 2: "sidewalk_curbstone_a_2m"}
+## Roads: lane lines down the middle of straight roads, power poles with wires along long edges.
+## No pack sidewalks: their straight slabs fought the crumbled splat road edge and broke at the
+## odd road corners (user feedback 2026-11-06).
 const POLE_STEP := 20.0
 ## Junk along building walls (outside).
 const WALL_JUNK := ["trash_bag_01", "trash_bag_02", "barrel_01", "barrel_02", "pallet", "curbside_trash_bin_01",
@@ -1712,8 +1712,8 @@ func _kit_slab(poly: PackedVector2Array, y: float, texture: String, tile: float,
 
 # --- B-26 roads and outskirts -----------------------------------------------------
 
-## Pack sidewalks with curbs along road edges on land, lane lines on straight roads, power poles
-## and wires along long edges (poles collide, the rest is flat or overhead).
+## Lane lines on straight roads, power poles and wires along long edges (poles collide, the rest
+## is flat or overhead).
 func _build_roadside() -> void:
 	var keep_out := _keep_out_polygons()
 	var routes := _route_segments()
@@ -1723,7 +1723,6 @@ func _build_roadside() -> void:
 	var water: Array = _kit_ground.water
 	var inside_any := func(p: Vector2, polys: Array) -> bool:
 		return polys.any(func(q: PackedVector2Array) -> bool: return Geometry2D.is_point_in_polygon(p, q))
-	var slabs := 0
 	var poles := 0
 	for poly: PackedVector2Array in roads:
 		for i in poly.size():
@@ -1736,26 +1735,7 @@ func _build_roadside() -> void:
 			var out := Vector2(-dir.y, dir.x)
 			if Geometry2D.is_point_in_polygon((a + b) * 0.5 + out * 0.3, poly):
 				out = -out
-			# Basis X along the walk, Z outward: X x Y = Z needs out = (dir.y, -dir.x) rotated; else walk back.
-			var walk_a := a
-			var walk_dir := dir
-			if not Vector3(dir.x, 0.0, dir.y).cross(Vector3.UP).is_equal_approx(Vector3(out.x, 0.0, out.y)):
-				walk_a = b
-				walk_dir = -dir
-			var t := 0.0
-			while length - t >= 1.9:
-				var piece_len := 8 if length - t >= 8.0 else (4 if length - t >= 4.0 else 2)
-				var mid := walk_a + walk_dir * (t + piece_len * 0.5) + out * 1.3
-				t += piece_len
-				if inside_any.call(mid, roads) or inside_any.call(mid, water) or inside_any.call(mid, blocked) \
-						or absf(mid.x) > MAP_HALF or absf(mid.y) > MAP_HALF:
-					continue
-				var end := walk_a + walk_dir * t
-				var basis := Basis(Vector3(walk_dir.x, 0.0, walk_dir.y), Vector3.UP, Vector3(out.x, 0.0, out.y))
-				_kit_items.append({"piece": SIDEWALK[piece_len], "folder": "street",
-					"xf": Transform3D(basis, Vector3(end.x, KIT_GROUND_LIFT, end.y)), "holder": ""})
-				slabs += 1
-			# Power line along long edges, outside the sidewalk.
+			# Power line along long edges, off the road.
 			if length < POLE_STEP * 2.0:
 				continue
 			var prev := Vector2.INF
@@ -1805,7 +1785,7 @@ func _build_roadside() -> void:
 			_kit_items.append({"piece": piece, "folder": "street", "xf": Transform3D(Basis(Vector3.UP,
 				atan2(dir.x, dir.y)), Vector3(end.x, KIT_GROUND_LIFT + 0.01, end.y)), "holder": ""})
 			lines += 1
-	print("roadside: %d sidewalk pieces, %d poles, %d lane lines" % [slabs, poles, lines])
+	print("roadside: %d poles, %d lane lines" % [poles, lines])
 
 
 ## Outside the map (no collision, the map bounds stop the player): forest ring, roads running on
