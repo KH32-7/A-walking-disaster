@@ -1,0 +1,45 @@
+extends Node
+## D-10: RegionDressing reads a sibling Layout read-only and adds environment, water and vines.
+
+
+func run() -> bool:
+	var ok := true
+	var map := Node3D.new()
+	add_child(map)
+	var layout := Node3D.new()
+	layout.name = "Layout"
+	map.add_child(layout)
+	var wall := CSGBox3D.new()
+	wall.name = "Wall0"
+	wall.size = Vector3(20, 3, 0.3)
+	var gm := StandardMaterial3D.new()
+	gm.albedo_color = Color("c9ccc6")
+	wall.material = gm
+	layout.add_child(wall)
+	var water_root := Node3D.new()
+	water_root.name = "DeepWater"
+	layout.add_child(water_root)
+	var surf := CSGBox3D.new()
+	surf.name = "Surface0"
+	surf.size = Vector3(10, 0.1, 10)
+	water_root.add_child(surf)
+	var d: RegionDressing = load("res://levels/field/flooded_mall/dressing.tscn").instantiate()
+	map.add_child(d)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	ok = _expect(d.get_node_or_null(^"DressingEnvironment") != null and d.get_node_or_null(^"Sun") != null,
+		"environment + sun added") and ok
+	ok = _expect(wall.material is ShaderMaterial, "greybox wall drawn with the toon shader") and ok
+	ok = _expect(gm.albedo_color == Color("c9ccc6"), "layout material resource itself untouched") and ok
+	ok = _expect((surf.material as ShaderMaterial).shader == preload("res://art/shaders/water_toon.gdshader"),
+		"deep-water surface gets the water shader") and ok
+	ok = _expect(d.get_child_count() > 4, "vines / debris added") and ok
+	ok = _expect(ResourceLoader.exists("res://art/dressing/presets/base_school.tscn"), "base dressing preset exists") and ok
+	map.queue_free()
+	return ok
+
+
+func _expect(cond: bool, message: String) -> bool:
+	if not cond:
+		printerr(message)
+	return cond

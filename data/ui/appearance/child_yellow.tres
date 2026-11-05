@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AppearancePreset" format=3]
+
+[ext_resource type="Script" path="res://ui/defs/appearance_preset.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"child_yellow"
+display_name = "아이 · 노란 우비"
+hair = "bob"
+hair_color = Color(0.1686, 0.1137, 0.0863, 1)
+skin = Color(0.9569, 0.8627, 0.7647, 1)
+outfit_color = Color(0.9647, 0.7804, 0.2667, 1)
+outfit_accent = Color(0.2471, 0.6902, 0.9020, 1)
+age_stage = 1

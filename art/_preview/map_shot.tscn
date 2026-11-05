@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://art/_preview/map_shot.gd" id="1_prev"]
+
+[node name="MapShot" type="Node"]
+script = ExtResource("1_prev")

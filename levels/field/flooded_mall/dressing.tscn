@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://art/dressing/region_dressing.gd" id="1_dress"]
+
+[node name="Dressing" type="Node3D"]
+script = ExtResource("1_dress")
+seed_value = 11

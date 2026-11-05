@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AppearancePreset" format=3]
+
+[ext_resource type="Script" path="res://ui/defs/appearance_preset.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"tied_nurse"
+display_name = "묶은 머리 · 간호복"
+hair = "tied"
+hair_color = Color(0.1647, 0.1647, 0.1647, 1)
+skin = Color(0.9412, 0.8431, 0.7490, 1)
+outfit_color = Color(0.6549, 0.7529, 0.8471, 1)
+outfit_accent = Color(1.0000, 1.0000, 1.0000, 1)
