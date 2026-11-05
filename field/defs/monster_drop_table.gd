@@ -18,6 +18,10 @@ extends Resource
 @export_range(1, 99) var material_min: int = 1
 @export_range(1, 99) var material_max: int = 1
 
+@export_group("Bonus")
+## Always added on top, not scaled by mult (B-19 boss "희귀 재료"): {resource id: count}.
+@export var bonus_resources: Dictionary[StringName, int] = {}
+
 @export_group("Gear")
 @export_range(0.0, 1.0) var gear_chance: float = 0.0
 ## Weight per Enums.Rarity index (COMMON, UNCOMMON, RARE, EPIC, LEGENDARY).

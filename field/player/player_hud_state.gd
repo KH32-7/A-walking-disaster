@@ -5,6 +5,7 @@ extends RefCounted
 ## heading and compass (extraction points), hold bar, interact prompt, dusk_left_sec (B-21,
 ## left out when night is off so the demo has no dusk timer).
 ## skills (B-13: [{key, left, max}] of enabled class skills), mana (B-15: weapon in hand, 0..1).
+## boss (B-19, only while a boss is fighting near the player): {name, hp, hp_max, phase, phase_count}.
 ## Later: armor (B-06 armor), consumables (B-16),
 ## companions (B-17), objectives (A-13), minimap.
 
@@ -32,6 +33,9 @@ static func build(player: Player) -> Dictionary:
 	state["companions"] = FieldCompanion.hud_list(player.get_tree())
 	state["consumables"] = player.consumables.hud_slots()
 	state["mana"] = MagicWeapon.hud_mana(player)
+	var boss := BossMonster.hud_for(player)
+	if not boss.is_empty():
+		state["boss"] = boss
 	return state
 
 
