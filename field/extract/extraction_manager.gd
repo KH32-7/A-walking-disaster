@@ -50,7 +50,8 @@ enum State { IDLE, COUNTING, CONFIRM, WAITING_PARTY, DONE }
 
 ## Region id written into the result and companion_stranded.
 @export var region_id: StringName = &""
-## Seed for picking the active points. -1 = random. TODO(A-05): pass the sortie seed from the loadout.
+## Seed for picking the active points. -1 = the sortie's loadout seed (FieldState.sortie_seed),
+## or random when the scene runs without SceneRouter.
 @export var sortie_seed := -1
 ## Pick the active points on _ready. Tests turn this off and call activate() themselves.
 @export var auto_activate := true
@@ -76,7 +77,7 @@ func _ready() -> void:
 	EventBus.player_downed.connect(_on_player_downed)
 	if auto_activate:
 		# Deferred so every marker in the scene has joined its group first.
-		activate.call_deferred(randi() if sortie_seed < 0 else sortie_seed)
+		activate.call_deferred(pick_seed())
 
 
 func _physics_process(delta: float) -> void:
@@ -84,6 +85,15 @@ func _physics_process(delta: float) -> void:
 
 
 # --- Public ---
+
+## sortie_seed if set, else the loadout seed from SceneRouter, else random.
+func pick_seed() -> int:
+	if sortie_seed >= 0:
+		return sortie_seed
+	if FieldState.sortie_seed >= 0:
+		return FieldState.sortie_seed
+	return randi()
+
 
 ## Picks ACTIVE_COUNT points from every ExtractPoint in the tree. Same seed and same
 ## candidates = same result (candidates are sorted by id first).
@@ -310,6 +320,8 @@ func _finish(result: Dictionary) -> void:
 	_current = null
 	state = State.DONE
 	_result = result
+	# SceneRouter reads this for sortie_ended (issue #44). Set before extraction_completed.
+	FieldState.set_sortie_result(result)
 	sortie_result_ready.emit(result)
 
 
@@ -318,7 +330,8 @@ func _on_monster_killed(monster_id: StringName, _element: Enums.Element, _positi
 		_kills[monster_id] = int(_kills.get(monster_id, 0)) + 1
 
 
-## Sortie result. Proposed format for EventBus.sortie_ended (A-05 agreement pending).
+## Sortie result, the base of EventBus.sortie_ended (docs/dev/contracts.md "출격 결과").
+## SceneRouter adds rescued_profiles, down and xp, and merges loot.
 func _build_result(extracted: bool, point_id: StringName, loot: Dictionary,
 		rescued: Array[StringName], companions: Array[StringName], stranded: Array[StringName]) -> Dictionary:
 	var total := 0
@@ -337,5 +350,5 @@ func _build_result(extracted: bool, point_id: StringName, loot: Dictionary,
 		"companions": companions,
 		"stranded": stranded,
 		"duration_sec": _sortie_sec,
-		"xp": 0,  # TODO(A-11): mastery / xp
+		"xp": 0,  # SceneRouter fills this (Progression.finish_sortie)
 	}
