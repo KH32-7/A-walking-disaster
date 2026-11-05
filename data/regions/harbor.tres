@@ -15,6 +15,6 @@ loot_table_id = &"harbor"
 boss_id = &"breakwater_golem"
 extract_candidates = Array[StringName]([])
 hidden_routes = Array[StringName]([])
-unlock_text = "무전실 Lv2에서 항구 신호 수신"
+unlock_text = "방송실 Lv2에서 항구 신호 수신"
 unlock_facility = &"radio_room"
 unlock_facility_level = 2

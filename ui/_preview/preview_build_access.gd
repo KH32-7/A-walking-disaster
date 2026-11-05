@@ -1,13 +1,13 @@
 extends Node3D
 ## Issue #125 part 6 preview: build screen views 개간 · 수리·레벨업 · 접근성 보기 on a fake base.
-## Fake state only: 6 residents (one wheelchair user, one learning Korean, one guardian), 체육관 being
+## Fake state only: 6 residents (one wheelchair user, one learning Korean, one guardian), 서쪽 숲 being
 ## cleared, a damaged 작업장, a 모닥불 under repair, a worn 목책, a ramp and a picture sign.
 ## Optional: -- --view=build|clear|clear_start|repair|repairing|upgrade|wall|access --shot=user://x.png
 
 const VIEWS := {
 	"build": {"mode": &"build"},
-	"clear": {"mode": &"clear", "zone": &"gym"},
-	"clear_start": {"mode": &"clear", "zone": &"roof"},
+	"clear": {"mode": &"clear", "zone": &"park_a"},
+	"clear_start": {"mode": &"clear", "zone": &"park_b"},
 	"repair": {"mode": &"repair", "uid": "workshop"},
 	"repairing": {"mode": &"repair", "uid": "bonfire"},
 	"upgrade": {"mode": &"repair", "uid": "kitchen"},
@@ -82,15 +82,15 @@ func _fake_state() -> void:
 		if not prof.has("access_needs"):
 			prof["access_needs"] = []
 		ids.append(Colony.add_resident(prof))
-	Colony.clear_zone(&"playground")
+	Colony.clear_zone(&"park_a")
 	_uids["ramp"] = _building(&"ramp", &"front_yard")
 	_uids["sign"] = _building(&"picture_sign", &"main_hall")
 	_uids["light"] = _building(&"warning_light", &"main_hall")
 	_uids["workshop"] = _building(&"workshop", &"main_hall")
 	_uids["kitchen"] = _building(&"kitchen", &"main_hall")
 	_uids["bonfire"] = _building(&"bonfire", &"front_yard")
-	_uids["palisade"] = _building(&"palisade", &"playground")
-	_uids["lumber"] = _building(&"lumber_yard", &"playground")
+	_uids["palisade"] = _building(&"palisade", &"front_yard")
+	_uids["lumber"] = _building(&"lumber_yard", &"front_yard")
 	Colony.damage_building(_uids["workshop"], 999)
 	Colony.damage_building(_uids["bonfire"], 999)
 	Economy.apply(Colony.repair_cost(_uids["bonfire"]))  # pay for it with fake resources
@@ -98,10 +98,10 @@ func _fake_state() -> void:
 	Colony.damage_building(_uids["palisade"], 18)
 	if not Colony.assign_job(ids[1], &"construction", _uids["bonfire"]):
 		push_warning("preview: repair job (%s)" % Colony.job_block_reason(ids[1], &"construction", _uids["bonfire"]))
-	if not Colony.assign_job(ids[0], &"construction", &"gym"):
-		push_warning("preview: clearing job (%s)" % Colony.job_block_reason(ids[0], &"construction", &"gym"))
+	if not Colony.assign_job(ids[0], &"construction", &"park_a"):
+		push_warning("preview: clearing job (%s)" % Colony.job_block_reason(ids[0], &"construction", &"park_a"))
 	Colony.assign_job(ids[2], &"cooking", _uids["kitchen"])
-	Colony.clear_progress[&"gym"] = 12  # preview only: as if two evenings of work were done
+	Colony.clear_progress[&"park_a"] = 12  # preview only: as if two evenings of work were done
 	GameState.day = 14
 
 

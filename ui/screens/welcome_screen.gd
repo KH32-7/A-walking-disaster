@@ -278,7 +278,7 @@ func _bed_name(bed_id: StringName, building: String) -> String:
 	var s := String(bed_id)
 	var num := s.get_slice("_bed_", s.get_slice_count("_bed_") - 1)
 	if building == "":
-		building = "본관 1층" if s.begins_with(Colony.START_BED_PREFIX) else "숙소"
+		building = "방송실 야영지" if s.begins_with(Colony.START_BED_PREFIX) else "숙소"
 	return "%s %s번 침상" % [building, num] if num.is_valid_int() else building
 
 

@@ -5,5 +5,5 @@
 [resource]
 script = ExtResource("1_jtpl")
 id = &"epilogue_quiet"
-lines = Array[String](["{name}의 기록은 짧지만, 매일 같은 자리에 있었다.", "{name|이} 있어서 학교의 하루가 굴러갔다."])
+lines = Array[String](["{name}의 기록은 짧지만, 매일 같은 자리에 있었다.", "{name|이} 있어서 공터의 하루가 굴러갔다."])
 priority = 0

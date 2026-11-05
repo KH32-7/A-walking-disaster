@@ -21,9 +21,9 @@ const RAM := preload("res://data/monsters/debris_ram.tres")
 const COMPANION_SCENE := preload("res://field/companion/field_companion.tscn")
 const STRUCTURE_SCRIPT := preload("res://field/_sandbox/b23_fake_structure.gd")
 const RESIDENT_SCRIPT := preload("res://field/_sandbox/b23_fake_resident.gd")
-## Openings in the base_school layout wall (Navigation/SchoolWall SouthGate / ParkGate).
-const SOUTH_GATE := Vector3(0.0, 1.5, 28.0)
-const PARK_WALL := Vector3(-45.0, 1.5, 0.0)
+## Openings in the base map forest edge (layout Navigation/ForestEdge: south trail gap, west gap).
+const SOUTH_GATE := Vector3(8.0, 1.5, 26.0)
+const PARK_WALL := Vector3(-58.0, 1.5, -4.0)
 const DEMO_TIMEOUT := 60.0
 
 var _events: PackedStringArray = []
@@ -45,15 +45,15 @@ func _ready() -> void:
 	EventBus.monster_killed.connect(func(id: StringName, _e: Enums.Element, _p: Vector3) -> void:
 		_log("killed %s" % id))
 	_place_player()
-	_add_structure(SOUTH_GATE, Vector3(6.0, 3.0, 1.0), true)
-	_add_structure(PARK_WALL, Vector3(1.0, 3.0, 6.0), false)
+	_add_structure(SOUTH_GATE, Vector3(10.0, 3.0, 1.0), true)
+	_add_structure(PARK_WALL, Vector3(1.0, 3.0, 10.0), false)
 	var gather := _gather_point()
 	for offset in [Vector3(-2.0, 0.0, 1.0), Vector3(2.0, 0.0, 1.0)]:
 		var resident: CharacterBody3D = RESIDENT_SCRIPT.new()
 		resident.position = gather + offset
 		resident.down.connect(func() -> void: _log("resident down"))
 		add_child(resident)
-	_add_guard(gather + Vector3(0.0, 0.0, 8.0))
+	_add_guard(gather + Vector3(2.0, 0.0, 4.0))
 	if DisplayServer.get_name() == "headless":
 		_run_demo.call_deferred()
 
@@ -210,7 +210,7 @@ func _run_demo() -> void:
 	get_tree().quit(0 if _failures == 0 else 1)
 
 
-## Inside the base_school wall: north of the south opening, east of the park opening.
+## Inside the forest edge: north of the south opening, east of the west opening.
 func _inside_wall(pos: Vector3) -> bool:
 	return pos.z < SOUTH_GATE.z - 1.0 and pos.x > PARK_WALL.x + 1.0
 

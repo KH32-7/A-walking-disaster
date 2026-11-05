@@ -5,11 +5,15 @@
 [resource]
 script = ExtResource("1_245jv")
 id = &"park_b"
-display_name = "공원 숲 B"
-size = Vector2i(15, 15)
-clear_work = 80
-clear_yield = Dictionary[StringName, int]({
-&"wood": 100
+display_name = "북쪽 숲"
+size = Vector2i(30, 10)
+clear_work = 60
+clear_cost = Dictionary[StringName, int]({
+&"plank": 10
 })
+clear_yield = Dictionary[StringName, int]({
+&"wood": 80
+})
+mobility_access = "ramp"
 unlock_tier = 1
-note = "벌목 노드, 텃밭 보너스 토양"
+note = "공원 숲 B. 비탈이라 개간할 때 계단(목재판 10)을 놓고, 경사로가 있어야 모두 오른다. 텃밭 보너스 토양"

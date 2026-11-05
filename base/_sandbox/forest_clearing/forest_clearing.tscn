@@ -1,0 +1,27 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://base/_sandbox/forest_clearing/forest_clearing.gd" id="1_forest"]
+[ext_resource type="PackedScene" path="res://levels/base/base_school/layout.tscn" id="2_layout"]
+[ext_resource type="PackedScene" path="res://levels/base/base_school/dressing.tscn" id="3_dressing"]
+
+[node name="ForestClearing" type="Node3D"]
+script = ExtResource("1_forest")
+
+[node name="Layout" parent="." instance=ExtResource("2_layout")]
+
+[node name="Dressing" parent="." instance=ExtResource("3_dressing")]
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.574, 0.819, 0, -0.819, 0.574, 0, 74, 54)
+fov = 50.0
+far = 800.0
+
+[node name="Debug" type="CanvasLayer" parent="."]
+
+[node name="Info" type="Label" parent="Debug"]
+offset_left = 12.0
+offset_top = 10.0
+offset_right = 900.0
+offset_bottom = 80.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6

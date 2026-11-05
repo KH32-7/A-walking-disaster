@@ -66,17 +66,17 @@ func _test_defs() -> bool:
 
 func _test_start_state() -> bool:
 	_fresh()
-	var ok := _check(Colony.has_completed(&"radio_room"), "무전실은 처음부터 있음")
+	var ok := _check(Colony.has_completed(&"radio_room"), "방송실은 처음부터 있음")
 	ok = _check(Colony.population_cap() == 6, "시작 인구 상한 6") and ok
-	ok = _check(Colony.demolish_building(&"radio_room").is_empty() and Colony.has_completed(&"radio_room"), "무전실은 철거 불가") and ok
-	ok = _check(not Colony.can_build(&"radio_room")["ok"], "무전실은 새로 못 지음") and ok
+	ok = _check(Colony.demolish_building(&"radio_room").is_empty() and Colony.has_completed(&"radio_room"), "방송실은 철거 불가") and ok
+	ok = _check(not Colony.can_build(&"radio_room")["ok"], "방송실은 새로 못 지음") and ok
 	return ok
 
 
 func _test_site_and_beds() -> bool:
 	_fresh({&"wood": 100})
 	var ok := true
-	var uid := Colony.place_building(&"bed", Vector2i(3, 4), 1, &"playground")
+	var uid := Colony.place_building(&"bed", Vector2i(3, 4), 1, &"front_yard")
 	ok = _check(uid != &"" and Economy.get_amount(&"wood") == 90, "침상 건설 현장, 나무 10 지불") and ok
 	ok = _check(Colony.population_cap() == 6 and _completed.is_empty(), "완성 전에는 효과 없음") and ok
 	ok = _check(Colony.add_build_progress(uid, 6) == false, "진행도 6/10") and ok
@@ -158,7 +158,7 @@ func _test_save_round_trip() -> bool:
 	_build(&"warehouse")
 	_build(&"solar_panel")
 	Colony.set_power_priority(_build(&"elevator"), 2)
-	var site := Colony.place_building(&"bonfire", Vector2i(5, 6), 3, &"playground")
+	var site := Colony.place_building(&"bonfire", Vector2i(5, 6), 3, &"front_yard")
 	Colony.add_build_progress(site, 4)
 	Colony.add_resident({})
 	var before := JSON.stringify(Colony.save_data(), "", true)

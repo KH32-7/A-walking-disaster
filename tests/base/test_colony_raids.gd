@@ -181,7 +181,7 @@ func _test_judgment_loss() -> bool:
 	var damaged: Array = result["damage"]["damaged"]
 	ok = _check(damaged.size() >= 2 and damaged.size() <= 3 and _damaged == damaged, "시설 2~4개 파손(파손 가능 3개) + building_damaged") and ok
 	for uid in damaged:
-		ok = _check(not Colony.get_building(uid)["def_id"] in [&"bed", &"radio_room"], "침상·무전실은 안 부서짐") and ok
+		ok = _check(not Colony.get_building(uid)["def_id"] in [&"bed", &"radio_room"], "침상·방송실은 안 부서짐") and ok
 	ok = _check(Economy.get_amount(&"wood") == 80 and Economy.get_amount(&"stone") == 40, "창고 자원 −20%") and ok
 	ok = _check(Economy.get_amount(&"parts") == 10, "희귀 자원(부품)은 그대로") and ok
 	ok = _check(Colony.threat == 30 and Colony.get_resident(ids[1])["morale"] == 40, "위협도 30, 사기 −10") and ok
