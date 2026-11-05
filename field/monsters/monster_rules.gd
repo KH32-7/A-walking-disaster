@@ -61,6 +61,20 @@ const NEST_SPAWN_MAX := 2
 ## Spawned monsters appear inside this radius around the nest.
 const SPAWN_SCATTER_RADIUS := 2.0
 
+# --- Behaviors (04 "마물 목록" 특징) ---
+## &"bind": vine tendril hit binds for 1 s.
+const BIND_SEC := 1.0
+## &"alarm": spore pod scream noise radius.
+const ALARM_SCREAM_RADIUS := 20.0
+## &"split": swamp blob splits into 2, at most 2 times (1 -> 2 -> 4).
+const SPLIT_COUNT := 2
+const SPLIT_MAX_GENERATIONS := 2
+## Not in the design yet: each child has this share of the parent's max hp and size.
+const SPLIT_HP_RATIO := 0.5
+const SPLIT_SIZE_RATIO := 0.75
+## Children appear this far from the parent.
+const SPLIT_SPREAD := 0.8
+
 
 ## Target-side defense factor from the 03 damage formula: 100 / (100 + R).
 static func defense_factor(defense: float) -> float:

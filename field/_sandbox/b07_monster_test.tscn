@@ -1,0 +1,60 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://field/_sandbox/b07_monster_test.gd" id="1_test"]
+[ext_resource type="PackedScene" path="res://field/_sandbox/field_sandbox.tscn" id="2_sandbox"]
+[ext_resource type="PackedScene" path="res://field/markers/monster_nest.tscn" id="3_nest"]
+[ext_resource type="Script" path="res://field/monsters/monster_spawner.gd" id="4_spawner"]
+[ext_resource type="Resource" path="res://data/monsters/vine_tendril.tres" id="5_vine"]
+[ext_resource type="PackedScene" path="res://field/monsters/spore_pod.tscn" id="6_pod_scene"]
+[ext_resource type="Resource" path="res://data/monsters/spore_pod.tres" id="7_pod"]
+[ext_resource type="PackedScene" path="res://field/monsters/swamp_blob.tscn" id="8_blob_scene"]
+[ext_resource type="Resource" path="res://data/monsters/swamp_blob.tres" id="9_blob"]
+[ext_resource type="Script" path="res://field/_sandbox/b07_fake_player.gd" id="10_player"]
+
+[sub_resource type="CapsuleShape3D" id="Shape_player"]
+radius = 0.35
+height = 1.7
+
+[sub_resource type="StandardMaterial3D" id="Mat_player"]
+albedo_color = Color(0.85, 0.8, 0.7, 1)
+
+[sub_resource type="CapsuleMesh" id="Mesh_player"]
+material = SubResource("Mat_player")
+radius = 0.35
+height = 1.7
+
+[node name="B07MonsterTest" type="Node3D"]
+script = ExtResource("1_test")
+
+[node name="FieldSandbox" parent="." instance=ExtResource("2_sandbox")]
+
+[node name="GreenNest" parent="." instance=ExtResource("3_nest")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, 2)
+spawn_interval_sec = 30.0
+max_alive = 6
+wander_radius = 6.0
+
+[node name="MonsterSpawner" type="Node3D" parent="."]
+script = ExtResource("4_spawner")
+monster_defs = Array[Resource]([ExtResource("5_vine")])
+region_id = &"flooded_mall"
+
+[node name="SporePod" parent="." instance=ExtResource("6_pod_scene")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 8)
+def = ExtResource("7_pod")
+
+[node name="SwampBlob" parent="." instance=ExtResource("8_blob_scene")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, -18)
+def = ExtResource("9_blob")
+
+[node name="FakePlayer" type="CharacterBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 20)
+script = ExtResource("10_player")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="FakePlayer"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.85, 0)
+shape = SubResource("Shape_player")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="FakePlayer"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.85, 0)
+mesh = SubResource("Mesh_player")

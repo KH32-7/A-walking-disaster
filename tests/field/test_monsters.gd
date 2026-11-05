@@ -3,6 +3,9 @@ extends RefCounted
 ## leash and nest spawning. Ticks are driven by hand with a fixed delta.
 
 const BASE_SCENE := preload("res://field/monsters/monster_base.tscn")
+const VINE := preload("res://data/monsters/vine_tendril.tres")
+const POD := preload("res://data/monsters/spore_pod.tres")
+const BLOB := preload("res://data/monsters/swamp_blob.tres")
 const DT := 0.1
 
 var _root: Node3D
@@ -32,6 +35,10 @@ func run() -> bool:
 		_test_damage_and_death,
 		_test_leash,
 		_test_spawner,
+		_test_demo_data,
+		_test_bind,
+		_test_alarm,
+		_test_split,
 	]
 	for test in tests:
 		test.call()
@@ -251,6 +258,78 @@ func _test_spawner() -> void:
 	nest.max_alive = 100
 	spawner.tick(180.0 * 40)
 	_check(spawner.region_alive_count() == MonsterRules.REGION_MAX_ALIVE, "region cap 40")
+
+
+func _test_demo_data() -> void:
+	# 04 "마물 목록": hp, defense, attack, move, hearing, sight.
+	var table := {
+		VINE: [&"vine_tendril", Enums.Element.GREEN, 40.0, 0.0, 8.0, 5.5, 1.2, 8.0],
+		POD: [&"spore_pod", Enums.Element.GREEN, 30.0, 0.0, 6.0, 0.0, 1.5, 10.0],
+		BLOB: [&"swamp_blob", Enums.Element.WATER, 80.0, 5.0, 12.0, 3.0, 0.8, 6.0],
+	}
+	for def: MonsterDef in table:
+		var row: Array = table[def]
+		var got := [def.id, def.family, def.hp, def.defense, def.attack, def.move_speed, def.hearing_mult, def.sight_range]
+		_check(got == row, "%s matches the 04 table" % row[0])
+		var m := def.scene.instantiate() as Monster
+		_check(m != null and m.get_node_or_null("WeakPoint") is MonsterWeakPoint, "%s scene is a Monster with a weak point" % row[0])
+		if m:
+			m.free()
+	_check(VINE.group_min == 3 and VINE.group_max == 5, "vine tendrils come in packs of 3 to 5")
+
+
+func _test_bind() -> void:
+	var m := _spawn(VINE, Vector3.ZERO)
+	var player := _player(Vector3(0, 0, -1))
+	m.chase(player)
+	_ticks(m, MonsterRules.ATTACK_WINDUP_SEC + 2 * DT)
+	_check(player.hits.size() == 1 and is_equal_approx(player.hits[0].info.get("bind_sec", 0.0), MonsterRules.BIND_SEC),
+			"vine tendril hit binds for 1 s")
+
+
+func _test_alarm() -> void:
+	var pod := _spawn(POD, Vector3.ZERO)
+	# Scream 20 m x vine hearing 1.2 = 24 m.
+	var near := _spawn(VINE, Vector3(22, 0, 0))
+	var far := _spawn(VINE, Vector3(-25, 0, 0))
+	var screams: Array = []
+	var on_noise := func(pos: Vector3, radius: float, source: Node) -> void:
+		if source == pod:
+			screams.append(radius)
+	EventBus.noise_emitted.connect(on_noise)
+	var player := _player(Vector3(0, 0, -3))
+	pod.chase(player)
+	_check(screams == [MonsterRules.ALARM_SCREAM_RADIUS], "spore pod screams once on spotting (20 m)")
+	_check(near.state == Enums.AIState.SUSPICIOUS, "monsters inside scream range turn suspicious")
+	_check(far.state == Enums.AIState.WANDER, "monsters outside scream range do not hear it")
+	_ticks(pod, DT)
+	_check(pod.state == Enums.AIState.ATTACK, "spore pod attacks from range without moving")
+	player.global_position = Vector3(0, 0, -9)
+	_ticks(pod, DT)
+	_check(pod.state == Enums.AIState.CHASE and screams.size() == 1, "ATTACK -> CHASE does not scream again")
+	EventBus.noise_emitted.disconnect(on_noise)
+	_check(pod.global_position == Vector3.ZERO and not pod.can_move(), "spore pod never moves")
+
+
+func _test_split() -> void:
+	var blob := _spawn(BLOB, Vector3(5, 0, 5))
+	var split: MonsterBehavior = blob._behaviors[0]
+	var children: Array[Monster] = split.make_children()
+	_check(children.size() == MonsterRules.SPLIT_COUNT, "swamp blob splits into 2")
+	for child in children:
+		_root.add_child(child)
+		child.set_physics_process(false)
+	var c: Monster = children[0]
+	_check(c.split_generation == 1 and is_equal_approx(c.max_hp, BLOB.hp * MonsterRules.SPLIT_HP_RATIO),
+			"split child is generation 1 with half hp")
+	var grandchildren: Array[Monster] = (c._behaviors[0] as MonsterBehavior).make_children()
+	_check(grandchildren.size() == 2 and grandchildren[0].split_generation == 2, "generation 1 splits again")
+	var last: Monster = grandchildren[0]
+	_root.add_child(last)
+	_check((last._behaviors[0] as MonsterBehavior).make_children().is_empty(), "no third split")
+	for g in grandchildren:
+		if not g.is_inside_tree():
+			g.free()
 
 
 # --- Helpers --------------------------------------------------------------

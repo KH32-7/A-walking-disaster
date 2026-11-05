@@ -83,7 +83,8 @@ func spawn_at(entry: Dictionary, count: int, def: MonsterDef) -> void:
 		var offset := Vector3(cos(angle), 0.0, sin(angle)) * randf() * MonsterRules.SPAWN_SCATTER_RADIUS
 		monster.position = to_local(nest.global_position + offset)
 		(entry.pack as MonsterPack).add(monster)
-		add_child(monster)
+		monster.name = String(pick.id)
+		add_child(monster, true)
 		entry.alive.append(monster)
 		monster_spawned.emit(monster, nest)
 

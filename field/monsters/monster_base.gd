@@ -17,9 +17,15 @@ const GROUP := &"field_monsters"
 ## B-03 puts the player in this group.
 const PLAYER_GROUP := &"player"
 ## MonsterDef.behaviors id -> MonsterBehavior script.
-const BEHAVIORS := {}
+const BEHAVIORS := {
+	&"bind": preload("res://field/monsters/behaviors/bind_behavior.gd"),
+	&"alarm": preload("res://field/monsters/behaviors/alarm_behavior.gd"),
+	&"split": preload("res://field/monsters/behaviors/split_behavior.gd"),
+}
 
 @export var def: MonsterDef
+## SUSPICIOUS starts looking at the spawn point. CHASE needs `target` set before
+## adding to the tree, otherwise it starts in WANDER.
 @export var start_state: Enums.AIState = Enums.AIState.WANDER
 @export var wander_radius: float = MonsterRules.DEFAULT_WANDER_RADIUS
 
@@ -75,6 +81,12 @@ func _ready() -> void:
 		else:
 			push_warning("%s: unknown behavior %s" % [def.id, id])
 	state = start_state
+	_noise_point = global_position
+	if state == Enums.AIState.CHASE:
+		if _target_valid():
+			_perceive(target)
+		else:
+			state = Enums.AIState.WANDER
 	EventBus.noise_emitted.connect(_on_noise_emitted)
 
 
