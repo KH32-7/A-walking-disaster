@@ -31,6 +31,7 @@ const PATIENT := {
 	"name": "한도윤",
 	"age_stage": Enums.AgeStage.ADULT,
 	"former_job": &"police",
+	"gender": &"male",  # fixed: the field, the bed and every portrait show the same man
 	"traits": [&"brave"],
 	"health": Enums.HealthState.INJURED,
 	"recover_days": 5,

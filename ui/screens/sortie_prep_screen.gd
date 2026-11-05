@@ -87,7 +87,9 @@ func _fill_regions() -> void:
 	MenuScreen.clear(_regions_box)
 	var band := _regions_box.get_child(0) if _regions_box.get_child_count() > 0 else null
 	for reg: Dictionary in REGIONS:
-		_regions_box.add_child(_region_row(reg))
+		# Only the regions that have a map (사용자 요청 2026-11-06: 맵이 2개인데 5개가 떠 있음).
+		if ResourceLoader.exists(SceneRouter.REGION_SCENE_FMT % [reg.id, reg.id]):
+			_regions_box.add_child(_region_row(reg))
 
 
 func _region_row(reg: Dictionary) -> Control:

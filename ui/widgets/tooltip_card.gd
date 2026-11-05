@@ -31,10 +31,10 @@ func show_info(info: Dictionary, at: Vector2) -> void:
 	var body := PanelContainer.new()
 	body.add_theme_stylebox_override(&"panel", _box(UiTokens.CREAM, 14, 12, [0, 4, 4, 4]))
 	var bv := VBoxContainer.new()
-	bv.add_theme_constant_override(&"separation", 6)
+	bv.add_theme_constant_override(&"separation", 10)
 	body.add_child(bv)
 	var tags := HBoxContainer.new()
-	tags.add_theme_constant_override(&"separation", 4)
+	tags.add_theme_constant_override(&"separation", 8)
 	for t: String in info.get("tags", []):
 		tags.add_child(_chip(t, UiTokens.GREY_BTN, null))
 	var r := int(info.get("rarity", -1))
@@ -98,7 +98,7 @@ func _chip(t: String, bg: Color, rarity: Variant) -> Control:
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override(&"panel", _box(bg, 7, 2, [0, 0, 0, 0]))
 	var h := HBoxContainer.new()
-	h.add_theme_constant_override(&"separation", 4)
+	h.add_theme_constant_override(&"separation", 8)
 	if rarity != null:
 		var b := ShapeBadge.new()
 		b.value = int(rarity)

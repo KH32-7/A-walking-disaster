@@ -71,7 +71,7 @@ func _ready() -> void:
 	var text := VBoxContainer.new()
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text.alignment = BoxContainer.ALIGNMENT_END
-	text.add_theme_constant_override(&"separation", 6)
+	text.add_theme_constant_override(&"separation", 10)
 	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(text)
 	note_box = HBoxContainer.new()

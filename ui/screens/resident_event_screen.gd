@@ -52,7 +52,7 @@ func draw_people(ids: Array, chips: Dictionary = {}, portrait := Vector2(230, 27
 		card.add_child(nm)
 		var row := HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_theme_constant_override(&"separation", 6)
+		row.add_theme_constant_override(&"separation", 10)
 		for c: Array in chips.get(id, []):
 			row.add_child(DialogBox.note_chip(String(c[0]), c[1] if c.size() > 1 else UiTokens.TEXT))
 		card.add_child(row)
@@ -63,7 +63,7 @@ func draw_people(ids: Array, chips: Dictionary = {}, portrait := Vector2(230, 27
 func link(a: StringName, b: StringName) -> Control:
 	var v := VBoxContainer.new()
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
-	v.add_theme_constant_override(&"separation", 4)
+	v.add_theme_constant_override(&"separation", 8)
 	v.custom_minimum_size = Vector2(120, 270)
 	var stage := Colony.relation_stage(a, b)
 	var s := RelationGraph.LineSample.new(stage)

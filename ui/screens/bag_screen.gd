@@ -180,7 +180,7 @@ func _loot_cell(i: int, s: Dictionary) -> Control:
 		if gear:  # gear stands out from resources: accent fill and rim
 			sb.bg_color = Color(UiTokens.ACCENT, 0.28)
 			sb.border_color = UiTokens.ACCENT
-		b.add_theme_font_size_override(&"font_size", 13)
+		b.add_theme_font_size_override(&"font_size", 15)
 		b.add_theme_color_override(&"font_color", UiTokens.TEXT)
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		b.pressed.connect(func() -> void:

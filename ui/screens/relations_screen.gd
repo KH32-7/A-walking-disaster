@@ -63,7 +63,7 @@ func _build_body(b: Control) -> void:
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_list = VBoxContainer.new()
-	_list.add_theme_constant_override(&"separation", 6)
+	_list.add_theme_constant_override(&"separation", 10)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(_list)
 	(rel[1] as VBoxContainer).add_child(sc)

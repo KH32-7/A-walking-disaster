@@ -56,11 +56,11 @@ const ELEMENT_SHAPES: Array[Shape] = [Shape.CIRCLE, Shape.PETAL, Shape.SQUARE, S
 const ELEMENT_NAMES: Array[String] = ["없음", "초록", "돌", "물", "빛"]
 
 # --- type scale (§3), 1920x1080 at text size "보통" ---
-const SIZE_TITLE := 30
-const SIZE_SECTION := 20
-const SIZE_BODY := 16
-const SIZE_SMALL := 13
-const SIZE_TAB := 20
+const SIZE_TITLE := 32
+const SIZE_SECTION := 22
+const SIZE_BODY := 18
+const SIZE_SMALL := 15
+const SIZE_TAB := 21
 const SIZE_HUD_NUMBER := 22
 const SIZE_HUD_AMMO := 44
 const SIZE_SUBTITLE := 25
