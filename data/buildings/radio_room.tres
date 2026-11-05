@@ -12,4 +12,5 @@ capacity = 1
 power_use = Array[int]([0, 2, 2])
 power_priority = 2
 prebuilt = true
+level_cost_override = Array[Dictionary]([{}, {&"radio_parts": 5, &"scrap": 30}, {}])
 note = "본관 방송실, 시작부터 Lv1. Lv2: 고철 30, 무전 부품 5"

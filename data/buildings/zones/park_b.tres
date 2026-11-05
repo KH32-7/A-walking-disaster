@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ZoneDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/zone_def.gd" id="1_245jv"]
+
+[resource]
+script = ExtResource("1_245jv")
+id = &"park_b"
+display_name = "공원 숲 B"
+size = Vector2i(15, 15)
+clear_work = 80
+clear_yield = Dictionary[StringName, int]({
+&"wood": 100
+})
+unlock_tier = 1
+note = "벌목 노드, 텃밭 보너스 토양"
