@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Recipe" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/recipe.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = &"first_aid_kit"
+facility = &"infirmary"
+inputs = Dictionary[StringName, int]({
+&"cloth": 1,
+&"herbs": 2
+})
+output_id = &"first_aid_kit"
+by_worker = true
