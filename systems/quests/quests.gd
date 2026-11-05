@@ -412,6 +412,11 @@ func _grant(def: QuestDef, giver_id: StringName) -> void:
 		Armory.create_item(StringName(entry.get("def_id", &"")), int(entry.get("rarity", -1)))
 	for flag in r.get("flags", []):
 		GameState.set_flag(StringName(flag), true)
+	# Progression (A-11) gives XP for finished personal requests. Looked up by path so this file
+	# still loads before that autoload exists.
+	var progression := get_node_or_null(^"/root/Progression")
+	if def.type == Enums.QuestType.PERSONAL and progression != null and progression.has_method(&"award"):
+		progression.call(&"award", &"personal_request")
 	var trust := int(r.get("trust", 0))
 	if trust != 0 and giver_id != &"" and giver_id != BROADCASTER:
 		# TODO(C): Colony.add_trust(resident_id, amount) is requested from Lane C (개인 요청 완료 +20).
