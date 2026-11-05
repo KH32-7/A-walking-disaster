@@ -286,7 +286,8 @@ func _test_statue() -> void:
 
 func _test_mist() -> void:
 	var mist := _spawn(_load(&"mist"), Vector3.ZERO)
-	var body := mist.get_node("Body") as Node3D
+	# B-28: with Lane D's model the model is what shows and hides; the grey box stays hidden.
+	var body := mist.get_node(^"Visual" if mist.has_node(^"Visual") else ^"Body") as Node3D
 	var player := _player(Vector3(0, 0, -10))
 	_ticks(mist, DT)
 	_check(not body.visible, "mist is hidden from 10 m")

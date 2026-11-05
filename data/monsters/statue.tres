@@ -25,3 +25,4 @@ scene = ExtResource("2_scene")
 attack_range = 1.6
 attack_interval = 1.6
 elite_behaviors = Array[StringName]([&"rally"])
+attack_fx = &"monster_slam"

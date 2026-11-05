@@ -11,9 +11,13 @@ signal state_changed(old_state: Enums.AIState, new_state: Enums.AIState)
 ## Final damage after part, element and defense multipliers.
 signal damaged(amount: float, info: Dictionary)
 signal attack_landed(target: Node3D, info: Dictionary)
+## Windup start, ATTACK_WINDUP_SEC before each attack lands. Lane D (D-17) plays the attack clip on it.
+signal attack_started(info: Dictionary)
 signal died(monster: Monster)
 
 const GROUP := &"field_monsters"
+## Lane D's model for def.id (D-17 MonsterVisual). Added as the "Visual" child; the grey-box meshes hide.
+const VISUAL_DIR := "res://art/monsters/"
 ## B-03 puts the player in this group.
 const PLAYER_GROUP := &"player"
 ## MonsterDef.behaviors id -> MonsterBehavior script.
@@ -76,6 +80,7 @@ var _leg_time := 0.0
 var _wait_time := 0.0
 var _arrived := false
 var _attack_cooldown := 0.0
+var _windup_sent := false
 var _sight_timer := 0.0
 var _raid: RaidMarch
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)
@@ -96,6 +101,7 @@ func _ready() -> void:
 	hp = max_hp
 	if home == Vector3.INF:
 		home = global_position
+	_add_visual()
 	for id in def.behaviors:
 		_add_behavior(id)
 	if elite:
@@ -443,8 +449,12 @@ func _tick_attack(delta: float) -> void:
 		return
 	_perceive(target)
 	_attack_cooldown -= delta
+	if not _windup_sent and _attack_cooldown <= MonsterRules.ATTACK_WINDUP_SEC:
+		_windup_sent = true
+		attack_started.emit({"monster_id": def.id, "target": target})
 	if _attack_cooldown <= 0.0:
 		_attack_cooldown = def.attack_interval
+		_windup_sent = false
 		_perform_attack()
 
 
@@ -455,6 +465,28 @@ func _tick_return(delta: float) -> void:
 
 
 # --- Helpers --------------------------------------------------------------
+
+## D-17: Lane D's model replaces the grey-box meshes (direct MeshInstance3D children such as Body,
+## Crown, Stem). WeakPoint/Core stays: it is the aim cue. Added before behaviors so mist hides it.
+## No art file, or its model is missing (clone without assets access) -> the grey box stays.
+func _add_visual() -> void:
+	var path := VISUAL_DIR + String(def.id) + ".tscn"
+	if has_node(^"Visual") or not ResourceLoader.exists(path):
+		return
+	var scene := load(path) as PackedScene
+	if scene == null:
+		return
+	var visual := scene.instantiate()
+	visual.name = &"Visual"
+	add_child(visual)
+	if not visual.has_node(^"Model"):
+		remove_child(visual)
+		visual.queue_free()
+		return
+	for child in get_children():
+		if child is MeshInstance3D:
+			(child as MeshInstance3D).visible = false
+
 
 func _add_behavior(id: StringName) -> void:
 	if not BEHAVIORS.has(id):
@@ -488,6 +520,7 @@ func _set_state(new_state: Enums.AIState) -> void:
 	match new_state:
 		Enums.AIState.ATTACK:
 			_attack_cooldown = MonsterRules.ATTACK_WINDUP_SEC
+			_windup_sent = false
 		Enums.AIState.RETURN, Enums.AIState.WANDER:
 			target = null
 			_heard_times.clear()
@@ -543,6 +576,9 @@ func _perform_attack() -> void:
 			break
 	if not replaced and target.has_method("take_damage"):
 		target.take_damage(attack_damage(), info)
+	if def.attack_fx != &"" and not _dead:
+		Fx.spawn(def.attack_fx, global_position, {"direction": -global_basis.z, "element": def.family,
+			"range": def.attack_range})
 	attack_landed.emit(target, info)
 
 
