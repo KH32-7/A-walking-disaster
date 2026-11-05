@@ -633,6 +633,7 @@ func settle_day() -> Dictionary:
 
 	# 3. Food: cooked meals if a cook worked today (식량 효율 ×1.5, 배고픔 +70).
 	var cooked := false
+	var ate_cooked := {}
 	for id in work:
 		if work[id]["job"] == &"cooking":
 			cooked = true
@@ -643,6 +644,8 @@ func settle_day() -> Dictionary:
 		var r: Dictionary = residents[id]
 		var need: float = WorkRules.food_need(r) / eat_mult
 		var ate: bool = food_left >= need
+		if ate and cooked:
+			ate_cooked[id] = true
 		if ate:
 			food_left -= need
 			consumed[&"food"] = consumed.get(&"food", 0.0) + need
@@ -654,6 +657,10 @@ func settle_day() -> Dictionary:
 		r["fatigue"] = clampi(int(r["fatigue"]) + WorkRules.fatigue_change(worked.has(id), rested, _sleep_recovery(id), r), 0, 100)
 	if not hungry.is_empty():
 		events.append(_event(&"food_short", &"", "식량이 모자라 %d명이 굶었다" % hungry.size()))
+
+	# 3b. Health and morale (C-06): 07 "상태와 필요", 사기 요인 표, 떠날 위기.
+	_settle_health(consumed, events)
+	var morale := _settle_morale(ids, ate_cooked, events)
 
 	# 4. Generator fuel (2/일, 겨울 3). No fuel → no power tomorrow.
 	var fuel_left: float = float(Economy.get_amount(&"fuel")) + produced.get(&"fuel", 0.0)
@@ -693,7 +700,7 @@ func settle_day() -> Dictionary:
 		"changes": changes,
 		"produced": p,
 		"consumed": c,
-		"morale": {},
+		"morale": morale,
 		"events": events,
 		"work": work,
 		"threat": {"before": before_threat, "after": threat},
@@ -1091,7 +1098,150 @@ static func _direction_text(directions: Array) -> String:
 	return "·".join(parts) if not parts.is_empty() else "어딘가"
 
 
+# --- Health, morale, leaving (Lane C, C-06) -----------------------------------------
+
+## Residents who want to leave (떠나려 한다). They leave at the next evening unless persuaded.
+func residents_in_crisis() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for id in active_resident_ids():
+		if residents[id]["leave_crisis"]:
+			out.append(id)
+	return out
+
+
+## 대화로 붙잡기 (07: 신뢰도 40 이상이면 성공). Returns {"ok": bool, "reason": String}.
+## TODO(C-12/C-13): "원하는 것을 들어주기" (personal request) as the other way to keep them.
+func persuade_to_stay(resident_id: StringName) -> Dictionary:
+	var r: Dictionary = residents.get(resident_id, {})
+	if r.is_empty() or not r["leave_crisis"]:
+		return {"ok": false, "reason": "떠나려는 사람이 아님"}
+	if int(r["trust"]) < NeedsRules.PERSUADE_TRUST:
+		return {"ok": false, "reason": "신뢰도 %d 필요 (지금 %d)" % [NeedsRules.PERSUADE_TRUST, r["trust"]]}
+	r["leave_crisis"] = false
+	r["low_morale_days"] = 0
+	r["morale"] = maxi(int(r["morale"]), NeedsRules.PERSUADE_MORALE)
+	return {"ok": true, "reason": ""}
+
+
+## Injury countdown (의무실이 있으면 1일), sickness (겨울·배고픔), contagion, medicine cures.
+func _settle_health(consumed: Dictionary, events: Array) -> void:
+	var heal_slots := 0
+	for medic in facility_workers(&"infirmary"):
+		if WorkRules.can_work(residents[medic]):
+			heal_slots += int(BaseDB.get_job(&"medical").effects.get(&"heal_per_day", 2.0))
+	var medicine_left: float = Economy.get_amount(&"medicine") - float(consumed.get(&"medicine", 0.0))
+	var winter := GameState.season() == Enums.Season.WINTER
+	var sick_now := 0
+	for id in active_resident_ids():
+		if int(residents[id]["health"]) == Enums.HealthState.SICK:
+			sick_now += 1
+	for id in active_resident_ids():
+		var r: Dictionary = residents[id]
+		match int(r["health"]):
+			Enums.HealthState.INJURED:
+				if heal_slots > 0:
+					heal_slots -= 1
+					r["recover_days"] = mini(int(r["recover_days"]), NeedsRules.INFIRMARY_RECOVER_DAYS)
+				r["recover_days"] = int(r["recover_days"]) - 1
+				if r["recover_days"] <= 0:
+					_recover(id, events)
+			Enums.HealthState.SICK:
+				if heal_slots > 0 and medicine_left >= NeedsRules.MEDICINE_PER_CURE:
+					heal_slots -= 1
+					medicine_left -= NeedsRules.MEDICINE_PER_CURE
+					consumed[&"medicine"] = consumed.get(&"medicine", 0.0) + NeedsRules.MEDICINE_PER_CURE
+					_recover(id, events)
+				else:
+					r["recover_days"] = int(r["recover_days"]) - 1
+					if r["recover_days"] <= 0:
+						_recover(id, events)
+			_:
+				var chance := 0.0
+				if winter or int(r["hunger"]) < WorkRules.HUNGRY_BELOW:
+					chance = NeedsRules.SICK_CHANCE
+				chance = 1.0 - (1.0 - chance) * pow(1.0 - NeedsRules.CONTAGION_CHANCE, sick_now)
+				if chance > 0.0 and _rng.randf() < chance:
+					r["health"] = Enums.HealthState.SICK
+					r["recover_days"] = NeedsRules.SICK_DAYS
+					events.append(_event(&"fell_sick", id, "%s이(가) 앓아누웠다" % r["name"]))
+
+
+func _recover(id: StringName, events: Array) -> void:
+	residents[id]["health"] = Enums.HealthState.OK
+	residents[id]["recover_days"] = 0
+	events.append(_event(&"recovered", id, "%s이(가) 회복했다" % residents[id]["name"]))
+
+
+## Applies today's morale factors and handles 떠날 위기. Returns {resident_id: morale delta}.
+func _settle_morale(ids: Array[StringName], ate_cooked: Dictionary, events: Array) -> Dictionary:
+	var stranded := 0
+	for id: StringName in residents:
+		if int(residents[id]["status"]) == Enums.ResidentStatus.STRANDED:
+			stranded += 1
+	# 모닥불·식당: the best building of each kind counts once for everyone.
+	var shared := {}
+	for uid in working_building_ids():
+		var def := BaseDB.get_building(buildings[uid]["def_id"])
+		if def.category != BuildingDef.Category.HOUSING and def.effects.has(&"morale_daily"):
+			shared[def.id] = maxf(shared.get(def.id, 0.0), building_effect(uid, &"morale_daily"))
+	var shared_bonus := 0
+	for v in shared.values():
+		shared_bonus += roundi(v)
+	var deltas := {}
+	for id in ids:
+		if not residents.has(id) or int(residents[id]["status"]) != Enums.ResidentStatus.ACTIVE:
+			continue
+		var r: Dictionary = residents[id]
+		var uid: StringName = r["assignment"]["building_id"]
+		var coworkers: Array = []
+		if buildings.has(uid):
+			for w: StringName in buildings[uid]["workers"]:
+				if w != id and residents.has(w):
+					coworkers.append(residents[w])
+		var bed := String(r["bed_id"])
+		var home_bonus := 0
+		if bed != "" and not bed.begins_with(START_BED_PREFIX):
+			home_bonus = roundi(building_effect(StringName(bed.get_slice("_bed_", 0)), &"morale_daily"))
+		var ctx := {
+			"job_id": job_of(id), "coworkers": coworkers, "ate_cooked": ate_cooked.has(id),
+			"has_bed": bed != "", "living_bonus": shared_bonus + home_bonus, "stranded_count": stranded,
+		}
+		var before := int(r["morale"])
+		r["morale"] = NeedsRules.apply_morale(r, NeedsRules.daily_morale(r, ctx))
+		deltas[id] = int(r["morale"]) - before
+		# 떠날 위기: yesterday's crisis not resolved → leaves; 3 low days in a row → crisis.
+		if int(r["morale"]) >= NeedsRules.CRISIS_MORALE:
+			r["low_morale_days"] = 0
+			r["leave_crisis"] = false
+			continue
+		r["low_morale_days"] = int(r["low_morale_days"]) + 1
+		if r["leave_crisis"]:
+			events.append(_event(&"resident_left", id, "%s이(가) 기지를 떠났다" % r["name"]))
+			_leave(id, &"low_morale")
+		elif r["low_morale_days"] >= NeedsRules.CRISIS_DAYS:
+			r["leave_crisis"] = true
+			events.append(_event(&"leave_crisis", id, "%s이(가) 떠나려 한다 (신뢰 %d)" % [r["name"], r["trust"]]))
+	return deltas
+
+
+func _leave(id: StringName, reason: StringName) -> void:
+	unassign_job(id)
+	release_bed(id)
+	residents.erase(id)
+	EventBus.resident_left.emit(id, reason)
+
+
+## A rescued profile that is already a stranded/missing resident comes home instead of becoming a
+## second copy (B-10 sends the resident's own dictionary when rescuing a stranded companion).
 func _on_rescue_completed(rescued: Dictionary) -> void:
+	var id := StringName(rescued.get("id", &""))
+	if residents.has(id) and int(residents[id]["status"]) in [Enums.ResidentStatus.STRANDED, Enums.ResidentStatus.MISSING]:
+		residents[id]["status"] = Enums.ResidentStatus.ACTIVE
+		var free := free_beds()
+		if residents[id]["bed_id"] == &"" and not free.is_empty():
+			assign_bed(id, free[0])
+		EventBus.resident_joined.emit(id)
+		return
 	add_resident(rescued)
 
 
@@ -1192,7 +1342,7 @@ func load_data(data: Dictionary) -> void:
 
 func _register_debug_commands() -> void:
 	DebugConsole.register(&"resident", _cmd_resident,
-		"resident add [demo 1~3] | resident list - 주민 추가(무작위 또는 데모 구조자)·목록")
+		"resident add [demo 1~3] | list | persuade <id> | set <id> <morale|trust|hunger|fatigue> <n> - 주민 추가·목록·붙잡기·값 설정")
 	DebugConsole.register(&"job", _cmd_job,
 		"job <resident_id> <job_id> [building_uid] - 작업 배정 (job list: 직업 목록)")
 	DebugConsole.register(&"settle", _cmd_settle,
@@ -1290,6 +1440,19 @@ func _cmd_resident(args: PackedStringArray) -> String:
 			var lines := PackedStringArray(["주민 %d명, 침상 %d/%d" % [population(), bed_count() - free_beds().size(), bed_count()]])
 			for id: StringName in residents:
 				var r: Dictionary = residents[id]
-				lines.append("  %s %s 특성 %s 능력치 %s" % [id, r["name"], r["traits"], r["stats"]])
+				lines.append("  %s %s 특성 %s 능력치 %s · 사기 %d 신뢰 %d 배고픔 %d 피로 %d %s%s" % [id, r["name"],
+					r["traits"], r["stats"], r["morale"], r["trust"], r["hunger"], r["fatigue"],
+					Enums.HealthState.keys()[r["health"]], " · 떠나려 함" if r["leave_crisis"] else ""])
 			return "\n".join(lines)
-	return "사용법: resident add [demo 1~3] | resident list"
+		"persuade":
+			if args.size() < 2:
+				return "사용법: resident persuade <id>"
+			var res := persuade_to_stay(StringName(args[1]))
+			return "붙잡았다" if res["ok"] else "실패: " + res["reason"]
+		"set":
+			# resident set <id> <morale|trust|hunger|fatigue> <n>
+			if args.size() < 4 or not residents.has(StringName(args[1])) or not args[2] in ["morale", "trust", "hunger", "fatigue"]:
+				return "사용법: resident set <id> <morale|trust|hunger|fatigue> <0~100>"
+			residents[StringName(args[1])][args[2]] = clampi(int(args[3]), 0, 100)
+			return "%s %s = %s" % [args[1], args[2], args[3]]
+	return "사용법: resident add [demo 1~3] | resident list | resident persuade <id> | resident set <id> <morale|trust|hunger|fatigue> <n>"
