@@ -43,6 +43,12 @@ var region_name := "":
 
 ## Marks collected from the world this frame, already heading-up in -1..1.
 var _live_points: Array = []
+## Landmark and water names in range, heading-up: [{"pos": Vector2 -1..1, "text": String}].
+var _live_names: Array = []
+var _labels_region: StringName = &""
+var _labels: Array = []
+## Kinds of RegionDef.map_labels shown on the minimap (the small names wait for the M map).
+const NAME_KINDS: Array[StringName] = [&"landmark", &"water"]
 var _live := false
 var _live_heading := 0.0
 var _sub: SubViewport
@@ -100,6 +106,17 @@ func _collect(p: Node3D) -> void:
 	if FieldState.has_ping:
 		add.call(FieldState.ping, &"ping")
 	_live_points = out
+	if _labels_region != FieldState.region_id:
+		_labels_region = FieldState.region_id
+		var def := RegionDef.load_def(_labels_region)
+		_labels = def.map_labels.filter(func(l: Dictionary) -> bool: return l.get("kind", &"") in NAME_KINDS) 			if def != null else []
+	var names: Array = []
+	for l: Dictionary in _labels:
+		var w: Vector2 = l.get("pos", Vector2.ZERO)
+		var at := to_map(Vector3(w.x, 0.0, w.y) - p.global_position, _live_heading)
+		if at.length() < 0.8:
+			names.append({"pos": at, "text": String(l.get("text", ""))})
+	_live_names = names
 
 
 func _find_marker(marker: StringName) -> Node3D:
@@ -159,6 +176,8 @@ func _draw() -> void:
 	var north := Vector2(0, -1).rotated(-deg_to_rad(heading()))
 	draw_string(UiThemeBuilder.font_kr(600), c + north * (r - 12.0) + Vector2(-5, 6), "N",
 		HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color(UiTokens.TEXT, 0.7))
+	if _live:
+		_draw_names(c, r)
 	for p: Dictionary in (_live_points if _live else _preview_points()):
 		_draw_mark(c + _pin(p.get("pos", Vector2.ZERO)) * r, StringName(p.get("kind", &"")))
 	# The player: always at the centre, always pointing up.
@@ -168,6 +187,17 @@ func _draw() -> void:
 		var f := UiThemeBuilder.font_kr(600)
 		draw_string(f, Vector2(4, size.x + 26), region_name, HORIZONTAL_ALIGNMENT_LEFT, size.x, 17,
 			UiTokens.TEXT)
+
+
+## Place names stay upright while the map turns under them.
+func _draw_names(c: Vector2, r: float) -> void:
+	var f := UiThemeBuilder.font_kr(700)
+	for n: Dictionary in _live_names:
+		var text: String = n.text
+		var w := f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+		var at: Vector2 = c + (n.pos as Vector2) * r + Vector2(-w * 0.5, 4)
+		draw_string_outline(f, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, 4, Color(0, 0, 0, 0.8))
+		draw_string(f, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UiTokens.TEXT)
 
 
 ## Bearing the map is turned to right now.
