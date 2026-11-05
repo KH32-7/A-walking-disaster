@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="ResourceDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/resource_def.gd" id="1_4hkv5"]
+
+[resource]
+script = ExtResource("1_4hkv5")
+id = &"meal"
+name = "요리"
+category = 1

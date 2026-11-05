@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="ResourceDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/resource_def.gd" id="1_bhxqr"]
+
+[resource]
+script = ExtResource("1_bhxqr")
+id = &"scrap"
+name = "고철"
+stack_max = 20

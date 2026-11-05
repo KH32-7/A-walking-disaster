@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ResourceDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/resource_def.gd" id="1_ywn7i"]
+
+[resource]
+script = ExtResource("1_ywn7i")
+id = &"textbook"
+name = "교과서"
+category = 2
+uses_storage_cap = false
+bag_size = Vector2i(1, 2)
+stack_max = 3

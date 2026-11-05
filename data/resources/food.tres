@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="ResourceDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/resource_def.gd" id="1_s7ava"]
+
+[resource]
+script = ExtResource("1_s7ava")
+id = &"food"
+name = "식량"

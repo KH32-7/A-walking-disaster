@@ -14,7 +14,7 @@
 - [ ] **A-03** 디버그 콘솔 (치트) · M0
 - [x] **A-04** 저장 시스템 · M1
 - [ ] **A-05** main.tscn + SceneRouter + 하루 흐름 상태 머신 · M1
-- [ ] **A-06** Economy (자원 정의·창고 한도·소비) · M1
+- [x] **A-06** Economy (자원 정의·창고 한도·소비) · M1
 - [ ] **A-07** 아이템·장비 체계 (Armory) · M1
 - [ ] **A-08** 가방 격자 인벤토리 백엔드 · M1
 - [ ] **A-12** Settings 저장 + 난이도 프리셋 · M1
@@ -57,7 +57,7 @@
 - 참고: `docs/design/01-flow-time.md` "하루 구조", "게임 상태"
 
 ### A-06 Economy · M1
-- 만들 것: `systems/defs/resource_def.gd`, `data/resources/*.tres`(기획 11 탭 자원 전부), 창고 한도(기본·창고 건물 보너스는 C가 `Economy.storage_cap`에 반영하도록 함수 제공), 한도 넘치면 버림, 희귀 자원은 한도 제외.
+- 만들 것: `systems/defs/resource_def.gd`, `data/resources/*.tres`(기획 11 탭 자원 전부), 창고 한도(기본 200 + 창고 건물 보너스는 C가 `Economy.set_cap_bonus()`로 반영), 한도 넘치면 버림, 희귀 자원은 한도 제외.
 - 완료 조건: 한도·음수 방지·희귀 제외 단위 테스트.
 - 참고: `docs/design/11-economy.md`
 

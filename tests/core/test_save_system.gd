@@ -54,7 +54,7 @@ func _snapshot_all() -> Dictionary:
 func _fill_sample_state() -> void:
 	GameState.load_data({"day": 7, "phase": Enums.Phase.EVENING,
 		"flags": {&"met_broadcaster": true, &"bridge_level": 2}})
-	Economy.load_data({"amounts": {&"wood": 40, &"scrap": 12}, "storage_cap": 250})
+	Economy.load_data({"amounts": {&"wood": 40, &"scrap": 12}, "cap_bonus": 300})
 	FieldState.load_data({
 		"lost_gear": [{"item_uid": &"gun_0001", "region_id": &"flooded_mall",
 			"position": Vector3(1.5, 0.0, -3.25)}],

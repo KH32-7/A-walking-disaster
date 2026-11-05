@@ -183,9 +183,13 @@ func _cmd_res(args: PackedStringArray) -> String:
 	if args.size() != 2 or not args[1].is_valid_int():
 		return "사용법: res <resource_id> <n>"
 	var id := StringName(args[0])
-	if not Economy.apply({id: args[1].to_int()}):
+	var result := Economy.apply_detailed({id: args[1].to_int()})
+	if not result["ok"]:
 		return "실패: %s 이(가) 0 아래로 내려감 (현재 %d)" % [id, Economy.get_amount(id)]
-	return "%s = %d" % [id, Economy.get_amount(id)]
+	var line := "%s = %d" % [id, Economy.get_amount(id)]
+	if result["discarded"].has(id):
+		line += " (창고 한도 %d, %d 버려짐)" % [Economy.storage_cap(), result["discarded"][id]]
+	return line
 
 
 func _cmd_day(args: PackedStringArray) -> String:

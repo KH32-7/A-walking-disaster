@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="ResourceDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/resource_def.gd" id="1_clfto"]
+
+[resource]
+script = ExtResource("1_clfto")
+id = &"electronics"
+name = "전자부품"
+category = 2
+uses_storage_cap = false
