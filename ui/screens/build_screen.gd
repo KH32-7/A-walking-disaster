@@ -563,6 +563,7 @@ func _card(def: BuildingDef, check: Dictionary, goal: bool) -> Control:
 	art.offset_bottom = -4
 	art.dim = locked
 	art_box.add_child(art)
+	BuildingThumbs.show_on(art_box, def.id, art)  # real model picture once it is rendered
 	var cat := _corner_chip(LineIcon.new(group_icon(int(def.category)), 15))
 	cat.position = Vector2(8, 8)
 	art_box.add_child(cat)
@@ -742,6 +743,7 @@ func _show_detail() -> void:
 	art.offset_bottom = -12
 	art.dim = locked
 	pic_in.add_child(art)
+	BuildingThumbs.show_on(pic_in, def.id, art)
 	var w := maxi(def.size.x, 1)
 	var d := maxi(def.size.y, 1)
 	var size_tag := _cream_tag("%d×%d칸 · %dm × %dm" % [w, d, w * 2, d * 2])

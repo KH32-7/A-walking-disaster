@@ -194,7 +194,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _moving or mode == null:
 		return
 	if event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).keycode == KEY_Q:
-		mode.call(&"cancel")
+		mode.call(&"cancel", true)
 		get_viewport().set_input_as_handled()
 
 
@@ -211,8 +211,9 @@ func _on_moved(uid: StringName) -> void:
 
 func _on_cancelled() -> void:
 	var moving := _moving
+	var by_player: bool = mode != null and bool(mode.get(&"cancelled_by_player"))
 	_finish()
-	if not moving:
+	if not moving and by_player:
 		UI.open(&"build", {"mode": &"build", "select": _def_id})
 
 

@@ -25,7 +25,6 @@ func _ready() -> void:
 			Colony.add_resident(p)
 	Economy.set_cap_bonus(300)
 	Economy.apply({&"wood": 34, &"stone": 12, &"scrap": 8, &"food": 21, &"parts": 3, &"cloth": 5, &"seeds": 2})
-	Colony.cleared_zones[&"playground"] = true
 	GameState.set_flow_state(Enums.FlowState.BASE_MORNING)  # closes the title flow screen
 	UI.close_all()
 	_base = (load(BASE) as PackedScene).instantiate()
@@ -49,9 +48,6 @@ func _go() -> void:
 	await get_tree().create_timer(0.4).timeout
 	UI.build_requested.emit(&"lumber_yard")
 	await get_tree().process_frame
-	var cam := get_viewport().get_camera_3d()
-	if cam != null:
-		Input.warp_mouse(cam.unproject_position(center))
 	mode.preview_cell(spot["zone_id"], spot["cell"])
 	if _step == "3":
 		mode.confirm()

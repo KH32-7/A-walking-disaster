@@ -28,7 +28,14 @@ func run() -> bool:
 	await get_tree().process_frame
 	ok = _expect(_label_with(hud, "놓을 수 없어요") != null and _label_with(hud, "다른 건물과 겹침") != null,
 		"blocked spot: the reason in words") and ok
-	# cancel → back to the list with the same building picked
+	# a cancel from code (tests, leaving the base) opens nothing
+	mode.cancelled_by_player = false
+	mode.cancelled.emit()
+	await get_tree().process_frame
+	ok = _expect(not UI.is_open(&"build") and not get_tree().paused, "code cancel leaves no menu open") and ok
+	# the player's cancel → back to the list with the same building picked
+	UI.show_build_place(mode)
+	mode.cancelled_by_player = true
 	mode.cancelled.emit()
 	await get_tree().process_frame
 	ok = _expect(UI.top() == &"build" and UI.get_screen(&"build").get(&"_sel") == &"lumber_yard"

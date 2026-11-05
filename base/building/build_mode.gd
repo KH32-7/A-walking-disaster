@@ -50,6 +50,11 @@ var _cells: MeshInstance3D
 var _overlay_material := StandardMaterial3D.new()
 ## The in-world text label. Off when a UI card shows the same words (BuildPlaceHud).
 var show_label := false
+## Whether the last cancel() came from the player (see cancel()).
+var cancelled_by_player := false
+## Ghost of the real model (BuildingModels, D-06 재설계) while placing; the box stays when there is none.
+var _ghost: Node3D
+var _ghost_key := ""
 var _ok_material := StandardMaterial3D.new()
 var _bad_material := StandardMaterial3D.new()
 
@@ -103,9 +108,12 @@ func start_move(uid: StringName) -> bool:
 	return true
 
 
-func cancel() -> void:
+## by_player: Esc / RMB / the overlay's Q. The UI goes back to the build list only then, so a
+## cancel from code (tests, leaving the base) leaves no menu open.
+func cancel(by_player := false) -> void:
 	if not active:
 		return
+	cancelled_by_player = by_player
 	active = false
 	visible = false
 	cancelled.emit()
@@ -310,7 +318,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		confirm()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed(&"aim") or event.is_action_pressed(&"pause"):
-		cancel()
+		cancel(true)
 		get_viewport().set_input_as_handled()
 
 
@@ -329,6 +337,7 @@ func _show(center: Vector3, size: Vector2i, ok: bool, reasons: Array) -> void:
 	(_box.mesh as BoxMesh).size = Vector3(m.x, PREVIEW_HEIGHT, m.z)
 	_box.global_position = center + Vector3(0, PREVIEW_HEIGHT * 0.5, 0)
 	_box.material_override = _ok_material if ok else _bad_material
+	_update_ghost(center, size)
 	var def := BaseDB.get_building(def_id)
 	# Text says it too: colour is never the only signal (14 "UI 규칙").
 	_label.text = "%s\n%s" % [def.display_name if def else String(def_id),
@@ -363,3 +372,23 @@ func _cmd_place(args: PackedStringArray) -> String:
 	if args[0] == "move" and args.size() >= 2:
 		return "이동 모드: %s" % args[1] if start_move(StringName(args[1])) else "옮길 수 없음"
 	return "건설 모드: %s (콘솔을 닫고 마우스로)" % args[0] if start(StringName(args[0])) else "격자에 놓을 수 없는 건물"
+
+
+## Half see-through real model on the footprint (BuildingViews uses the same BuildingModels.build).
+func _update_ghost(center: Vector3, size: Vector2i) -> void:
+	var models := BuildingViews.Models
+	var key := "%s_%d_%d" % [def_id, size.x, size.y]
+	if key != _ghost_key:
+		_ghost_key = key
+		if _ghost != null:
+			_ghost.queue_free()
+			_ghost = null
+		if models.has_assets() and models.MODELS.has(def_id):
+			_ghost = models.build(def_id, size)
+			add_child(_ghost)
+			for n in _ghost.find_children("*", "GeometryInstance3D", true, false):
+				(n as GeometryInstance3D).transparency = 0.45
+				(n as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_box.visible = _ghost == null
+	if _ghost != null:
+		_ghost.global_position = center + Vector3(0, 0.05, 0)
