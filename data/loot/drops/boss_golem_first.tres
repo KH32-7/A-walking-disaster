@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="MonsterDropTable" format=3]
+
+[ext_resource type="Script" path="res://field/defs/monster_drop_table.gd" id="1_table"]
+
+[resource]
+script = ExtResource("1_table")
+id = &"boss_golem_first"
+essence_chance = 1.0
+essence_grade = 2
+essence_min = 3
+essence_max = 3
+material_chance = 1.0
+material_min = 5
+material_max = 5
+bonus_resources = Dictionary[StringName, int]({
+&"generator_core": 2,
+&"rare_parts": 1
+})
+gear_chance = 0.0
+gear_rarity_weights = Array[float]([0.0, 0.0, 0.0, 70.0, 30.0])
+gear_pool = Array[StringName]([])
