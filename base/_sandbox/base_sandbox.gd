@@ -15,7 +15,7 @@ const PITCH_DEG := 55.0 ## quarter view, docs/dev/lane-b-field.md B-04
 ## Character models from the private assets/ submodule. Shown in place of the greybox capsules
 ## only when present (clones without asset access keep the capsules). Final resident visuals
 ## come from Lane D (D-09); this is sandbox-only.
-const PEOPLE_DIR := "res://assets/peoplewithdisabilities_fbx/rig-animated-fbx/"
+const PEOPLE_DIR := "res://assets/characters/people_with_disabilities/rig-animated-fbx/"
 const PEOPLE := [
 	"wheelchair_man_ani", "blind_woman_ani", "crutches_man_ani", "prostheticLeg_girl_ani",
 	"cane_man_ani", "wheelchair_teen_ani", "blind_man_ani", "crutches_woman_ani",
