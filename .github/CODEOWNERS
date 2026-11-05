@@ -1,17 +1,53 @@
-# 담당자가 정해지면 각 줄의 주석을 풀고 GitHub 아이디를 넣는다 (레인 A 담당).
-# /core/            @lane-a-owner
-# /systems/         @lane-a-owner
-# /ai/              @lane-a-owner
-# /tools/           @lane-a-owner
-# /project.godot    @lane-a-owner
-# /main.tscn        @lane-a-owner
-# /docs/            @lane-a-owner
-# /field/           @lane-b-owner
-# /levels/field/    @lane-b-owner
-# /base/            @lane-c-owner
-# /levels/base/     @lane-c-owner
-# /ui/              @lane-d-owner
-# /art/             @lane-d-owner
-# /audio/           @lane-d-owner
-# /vfx/             @lane-d-owner
-# **/dressing.tscn  @lane-d-owner
+# Lane ownership (CLAUDE.md "레인과 소유 경로"). Owner of this file: Lane A.
+# 담당자가 정해지면 @lane-x-owner를 GitHub 아이디로 바꾸고 줄 앞의 #을 지운다.
+# 뒤에 오는 줄이 앞의 줄보다 우선한다 (dressing.tscn, tests/run_tests.gd가 맨 뒤에 있는 이유).
+
+# --- Lane A: core / systems ---
+# /core/                       @lane-a-owner
+# /systems/                    @lane-a-owner
+# /ai/                         @lane-a-owner
+# /tools/                      @lane-a-owner
+# /project.godot               @lane-a-owner
+# /main.tscn                   @lane-a-owner
+# /docs/                       @lane-a-owner
+# /.github/                    @lane-a-owner
+# /tests/core/                 @lane-a-owner
+# /data/items/                 @lane-a-owner
+# /data/recipes/               @lane-a-owner
+# /data/resources/             @lane-a-owner
+# /data/essences/              @lane-a-owner
+# /data/quests/                @lane-a-owner
+# /data/radio/                 @lane-a-owner
+# /data/resident_pool/         @lane-a-owner
+
+# --- Lane B: field ---
+# /field/                      @lane-b-owner
+# /levels/field/               @lane-b-owner
+# /tests/field/                @lane-b-owner
+# /data/classes/               @lane-b-owner
+# /data/monsters/              @lane-b-owner
+# /data/regions/               @lane-b-owner
+# /data/loot/                  @lane-b-owner
+
+# --- Lane C: base ---
+# /base/                       @lane-c-owner
+# /levels/base/                @lane-c-owner
+# /tests/base/                 @lane-c-owner
+# /data/buildings/             @lane-c-owner
+# /data/traits/                @lane-c-owner
+# /data/jobs/                  @lane-c-owner
+# /data/events/                @lane-c-owner
+# /data/raids/                 @lane-c-owner
+
+# --- Lane D: presentation ---
+# /ui/                         @lane-d-owner
+# /art/                        @lane-d-owner
+# /audio/                      @lane-d-owner
+# /vfx/                        @lane-d-owner
+# /data/ui/                    @lane-d-owner
+# /tests/ui/                   @lane-d-owner
+# /assets                      @lane-d-owner
+
+# --- Overrides (must stay last) ---
+# **/dressing.tscn             @lane-d-owner
+# /tests/run_tests.gd          @lane-a-owner
