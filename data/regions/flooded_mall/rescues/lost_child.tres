@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="RescueSpawn" format=3]
+
+[ext_resource type="Script" path="res://field/defs/rescue_spawn.gd" id="1_spawn"]
+[ext_resource type="Script" path="res://field/defs/picture_card_round.gd" id="2_card"]
+
+[sub_resource type="Resource" id="Round_1"]
+script = ExtResource("2_card")
+prompt_id = &"come_with_us"
+options = Array[StringName]([&"card_follow", &"card_monster", &"card_food"])
+answer = 0
+
+[sub_resource type="Resource" id="Round_2"]
+script = ExtResource("2_card")
+prompt_id = &"safe_place"
+options = Array[StringName]([&"card_water", &"card_school", &"card_car"])
+answer = 1
+
+[resource]
+script = ExtResource("1_spawn")
+template_id = &"demo_child"
+rescue_type = 2
+spawn_tags = Array[StringName]([&"shop_interior"])
+move_type = 4
+card_rounds = Array[ExtResource("2_card")]([SubResource("Round_1"), SubResource("Round_2")])

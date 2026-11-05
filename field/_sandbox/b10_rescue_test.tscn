@@ -1,0 +1,71 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://field/_sandbox/b10_rescue_test.gd" id="1_test"]
+[ext_resource type="PackedScene" path="res://field/_sandbox/field_sandbox.tscn" id="2_sandbox"]
+[ext_resource type="PackedScene" path="res://field/player/player.tscn" id="3_player"]
+[ext_resource type="PackedScene" path="res://field/markers/rescue_spot.tscn" id="4_spot"]
+[ext_resource type="Script" path="res://field/rescue/rescue_manager.gd" id="5_manager"]
+[ext_resource type="Resource" path="res://data/regions/flooded_mall/rescues/injured_elder.tres" id="6_elder"]
+[ext_resource type="Resource" path="res://data/regions/flooded_mall/rescues/trapped_wheelchair.tres" id="7_chair"]
+[ext_resource type="Resource" path="res://data/regions/flooded_mall/rescues/lost_child.tres" id="8_child"]
+[ext_resource type="Script" path="res://field/rescue/rescue_power_switch.gd" id="9_switch"]
+[ext_resource type="Script" path="res://field/defs/rescue_spawn.gd" id="10_spawn_script"]
+
+[sub_resource type="BoxShape3D" id="Shape_switch"]
+size = Vector3(0.5, 1.2, 0.5)
+
+[sub_resource type="StandardMaterial3D" id="Mat_switch"]
+albedo_color = Color(0.95, 0.8, 0.2, 1)
+
+[sub_resource type="BoxMesh" id="Mesh_switch"]
+material = SubResource("Mat_switch")
+size = Vector3(0.5, 1.2, 0.5)
+
+[node name="B10RescueTest" type="Node3D"]
+script = ExtResource("1_test")
+
+[node name="FieldSandbox" parent="." instance=ExtResource("2_sandbox")]
+
+[node name="Player" parent="." instance=ExtResource("3_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6)
+
+[node name="RescueSpots" type="Node3D" parent="."]
+
+[node name="Street" parent="RescueSpots" instance=ExtResource("4_spot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 10)
+spawn_tags = Array[StringName]([&"flooded_edge"])
+
+[node name="Elevator" parent="RescueSpots" instance=ExtResource("4_spot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 1.2, 20)
+spawn_tags = Array[StringName]([&"elevator"])
+
+[node name="Shelter" parent="RescueSpots" instance=ExtResource("4_spot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, 2)
+spawn_tags = Array[StringName]([&"shop_interior"])
+
+[node name="PowerSwitch" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 1.2, 15)
+script = ExtResource("9_switch")
+
+[node name="Collision" type="CollisionShape3D" parent="PowerSwitch"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+shape = SubResource("Shape_switch")
+
+[node name="Mesh" type="MeshInstance3D" parent="PowerSwitch"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+mesh = SubResource("Mesh_switch")
+
+[node name="RescueManager" type="Node" parent="."]
+script = ExtResource("5_manager")
+spawns = Array[ExtResource("10_spawn_script")]([ExtResource("6_elder"), ExtResource("7_chair"), ExtResource("8_child")])
+max_per_sortie = 3
+sortie_seed = 1
+
+[node name="DebugLayer" type="CanvasLayer" parent="."]
+
+[node name="InfoLabel" type="Label" parent="DebugLayer"]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 720.0
+offset_bottom = 400.0
+theme_override_font_sizes/font_size = 14

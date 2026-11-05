@@ -35,6 +35,10 @@ var move_state := MoveState.IDLE
 var is_downed := false
 ## Set by WeaponHolder (B-06): (amount, info) -> damage left after blocking.
 var incoming_damage_filter: Callable
+## B-10 부축: walk / sprint / aim speed x this while supporting a rescued person. 1 = normal.
+var move_speed_mult := 1.0
+## B-10 부축: only one-hand weapons (pistol, dagger) while true. TODO(B-06): WeaponHolder reads it.
+var one_hand_only := false
 
 var _aim_toggled := false
 var _sprint_toggled := false
@@ -224,7 +228,7 @@ func _step_move(delta: float, dir: Vector3, aim: bool, sprint: bool) -> void:
 		_spend_stamina(stats.sprint_stamina_per_sec * delta)
 		if stamina <= 0.0:
 			_sprint_toggled = false
-	var target := dir * speed
+	var target := dir * speed * move_speed_mult
 	var flat := Vector3(velocity.x, 0.0, velocity.z).move_toward(target, stats.acceleration * delta)
 	velocity.x = flat.x
 	velocity.z = flat.z
