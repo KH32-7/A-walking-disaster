@@ -26,6 +26,7 @@ static func build(player: Player) -> Dictionary:
 	state["prompt"] = _prompt(player, state["hold"])
 	if FieldState.night_enabled():
 		state["dusk_left_sec"] = FieldState.dusk_left_sec()
+	state["companions"] = FieldCompanion.hud_list(player.get_tree())
 	return state
 
 

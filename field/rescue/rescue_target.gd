@@ -38,6 +38,8 @@ const COVER_GROUP := WeaponHolder.LOW_COVER_GROUP
 const DEFAULT_TUNING := preload("res://data/classes/rescue_tuning.tres")
 ## Used when no player is known yet (m/s, player_base walk_speed).
 const FALLBACK_WALK_SPEED := 4.5
+## HUD hold bar text while being helped up.
+const REVIVE_HOLD_LABEL := "일으키는 중"
 const WAYPOINT_REACHED := 0.3
 const MOVING_SPEED := 0.1
 const EXPOSED: Array[State] = [State.FOLLOW, State.HIDE, State.DEFEND]
@@ -63,6 +65,10 @@ var _channel_from := Vector3.ZERO
 var _defend_left := 0.0
 var _down_left := 0.0
 var _before_down := State.FOLLOW
+## Who is helping this downed person up (3 s hold), or null.
+var _reviver: Node3D
+var _revive_left := 0.0
+var _revive_from := Vector3.ZERO
 var _round := 0
 var _strikes := 0
 var _rescued := false
@@ -128,7 +134,7 @@ func begin_open(interactor: Node3D) -> bool:
 				RescueSpawn.Type.COMMUNICATION:
 					return _start_cards(interactor)
 		State.DOWNED:
-			return revive(interactor)
+			return begin_revive(interactor)
 		State.HIDE:
 			return command_follow(interactor)
 	return false
@@ -221,10 +227,29 @@ func command_follow(player: Node3D = null) -> bool:
 	return true
 
 
-## Help up a downed person. Returns false when not downed.
+## 일으키기 (03: F 3초, same as companions): starts the hold. The 30 s wait pauses meanwhile;
+## the helper moving away (channel_cancel_distance) or going down cancels it.
+func begin_revive(interactor: Node3D) -> bool:
+	if state != State.DOWNED or _reviver != null or interactor == null:
+		return false
+	_reviver = interactor
+	_revive_from = interactor.global_position
+	_revive_left = tuning.revive_sec
+	return true
+
+
+## HUD hold bar while being helped up (Player.hud_state "hold"), {} otherwise.
+func hold_state() -> Dictionary:
+	if _reviver == null or tuning.revive_sec <= 0.0:
+		return {}
+	return {"label": REVIVE_HOLD_LABEL, "progress": clampf(1.0 - _revive_left / tuning.revive_sec, 0.0, 1.0)}
+
+
+## Help up a downed person at once (the end of the 3 s hold). Returns false when not downed.
 func revive(interactor: Node3D) -> bool:
 	if state != State.DOWNED:
 		return false
+	_reviver = null
 	_player = interactor
 	health = tuning.max_health * tuning.revive_health_ratio
 	_low_health_said = false
@@ -290,9 +315,12 @@ func tick(delta: float) -> void:
 			if _defend_left <= 0.0:
 				_rescue(_find_player())
 		State.DOWNED:
-			_down_left -= delta
-			if _down_left <= 0.0:
-				_isolate()
+			if _reviver != null:
+				_tick_revive(delta)
+			else:
+				_down_left -= delta
+				if _down_left <= 0.0:
+					_isolate()
 		State.FOLLOW:
 			_tick_follow(delta)
 		State.HIDE:
@@ -508,6 +536,15 @@ func _go_down() -> void:
 	_down_left = tuning.downed_sec
 	_set_state(State.DOWNED)
 	downed.emit()
+
+
+func _tick_revive(delta: float) -> void:
+	if not is_instance_valid(_reviver) or _reviver.get(&"is_downed") == true 			or _reviver.global_position.distance_to(_revive_from) > tuning.channel_cancel_distance:
+		_reviver = null
+		return
+	_revive_left -= delta
+	if _revive_left <= 0.0:
+		revive(_reviver)
 
 
 func _isolate() -> void:

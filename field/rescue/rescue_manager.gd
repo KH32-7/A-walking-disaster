@@ -5,7 +5,8 @@ extends Node
 ##
 ## - spawn(): up to max_per_sortie spawns, in list order, skipping people who already live in
 ##   the base (Colony.get_resident). Each goes on a random free RescueSpot with all its tags.
-## - companion_command (V): everyone following hides; if nobody follows, the hidden follow again.
+## - companion_command (V, short tap): everyone following hides; if nobody follows, the hidden
+##   follow again.
 ## - Extraction (B-09 ExtractionManager.sortie_result_ready, before extraction_completed):
 ##   EventBus.rescue_completed(profile) for every rescued person that came out. Colony turns it
 ##   into a resident (contracts.md: Colony listens to rescue_completed and calls add_resident).
@@ -28,6 +29,7 @@ const TARGET_SCENE := preload("res://field/rescue/rescue_target.tscn")
 
 var targets: Array[RescueTarget] = []
 var _completed := {}
+var _press := CommandPress.new()
 
 
 func _ready() -> void:
@@ -45,8 +47,9 @@ func _ready() -> void:
 		spawn.call_deferred(rng)
 
 
-func _process(_delta: float) -> void:
-	if Input.is_action_just_pressed(&"companion_command"):
+func _process(delta: float) -> void:
+	# Tap V. Holding it switches companion modes instead (B-17 CompanionManager).
+	if _press.update(Input.is_action_pressed(&"companion_command"), delta) == CommandPress.Result.TAP:
 		toggle_command()
 
 

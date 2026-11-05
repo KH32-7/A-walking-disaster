@@ -43,6 +43,8 @@ extends Resource
 @export var max_health := 50.0
 ## 02: 30초 안에 일으키기, else stranded on the spot.
 @export var downed_sec := 30.0
+## 일으키기 hold (03: F 3초, the same as companions).
+@export var revive_sec := 3.0
 ## Health after being helped up, x max_health.
 @export var revive_health_ratio := 0.5
 ## Radio `rescuee_low_health` once when health falls under this share.

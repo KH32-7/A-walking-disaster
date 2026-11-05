@@ -107,6 +107,7 @@ func _check_assembly() -> void:
 	_expect((mall.get_node(^"LootSpawner") as LootSpawner).spawned.size() > 0, "loot containers spawn")
 	var extraction := mall.get_node(^"ExtractionManager") as ExtractionManager
 	_expect(extraction.active_point_ids().size() == ExtractionManager.ACTIVE_COUNT, "2 of 3 extract points are active")
+	_expect(mall.get_node_or_null(^"CompanionManager") is CompanionManager, "companion manager (B-17) in the assembly")
 	var zones := mall.find_children("IndoorZone_*", "Area3D", true, false)
 	_expect(zones.size() == 12 and zones.all(func(z: Node) -> bool: return z is IndoorZone and z.building_id != &""),
 		"12 indoor zones with building ids (%d)" % zones.size())
