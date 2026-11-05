@@ -14,6 +14,7 @@ script = ExtResource("1_base")
 [node name="Layout" parent="." instance=ExtResource("2_layout")]
 
 [node name="Player" parent="." instance=ExtResource("3_player")]
+field_rules = false
 
 [node name="FieldCamera" parent="." node_paths=PackedStringArray("target") instance=ExtResource("4_camera")]
 target = NodePath("../Player")
