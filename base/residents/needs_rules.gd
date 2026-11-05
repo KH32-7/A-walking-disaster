@@ -57,18 +57,23 @@ static func daily_morale(resident: Dictionary, ctx: Dictionary) -> int:
 	var friend := false
 	var kind := false
 	var rival := false
+	var prejudice := false
 	for other: Dictionary in ctx.get("coworkers", []):
 		var value := int(resident["relations"].get(other["id"], 0))
 		if value >= FRIEND_RELATION:
 			friend = true
 		if value <= RelationRules.RIVAL_AT:
 			rival = true
+		if RelationRules.prejudiced_against(resident, other):
+			prejudice = true
 		if int(other["stats"].get(&"heart", 0)) >= KIND_HEART_AT:
 			kind = true
 	if friend:
 		delta += FRIEND_SAME_WORKPLACE
 	if rival:
 		delta += RelationRules.RIVAL_SAME_WORKPLACE_MORALE  # 앙숙과 같은 작업장 −5 (08)
+	if prejudice:
+		delta += PrejudiceRules.SAME_WORKPLACE_MORALE  # 편견 대상과 같은 작업장 −3 (08)
 	if kind:
 		delta += KIND_COWORKER
 	return delta
