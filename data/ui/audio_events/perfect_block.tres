@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="AudioEventDef" format=3]
+
+[ext_resource type="Script" path="res://audio/defs/audio_event_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"perfect_block"
+synth = &"ting"
+bus = 0
+priority = 1
+positional = true
+caption = "완벽한 막기"
