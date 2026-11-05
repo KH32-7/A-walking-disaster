@@ -20,6 +20,7 @@ func run() -> bool:
 	var colony_snapshot := JSON.stringify(Colony.save_data())
 	var economy_snapshot := Economy.save_data().duplicate(true)
 	var game_snapshot := GameState.save_data().duplicate(true)
+	var bag_snapshot := Bag.save_data().duplicate(true)
 	var ok := true
 	ok = _test_rules() and ok
 	ok = _test_fallback() and ok
@@ -27,8 +28,11 @@ func run() -> bool:
 	ok = _test_results() and ok
 	ok = _test_structures() and ok
 	ok = _test_battle() and ok
+	ok = _test_hud_api_and_ammo() and ok
 	Colony.defense_requested.disconnect(_on_request)
 	Colony._defense = {}
+	Colony._battle = null
+	Bag.load_data(bag_snapshot)
 	GameState.load_data(game_snapshot)
 	Economy.load_data(economy_snapshot)
 	Colony.load_data(JSON.parse_string(colony_snapshot))
@@ -204,6 +208,37 @@ func _test_battle() -> bool:
 	b.tick(0.1)
 	ok = _check(lost[0].get("outcome") == Enums.RaidOutcome.LOSS, "대피소 문이 부서지면 패배") and ok
 	ok = _test_base_scene() and ok
+	return ok
+
+
+## D-14 calls (defense_state, assign_defense_spot, skip_defense_prep, start_defense, the warning card's
+## 자동 판정 = resolve_raid while the defence is set up) and the defence ammo (A, #121/#110).
+func _test_hud_api_and_ammo() -> bool:
+	_fresh({&"bandage": 3})
+	Bag.load_data({})
+	var guard := Colony.add_resident({"traits": [], "stats": {&"sense": 6}})
+	_build(&"guard_post")
+	Colony.assign_job(guard, &"guard")
+	var ok := _check(Colony.defense_state().is_empty() and Colony.assign_defense_spot(guard, &"gather") and not Colony.skip_defense_prep(),
+		"방어전이 없으면 빈 상태, 자리 옮기기는 미리보기로 허용, 바로 시작 없음")
+	var done := [0]
+	var raid := _raid(20.0)
+	Colony.start_raid(raid)
+	Colony.begin_direct_defense(raid, 1, func() -> void: done[0] += 1)
+	var b := _battle()
+	b.start()
+	var s := Colony.defense_state()
+	ok = _check(s.get("phase") == &"prep" and s["waves"] == 3 and s["wave"] == 1 and s["time_left"] > 0.0, "HUD 상태: 준비 중, 1/3파: %s" % [s]) and ok
+	ok = _check(s["guards"].size() == 1 and s["guards"][0]["id"] == guard and s["guards"][0]["spot"] == &"gather"
+		and s["spots"].any(func(p): return p["id"] == &"gather" and p["cap"] == DefenseBattle.GATHER_CAP), "경비와 자리 목록") and ok
+	ok = _check(Bag.count(&"bandage") == 3 and Economy.get_amount(&"bandage") == 0, "방어전 시작: 창고의 방어전 소모품을 가방에 (Bag.load_for_defense)") and ok
+	ok = _check(Colony.start_defense(raid) and Colony.direct_defense()["raid"]["raid_id"] == raid["raid_id"], "경보 카드 '직접 방어': 준비된 방어전을 그대로") and ok
+	ok = _check(Colony.assign_defense_spot(guard, &"gather") and not Colony.assign_defense_spot(guard, &"no_spot"), "경비 자리 옮기기") and ok
+	ok = _check(Colony.skip_defense_prep() and Colony.defense_state()["phase"] == &"fight" and not b.alive.is_empty(), "준비 끝내고 바로 시작") and ok
+	var res := Colony.resolve_raid(raid, Enums.RaidMode.PLAYED)
+	ok = _check(res["mode"] == Enums.RaidMode.PLAYED and done[0] == 1 and Colony.direct_defense().is_empty(), "경보 카드 '자동 판정': 방어전을 끝내고 판정 (+20%%)") and ok
+	ok = _check(b.state == DefenseBattle.State.DONE and Colony.defense_state().is_empty(), "방어전 노드는 물러남") and ok
+	ok = _check(Bag.count(&"bandage") == 0 and Economy.get_amount(&"bandage") == 3, "끝나면 남은 것은 창고로 (Bag.unload_to_base)") and ok
 	return ok
 
 

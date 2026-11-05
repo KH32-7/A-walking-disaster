@@ -33,6 +33,8 @@ signal outposts_changed
 ## 직접 방어전 (C-17): the base scene should play this raid (DefenseBattle). first_wave 2 after an
 ## emergency return. It answers with finish_direct_defense() or skip_direct_defense().
 signal defense_requested(raid: Dictionary, first_wave: int)
+## The defence ends by a judgment instead (자동 판정으로 넘기기): the battle cleans up without a result.
+signal defense_cancelled
 ## Autoload `Colony`. Owner: Lane C.
 ## Residents, buildings, relationships, raids threat - everything that lives in the base.
 ## Other lanes read through the getters below; they never edit resident data directly.
@@ -96,6 +98,7 @@ var _field_raid: Dictionary = {}
 var _emergency_requested := false
 ## The played defence in progress (C-17): {raid, first_wave, on_done}.
 var _defense: Dictionary = {}
+var _battle: Node = null
 
 var _next_resident_num := 1
 var _next_building_num := 1
@@ -1328,6 +1331,13 @@ func predict_raid(raid: Dictionary) -> Dictionary:
 func resolve_raid(raid: Dictionary, mode: Enums.RaidMode) -> Dictionary:
 	if outposts.has(StringName(raid.get("target", &"base"))):
 		return _resolve_outpost_raid(raid, mode)  # 전초기지 습격 (C-19)
+	# 경보 카드의 "자동 판정으로 넘기기" (D-14 RaidFlow.choose) while this raid's defence is set up:
+	# the battle steps down and this judgment ends the defence (its on_done runs after the result).
+	var pending := {}
+	if not _defense.is_empty() and StringName(_defense["raid"].get("raid_id", &"")) == StringName(raid.get("raid_id", &"")):
+		pending = _defense
+		_defense = {}
+		defense_cancelled.emit()
 	var strength := maxf(float(raid.get("strength", 1.0)), 0.1)
 	strength *= raid_strength_mult(raid)
 	var defense := defense_breakdown()
@@ -1406,6 +1416,8 @@ func resolve_raid(raid: Dictionary, mode: Enums.RaidMode) -> Dictionary:
 	}
 	active_raid = {}
 	EventBus.raid_resolved.emit(result)
+	if not pending.is_empty():
+		pending["on_done"].call()
 	return result
 
 
@@ -1560,12 +1572,55 @@ func begin_direct_defense(raid: Dictionary, first_wave: int, on_done: Callable) 
 	defense_requested.emit(raid, first_wave)
 
 
+## D-14 경보 카드의 "직접 방어" (RaidFlow.choose). The battle is already set up for a raid Colony
+## began (its prep waits while the card is open); otherwise this starts one. Returns true.
+func start_defense(raid: Dictionary) -> bool:
+	if not _defense.is_empty() and StringName(_defense["raid"].get("raid_id", &"")) == StringName(raid.get("raid_id", &"")):
+		return true
+	if active_raid.is_empty():
+		start_raid(raid)
+	begin_direct_defense(raid, 1, func() -> void: pass)
+	return true
+
+
+## D-14 방어전 HUD (RaidDefenseHud pulls it every frame): {} without a battle, else
+## {wave, waves, phase (&"prep" / &"fight" / &"done"), time_left, prep_sec, hold_left, monsters_left,
+##  shelter_door {hp, max}, traps {ready, total}, guards [{id, name, power, spot, down}],
+##  spots [{id, name, kind (&"post" / &"gate" / &"shelter"), cap}]}.
+func defense_state() -> Dictionary:
+	return _battle.call(&"hud_state") if is_instance_valid(_battle) else {}
+
+
+## D-14: move a guard to another spot between waves (spot id from defense_state()["spots"]).
+## Without a battle (the HUD's preview) there is nothing to refuse: true, the move stays local.
+func assign_defense_spot(resident_id: StringName, spot_id: StringName) -> bool:
+	if not is_instance_valid(_battle):
+		return true
+	return bool(_battle.call(&"move_guard", resident_id, spot_id))
+
+
+## D-14 "준비 끝내고 바로 시작": the next wave comes now.
+func skip_defense_prep() -> bool:
+	return is_instance_valid(_battle) and bool(_battle.call(&"skip_prep"))
+
+
+## DefenseBattle registers itself while it runs (for the D-14 calls above).
+func _attach_battle(battle: Node) -> void:
+	_battle = battle
+
+
+func _detach_battle(battle: Node) -> void:
+	if _battle == battle:
+		_battle = null
+
+
 ## 자동 판정으로 넘기기: the same formula with the player bonus (+20%).
 func skip_direct_defense() -> Dictionary:
 	if _defense.is_empty():
 		return {}
 	var d := _defense
 	_defense = {}
+	defense_cancelled.emit()
 	var result := resolve_raid(d["raid"], Enums.RaidMode.PLAYED)
 	d["on_done"].call()
 	return result
