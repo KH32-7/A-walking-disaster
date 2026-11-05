@@ -8,5 +8,7 @@ id = &"main_hall"
 display_name = "본관 1층"
 size = Vector2i(22, 7)
 starts_cleared = true
+mobility_access = "ramp"
+ramp_zone = &"front_yard"
 indoor = true
 note = "시작 구역: 방송실(무전실), 침상 6자리"

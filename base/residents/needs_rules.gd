@@ -22,6 +22,12 @@ const CRISIS_DAYS := 3
 const PERSUADE_TRUST := 40      # 신뢰 40 이상이면 대화로 붙잡기 성공
 const PERSUADE_MORALE := 25     # 붙잡으면 사기를 여기까지 올림 (가안)
 
+## 참여 조건 (07 "참여 조건", C-11): F_access when the base has not met the need yet.
+const LANGUAGE_UNMET_MULT := 0.7   # 언어: 그림 표지판이 없으면 효율 −30%
+const CARE_UNMET_MULT := 0.5       # 돌봄: 돌봄방이 없으면 하루 작업 효율 0.5
+## Raid warning delay for 청각 조건 without a visual alarm, for direct defense (C-17).
+const HEARING_EVACUATION_DELAY_SEC := 10.0
+
 ## 건강 (07 "상태와 필요")
 const INFIRMARY_RECOVER_DAYS := 1   # 의무실이 있으면 부상 1일
 const SICK_CHANCE := 0.05           # 겨울이거나 배고픔 20 미만일 때 하루 확률 (가안)

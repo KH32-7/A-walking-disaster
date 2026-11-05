@@ -668,22 +668,34 @@ func job_block_reason(resident_id: StringName, job_id: StringName, building_uid:
 	var reason := WorkRules.job_block_reason(r, job)
 	if reason != "":
 		return reason
+	# 언어 조건: 무전·외교는 통역 무전기가 있어야 (07 "참여 조건", C-11).
+	if job_id == &"radio" and Enums.AccessNeed.LANGUAGE in r["access_needs"] \
+			and working_building_ids(&"interpreter_radio").is_empty():
+		return "통역 무전기가 있어야 무전을 맡을 수 있음"
 	if job_id == WorkRules.CONSTRUCTION_JOB:
 		if BaseDB.get_zone(building_uid) != null:  # 개간 (C-10)
 			var clear := can_clear(building_uid)
-			return "" if clear["ok"] else ", ".join(PackedStringArray(clear["reasons"]))
+			if not clear["ok"]:
+				return ", ".join(PackedStringArray(clear["reasons"]))
+			return access_block_reason(resident_id, building_uid)
 		var site: Dictionary = buildings.get(building_uid, {})
-		return "" if not site.is_empty() and not site["completed"] else "건설 현장이나 개간할 구역을 골라야 함"
+		if site.is_empty() or site["completed"]:
+			return "건설 현장이나 개간할 구역을 골라야 함"
+		return access_block_reason(resident_id, site["zone_id"])
 	if job.workplace == &"":
 		return ""
 	if building_uid == &"":
-		return "" if _free_workplace(job.workplace, resident_id) != &"" else "빈 %s 자리가 없음" % _def_name(job.workplace)
+		if _free_workplace(job.workplace, resident_id) != &"":
+			return ""
+		if _free_workplace(job.workplace, resident_id, false) != &"":
+			return "갈 수 있는 %s 자리가 없음 (경사로·승강기 필요)" % _def_name(job.workplace)
+		return "빈 %s 자리가 없음" % _def_name(job.workplace)
 	var b: Dictionary = buildings.get(building_uid, {})
 	if b.is_empty() or b["def_id"] != job.workplace or not b["completed"]:
 		return "%s가 아님" % _def_name(job.workplace)
 	if not resident_id in b["workers"] and b["workers"].size() >= building_capacity(building_uid):
 		return "정원이 다 참"
-	return ""
+	return access_block_reason(resident_id, b["zone_id"])
 
 
 ## Puts a resident on a job. Jobs with a workplace need a completed building of that type with a
@@ -726,7 +738,7 @@ func preview_output(resident_id: StringName) -> Dictionary:
 	var job := BaseDB.get_job(job_of(resident_id))
 	if r.is_empty() or job == null or not WorkRules.can_work(r):
 		return {}
-	var f := WorkRules.efficiency(r, job, _works_alone(resident_id))
+	var f := WorkRules.efficiency(r, job, _works_alone(resident_id)) * access_multiplier(resident_id)
 	var out := {}
 	for res: StringName in job.base_output:
 		out[res] = job.base_output[res] * f
@@ -759,7 +771,9 @@ func settle_day() -> Dictionary:
 		var uid: StringName = r["assignment"]["building_id"]
 		if job.workplace != &"" and buildings.has(uid) and (not is_powered(uid) or buildings[uid]["damaged"]):
 			continue  # workplace without power, or damaged by a raid, does not run
-		var f := WorkRules.efficiency(r, job, _works_alone(id))
+		if access_block_reason(id, _work_zone(id)) != "":
+			continue  # 갈 수 없게 됨 (경사로가 부서지거나 철거됨)
+		var f := WorkRules.efficiency(r, job, _works_alone(id)) * access_multiplier(id)
 		if stayed:
 			f *= WorkRules.STAY_OUTPUT_MULT
 		var out := {}
@@ -976,8 +990,11 @@ func _works_alone(id: StringName) -> bool:
 	return buildings.has(uid) and buildings[uid]["workers"].size() == 1
 
 
-func _free_workplace(def_id: StringName, resident_id: StringName) -> StringName:
+## First building of `def_id` with a free slot. check_access: only ones the resident can reach (C-11).
+func _free_workplace(def_id: StringName, resident_id: StringName, check_access: bool = true) -> StringName:
 	for uid in building_ids(def_id):
+		if check_access and access_block_reason(resident_id, buildings[uid]["zone_id"]) != "":
+			continue
 		if resident_id in buildings[uid]["workers"] or buildings[uid]["workers"].size() < building_capacity(uid):
 			return uid
 	return &""
@@ -1108,10 +1125,14 @@ func resolve_raid(raid: Dictionary, mode: Enums.RaidMode) -> Dictionary:
 	var guards: Array = defense["guards"].keys()
 	var civilians: Array[StringName] = []
 	var sheltered := has_completed(RaidRules.SHELTER) and RaidRules.ALARMS.any(func(a): return has_completed(a))
-	if not sheltered:
-		for id in active_resident_ids():
-			if not id in guards:
-				civilians.append(id)
+	# 청각 조건: without a visual alarm (경광등) they hear the warning late and miss the shelter (C-11).
+	var visual_alarm := hearing_alarm()
+	for id in active_resident_ids():
+		if id in guards:
+			continue
+		var hears: bool = visual_alarm or not Enums.AccessNeed.HEARING in residents[id]["access_needs"]
+		if not (sheltered and hears):
+			civilians.append(id)
 	var damage := {"damaged": [], "durability_loss": {}, "resources_lost": {}}
 	var casualties: Array = []
 	var loot := {}
@@ -1262,6 +1283,128 @@ static func _direction_text(directions: Array) -> String:
 	for d in directions:
 		parts.append(names.get(StringName(d), String(d)))
 	return "·".join(parts) if not parts.is_empty() else "어딘가"
+
+
+# --- 참여 조건 and inclusion facilities (Lane C, C-11) --------------------------------
+
+## Which conditions a zone meets now: {"mobility": bool, "language": bool, "missing": Array[String]}.
+## 이동: by ZoneDef.mobility_access (open / ramp in ramp_zone / working elevator anywhere).
+## 언어: a working 그림 표지판 in the zone. Unknown zones (prebuilt rooms with no zone) count as met.
+func zone_access(zone_id: StringName) -> Dictionary:
+	var zone := BaseDB.get_zone(zone_id)
+	if zone == null:
+		return {"mobility": true, "language": true, "missing": []}
+	var missing: Array[String] = []
+	var mobility := true
+	match zone.mobility_access:
+		"ramp":
+			var ramp_zone := zone.ramp_zone if zone.ramp_zone != &"" else zone_id
+			mobility = _has_effect_in_zone(&"access_mobility", ramp_zone)
+			if not mobility:
+				missing.append("경사로 (%s)" % BaseDB.get_zone(ramp_zone).display_name if BaseDB.get_zone(ramp_zone) else "경사로")
+		"elevator":
+			mobility = _has_effect_in_zone(&"access_mobility_floors", &"", true)
+			if not mobility:
+				missing.append("승강기 (전력 필요)")
+	var language := _has_effect_in_zone(&"access_language", zone_id)
+	if not language:
+		missing.append("그림 표지판")
+	return {"mobility": mobility, "language": language, "missing": missing}
+
+
+## 청각: a working, powered 경광등 somewhere gives the visual raid alarm.
+func hearing_alarm() -> bool:
+	return _has_effect_in_zone(&"access_hearing", &"", true)
+
+
+## 돌봄: child places at working 돌봄방 / 교실 that have someone on the job (돌봄 / 교육).
+func care_slots() -> int:
+	var slots := 0
+	for uid in working_building_ids():
+		var def := BaseDB.get_building(buildings[uid]["def_id"])
+		var staffed: bool = not buildings[uid]["workers"].is_empty()
+		if staffed and def.effects.has(&"care_children"):
+			slots += roundi(building_effect(uid, &"care_children"))
+		elif staffed and def.effects.has(&"students"):
+			slots += roundi(building_effect(uid, &"students"))
+	return slots
+
+
+## Guardians whose child is looked after (돌봄 조건 충족), in a stable order.
+func care_covered() -> Array[StringName]:
+	var guardians: Array[StringName] = []
+	for id in active_resident_ids():
+		if Enums.AccessNeed.CARE in residents[id]["access_needs"]:
+			guardians.append(id)
+	guardians.sort()
+	return guardians.slice(0, care_slots())
+
+
+## For the 접근성 보기 overlay and resident screens (D): per zone and base-wide.
+## {"zones": {zone_id: {"mobility", "language", "missing"}}, "hearing_alarm": bool,
+##  "care": {"slots": int, "guardians": int, "covered": Array}, "interpreter_radio": bool}
+func access_map() -> Dictionary:
+	var zones := {}
+	for zone_id: StringName in BaseDB.zones():
+		zones[zone_id] = zone_access(zone_id)
+	var guardians := 0
+	for id in active_resident_ids():
+		if Enums.AccessNeed.CARE in residents[id]["access_needs"]:
+			guardians += 1
+	return {
+		"zones": zones,
+		"hearing_alarm": hearing_alarm(),
+		"care": {"slots": care_slots(), "guardians": guardians, "covered": care_covered()},
+		"interpreter_radio": not working_building_ids(&"interpreter_radio").is_empty(),
+	}
+
+
+## "" when `resident_id` can reach work in `zone_id` (이동 조건), else why not.
+func access_block_reason(resident_id: StringName, zone_id: StringName) -> String:
+	var r: Dictionary = residents.get(resident_id, {})
+	if r.is_empty() or not Enums.AccessNeed.MOBILITY in r["access_needs"]:
+		return ""
+	var access := zone_access(zone_id)
+	if access["mobility"]:
+		return ""
+	var zone := BaseDB.get_zone(zone_id)
+	return "%s에 갈 수 없음: %s 필요" % [zone.display_name if zone else String(zone_id), access["missing"][0]]
+
+
+## F_access in the work formula: 언어 조건 without a picture sign ×0.7, 돌봄 조건 without care ×0.5.
+func access_multiplier(resident_id: StringName) -> float:
+	var r: Dictionary = residents.get(resident_id, {})
+	if r.is_empty():
+		return 1.0
+	var mult := 1.0
+	var needs: Array = r["access_needs"]
+	if Enums.AccessNeed.LANGUAGE in needs and not zone_access(_work_zone(resident_id))["language"]:
+		mult *= NeedsRules.LANGUAGE_UNMET_MULT
+	if Enums.AccessNeed.CARE in needs and not resident_id in care_covered():
+		mult *= NeedsRules.CARE_UNMET_MULT
+	return mult
+
+
+## Zone of a resident's current workplace (building, construction site or zone being cleared).
+func _work_zone(resident_id: StringName) -> StringName:
+	var uid: StringName = residents[resident_id]["assignment"]["building_id"]
+	if BaseDB.get_zone(uid) != null:
+		return uid
+	return buildings.get(uid, {}).get("zone_id", &"")
+
+
+## A working building with `effect` in `zone_id` (&"" = anywhere). needs_power: must be powered.
+func _has_effect_in_zone(effect: StringName, zone_id: StringName, needs_power: bool = false) -> bool:
+	for uid in working_building_ids():
+		var b: Dictionary = buildings[uid]
+		if zone_id != &"" and b["zone_id"] != zone_id:
+			continue
+		if not BaseDB.get_building(b["def_id"]).effects.has(effect):
+			continue
+		if needs_power and not b["powered"]:
+			continue
+		return true
+	return false
 
 
 # --- Health, morale, leaving (Lane C, C-06) -----------------------------------------
