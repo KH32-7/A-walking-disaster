@@ -59,12 +59,17 @@ func voice_id() -> String:
 
 
 func _on_radio_message(speaker_id: StringName, text: String, priority: int) -> void:
+	say(speaker_id, text, priority > 0)
+
+
+## Voice only, no subtitle. Cutscenes that draw their own captions call this.
+func say(speaker_id: StringName, text: String, interrupt := false) -> void:
 	if not wants_voice():
 		return
 	last_spoken = text
 	var path := clip_path(speaker_id, text)
 	if ResourceLoader.exists(path):
-		_play_clip(load(path), priority > 0)
+		_play_clip(load(path), interrupt)
 		return
 	if not available():
 		return
@@ -72,7 +77,7 @@ func _on_radio_message(speaker_id: StringName, text: String, priority: int) -> v
 	if id == "":
 		return
 	# A more urgent line cuts the current one off (same rule as the subtitle queue).
-	DisplayServer.tts_speak(text, id, volume(), 1.0, 1.0, 0, priority > 0)
+	DisplayServer.tts_speak(text, id, volume(), 1.0, 1.0, 0, interrupt)
 
 
 ## A more urgent line cuts the current one off; others wait their turn.
