@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_j8fj4"]
+
+[resource]
+script = ExtResource("1_j8fj4")
+id = &"noise_decoy"
+display_name = "소음 미끼 장치"
+category = 10
+cost = Dictionary[StringName, int]({
+&"parts": 1,
+&"scrap": 5
+})
+build_work = 2
+effects = Dictionary[StringName, float]({
+&"raid_strength_cut": 0.1,
+&"single_use": 1.0
+})
+durability = 1
+note = "습격 시작 때 마물 30%를 다른 곳으로 유인 (1회)"

@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_127it"]
+
+[resource]
+script = ExtResource("1_127it")
+id = &"iron_wall"
+display_name = "철벽"
+category = 10
+cost = Dictionary[StringName, int]({
+&"plank": 2,
+&"scrap": 10
+})
+build_work = 4
+effects = Dictionary[StringName, float]({
+&"blocks": 1.0
+})
+durability = 600
+defense_value = 2.0
+note = "통행 차단"

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_8x6ui"]
+
+[resource]
+script = ExtResource("1_8x6ui")
+id = &"warning_bell"
+display_name = "경보 종"
+category = 10
+cost = Dictionary[StringName, int]({
+&"scrap": 10
+})
+build_work = 2
+effects = Dictionary[StringName, float]({
+&"alarm": 1.0
+})
+note = "비전투 주민 대피 시작"

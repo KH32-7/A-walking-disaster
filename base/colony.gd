@@ -591,6 +591,7 @@ func _new_building(uid: StringName, def: BuildingDef, cell: Vector2i, rotation: 
 		"completed": false,
 		"powered": false,
 		"fueled": true,
+		"repair_progress": -1,
 		"damaged": false,
 		"paid": paid.duplicate(),
 	}
@@ -615,6 +616,7 @@ func _normalize_building(src: Dictionary) -> Dictionary:
 	b["completed"] = bool(b.get("completed", false))
 	b["powered"] = bool(b.get("powered", false))
 	b["fueled"] = bool(b.get("fueled", true))
+	b["repair_progress"] = int(b.get("repair_progress", -1))
 	b["damaged"] = bool(b.get("damaged", false))
 	var paid := {}
 	var src_paid: Dictionary = b.get("paid", {})
@@ -679,8 +681,10 @@ func job_block_reason(resident_id: StringName, job_id: StringName, building_uid:
 				return ", ".join(PackedStringArray(clear["reasons"]))
 			return access_block_reason(resident_id, building_uid)
 		var site: Dictionary = buildings.get(building_uid, {})
-		if site.is_empty() or site["completed"]:
-			return "건설 현장이나 개간할 구역을 골라야 함"
+		if site.is_empty():
+			return "건설 현장·수리할 건물·개간할 구역을 골라야 함"
+		if site["completed"] and not _needs_maintenance(building_uid):
+			return "할 일이 없는 건물 (파손되면 먼저 수리 시작, 벽은 내구도가 줄면)"
 		return access_block_reason(resident_id, site["zone_id"])
 	if job.workplace == &"":
 		return ""
@@ -781,6 +785,8 @@ func settle_day() -> Dictionary:
 			crafters.append([id, f, job.workplace])
 		if job.id == WorkRules.CONSTRUCTION_JOB and BaseDB.get_zone(uid) != null:
 			_clear_work(id, uid, roundi(TierRules.CLEAR_PROGRESS_BASE * f), produced, events)
+		elif job.id == WorkRules.CONSTRUCTION_JOB and buildings.has(uid) and buildings[uid]["completed"]:
+			_maintenance_work(id, uid, f, events)
 		elif job.id == WorkRules.CONSTRUCTION_JOB:
 			if add_build_progress(uid, roundi(WorkRules.BUILD_PROGRESS_BASE * f)) and buildings.has(uid):
 				events.append(_event(&"building_completed", id, "%s 완성" % _def_name(buildings[uid]["def_id"])))
@@ -1018,6 +1024,102 @@ static func _rounded(values: Dictionary) -> Dictionary:
 	return out
 
 
+# --- Repair and defense upkeep (Lane C, C-18) ---------------------------------------
+
+## Repair cost of a damaged building: 30% of its current-level cost (10 "수리").
+func repair_cost(uid: StringName) -> Dictionary:
+	var b := get_building(uid)
+	if b.is_empty():
+		return {}
+	var cost := {}
+	var full := BaseDB.get_building(b["def_id"]).cost_for_level(int(b["level"]))
+	for res in full:
+		cost[res] = ceili(int(full[res]) * RaidRules.REPAIR_COST_SHARE)
+	return cost
+
+
+func can_repair(uid: StringName) -> Dictionary:
+	var b := get_building(uid)
+	var reasons: Array[String] = []
+	if b.is_empty() or not b["damaged"]:
+		reasons.append("파손된 건물이 아님")
+	elif int(b["repair_progress"]) >= 0:
+		reasons.append("이미 수리 중")
+	elif not Economy.can_afford(repair_cost(uid)):
+		reasons.append("자원 부족")
+	return {"ok": reasons.is_empty(), "reasons": reasons, "cost": repair_cost(uid)}
+
+
+## Pays the repair cost; then a 건설·개간 worker on this building does the work (건설 진행도 50%).
+func start_repair(uid: StringName) -> bool:
+	if not can_repair(uid)["ok"] or not Economy.apply(_negated(repair_cost(uid))):
+		return false
+	buildings[uid]["repair_progress"] = 0
+	buildings_changed.emit()
+	return true
+
+
+## Work needed to finish a repair (09 진행도 × 50%).
+func repair_work_needed(uid: StringName) -> int:
+	return ceili(BaseDB.get_building(buildings[uid]["def_id"]).build_work_needed() * RaidRules.REPAIR_WORK_SHARE)
+
+
+## A completed building a construction worker can work on: a started repair, or a defense
+## structure that lost durability (벽 내구도는 저절로 회복되지 않음).
+func _needs_maintenance(uid: StringName) -> bool:
+	var b := get_building(uid)
+	if b.is_empty() or not b["completed"]:
+		return false
+	if b["damaged"]:
+		return int(b["repair_progress"]) >= 0
+	var def := BaseDB.get_building(b["def_id"])
+	return def.durability > 0 and int(b["durability"]) < def.durability
+
+
+func _maintenance_work(resident_id: StringName, uid: StringName, f: float, events: Array) -> void:
+	var b: Dictionary = buildings[uid]
+	var def := BaseDB.get_building(b["def_id"])
+	if b["damaged"] and int(b["repair_progress"]) >= 0:
+		b["repair_progress"] = int(b["repair_progress"]) + roundi(WorkRules.BUILD_PROGRESS_BASE * f)
+		if b["repair_progress"] >= repair_work_needed(uid):
+			b["damaged"] = false
+			b["repair_progress"] = -1
+			b["durability"] = def.durability
+			events.append(_event(&"repaired", resident_id, "%s 수리 완료" % def.display_name))
+			unassign_job(resident_id)
+			_refresh_effects()
+			buildings_changed.emit()
+	elif not b["damaged"] and def.durability > 0:
+		b["durability"] = mini(int(b["durability"]) + roundi(RaidRules.WALL_REPAIR_PER_DAY * f), def.durability)
+		if b["durability"] >= def.durability:
+			unassign_job(resident_id)
+		buildings_changed.emit()
+	else:
+		unassign_job(resident_id)
+
+
+## Low essences in storage (정수 등불 연료).
+func _low_essence_total() -> int:
+	var n := 0
+	for id in RaidRules.LOW_ESSENCES:
+		n += Economy.get_amount(id)
+	return n
+
+
+## Takes `count` low essences, from the largest stack first. Returns what was taken.
+func _take_low_essences(count: int) -> Dictionary:
+	var taken := {}
+	var ids := RaidRules.LOW_ESSENCES.duplicate()
+	for i in count:
+		ids.sort_custom(func(a: StringName, b: StringName) -> bool:
+			return Economy.get_amount(a) - int(taken.get(a, 0)) > Economy.get_amount(b) - int(taken.get(b, 0)))
+		var best: StringName = ids[0]
+		if Economy.get_amount(best) - int(taken.get(best, 0)) <= 0:
+			break
+		taken[best] = int(taken.get(best, 0)) + 1
+	return taken
+
+
 # --- Raids (Lane C, C-08) ------------------------------------------------------
 
 ## Today's threat change (10 "위협도"). Applied in settle_day().
@@ -1088,10 +1190,18 @@ func defense_breakdown() -> Dictionary:
 		guards[id] = p
 		total += p
 	var facilities := {}
+	var lamp_fuel := _low_essence_total()
 	for uid in working_building_ids():
 		var def := BaseDB.get_building(buildings[uid]["def_id"])
 		if def.defense_value <= 0.0:
 			continue
+		if def.effects.has(&"essence_per_raid"):  # 정수 등불: only lamps that can be fed this raid
+			var need := int(def.effect(&"essence_per_raid"))
+			if lamp_fuel < need:
+				continue
+			lamp_fuel -= need
+		if def.power_use_at(int(buildings[uid]["level"])) > 0 and not buildings[uid]["powered"]:
+			continue  # 조명탑 without power
 		var share := float(buildings[uid]["durability"]) / def.durability if def.durability > 0 else 1.0
 		facilities[uid] = def.defense_value * clampf(share, 0.0, 1.0)
 		total += facilities[uid]
@@ -1103,7 +1213,7 @@ func predict_raid(raid: Dictionary) -> Dictionary:
 	var strength := float(raid.get("strength", 0.0))
 	if strength <= 0.0:
 		strength = RaidRules.strength(GameState.day, population(), tier, 1.0)
-	var ratio := float(defense_breakdown()["total"]) / strength
+	var ratio := float(defense_breakdown()["total"]) / (strength * raid_strength_mult(raid))
 	return {
 		"ratio_min": ratio * (1.0 - RaidRules.PREDICT_SPREAD),
 		"ratio_max": ratio * (1.0 + RaidRules.PREDICT_SPREAD),
@@ -1117,7 +1227,9 @@ func predict_raid(raid: Dictionary) -> Dictionary:
 ## Returns {"raid_id", "day", "time", "mode", "ratio", "outcome", "damage", "casualties", "loot", "summary"}.
 func resolve_raid(raid: Dictionary, mode: Enums.RaidMode) -> Dictionary:
 	var strength := maxf(float(raid.get("strength", 1.0)), 0.1)
+	strength *= raid_strength_mult(raid)
 	var defense := defense_breakdown()
+	var used := _use_defense_consumables()
 	var ratio: float = defense["total"] / strength
 	if mode == Enums.RaidMode.PLAYED:
 		ratio *= RaidRules.PLAYED_BONUS
@@ -1150,7 +1262,7 @@ func resolve_raid(raid: Dictionary, mode: Enums.RaidMode) -> Dictionary:
 		Enums.RaidOutcome.WIN:
 			for uid in working_building_ids():
 				var def := BaseDB.get_building(buildings[uid]["def_id"])
-				if def.durability > 0:
+				if def.durability > 0 and not def.effects.has(&"trap_damage") and not def.effects.has(&"single_use"):  # traps count uses
 					var loss := roundi(def.durability * _rng.randf_range(RaidRules.WIN_DURABILITY_LOSS.x, RaidRules.WIN_DURABILITY_LOSS.y))
 					buildings[uid]["durability"] = maxi(int(buildings[uid]["durability"]) - loss, 0)
 					damage["durability_loss"][uid] = loss
@@ -1187,7 +1299,7 @@ func resolve_raid(raid: Dictionary, mode: Enums.RaidMode) -> Dictionary:
 	_refresh_effects()
 	var result := {
 		"raid_id": raid.get("raid_id", &""), "day": GameState.day, "time": raid.get("time", Enums.RaidTime.NIGHT),
-		"mode": mode, "ratio": snappedf(ratio, 0.01), "outcome": outcome, "damage": damage,
+		"mode": mode, "ratio": snappedf(ratio, 0.01), "outcome": outcome, "damage": damage, "used": used,
 		"casualties": casualties, "loot": loot, "summary": summary,
 	}
 	active_raid = {}
@@ -1195,10 +1307,57 @@ func resolve_raid(raid: Dictionary, mode: Enums.RaidMode) -> Dictionary:
 	return result
 
 
+## Strength multiplier from defense facilities: 소음 미끼 −10% each (max −30%), and an unlit
+## 안개 습격 (no working 조명탑) +20%.
+func raid_strength_mult(raid: Dictionary) -> float:
+	var decoys := 0
+	for uid in working_building_ids(&"noise_decoy"):
+		decoys += 1
+	var mult := 1.0 - minf(decoys * BaseDB.get_building(&"noise_decoy").effect(&"raid_strength_cut", 0.1), RaidRules.DECOY_CUT_MAX)
+	if StringName(raid.get("type", &"")) == &"fog":
+		var lit := false
+		for uid in working_building_ids(&"light_tower"):
+			if buildings[uid]["powered"]:
+				lit = true
+		if not lit:
+			mult *= RaidRules.FOG_UNLIT_STRENGTH_MULT
+	return mult
+
+
+## After a raid: decoys are spent (removed), each trap loses one use (0 → damaged, needs repair),
+## lamps burn their essence. Returns {"decoys": n, "traps": n, "essence": {id: n}}.
+func _use_defense_consumables() -> Dictionary:
+	var used := {"decoys": 0, "traps": 0, "essence": {}}
+	for uid in working_building_ids(&"noise_decoy"):
+		buildings.erase(uid)
+		used["decoys"] += 1
+	for uid in working_building_ids(&"spike_trap"):
+		buildings[uid]["durability"] = maxi(int(buildings[uid]["durability"]) - 1, 0)
+		used["traps"] += 1
+		if buildings[uid]["durability"] <= 0:
+			buildings[uid]["damaged"] = true
+	for uid in working_building_ids(&"essence_lamp"):
+		var need := int(BaseDB.get_building(&"essence_lamp").effect(&"essence_per_raid"))
+		if _low_essence_total() < need:
+			continue
+		var taken := _take_low_essences(need)
+		Economy.apply(_negated(taken))
+		for id in taken:
+			used["essence"][id] = int(used["essence"].get(id, 0)) + int(taken[id])
+	if used["decoys"] > 0 or used["traps"] > 0:
+		_refresh_effects()
+		buildings_changed.emit()
+	return used
+
+
 ## Marks `count` random facilities as damaged (작동 정지). Beds, radio room, shelter are never hit.
+## Buildings in an indoor zone with raid_damage_mult < 1 (체육관 −50%) are skipped that often.
 func _damage_buildings(count: Vector2i, damage: Dictionary) -> void:
 	var pool: Array[StringName] = []
 	for uid in working_building_ids():
+		var zone := BaseDB.get_zone(buildings[uid]["zone_id"])
+		if zone != null and zone.raid_damage_mult < 1.0 and _rng.randf() >= zone.raid_damage_mult:
+			continue
 		if not buildings[uid]["def_id"] in RaidRules.INDESTRUCTIBLE:
 			pool.append(uid)
 	for i in mini(_rng.randi_range(count.x, count.y), pool.size()):
@@ -1674,6 +1833,15 @@ func _register_debug_commands() -> void:
 		return "기지 단계 %s, 시설 상한 Lv%d. 다음: %s" % [Enums.BaseTier.keys()[tier], facility_level_cap(),
 			"없음" if s["tier"] < 0 else ("조건 충족" if s["ok"] else ", ".join(PackedStringArray(s["missing"])))],
 		"tier - 기지 단계와 다음 단계 조건")
+	DebugConsole.register(&"repair", func(args: PackedStringArray) -> String:
+		if args.is_empty():
+			return "사용법: repair <building_uid> (비용을 내고 수리 시작 → job <주민> construction <uid>)"
+		var check := can_repair(StringName(args[0]))
+		if not check["ok"]:
+			return "수리 불가: " + ", ".join(PackedStringArray(check["reasons"]))
+		start_repair(StringName(args[0]))
+		return "수리 시작: %s (비용 %s, 작업 %d)" % [args[0], check["cost"], repair_work_needed(StringName(args[0]))],
+		"repair <building_uid> - 파손된 건물 수리 시작")
 	DebugConsole.register(&"upgrade", func(args: PackedStringArray) -> String:
 		if args.is_empty():
 			return "사용법: upgrade <building_uid>"

@@ -16,12 +16,13 @@ var _agents: Dictionary = {}  # resident_id -> ResidentAgent
 
 
 func _ready() -> void:
-	EventBus.resident_joined.connect(func(_id: StringName): sync.call_deferred())
-	EventBus.resident_left.connect(func(_id: StringName, _r: StringName): sync.call_deferred())
-	EventBus.resident_died.connect(func(_id: StringName, _c: StringName): sync.call_deferred())
-	EventBus.phase_changed.connect(func(_p: Enums.Phase): retarget())
-	EventBus.evening_settled.connect(func(_report: Dictionary): sync.call_deferred())
-	Colony.buildings_changed.connect(func(): retarget.call_deferred())
+	# Methods, not lambdas: connections to autoload signals then end when this node is freed.
+	EventBus.resident_joined.connect(_on_resident_changed)
+	EventBus.resident_left.connect(_on_resident_gone)
+	EventBus.resident_died.connect(_on_resident_gone)
+	EventBus.phase_changed.connect(_on_phase_changed)
+	EventBus.evening_settled.connect(_on_evening_settled)
+	Colony.buildings_changed.connect(_on_buildings_changed)
 	sync.call_deferred()
 
 
@@ -129,3 +130,23 @@ func _offset(resident_id: StringName) -> Vector3:
 	var angle := float(h % 360) * PI / 180.0
 	var dist := SPREAD * (0.5 + float(floori(h / 360.0) % 100) / 200.0)
 	return Vector3(cos(angle), 0.0, sin(angle)) * dist
+
+
+func _on_resident_changed(_id: StringName) -> void:
+	sync.call_deferred()
+
+
+func _on_resident_gone(_id: StringName, _why: StringName) -> void:
+	sync.call_deferred()
+
+
+func _on_phase_changed(_phase: Enums.Phase) -> void:
+	retarget()
+
+
+func _on_evening_settled(_report: Dictionary) -> void:
+	sync.call_deferred()
+
+
+func _on_buildings_changed() -> void:
+	retarget.call_deferred()

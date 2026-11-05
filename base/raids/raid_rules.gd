@@ -41,6 +41,16 @@ const DIRECTIONS: Array[StringName] = [&"north", &"east", &"south", &"west"]
 ## Day raid radio warning with a guard post (10 "예고").
 const DAY_WARNING_SEC := 60.0
 
+## Defense facility effects in the automatic judgment (10 "방어 시설", C-18, 가안).
+const DECOY_CUT_MAX := 0.3            # 소음 미끼: 하나당 강도 −10%, 합쳐서 최대 −30%
+const FOG_UNLIT_STRENGTH_MULT := 1.2  # 안개 습격: 조명탑이 없으면 강도 +20% (시야 −50%)
+const LAMP_ESSENCE_PER_RAID := 2      # 정수 등불: 습격마다 하급 정수 2 (없으면 기여 0)
+const LOW_ESSENCES: Array[StringName] = [&"essence_green_low", &"essence_stone_low", &"essence_water_low", &"essence_light_low"]
+## 수리 (10 "수리"): 비용 = 건설 비용 30%, 작업 = 건설 진행도 50%. 벽 내구도는 건설 주민이 하루 100씩.
+const REPAIR_COST_SHARE := 0.3
+const REPAIR_WORK_SHARE := 0.5
+const WALL_REPAIR_PER_DAY := 100
+
 ## Outcome bands by R (10 "자동 판정").
 const RATIO_FLAWLESS := 1.5
 const RATIO_WIN := 1.0

@@ -41,7 +41,7 @@ func _fresh(resources: Dictionary = {}) -> void:
 
 
 func _test_defs() -> bool:
-	var ok := _check(BaseDB.buildings().size() == 34, "건물 34종 (09 탭 31 + 목책·경비 초소·가시 함정)")
+	var ok := _check(BaseDB.buildings().size() == 43, "건물 43종 (09 탭 31 + 10 탭 방어 시설 12)")
 	for id in DEMO:
 		ok = _check(BaseDB.get_building(id) != null, "데모 건물 %s" % id) and ok
 	for job_id: StringName in BaseDB.jobs():
@@ -53,7 +53,7 @@ func _test_defs() -> bool:
 		for req in def.requires:
 			ok = _check(BaseDB.get_building(req) != null, "%s 조건 건물 %s 존재" % [id, req]) and ok
 		for res: StringName in def.cost:
-			if res != &"essence_low":  # A-10 정수 id 확정 전
+			if not String(res).begins_with("essence_"):  # 정수는 ResourceDef 없이 Economy에 (A-10)
 				ok = _check(Economy.get_def(res) != null, "%s 비용 자원 %s 가 data/resources에 있음" % [id, res]) and ok
 	var shop := BaseDB.get_building(&"workshop")
 	ok = _check(shop.cost_for_level(2) == {&"plank": 20, &"scrap": 60, &"parts": 15}, "정비소 Lv2 = ×2 + 부품 5") and ok
