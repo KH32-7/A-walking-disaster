@@ -1,0 +1,70 @@
+[gd_resource type="Resource" script_class="FxDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/fx_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://vfx/defs/fx_layer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/glow01.png"
+amount = 1
+size = Vector2(2.5, 2.5)
+speed = Vector2(0.0, 0.0)
+lifetime = 0.25
+end_scale = 3.0
+spin = false
+color = Color(1.0, 0.85, 1.0, 0.9)
+flash = true
+fade_out = 0.8
+tint_element = false
+offset = Vector3(0.0, 4.0, 0.0)
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/smallglow01.png"
+amount = 40
+align = 1
+stretch = 4.0
+size = Vector2(0.06, 0.1)
+speed = Vector2(4.0, 9.0)
+gravity = 9.0
+lifetime = 0.6
+color = Color(1.0, 0.9, 0.55, 1.0)
+spin = false
+fade_out = 0.5
+emit_radius = 1.5
+offset = Vector3(0.0, 4.0, 0.0)
+
+[sub_resource type="Resource" id="layer_2"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/smoke01.png"
+blend = 1
+amount = 10
+size = Vector2(1.0, 1.6)
+end_scale = 2.5
+emit_radius = 1.5
+speed = Vector2(0.4, 1.2)
+gravity = -0.4
+lifetime = 2.5
+delay = 0.2
+color = Color(0.2, 0.2, 0.22, 0.6)
+fade_in = 0.15
+offset = Vector3(0.0, 4.5, 0.0)
+
+[sub_resource type="Resource" id="layer_3"]
+script = ExtResource("2_layer")
+kind = 4
+light_energy = 4.0
+light_range = 10.0
+lifetime = 0.4
+color = Color(1.0, 0.45, 0.85, 1.0)
+flash = true
+offset = Vector3(0.0, 4.0, 0.0)
+
+[resource]
+script = ExtResource("1_def")
+id = &"boss_overload"
+max_alive = 2
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1"), SubResource("layer_2"), SubResource("layer_3")])

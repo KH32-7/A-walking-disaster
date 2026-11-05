@@ -1,0 +1,51 @@
+[gd_resource type="Resource" script_class="FxDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/fx_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://vfx/defs/fx_layer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/shadow_mothcreature.png"
+blend = 1
+amount = 4
+size = Vector2(0.25, 0.4)
+speed = Vector2(1.0, 2.0)
+gravity = -0.5
+lifetime = 0.8
+spin = false
+color = Color(1.0, 0.7, 0.95, 1.0)
+offset = Vector3(0.0, 1.0, 0.0)
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/glow01.png"
+amount = 1
+size = Vector2(1.0, 1.0)
+speed = Vector2(0.0, 0.0)
+lifetime = 0.2
+end_scale = 1.8
+spin = false
+color = Color(1.0, 0.55, 0.9, 0.8)
+flash = true
+fade_out = 0.8
+tint_element = false
+offset = Vector3(0.0, 1.0, 0.0)
+
+[sub_resource type="Resource" id="layer_2"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/elemental_spells/textures/shockwave_1.png"
+grow = Vector2(0.4, 2.6)
+lifetime = 0.4
+color = Color(1.0, 0.6, 0.95, 0.7)
+fade_out = 0.7
+channel = 1
+tint_element = false
+
+[resource]
+script = ExtResource("1_def")
+id = &"boss_summon_moths"
+max_alive = 8
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1"), SubResource("layer_2")])

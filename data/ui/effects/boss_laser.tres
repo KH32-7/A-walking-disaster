@@ -1,0 +1,60 @@
+[gd_resource type="Resource" script_class="FxDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/fx_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://vfx/defs/fx_layer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+kind = 3
+texture = "res://assets/vfx/magic_arsenal/textures/lightningbeam.png"
+grow = Vector2(1.6, 1.0)
+lifetime = 0.45
+color = Color(1.0, 0.45, 0.85, 1.0)
+flash = true
+uv_scroll = Vector2(0.0, -6.0)
+fade_out = 0.5
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+kind = 3
+texture = "res://assets/vfx/magic_arsenal/textures/lightbeam.png"
+grow = Vector2(0.6, 1.0)
+lifetime = 0.35
+color = Color(1.0, 0.95, 1.0, 1.0)
+flash = true
+fade_out = 0.6
+
+[sub_resource type="Resource" id="layer_2"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/smallglow01.png"
+amount = 14
+align = 1
+stretch = 4.0
+size = Vector2(0.05, 0.09)
+speed = Vector2(3.0, 7.0)
+gravity = 9.0
+lifetime = 0.35
+color = Color(1.0, 0.9, 0.55, 1.0)
+spin = false
+fade_out = 0.5
+follow_direction = true
+direction = Vector3(0.0, 0.4, -1.0)
+spread_deg = 40.0
+offset = Vector3(0.0, 1.0, 0.0)
+
+[sub_resource type="Resource" id="layer_3"]
+script = ExtResource("2_layer")
+kind = 4
+light_energy = 3.0
+light_range = 8.0
+lifetime = 0.3
+color = Color(1.0, 0.45, 0.85, 1.0)
+flash = true
+offset = Vector3(0.0, 3.0, 0.0)
+
+[resource]
+script = ExtResource("1_def")
+id = &"boss_laser"
+max_alive = 4
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1"), SubResource("layer_2"), SubResource("layer_3")])

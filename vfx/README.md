@@ -50,6 +50,8 @@
 | `boss_root_burst` | `to`, `direction`, `element` | B boss_monster. 직선 예고를 따라 금이 달리고 흙이 솟는다 (`to` 없으면 금 줄기 없이 흙만) |
 | `boss_dive` / `boss_splash` / `boss_tail_swing` | `to`, `direction` / `radius`(7) / `direction` | B serpent_mechanic (가라앉은 간판뱀). 잠수 돌진 줄기 / 둔화 물보라(주황 예고) / 간판 꼬리 휘두르기 |
 | `boss_scalpels` / `boss_flash` / `boss_clones` / `boss_decoy_pop` | `to` / `radius`(9) / - / - | B wraith_mechanic (수술등 망령). 메스 줄기 / 섬광(실명, 깜빡임 줄이기 따름) / 분신 연기 / 분신이 맞아 사라짐 |
+| `boss_laser` / `boss_shock_floor` / `boss_summon_moths` | `to` / `radius`(2.5), `duration` / - | B 네온 거신. 전광판 레이저(직선 공통 패턴) / 감전 장판(남는 바닥) / 나방 소환 자리 |
+| `boss_cable_cut` / `boss_overload` | - | B colossus_mechanic. 전원 케이블이 끊김 / 셋 다 끊겨 무력화 |
 
 속성 4종(초록, 돌, 물, 빛)은 따로 id가 없다. `params.element`를 받는 레이어가 `element_textures`로 텍스처를 바꾸고
 `tint_element`로 `UiTokens.ELEMENT_COLORS` 색을 곱한다.
