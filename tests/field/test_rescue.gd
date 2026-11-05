@@ -247,7 +247,12 @@ func _test_downed() -> void:
 			"downed: off layer 3, on layer 7")
 	_ticks(t, TUNING.downed_sec - 0.5)
 	_check(t.state == State.DOWNED, "still downed before 30 s")
-	_check(t.begin_open(_player) and t.state == State.FOLLOW, "helped up")
+	_check(t.begin_open(_player) and t.state == State.DOWNED, "F: helping up starts")
+	_ticks(t, TUNING.revive_sec - 0.2)
+	_check(t.state == State.DOWNED and t.hold_state()["progress"] > 0.9,
+			"still downed before 3 s (the 30 s wait paused)")
+	_ticks(t, 0.3)
+	_check(t.state == State.FOLLOW and t.hold_state().is_empty(), "helped up after 3 s")
 	_check(is_equal_approx(t.health, TUNING.max_health * TUNING.revive_health_ratio), "half health after help")
 	t.take_damage(TUNING.max_health, {})
 	var isolated := [false]

@@ -1,0 +1,41 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://field/_sandbox/b17_companion_test.gd" id="1_test"]
+[ext_resource type="PackedScene" path="res://field/_sandbox/field_sandbox.tscn" id="2_sandbox"]
+[ext_resource type="PackedScene" path="res://field/player/player.tscn" id="3_player"]
+[ext_resource type="PackedScene" path="res://field/markers/rescue_spot.tscn" id="4_spot"]
+[ext_resource type="Script" path="res://field/rescue/rescue_manager.gd" id="5_rescue"]
+[ext_resource type="Resource" path="res://data/regions/flooded_mall/rescues/injured_elder.tres" id="6_elder"]
+[ext_resource type="Script" path="res://field/defs/rescue_spawn.gd" id="7_spawn_script"]
+[ext_resource type="Script" path="res://field/companion/companion_manager.gd" id="8_companions"]
+
+[node name="B17CompanionTest" type="Node3D"]
+script = ExtResource("1_test")
+
+[node name="FieldSandbox" parent="." instance=ExtResource("2_sandbox")]
+
+[node name="Player" parent="." instance=ExtResource("3_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6)
+
+[node name="RescueSpots" type="Node3D" parent="."]
+
+[node name="Street" parent="RescueSpots" instance=ExtResource("4_spot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 14)
+spawn_tags = Array[StringName]([&"flooded_edge"])
+
+[node name="RescueManager" type="Node" parent="."]
+script = ExtResource("5_rescue")
+spawns = Array[ExtResource("7_spawn_script")]([ExtResource("6_elder")])
+sortie_seed = 1
+
+[node name="CompanionManager" type="Node" parent="."]
+script = ExtResource("8_companions")
+
+[node name="DebugLayer" type="CanvasLayer" parent="."]
+
+[node name="InfoLabel" type="Label" parent="DebugLayer"]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 900.0
+offset_bottom = 400.0
+theme_override_font_sizes/font_size = 14

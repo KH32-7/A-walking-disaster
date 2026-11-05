@@ -14,6 +14,7 @@
 [ext_resource type="Resource" path="res://data/regions/flooded_mall/rescues/injured_elder.tres" id="12_elder"]
 [ext_resource type="Resource" path="res://data/regions/flooded_mall/rescues/trapped_wheelchair.tres" id="13_wheelchair"]
 [ext_resource type="Resource" path="res://data/regions/flooded_mall/rescues/lost_child.tres" id="14_child"]
+[ext_resource type="Script" path="res://field/companion/companion_manager.gd" id="15_companions"]
 
 [sub_resource type="Environment" id="Env_greybox"]
 background_mode = 1
@@ -57,5 +58,8 @@ script = ExtResource("9_lost_gear")
 [node name="RescueManager" type="Node" parent="."]
 script = ExtResource("11_rescue")
 spawns = Array[Resource]([ExtResource("12_elder"), ExtResource("13_wheelchair"), ExtResource("14_child")])
+
+[node name="CompanionManager" type="Node" parent="."]
+script = ExtResource("15_companions")
 
 [node name="FieldCamera" parent="." instance=ExtResource("10_camera")]
