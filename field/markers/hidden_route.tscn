@@ -1,0 +1,12 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://field/markers/hidden_route.gd" id="1_script"]
+
+[node name="HiddenRoute" type="Marker3D"]
+gizmo_extents = 0.5
+script = ExtResource("1_script")
+
+[node name="From" type="Marker3D" parent="."]
+
+[node name="To" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -10)
