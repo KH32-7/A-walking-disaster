@@ -83,6 +83,8 @@ var explore: FieldExplore
 var notice_toast: NoticeToast
 ## First-day guide (방송실 지기 안내 카드).
 var tutorial: TutorialGuide
+## [F] chip beside the usable thing + exit diamonds, in the world (field and base).
+var world_prompts: WorldPrompts
 var radio_voice: RadioVoice
 
 
@@ -93,6 +95,9 @@ func _add_d16_nodes() -> void:
 	radio_voice = RadioVoice.new()
 	radio_voice.name = &"RadioVoice"
 	add_child(radio_voice)
+	world_prompts = WorldPrompts.new()
+	world_prompts.name = &"WorldPrompts"
+	hud.add_child(world_prompts)
 	tutorial = TutorialGuide.new()
 	tutorial.name = &"TutorialGuide"
 	overlay.add_child(tutorial)
