@@ -196,6 +196,7 @@ func use(slot: StringName) -> bool:
 		&"slam":
 			for monster in SkillTargets.monsters_in_radius(_player, _player.global_position, skill.radius):
 				_holder.skill_hit(monster, skill.damage_mult, _skill_info(skill))
+			CombatFeel.shake(_player, CombatFeel.SHAKE_SLAM)
 		&"brace":
 			_brace = skill
 			_brace_left = skill.duration_sec

@@ -13,5 +13,6 @@ func replace_attack(info: Dictionary) -> bool:
 		target.take_damage(monster.attack_damage(), info)
 	EventBus.noise_emitted.emit(monster.global_position, MonsterRules.SELF_DESTRUCT_NOISE, monster)
 	Fx.spawn(&"neon_moth_blast", monster.global_position, {})
+	CombatFeel.shake(monster, CombatFeel.SHAKE_EXPLOSION, monster.global_position)
 	monster.vanish()
 	return true

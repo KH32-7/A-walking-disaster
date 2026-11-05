@@ -48,6 +48,10 @@ var _distance: float = ZOOM_DISTANCES[START_ZOOM]
 var _focus := Vector3.ZERO
 var _use_stick := false
 var _tween: Tween
+## B-27: shot kick (decays to zero) and shake trauma (CombatFeel).
+var _kick := Vector3.ZERO
+var _trauma := 0.0
+var _shake_time := 0.0
 
 
 func _ready() -> void:
@@ -65,6 +69,9 @@ func _physics_process(delta: float) -> void:
 		snap()
 	_focus = _focus.lerp(_target_focus(), 1.0 - exp(-FOLLOW_SHARPNESS * delta))
 	_distance = lerpf(_distance, ZOOM_DISTANCES[_zoom], 1.0 - exp(-ZOOM_SHARPNESS * delta))
+	_kick = _kick.lerp(Vector3.ZERO, 1.0 - exp(-CombatFeel.KICK_RETURN_SHARPNESS * delta))
+	_trauma = maxf(_trauma - CombatFeel.SHAKE_DECAY * delta, 0.0)
+	_shake_time += delta
 	_place()
 	_update_aim()
 
@@ -185,7 +192,28 @@ func _place() -> void:
 	var pitch := deg_to_rad(PITCH_DEG)
 	var yaw := deg_to_rad(_yaw_deg)
 	var offset := Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch)) * _distance
-	look_at_from_position(_focus + offset, _focus, Vector3.UP)
+	# Kick and shake move eye and focus together, so the view slides instead of swinging.
+	var jolt := _kick
+	var shake := _trauma * _trauma
+	if shake > 0.0:
+		var t := _shake_time * CombatFeel.SHAKE_FREQ
+		var right := Vector3(cos(yaw), 0.0, -sin(yaw))
+		jolt += right * sin(t * 1.0 + 0.3) * CombatFeel.SHAKE_MAX_OFFSET * shake
+		jolt += Vector3.UP * sin(t * 1.37 + 1.7) * CombatFeel.SHAKE_MAX_OFFSET * shake
+	look_at_from_position(_focus + offset + jolt, _focus + jolt, Vector3.UP)
+	if shake > 0.0:
+		rotate_object_local(Vector3.FORWARD,
+				deg_to_rad(CombatFeel.SHAKE_MAX_ROLL_DEG) * shake * sin(_shake_time * CombatFeel.SHAKE_FREQ * 0.83))
+
+
+## B-27: pushes the view by `v` (m); it springs back on its own.
+func add_kick(v: Vector3) -> void:
+	_kick += v
+
+
+## B-27: adds shake trauma (0..1 total).
+func add_trauma(amount: float) -> void:
+	_trauma = clampf(_trauma + amount, 0.0, 1.0)
 
 
 func _update_aim() -> void:
