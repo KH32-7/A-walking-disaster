@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="TraitDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/trait_def.gd" id="1_n4cq4"]
+
+[resource]
+script = ExtResource("1_n4cq4")
+id = &"easygoing"
+display_name = "느긋함"
+description = "작업 효율 −10%, 피로 증가 −20%"
+effects = Dictionary[StringName, float]({
+&"fatigue_gain_mult": 0.8,
+&"work_efficiency": -0.1
+})
+exclusive_with = Array[StringName]([&"diligent"])

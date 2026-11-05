@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="JobDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/job_def.gd" id="1_1ixrs"]
+
+[resource]
+script = ExtResource("1_1ixrs")
+id = &"scouting"
+display_name = "정찰"
+workplace = &"outpost"
+main_stat = "sense"
+effects = Dictionary[StringName, float]({
+&"threat_reduction": 1.0
+})
+teen_allowed = true
+combat_role = true
+note = "위협도 감소, 소문 수집"

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="JobDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/job_def.gd" id="1_01mfx"]
+
+[resource]
+script = ExtResource("1_01mfx")
+id = &"radio"
+display_name = "무전"
+workplace = &"radio_room"
+main_stat = "heart"
+note = "구조 대상 소문, 교역 연결"

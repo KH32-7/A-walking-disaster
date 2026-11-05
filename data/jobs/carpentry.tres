@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="JobDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/job_def.gd" id="1_t8q12"]
+
+[resource]
+script = ExtResource("1_t8q12")
+id = &"carpentry"
+display_name = "목공"
+workplace = &"carpentry_shop"
+main_stat = "dex"
+base_output = Dictionary[StringName, float]({
+&"planks": 4.0
+})
+base_input = Dictionary[StringName, float]({
+&"wood": 8.0
+})
+note = "나무 8 → 목재판 4"

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="JobDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/job_def.gd" id="1_tiac6"]
+
+[resource]
+script = ExtResource("1_tiac6")
+id = &"rest"
+display_name = "휴식"
+main_stat = "none"
+effects = Dictionary[StringName, float]({
+&"fatigue": -60.0
+})
+teen_allowed = true

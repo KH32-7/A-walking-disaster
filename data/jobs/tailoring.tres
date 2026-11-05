@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="JobDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/job_def.gd" id="1_ldud0"]
+
+[resource]
+script = ExtResource("1_ldud0")
+id = &"tailoring"
+display_name = "재봉"
+workplace = &"sewing_room"
+main_stat = "dex"
+note = "방어구 수리, 천 가공"

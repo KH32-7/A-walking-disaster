@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="JobDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/job_def.gd" id="1_fjjun"]
+
+[resource]
+script = ExtResource("1_fjjun")
+id = &"care"
+display_name = "돌봄"
+workplace = &"daycare"
+main_stat = "heart"
+effects = Dictionary[StringName, float]({
+&"care_children": 4.0
+})
+note = "보호자가 일에 나섬"

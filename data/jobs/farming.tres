@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="JobDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/job_def.gd" id="1_n7cry"]
+
+[resource]
+script = ExtResource("1_n7cry")
+id = &"farming"
+display_name = "농사"
+workplace = &"vegetable_garden"
+main_stat = "heart"
+base_output = Dictionary[StringName, float]({
+&"food": 6.0
+})
+teen_allowed = true
+note = "텃밭 한 칸당"
