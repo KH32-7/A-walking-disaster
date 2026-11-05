@@ -21,3 +21,4 @@ contribution = "작은 전자기기와 무전기를 고친다."
 first_line = "와, 진짜 사람이다. 배터리 남는 거 있어요?"
 rescue_lines = Array[String](["저 무전기, 나중에 고쳐 볼게요.", "조용히요? 알았어요. 입 다물게요.", "쉼터 애들은 버스 탔겠죠? 그렇겠죠?"])
 situation = "휴대폰 수리점 뒷방"
+reviewed = true

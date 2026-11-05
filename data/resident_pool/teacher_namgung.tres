@@ -18,3 +18,4 @@ contribution = "아이들을 가르치고 물 거르기 같은 생활 과학을 
 first_line = "다리 고칠 부품 있으면 좋겠는데. 없어도 괜찮아요."
 rescue_lines = Array[String](["계단은 한 칸씩 갈게요. 기다려 줘요.", "저건 물 거르는 데 쓸 수 있어요.", "숨 고르고요. 셋 세고 가요."])
 situation = "초등학교 과학실"
+reviewed = true

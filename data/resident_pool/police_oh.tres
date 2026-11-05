@@ -18,3 +18,4 @@ contribution = "경계 순찰 동선과 교대표를 짠다."
 first_line = "얼굴 보고 말해 주게. 입 모양 보면 알아들어."
 rescue_lines = Array[String](["내 앞에서 말해. 뒤에선 못 들어.", "저 골목, 막다른 길이야.", "바닥이 울리네. 뭔가 크게 오고 있어."])
 situation = "아파트 경비실"
+reviewed = true
