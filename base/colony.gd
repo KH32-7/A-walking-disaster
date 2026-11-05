@@ -1,4 +1,7 @@
 extends Node
+## Emitted (by Colony itself) whenever buildings are placed, moved, completed, damaged or removed,
+## and after loading. Building views (base/building) and Lane D screens redraw on it.
+signal buildings_changed
 ## Autoload `Colony`. Owner: Lane C.
 ## Residents, buildings, relationships, raids threat - everything that lives in the base.
 ## Other lanes read through the getters below; they never edit resident data directly.
@@ -29,6 +32,9 @@ var tier: Enums.BaseTier = Enums.BaseTier.CAMP
 var last_raid_day := 0
 ## The raid between start_raid() and resolve_raid() ({} when none).
 var active_raid: Dictionary = {}
+## Zones cleared during play (C-10 adds clearing progress). Zones marked starts_cleared on the map
+## need no entry. zone_id -> true.
+var cleared_zones: Dictionary = {}
 
 var _next_resident_num := 1
 var _next_building_num := 1
@@ -253,6 +259,7 @@ func place_building(def_id: StringName, cell: Vector2i = Vector2i.ZERO, rotation
 			return &""
 	var uid := _new_building_uid(def_id)
 	buildings[uid] = _new_building(uid, def, cell, rotation, zone_id, def.cost_for_level(1) if pay else {})
+	buildings_changed.emit()
 	return uid
 
 
@@ -280,6 +287,7 @@ func complete_building(uid: StringName) -> void:
 	b["durability"] = def.durability
 	_refresh_effects()
 	EventBus.building_completed.emit(uid)
+	buildings_changed.emit()
 
 
 ## Removes a building and returns 50% of what was paid. Prebuilt rooms cannot be removed.
@@ -302,7 +310,31 @@ func demolish_building(uid: StringName) -> Dictionary:
 	_refresh_effects()
 	if not refund.is_empty():
 		Economy.apply(refund)
+	buildings_changed.emit()
 	return refund
+
+
+## Moves a building (09 "건설 규칙": 이동은 무료, 진행도 유지). The grid (BaseGrid.check with
+## ignore_uid) validates the new spot first. Workers and beds stay with the building.
+func move_building(uid: StringName, cell: Vector2i, rotation: int, zone_id: StringName) -> bool:
+	if not buildings.has(uid) or BaseDB.get_building(buildings[uid]["def_id"]).prebuilt:
+		return false
+	buildings[uid]["cell"] = [cell.x, cell.y]
+	buildings[uid]["rotation"] = posmod(rotation, 4)
+	buildings[uid]["zone_id"] = zone_id
+	buildings_changed.emit()
+	return true
+
+
+## Zone clearing state (09 "구역과 개간"). C-10 adds progress, yields and the buried-box event;
+## for now clear_zone() marks a zone usable (debug `zone clear <id>`, story).
+func is_zone_cleared(zone_id: StringName) -> bool:
+	return cleared_zones.has(zone_id)
+
+
+func clear_zone(zone_id: StringName) -> void:
+	cleared_zones[zone_id] = true
+	buildings_changed.emit()
 
 
 ## Effect value of a completed building at its level (+50% per level above 1).
@@ -980,6 +1012,7 @@ func _damage_buildings(count: Vector2i, damage: Dictionary) -> void:
 		buildings[uid]["damaged"] = true
 		damage["damaged"].append(uid)
 		EventBus.building_damaged.emit(uid)
+		buildings_changed.emit()
 
 
 ## Rolls injury / serious injury / death for each id. No permadeath (보호 모드) → serious injury.
@@ -1073,6 +1106,7 @@ func _new_resident_id() -> StringName:
 
 func _reset() -> void:
 	residents = {}
+	cleared_zones = {}
 	beds = {}
 	var start: Array[StringName] = []
 	for i in START_BED_COUNT:
@@ -1110,6 +1144,7 @@ func save_data() -> Dictionary:
 		"next_resident_num": _next_resident_num,
 		"next_building_num": _next_building_num,
 		"last_raid_day": last_raid_day,
+		"cleared_zones": cleared_zones,
 		"threat": threat,
 		"tier": tier,
 	}
@@ -1144,9 +1179,13 @@ func load_data(data: Dictionary) -> void:
 		power_priority_override[StringName(uid)] = int(saved_prio[uid])
 	_next_building_num = maxi(int(data.get("next_building_num", 1)), 1)
 	last_raid_day = int(data.get("last_raid_day", 0))
+	cleared_zones = {}
+	for zone_id in data.get("cleared_zones", {}):
+		cleared_zones[StringName(zone_id)] = true
 	threat = int(data.get("threat", 0))
 	tier = int(data.get("tier", Enums.BaseTier.CAMP)) as Enums.BaseTier
 	_refresh_effects()
+	buildings_changed.emit()
 
 
 # --- Debug console (debug builds only) -----------------------------------------
@@ -1158,6 +1197,12 @@ func _register_debug_commands() -> void:
 		"job <resident_id> <job_id> [building_uid] - 작업 배정 (job list: 직업 목록)")
 	DebugConsole.register(&"settle", _cmd_settle,
 		"settle - 하루 정산을 돌리고 Economy에 반영 (A-05 전 테스트용)")
+	DebugConsole.register(&"zone", func(args: PackedStringArray) -> String:
+		if args.size() >= 2 and args[0] == "clear":
+			clear_zone(StringName(args[1]))
+			return "개간 완료로 표시: %s" % args[1]
+		return "zone clear <zone_id> - 구역을 개간된 것으로 (C-10 전 테스트용). 개간됨: %s" % [cleared_zones.keys()],
+		"zone clear <zone_id> - 구역 개간 완료로 표시")
 	DebugConsole.register(&"raid", _cmd_raid,
 		"raid now [day|night] | raid threat <0~100> | raid info - 습격 강제·위협도 설정·방어력/예상")
 	DebugConsole.register(&"build", _cmd_build,

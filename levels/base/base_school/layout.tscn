@@ -157,7 +157,7 @@ size_cells = Vector2i(20, 12)
 [node name="Resources" type="Node3D" parent="."]
 
 [node name="Tree1" parent="Resources" instance=ExtResource("4_res")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0, -12)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 0, -12)
 
 [node name="Tree2" parent="Resources" instance=ExtResource("4_res")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 0, -8)

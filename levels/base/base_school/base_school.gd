@@ -10,9 +10,17 @@ const SPAWN_ID := &"main"
 
 @onready var layout: Node3D = $Layout
 @onready var player: Node3D = $Player
+@onready var build_mode: BuildMode = $BuildMode
+@onready var building_views: BuildingViews = $BuildingViews
+
+## Placement rules for this map (C-03). Built from the layout's BuildArea / ZoneMarker / ResourceNode.
+var grid: BaseGrid
 
 
 func _ready() -> void:
+	grid = BaseGrid.from_layout(layout)
+	build_mode.grid = grid
+	building_views.grid = grid
 	if ResourceLoader.exists(DRESSING):
 		var dressing := (load(DRESSING) as PackedScene).instantiate()
 		dressing.name = "Dressing"
