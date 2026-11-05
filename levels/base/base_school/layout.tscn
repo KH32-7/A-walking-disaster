@@ -1,0 +1,244 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://levels/base/base_school/layout.gd" id="1_layout"]
+[ext_resource type="PackedScene" path="res://base/markers/zone_marker.tscn" id="2_zone"]
+[ext_resource type="PackedScene" path="res://base/markers/build_area.tscn" id="3_build"]
+[ext_resource type="PackedScene" path="res://base/markers/resource_node.tscn" id="4_res"]
+[ext_resource type="PackedScene" path="res://base/markers/raid_spawn_point.tscn" id="5_raid"]
+[ext_resource type="PackedScene" path="res://base/markers/work_spot.tscn" id="6_work"]
+[ext_resource type="PackedScene" path="res://base/markers/outpost_node.tscn" id="7_outpost"]
+[ext_resource type="PackedScene" path="res://field/markers/player_spawn.tscn" id="8_spawn"]
+[ext_resource type="Script" path="res://field/camera/indoor_zone.gd" id="9_indoor"]
+
+[sub_resource type="NavigationMesh" id="NavMesh"]
+geometry_parsed_geometry_type = 1
+agent_height = 1.75
+agent_radius = 0.5
+agent_max_climb = 0.25
+
+[sub_resource type="StandardMaterial3D" id="Mat_ground"]
+albedo_color = Color(0.42, 0.47, 0.38, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_yard"]
+albedo_color = Color(0.55, 0.5, 0.42, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_wall"]
+albedo_color = Color(0.72, 0.7, 0.66, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_fence"]
+albedo_color = Color(0.5, 0.48, 0.45, 1)
+
+[sub_resource type="BoxShape3D" id="Shape_hall_inside"]
+size = Vector3(43.4, 4, 13.4)
+
+[node name="Layout" type="Node3D"]
+script = ExtResource("1_layout")
+
+[node name="Navigation" type="NavigationRegion3D" parent="."]
+navigation_mesh = SubResource("NavMesh")
+
+[node name="Ground" type="CSGBox3D" parent="Navigation"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -4)
+use_collision = true
+size = Vector3(150, 1, 110)
+material = SubResource("Mat_ground")
+
+[node name="FrontYardFloor" type="CSGBox3D" parent="Navigation"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0.01, -12)
+size = Vector3(20, 0.02, 6)
+material = SubResource("Mat_yard")
+
+[node name="MainHall" type="CSGCombiner3D" parent="Navigation"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -23)
+use_collision = true
+
+[node name="Outer" type="CSGBox3D" parent="Navigation/MainHall"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.75, 0)
+size = Vector3(44, 3.5, 14)
+material = SubResource("Mat_wall")
+
+[node name="Inner" type="CSGBox3D" parent="Navigation/MainHall"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+operation = 2
+size = Vector3(43.4, 4, 13.4)
+
+[node name="FrontDoor" type="CSGBox3D" parent="Navigation/MainHall"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 7)
+operation = 2
+size = Vector3(4, 2.5, 1)
+
+[node name="RadioRoomWall" type="CSGBox3D" parent="Navigation/MainHall"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 1.75, 0)
+size = Vector3(0.3, 3.5, 13.4)
+material = SubResource("Mat_wall")
+
+[node name="BedroomWall" type="CSGBox3D" parent="Navigation/MainHall"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1.75, 0)
+size = Vector3(0.3, 3.5, 13.4)
+material = SubResource("Mat_wall")
+
+[node name="RadioRoomDoor" type="CSGBox3D" parent="Navigation/MainHall"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 1.25, 3)
+operation = 2
+size = Vector3(1, 2.5, 2)
+
+[node name="BedroomDoor" type="CSGBox3D" parent="Navigation/MainHall"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1.25, 3)
+operation = 2
+size = Vector3(1, 2.5, 2)
+
+[node name="SchoolWall" type="CSGCombiner3D" parent="Navigation"]
+use_collision = true
+
+[node name="North" type="CSGBox3D" parent="Navigation/SchoolWall"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, -36)
+size = Vector3(90.5, 2.5, 0.5)
+material = SubResource("Mat_fence")
+
+[node name="South" type="CSGBox3D" parent="Navigation/SchoolWall"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 28)
+size = Vector3(90.5, 2.5, 0.5)
+material = SubResource("Mat_fence")
+
+[node name="East" type="CSGBox3D" parent="Navigation/SchoolWall"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45, 1.25, -4)
+size = Vector3(0.5, 2.5, 64)
+material = SubResource("Mat_fence")
+
+[node name="West" type="CSGBox3D" parent="Navigation/SchoolWall"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -45, 1.25, -4)
+size = Vector3(0.5, 2.5, 64)
+material = SubResource("Mat_fence")
+
+[node name="SouthGate" type="CSGBox3D" parent="Navigation/SchoolWall"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 28)
+operation = 2
+size = Vector3(6, 3, 1)
+
+[node name="ParkGate" type="CSGBox3D" parent="Navigation/SchoolWall"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -45, 1.25, 0)
+operation = 2
+size = Vector3(1, 3, 6)
+
+[node name="Zones" type="Node3D" parent="."]
+
+[node name="Zone_MainHall" parent="Zones" instance=ExtResource("2_zone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -23)
+zone_id = &"main_hall"
+size_cells = Vector2i(22, 7)
+indoor = true
+starts_cleared = true
+
+[node name="Zone_FrontYard" parent="Zones" instance=ExtResource("2_zone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, -12)
+zone_id = &"front_yard"
+size_cells = Vector2i(10, 3)
+starts_cleared = true
+
+[node name="Zone_Playground" parent="Zones" instance=ExtResource("2_zone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6)
+zone_id = &"playground"
+size_cells = Vector2i(20, 12)
+clear_work = 40
+clear_yield = Dictionary[StringName, int]({
+&"stone": 30
+})
+
+[node name="Build_FrontYard" parent="Zones" instance=ExtResource("3_build")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, -12)
+zone_id = &"front_yard"
+size_cells = Vector2i(10, 3)
+
+[node name="Build_Playground" parent="Zones" instance=ExtResource("3_build")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6)
+zone_id = &"playground"
+size_cells = Vector2i(20, 12)
+
+[node name="Resources" type="Node3D" parent="."]
+
+[node name="Tree1" parent="Resources" instance=ExtResource("4_res")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 0, -12)
+
+[node name="Tree2" parent="Resources" instance=ExtResource("4_res")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 0, -8)
+
+[node name="Tree3" parent="Resources" instance=ExtResource("4_res")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 0, -4)
+
+[node name="Tree4" parent="Resources" instance=ExtResource("4_res")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -27, 0, -13)
+
+[node name="Debris1" parent="Resources" instance=ExtResource("4_res")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0, -13)
+kind = 1
+
+[node name="Debris2" parent="Resources" instance=ExtResource("4_res")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, -10)
+kind = 1
+
+[node name="WorkSpots" type="Node3D" parent="."]
+
+[node name="Work_Radio" parent="WorkSpots" instance=ExtResource("6_work")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, 0, -26)
+job_id = &"radio"
+
+[node name="Work_Woodcutting" parent="WorkSpots" instance=ExtResource("6_work")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -23, 0, -9)
+job_id = &"woodcutting"
+capacity = 2
+
+[node name="Work_Salvage" parent="WorkSpots" instance=ExtResource("6_work")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, -11)
+job_id = &"salvage"
+capacity = 2
+
+[node name="Raids" type="Node3D" parent="."]
+
+[node name="Raid_North" parent="Raids" instance=ExtResource("5_raid")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -44)
+
+[node name="Raid_East" parent="Raids" instance=ExtResource("5_raid")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 53, 0, -4)
+direction = "east"
+
+[node name="Raid_South" parent="Raids" instance=ExtResource("5_raid")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 36)
+direction = "south"
+
+[node name="Raid_West" parent="Raids" instance=ExtResource("5_raid")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -53, 0, 0)
+direction = "west"
+
+[node name="Outposts" type="Node3D" parent="."]
+
+[node name="Outpost_North" parent="Outposts" instance=ExtResource("7_outpost")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, -46)
+node_id = &"outpost_north"
+direction = "north"
+
+[node name="Outpost_East" parent="Outposts" instance=ExtResource("7_outpost")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 56, 0, 10)
+node_id = &"outpost_east"
+direction = "east"
+
+[node name="Outpost_South" parent="Outposts" instance=ExtResource("7_outpost")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, 38)
+node_id = &"outpost_south"
+direction = "south"
+
+[node name="Outpost_West" parent="Outposts" instance=ExtResource("7_outpost")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -56, 0, 12)
+node_id = &"outpost_west"
+direction = "west"
+
+[node name="PlayerSpawn" parent="." instance=ExtResource("8_spawn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0, -14)
+
+[node name="IndoorZone_MainHall" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -23)
+script = ExtResource("9_indoor")
+building_id = &"main_hall"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="IndoorZone_MainHall"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+shape = SubResource("Shape_hall_inside")

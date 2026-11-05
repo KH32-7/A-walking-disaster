@@ -1,4 +1,7 @@
 extends Node
+## Emitted (by Colony itself) whenever buildings are placed, moved, completed, damaged or removed,
+## and after loading. Building views (base/building) and Lane D screens redraw on it.
+signal buildings_changed
 ## Autoload `Colony`. Owner: Lane C.
 ## Residents, buildings, relationships, raids threat - everything that lives in the base.
 ## Other lanes read through the getters below; they never edit resident data directly.
@@ -29,6 +32,9 @@ var tier: Enums.BaseTier = Enums.BaseTier.CAMP
 var last_raid_day := 0
 ## The raid between start_raid() and resolve_raid() ({} when none).
 var active_raid: Dictionary = {}
+## Zones cleared during play (C-10 adds clearing progress). Zones marked starts_cleared on the map
+## need no entry. zone_id -> true.
+var cleared_zones: Dictionary = {}
 
 var _next_resident_num := 1
 var _next_building_num := 1
@@ -40,6 +46,7 @@ var _rng := RandomNumberGenerator.new()
 func _ready() -> void:
 	SaveSystem.register_provider(&"colony", self)
 	EventBus.rescue_completed.connect(_on_rescue_completed)
+	EventBus.flow_state_changed.connect(_on_flow_state_changed)
 	_reset()
 	# DebugConsole loads after Colony and registers its placeholders in _ready; replace them after.
 	_register_debug_commands.call_deferred()
@@ -113,6 +120,26 @@ func working_building_ids(def_id: StringName = &"") -> Array[StringName]:
 		if not buildings[uid]["damaged"]:
 			ids.append(uid)
 	return ids
+
+
+## Highest level among working (completed, not damaged) buildings of `def_id`; 0 when none.
+## For Armory upgrade/craft caps (A-09, issue #45).
+func facility_level(def_id: StringName) -> int:
+	var level := 0
+	for uid in working_building_ids(def_id):
+		level = maxi(level, int(buildings[uid]["level"]))
+	return level
+
+
+## Active residents assigned to working buildings of `def_id` (A-09 reads their 손재주).
+func facility_workers(def_id: StringName) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for uid in working_building_ids(def_id):
+		for worker: StringName in buildings[uid]["workers"]:
+			if residents.has(worker) and int(residents[worker]["status"]) == Enums.ResidentStatus.ACTIVE \
+					and not worker in out:
+				out.append(worker)
+	return out
 
 
 func has_completed(def_id: StringName) -> bool:
@@ -232,6 +259,7 @@ func place_building(def_id: StringName, cell: Vector2i = Vector2i.ZERO, rotation
 			return &""
 	var uid := _new_building_uid(def_id)
 	buildings[uid] = _new_building(uid, def, cell, rotation, zone_id, def.cost_for_level(1) if pay else {})
+	buildings_changed.emit()
 	return uid
 
 
@@ -259,6 +287,7 @@ func complete_building(uid: StringName) -> void:
 	b["durability"] = def.durability
 	_refresh_effects()
 	EventBus.building_completed.emit(uid)
+	buildings_changed.emit()
 
 
 ## Removes a building and returns 50% of what was paid. Prebuilt rooms cannot be removed.
@@ -281,7 +310,31 @@ func demolish_building(uid: StringName) -> Dictionary:
 	_refresh_effects()
 	if not refund.is_empty():
 		Economy.apply(refund)
+	buildings_changed.emit()
 	return refund
+
+
+## Moves a building (09 "건설 규칙": 이동은 무료, 진행도 유지). The grid (BaseGrid.check with
+## ignore_uid) validates the new spot first. Workers and beds stay with the building.
+func move_building(uid: StringName, cell: Vector2i, rotation: int, zone_id: StringName) -> bool:
+	if not buildings.has(uid) or BaseDB.get_building(buildings[uid]["def_id"]).prebuilt:
+		return false
+	buildings[uid]["cell"] = [cell.x, cell.y]
+	buildings[uid]["rotation"] = posmod(rotation, 4)
+	buildings[uid]["zone_id"] = zone_id
+	buildings_changed.emit()
+	return true
+
+
+## Zone clearing state (09 "구역과 개간"). C-10 adds progress, yields and the buried-box event;
+## for now clear_zone() marks a zone usable (debug `zone clear <id>`, story).
+func is_zone_cleared(zone_id: StringName) -> bool:
+	return cleared_zones.has(zone_id)
+
+
+func clear_zone(zone_id: StringName) -> void:
+	cleared_zones[zone_id] = true
+	buildings_changed.emit()
 
 
 ## Effect value of a completed building at its level (+50% per level above 1).
@@ -523,13 +576,17 @@ func preview_output(resident_id: StringName) -> Dictionary:
 ## Updates residents (hunger, fatigue, skills) and buildings (construction, generator fuel) and
 ## returns the report. Economy is NOT changed here: A applies report["changes"].
 ## Extra key "work": {resident_id: {"job": id, "output": {res: int}}} for the evening table (D-07).
-## TODO(C-06): morale factors, leave crisis. TODO(C-03): +20 progress when the player stayed.
+## Stay day (SceneRouter.stayed_today, 기획 01·09): all work ×1.2 and the oldest construction site +20.
+## Workshop / infirmary workers craft through Armory.craft_by_worker() (A-09, issue #45).
+## TODO(C-06): morale factors, leave crisis. TODO(C-12): stay day deep talk +1.
 func settle_day() -> Dictionary:
 	var produced := {}
 	var consumed := {}
 	var events: Array = []
 	var work := {}
 	var ids := active_resident_ids()
+	var stayed := SceneRouter.stayed_today
+	var crafters: Array = []  # [resident_id, efficiency, workplace def id]
 
 	# 1. Work: output, build progress, skill and stat growth.
 	var worked := {}
@@ -542,7 +599,11 @@ func settle_day() -> Dictionary:
 		if job.workplace != &"" and buildings.has(uid) and (not is_powered(uid) or buildings[uid]["damaged"]):
 			continue  # workplace without power, or damaged by a raid, does not run
 		var f := WorkRules.efficiency(r, job, _works_alone(id))
+		if stayed:
+			f *= WorkRules.STAY_OUTPUT_MULT
 		var out := {}
+		if job.workplace != &"" and not Armory.list_recipes(job.workplace, 1).is_empty():
+			crafters.append([id, f, job.workplace])
 		if job.id == WorkRules.CONSTRUCTION_JOB:
 			if add_build_progress(uid, roundi(WorkRules.BUILD_PROGRESS_BASE * f)) and buildings.has(uid):
 				events.append(_event(&"building_completed", id, "%s 완성" % _def_name(buildings[uid]["def_id"])))
@@ -558,8 +619,17 @@ func settle_day() -> Dictionary:
 		worked[id] = true
 		_grow(id, job, events)
 
+	# Stay day: the player builds too (09 "건설 규칙": 기지에 머무르면 +20) on the oldest site.
+	if stayed:
+		var site := _oldest_site()
+		if site != &"" and add_build_progress(site, WorkRules.STAY_BUILD_PROGRESS):
+			events.append(_event(&"building_completed", &"", "%s 완성" % _def_name(buildings[site]["def_id"])))
+
 	# 2. Inputs that are not in stock reduce that job's output proportionally.
 	_limit_inputs(produced, consumed)
+
+	# 2b. Worker crafting (정비소: 탄약·소음 미끼, 의무실: 붕대·구급상자) via Armory.
+	_craft(crafters, produced, consumed, work)
 
 	# 3. Food: cooked meals if a cook worked today (식량 효율 ×1.5, 배고픔 +70).
 	var cooked := false
@@ -646,6 +716,59 @@ func _grow(id: StringName, job: JobDef, events: Array) -> void:
 	if stat_days % WorkRules.DAYS_PER_STAT == 0 and int(r["stats"][stat]) < ResidentData.STAT_MAX:
 		r["stats"][stat] = int(r["stats"][stat]) + 1
 		events.append(_event(&"stat_up", id, "%s의 %s +1" % [r["name"], stat]))
+
+
+## Each crafter makes roundi(efficiency × CRAFT_BATCHES_PER_DAY) batches (at least 1). Each batch
+## takes the recipe (allowed at the facility's level) whose output is lowest in stock right now,
+## so ammo types and supplies stay balanced (가안). Armory.craft_by_worker() limits by inputs.
+func _craft(crafters: Array, produced: Dictionary, consumed: Dictionary, work: Dictionary) -> void:
+	for entry in crafters:
+		var id: StringName = entry[0]
+		var facility: StringName = entry[2]
+		var level := facility_level(facility)
+		var recipes: Array[StringName] = []
+		for recipe_id in Armory.list_recipes(facility, 1):
+			if Armory.get_recipe(recipe_id).facility_level <= level:
+				recipes.append(recipe_id)
+		if recipes.is_empty():
+			continue
+		var made := {}
+		for batch in maxi(roundi(float(entry[1]) * WorkRules.CRAFT_BATCHES_PER_DAY), 1):
+			recipes.sort_custom(func(a: StringName, b: StringName) -> bool:
+				return _stock(Armory.get_recipe(a).output_id, produced, consumed) \
+					< _stock(Armory.get_recipe(b).output_id, produced, consumed))
+			var done := false
+			for recipe_id in recipes:
+				var recipe := Armory.get_recipe(recipe_id)
+				var stock := {}
+				for res: StringName in recipe.inputs:
+					stock[res] = floori(_stock(res, produced, consumed))
+				var result := Armory.craft_by_worker(recipe_id, 1, stock)
+				if int(result.get("count", 0)) <= 0:
+					continue
+				for res in result["produced"]:
+					produced[res] = produced.get(res, 0.0) + result["produced"][res]
+					made[res] = made.get(res, 0) + result["produced"][res]
+				for res in result["consumed"]:
+					consumed[res] = consumed.get(res, 0.0) + result["consumed"][res]
+				done = true
+				break
+			if not done:
+				break  # no inputs left for any recipe
+		if work.has(id):
+			work[id]["output"] = made
+
+
+## Amount available right now during the settlement: storage + produced today − consumed today.
+func _stock(res: StringName, produced: Dictionary, consumed: Dictionary) -> float:
+	return Economy.get_amount(res) + float(produced.get(res, 0.0)) - float(consumed.get(res, 0.0))
+
+
+func _oldest_site() -> StringName:
+	for uid: StringName in buildings:  # insertion order = placement order
+		if not buildings[uid]["completed"]:
+			return uid
+	return &""
 
 
 ## Scales down outputs of jobs whose inputs (목공: 나무) are short. Simple global ratio per input.
@@ -889,6 +1012,7 @@ func _damage_buildings(count: Vector2i, damage: Dictionary) -> void:
 		buildings[uid]["damaged"] = true
 		damage["damaged"].append(uid)
 		EventBus.building_damaged.emit(uid)
+		buildings_changed.emit()
 
 
 ## Rolls injury / serious injury / death for each id. No permadeath (보호 모드) → serious injury.
@@ -911,6 +1035,28 @@ func _hurt(ids: Array, injury: float, serious: float, death: float, casualties: 
 			residents[id]["health"] = Enums.HealthState.INJURED
 			residents[id]["recover_days"] = RaidRules.SERIOUS_INJURY_DAYS if kind == &"serious" else RaidRules.INJURY_DAYS
 			unassign_job(id)
+
+
+func _on_flow_state_changed(state: Enums.FlowState) -> void:
+	if state == Enums.FlowState.BASE_STAY:
+		# Deferred: SceneRouter is still inside its own transition when this signal fires.
+		_roll_stay_day_raid.call_deferred()
+
+
+## Stay day raid (10 "발생 규칙": 낮, 기지에 머무는 중, 위협도 70 이상 20%), issue #45.
+## No direct defense yet (C-17), so the player-present automatic judgment (+20%) decides it.
+## TODO(C-21): day raids during a sortie (60 s warning, emergency return, B-22).
+func _roll_stay_day_raid() -> void:
+	if SceneRouter.state() != Enums.FlowState.BASE_STAY:
+		return
+	var raid := roll_raid(Enums.RaidTime.DAY)
+	if not raid["occurs"]:
+		return
+	if not SceneRouter.start_day_raid(raid):
+		return
+	start_raid(raid)
+	resolve_raid(raid, Enums.RaidMode.PLAYED)
+	SceneRouter.end_day_raid()
 
 
 ## TODO(C-20): funeral, grief, memorial, guardian succession.
@@ -960,6 +1106,7 @@ func _new_resident_id() -> StringName:
 
 func _reset() -> void:
 	residents = {}
+	cleared_zones = {}
 	beds = {}
 	var start: Array[StringName] = []
 	for i in START_BED_COUNT:
@@ -997,6 +1144,7 @@ func save_data() -> Dictionary:
 		"next_resident_num": _next_resident_num,
 		"next_building_num": _next_building_num,
 		"last_raid_day": last_raid_day,
+		"cleared_zones": cleared_zones,
 		"threat": threat,
 		"tier": tier,
 	}
@@ -1031,9 +1179,13 @@ func load_data(data: Dictionary) -> void:
 		power_priority_override[StringName(uid)] = int(saved_prio[uid])
 	_next_building_num = maxi(int(data.get("next_building_num", 1)), 1)
 	last_raid_day = int(data.get("last_raid_day", 0))
+	cleared_zones = {}
+	for zone_id in data.get("cleared_zones", {}):
+		cleared_zones[StringName(zone_id)] = true
 	threat = int(data.get("threat", 0))
 	tier = int(data.get("tier", Enums.BaseTier.CAMP)) as Enums.BaseTier
 	_refresh_effects()
+	buildings_changed.emit()
 
 
 # --- Debug console (debug builds only) -----------------------------------------
@@ -1045,6 +1197,12 @@ func _register_debug_commands() -> void:
 		"job <resident_id> <job_id> [building_uid] - 작업 배정 (job list: 직업 목록)")
 	DebugConsole.register(&"settle", _cmd_settle,
 		"settle - 하루 정산을 돌리고 Economy에 반영 (A-05 전 테스트용)")
+	DebugConsole.register(&"zone", func(args: PackedStringArray) -> String:
+		if args.size() >= 2 and args[0] == "clear":
+			clear_zone(StringName(args[1]))
+			return "개간 완료로 표시: %s" % args[1]
+		return "zone clear <zone_id> - 구역을 개간된 것으로 (C-10 전 테스트용). 개간됨: %s" % [cleared_zones.keys()],
+		"zone clear <zone_id> - 구역 개간 완료로 표시")
 	DebugConsole.register(&"raid", _cmd_raid,
 		"raid now [day|night] | raid threat <0~100> | raid info - 습격 강제·위협도 설정·방어력/예상")
 	DebugConsole.register(&"build", _cmd_build,

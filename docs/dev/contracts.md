@@ -23,6 +23,7 @@
 | `UI` | `ui/ui.gd` | D | 화면 열고 닫기, HUD |
 | `SceneRouter` | `core/scene_router.gd` | A | 기지↔필드 씬 전환, 하루 흐름 진행 |
 | `DebugConsole` | `core/debug/debug_console.gd` | A | 개발용 치트 콘솔(백틱 키). 디버그 빌드에서만 동작 |
+| `Progression` | `systems/progression.gd` | A | 플레이어 레벨·경험치·특기, 클래스 숙련 저장 |
 | `ResidentPool` | `systems/resident_pool.gd` | A | 손으로 쓴 생존자 풀(`data/resident_pool/`), 검수된 프로필만 꺼냄 |
 
 `_mcp_game_helper`는 Godot AI 플러그인 것이라 건드리지 않는다.
@@ -40,6 +41,7 @@
 | `notification_posted` | 누구나 | D |
 | `radio_message`, `journal_entry_added` | A | D |
 | `settings_changed`, `game_saved`, `game_loaded` | A | 전부 |
+| `xp_gained`, `level_up`, `perk_chosen`, `mastery_level_up` | A | B·D |
 
 ## 공개 함수 (다른 레인이 호출해도 되는 것)
 
@@ -53,6 +55,11 @@
   `remove_item(uid)`, `get_item(uid)`(읽기 전용), `get_def(def_id)`, `wear(uid, amount)`(B: 내구도), `set_lost(uid, lost)`(B: 쓰러짐·회수).
   owner_id는 `Armory.PLAYER_ID` 또는 주민 id. 무기고 보관은 `STORAGE_ID`, 유실물은 `LOST_ID`.
   **`get_item_stats().damage`·`defense`는 등급·강화·부가 옵션·내구도까지 반영된 최종값**이다. B의 피해 공식에서 `(1+0.06U)`를 다시 곱하지 않는다.
+  A-09: `preview_upgrade(uid, ctx)`(D-12 강화 화면), `upgrade(uid, ctx)`, `preview_transfer(from, to, ctx)`, `transfer_upgrade(from, to, ctx)`,
+  `preview_repair(uid, ctx)`, `repair(uid, ctx)`, `set_auto_repair(on)`, `run_auto_repair(facility, scrap_budget, ctx)`(저녁 정산),
+  `list_recipes(facility, by_worker)`, `get_recipe(id)`, `blueprint_flag(recipe_id)`, `preview_craft(recipe_id, ctx)`, `craft(recipe_id, ctx, rng)`,
+  `craft_by_worker(recipe_id, count, stock)`(C 정산용: Economy를 바꾸지 않고 `changes`를 돌려줌). 시설 레벨·담당 주민 손재주는 Armory가 Colony에서 읽는다.
+  막힌 이유는 `reason` StringName. 설계도 플래그는 `blueprint_<output_id>`.
 - **Bag**: 루팅(B-08)용 `try_add(id, n) -> 들어간 양`, `count_of(id)`, `remove_item(id, n) -> bool`(이슈 #6). `resize_for_player()`(출격 준비), `add_resource(id, n) -> 못 넣은 양`, `add_item(uid) -> entry_id`, `take_from_storage(id, n)`,
   `move(entry_id, pos, rotated, area)`, `remove(entry_id, amount)`, `consume(id, n)`, `count(id)`, `entries(area)`, `entry_at(cell, area)`,
   `can_place(size, pos, rotated, area)`, `is_cell(cell, area)`, `unload_to_base()`(탈출: 자원→Economy, 장비→무기고),
@@ -71,9 +78,9 @@
   - D(화면): `start_new_game(slot, difficulty)`, `load_game(slot)`, `load_suspended()`, `quit_to_title()`, `open_sortie_prep()`,
     `cancel_sortie_prep()`, `go_to_field(loadout)`, `stay_at_base()`, `end_stay()`, `finish_result()`, `confirm_evening()`, `finish_night()`.
   - C(기지): `start_day_raid(raid)`, `end_day_raid()`, `start_night_event(event_id, participants)`, `end_night_event()`.
-  - B(필드)는 함수를 부르지 않고 신호만 보낸다: `extraction_completed`·`player_downed`(쓰러짐 처리—가방 비우기·유실물—를 끝낸 뒤),
-    `rescue_completed`, `companion_stranded`, `emergency_return_requested`. 라우터가 이것으로 `sortie_ended` 결과를 만든다:
-    `{"extracted", "region_id", "loot": Bag.unload_to_base() 결과, "rescued", "stranded", "xp"}`.
+  - B(필드)는 라우터 함수를 부르지 않는다. 탈출·쓰러짐 결과를 `FieldState.last_sortie_result()`에 채우고(이슈 #27)
+    `extraction_completed`를 보낸다. `player_downed`는 라우터가 그 프레임 끝에 처리하므로 B의 쓰러짐 처리(가방·유실물·결과)가 먼저 끝난다.
+    `rescue_completed`, `companion_stranded`, `emergency_return_requested`도 듣는다. 결과 형식은 아래 "출격 결과".
   - 허용되지 않은 전환은 거부(false + 오류). 디버그·테스트용 `advance()`가 기본 경로로 한 단계 진행.
   - main.tscn의 `World` 아래에 기지/필드 씬을 바꿔 넣는다. 씬 파일이 아직 없으면 비워 둔다.
 - **Colony**: `get_resident(id)`, `active_resident_ids()`, `base_noise()`, `threat`, `tier`,
@@ -86,6 +93,13 @@
 - **DebugConsole**: `register(name, callable, help)`, `execute(line)`, `is_open()`, `godmode`(B가 읽음).
   각 레인은 자기 스크립트에서 `register`로 명령을 추가한다(콘솔 파일은 고치지 않음). 같은 이름으로 다시 등록하면 교체된다.
   `raid`, `resident`는 C가, `give`는 A-07이 교체할 자리표시 명령이다. 출시 빌드에서는 등록·실행이 모두 무시된다.
+- **Progression**: `level`, `xp`, `xp_needed()`, `xp_to_next(level)`, `max_hp()`(레벨 기본 체력. 장비 보너스 `Armory.get_owner_summary().max_hp`는 B가 더함),
+  `award(action, count)`(A-13: `&"personal_request"` 등 `Progression.XP_TABLE`의 키), `add_xp(amount, reason)`,
+  `pending_perks()`, `perk_choices()`, `choose_perk(id)`(D: 특기 선택 화면), `perk_stacks(id)`, `perk_bonus(stat)`
+  (B·Bag이 읽음: `bag_cells`, `stamina`, `medkit_pct`, `escort_speed_pct`, `lockpick_time_pct`. 정의는 `Progression.PERKS`),
+  `add_mastery(combat_class, xp) -> 새 숙련`(B: 숙련 경험치 계산 후 호출, 보조무기 50%도 B가 적용), `mastery_level(combat_class)`(1~10), `mastery_xp(combat_class)`.
+  처치 경험치는 `monster_killed`의 monster_id로 `data/monsters/<id>.tres`의 `tier`를, 탈출 경험치는 `data/regions/<id>.tres`의 `danger`를 읽는다(없으면 일반·위험도 1).
+  구조·탈출 경험치는 SceneRouter가 `finish_sortie()`로 주고, `sortie_ended` 결과의 `xp`는 그 출격에서 얻은 전부다.
 - **ResidentPool**: `draw(filter) -> profile`(검수 완료·미사용 중 무작위, 없으면 `{}`), `get_profile(id)`(사용 여부 무관, 이야기에 고정된 구조자),
   `available_ids(filter)`, `reviewed_ids()`, `mark_used(id)`, `is_used(id)`. 프로필은 `Colony.add_resident(profile)`에 그대로 넣는 형식이고,
   주민이 들어오면(`resident_joined`, 주민 id = 풀 id) 자동으로 사용 표시된다. filter 키: `demo`, `age_stage`, `access_need`, `former_job`,
@@ -100,6 +114,29 @@
 - `Enums.FlowState`는 기획 01 "게임 상태" 표의 세부 상태다(출격 준비, 결과, 낮 습격, 밤 습격·이벤트 등).
   UI가 화면을 고를 때 쓴다. 바꾸는 쪽은 `SceneRouter`뿐이고, 각 FlowState가 어느 Phase에 속하는지는
   `GameState.PHASE_OF_FLOW`에 있다. 바뀔 때 `flow_state_changed`가 먼저, Phase가 바뀌면 `phase_changed`가 뒤따른다.
+
+## 출격 결과 (`sortie_ended`, B ↔ A-05, 이슈 #27)
+
+B가 `FieldState.last_sortie_result()`로 내놓는 Dictionary가 바탕이고, 라우터가 `xp`, `rescued_profiles`, `down`을 더하고
+`loot`를 합쳐(B가 탈출 순간 `Bag.unload_to_base()`를 부르고, 라우터가 남은 것—쓰러진 뒤 안전 주머니—을 한 번 더 비움) 보낸다.
+B의 결과가 없으면(디버그 진행) 라우터가 기본값으로 채운다. B는 출격 시작 때 이전 결과를 지워야 한다.
+
+```
+{
+  "extracted": bool, "downed": bool,
+  "region_id": StringName, "point_id": StringName,     # 탈출 못 하면 &""
+  "loot": {"resources": {id: n}, "discarded": {id: n}, "items": [uid]},
+  "kills": int, "kills_by_monster": {StringName: int},
+  "rescued": Array[StringName],                        # 데리고 나온 구조자 id
+  "rescued_profiles": Array[Dictionary],               # rescue_completed로 받은 프로필 (라우터)
+  "companions": Array[StringName], "stranded": Array[StringName],
+  "duration_sec": float,
+  "down": Dictionary,                                  # FieldState.down_result(), 쓰러지지 않으면 {} (라우터)
+  "xp": int                                            # Progression.finish_sortie (라우터)
+}
+```
+
+loadout의 `"seed": int`는 라우터가 없으면 만들어 넣고 저장한다(활성 탈출 지점이 불러오기 후에도 같게).
 
 ## 하루 정산과 습격 (C ↔ A-05)
 
@@ -151,6 +188,7 @@
   탈출 직후(결과 화면). 새 게임은 `SaveSystem.reset_all()`로 모든 provider를 `load_data({})`.
 - 필드 중 종료는 `save_suspend()`. `load_suspend()`는 불러온 뒤 파일을 지운다.
 - 저장 형식이 호환되지 않게 바뀌면 A가 `SaveSystem.SAVE_VERSION`을 올린다. 버전이 다른 파일은 불러오지 않는다.
+- `progression`(A) provider: 레벨·경험치·특기·클래스 숙련.
 - `resident_pool`(A): 생존자 풀에서 이미 구조한 항목 id 목록(`{"used": [...]}`).
 
 ## 아이템 id 규칙

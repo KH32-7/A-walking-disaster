@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="RescueSpawn" format=3]
+
+[ext_resource type="Script" path="res://field/defs/rescue_spawn.gd" id="1_spawn"]
+
+[resource]
+script = ExtResource("1_spawn")
+template_id = &"demo_carpenter"
+rescue_type = 1
+spawn_tags = Array[StringName]([&"flooded_edge"])
+required_item = &"first_aid_kit"
+move_type = 3
