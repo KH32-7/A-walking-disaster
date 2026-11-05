@@ -32,6 +32,10 @@ func run() -> bool:
 	var crowd: ResidentCrowd = base.residents
 	var grid: BaseGrid = base.grid
 	var ok := _check(crowd.agent_count() == 3, "주민 3명 → 캐릭터 3")
+	if ResourceLoader.exists(ResidentAgent.CHARACTER_SCENE):
+		var model := crowd.agent(worker).get_node("Model").get_child(0)
+		ok = _check(model is CharacterLook, "D-09 캐릭터(CharacterLook)로 그림") and ok
+		ok = _check(ResidentAgent.default_preset({"age_stage": Enums.AgeStage.CHILD}) == &"child_yellow", "아이는 아이 프리셋") and ok
 
 	var yard_center := grid.footprint_center(&"front_yard", Vector2i(0, 0), Vector2i(2, 2))
 	var a := crowd.agent(worker)
