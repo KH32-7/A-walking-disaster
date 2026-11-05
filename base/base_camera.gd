@@ -8,7 +8,7 @@ extends Camera3D
 const GROUP := &"base_camera"
 const PITCH_DEG := 45.0
 const FOV_DEG := 45.0
-const ZOOM_DISTANCES := [18.0, 28.0, 40.0]
+const ZOOM_DISTANCES := [18.0, 28.0, 40.0, 55.0]  # 55: one step further out (user feedback 2026-11-06)
 const START_ZOOM := 1
 const PAN_SPEED := 0.9  # × distance, m/s
 const SHARPNESS := 10.0
