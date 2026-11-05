@@ -89,9 +89,12 @@ func _ready() -> void:
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
-	var sky := Skyline.new()
-	sky.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(sky)
+	if TitleBackdrop.will_show():
+		add_child(TitleBackdrop.new())  # live map behind the menu, fades in once loaded
+	else:
+		var sky := Skyline.new()
+		sky.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		add_child(sky)
 
 	var left := VBoxContainer.new()
 	left.position = Vector2(140, 150)
