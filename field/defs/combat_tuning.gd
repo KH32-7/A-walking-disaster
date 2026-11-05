@@ -42,7 +42,8 @@ extends Resource
 @export var perfect_block_stun_sec: float = 1.0
 
 @export_group("Shooting")
-@export var aim_spread_mult: float = 0.5
+## User decision 2026-11-06: aimed shots go exactly where you aim (no spread, no bloom).
+@export var aim_spread_mult: float = 0.0
 @export var moving_spread_mult: float = 1.5
 ## Flat speed above this counts as moving for spread.
 @export var moving_speed_threshold: float = 0.5

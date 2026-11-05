@@ -23,6 +23,9 @@ const FOV_DEG := 60.0
 const FOCUS_HEIGHT := 1.0 ## look at the player's chest, not the feet
 const FOLLOW_SHARPNESS := 10.0 ## exponential follow, higher is tighter
 const ZOOM_SHARPNESS := 8.0
+## Aiming (right click) pulls the camera in a little for focus: distance x this while aiming.
+const AIM_ZOOM_MULT := 0.82
+const AIM_ZOOM_SHARPNESS := 6.0
 ## Tilt-shift depth of field, as ratios of the current zoom distance.
 const DOF_FAR_START := 1.2 ## far blur starts at distance x 1.2
 const DOF_FAR_TRANSITION := 0.5 ## full far blur at distance x 1.7 (top screen edge)
@@ -52,6 +55,8 @@ var _yaw_deg := START_YAW_DEG
 var _yaw_target_deg := START_YAW_DEG
 var _zoom := START_ZOOM
 var _distance: float = ZOOM_DISTANCES[START_ZOOM]
+## 0 = not aiming, 1 = fully aim-zoomed (eased).
+var _aim_zoom := 0.0
 var _focus := Vector3.ZERO
 var _use_stick := false
 var _tween: Tween
@@ -80,7 +85,9 @@ func _physics_process(delta: float) -> void:
 			return
 		snap()
 	_focus = _focus.lerp(_target_focus(), 1.0 - exp(-FOLLOW_SHARPNESS * delta))
-	_distance = lerpf(_distance, ZOOM_DISTANCES[_zoom], 1.0 - exp(-ZOOM_SHARPNESS * delta))
+	_aim_zoom = lerpf(_aim_zoom, 1.0 if _gun_aiming() else 0.0, 1.0 - exp(-AIM_ZOOM_SHARPNESS * delta))
+	var want: float = ZOOM_DISTANCES[_zoom] * lerpf(1.0, AIM_ZOOM_MULT, _aim_zoom)
+	_distance = lerpf(_distance, want, 1.0 - exp(-ZOOM_SHARPNESS * delta))
 	_kick = _kick.lerp(Vector3.ZERO, 1.0 - exp(-CombatFeel.KICK_RETURN_SHARPNESS * delta))
 	_trauma = maxf(_trauma - CombatFeel.SHAKE_DECAY * delta, 0.0)
 	_shake_time += delta
@@ -192,6 +199,15 @@ static func assist_direction(origin: Vector3, dir: Vector3, targets: Array[Vecto
 			best_angle = angle
 			best = to.normalized()
 	return best
+
+
+## Right click with a gun (aim). With a melee weapon right click is block: no aim zoom.
+func _gun_aiming() -> bool:
+	var player := target as Player
+	if player == null or not player.is_aiming:
+		return false
+	var weapons := player.get_node_or_null(^"Weapons") as WeaponHolder
+	return weapons != null and WeaponHolder.is_gun(weapons.current_stats())
 
 
 func _target_focus() -> Vector3:
