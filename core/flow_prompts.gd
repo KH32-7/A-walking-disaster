@@ -36,16 +36,32 @@ func _ready() -> void:
 		_root.theme = UI.theme
 	UI.theme_changed.connect(func(t: Theme) -> void: _root.theme = t)
 	EventBus.flow_state_changed.connect(_on_flow_state_changed)
+	UI.screen_opened.connect(_on_screen_changed)
+	UI.screen_closed.connect(_on_screen_changed)
 	_on_flow_state_changed(GameState.flow_state)
 
 
 func _on_flow_state_changed(state: Enums.FlowState) -> void:
 	_close_pause()
-	_clear()
 	var screen: StringName = SCREEN_FOR_STATE.get(state, &"")
 	if screen != &"" and UI.has_screen(screen):
+		_clear()
 		if not UI.is_open(screen):
 			UI.open(screen)
+		return
+	_refresh_prompt()
+
+
+func _on_screen_changed(_id: StringName) -> void:
+	_refresh_prompt()
+
+
+## The prompts sit on layer 25, above every UI screen, so they wait while one is open
+## (night event, welcome, raid result, build ...) and come back when it closes.
+func _refresh_prompt() -> void:
+	_clear()
+	var state := GameState.flow_state
+	if UI.has_screen(SCREEN_FOR_STATE.get(state, &"")) or not UI.stack_ids().is_empty():
 		return
 	match state:
 		Enums.FlowState.TITLE:

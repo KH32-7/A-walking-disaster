@@ -363,7 +363,8 @@ func _merge_loot(a: Dictionary, b: Dictionary) -> Dictionary:
 
 func save_data() -> Dictionary:
 	return {"stayed_today": stayed_today, "loadout": _loadout, "rescued": _rescued, "stranded": _stranded,
-		"emergency_return": _emergency_return, "day_raid": _day_raid, "day_raid_from_field": _day_raid_from_field}
+		"emergency_return": _emergency_return, "day_raid": _day_raid, "day_raid_from_field": _day_raid_from_field,
+		"last_result": last_sortie_result}  # continuing on the result screen shows that sortie
 
 
 func load_data(data: Dictionary) -> void:
@@ -374,6 +375,7 @@ func load_data(data: Dictionary) -> void:
 	_emergency_return = bool(data.get("emergency_return", false))
 	_day_raid = data.get("day_raid", {})
 	_day_raid_from_field = bool(data.get("day_raid_from_field", false))
+	last_sortie_result = data.get("last_result", {})
 
 
 # --- Internals ---

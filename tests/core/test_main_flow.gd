@@ -70,6 +70,10 @@ func _sortie_day() -> bool:
 	ok = ok and _expect(UI.is_open(&"evening"), "evening screen not open")
 	ok = ok and _expect(SceneRouter.confirm_evening(), "confirm_evening refused")
 	await _frames(2)
+	# The 귀환 card from RESULT is still up after these few frames; the prompt waits for it.
+	ok = ok and _expect(not UI.is_open(&"loading") or _prompt_count() == 0, "night prompt drawn over an open screen")
+	UI.close(&"loading")
+	await _frames(1)
 	ok = ok and _expect(GameState.flow_state == Enums.FlowState.NIGHT and _prompt_count() > 0, "night prompt not shown")
 	var day := GameState.day
 	ok = ok and _expect(SceneRouter.finish_night(), "finish_night refused")

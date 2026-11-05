@@ -6,7 +6,7 @@ func run() -> bool:
 	var ok := _check_theme()
 	ok = _check_badges() and ok
 	ok = await _check_stack() and ok
-	ok = _check_subtitle() and ok
+	ok = await _check_subtitle() and ok
 	return ok
 
 
@@ -92,4 +92,8 @@ func _check_subtitle() -> bool:
 	s.show_line("", "긴급", 5)
 	ok = _expect(s.current_text() == "긴급", "higher priority interrupts") and ok
 	s.clear()
+	s.show_line("", "짧은 줄", 0)
+	s._process(SubtitleBox.MIN_SEC + 0.1)
+	await get_tree().process_frame  # CinematicOverlay runs here too
+	ok = _expect(not s.visible, "subtitle hides when its time is up") and ok
 	return ok

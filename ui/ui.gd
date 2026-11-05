@@ -224,7 +224,8 @@ func _place_subtitle() -> void:
 	subtitle.grow_horizontal = Control.GROW_DIRECTION_BEGIN if menu else Control.GROW_DIRECTION_BOTH
 	subtitle.offset_left = -52.0 if menu else 0.0
 	subtitle.offset_right = -52.0 if menu else 0.0
-	subtitle.offset_bottom = -20 if menu else -200  # world: above the bottom-centre vitals
+	# Menu: body ends 90 px above the bottom (MenuScreen), a 2-line subtitle is 82 px tall.
+	subtitle.offset_bottom = -6 if menu else -200  # world: above the bottom-centre vitals
 	subtitle.offset_top = subtitle.offset_bottom
 	# Toasts sit bottom right over the world; with a menu open that corner holds its buttons
 	# (출격, 맞이하기 …), so they move up under the header.
