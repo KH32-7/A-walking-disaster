@@ -56,6 +56,9 @@ const SHOT_HOLD_SEC := 0.3
 const MUZZLE_BONE := "mixamorig_RightHand"
 const MUZZLE_AHEAD := 0.3
 
+## A gun weapon shows its model (PlayerModelGuns) in the right hand: it follows MUZZLE_BONE every
+## time the skeleton is posed, with the barrel along the body's facing.
+
 var _model: Node3D
 var _tree: AnimationTree
 var _player: Player
@@ -69,6 +72,11 @@ var _model_yaw := 0.0  # world yaw of the model, eased toward the player's
 var _was_dodging := false
 var _shot_left := 0.0
 var _hand := -2  # bone index of MUZZLE_BONE, -2 = not looked up yet, -1 = missing
+var _skeleton: Skeleton3D
+var _gun: Node3D  # the held gun model, null when the active weapon isn't a gun
+var _gun_id: StringName
+var _gun_spec := {}
+var _gun_units := 1.0  # the gun model's length along +X in its own units
 
 
 func _ready() -> void:
@@ -86,6 +94,7 @@ func _ready() -> void:
 	if fb != null:
 		fb.visible = false
 	_setup_animation()
+	_setup_gun()
 
 
 func _setup_animation() -> void:
@@ -212,10 +221,13 @@ func _clip_length(clip: String) -> float:
 	return ap.get_animation(LIB + "/" + clip).length
 
 
-## World point the shot is drawn from (hand + MUZZLE_AHEAD along `forward`), or null without a model.
+## World point the shot is drawn from: the held gun's barrel tip, else the hand + MUZZLE_AHEAD
+## along `forward`, or null without a model.
 func muzzle_point(forward: Vector3) -> Variant:
 	if _model == null:
 		return null
+	if _gun != null and _gun.visible:
+		return _gun.global_transform * (_gun_spec["muzzle"] as Vector3)
 	var skeleton := _model.get_node_or_null(SKELETON) as Skeleton3D
 	if skeleton == null:
 		return null
@@ -231,6 +243,69 @@ func muzzle_point(forward: Vector3) -> Variant:
 ## (user decision 2026-11-06).
 func _holding_gun() -> bool:
 	return _weapons != null and WeaponHolder.is_gun(_weapons.current_stats())
+
+
+# --- held gun -----------------------------------------------------------------------------------
+
+func _setup_gun() -> void:
+	_skeleton = _model.get_node_or_null(SKELETON) as Skeleton3D
+	if _skeleton == null or _player == null:
+		return
+	_skeleton.skeleton_updated.connect(_place_gun)
+	var weapons := _player.get_node_or_null(^"Weapons") as WeaponHolder
+	if weapons != null:
+		weapons.weapon_changed.connect(func(_slot: Enums.EquipSlot, uid: StringName) -> void: _hold(uid))
+		_hold.call_deferred(weapons.current_uid())
+
+
+## Shows the model for the item `uid` in the hand, or nothing when it isn't a gun.
+func _hold(uid: StringName) -> void:
+	var stats: Dictionary = Armory.get_item_stats(uid) if uid != &"" else {}
+	var id := &""
+	if WeaponHolder.is_gun(stats):
+		var item := Armory.get_item(uid)
+		id = PlayerModelGuns.id_for(item.def_id if item != null else &"")
+	if id == _gun_id and (_gun != null) == (id != &""):
+		return
+	if _gun != null:
+		_gun.queue_free()
+		_gun = null
+	_gun_id = id
+	if id == &"":
+		return
+	var scene := PlayerModelGuns.scene_of(id)
+	if scene == null:
+		return
+	_gun_spec = PlayerModelGuns.GUNS[id]
+	_gun_units = PlayerModelGuns.length_units(id)
+	_gun = scene.instantiate() as Node3D
+	_gun.name = &"HeldGun"
+	_gun.top_level = true  # placed in world space by _place_gun, so the hand's scale doesn't stack
+	add_child(_gun)
+	_place_gun()
+
+
+## Puts the gun's grip in the right hand with the barrel along the body's facing (level), after the
+## animation has posed the skeleton. Hidden while downed.
+func _place_gun() -> void:
+	if _gun == null or _skeleton == null:
+		return
+	_gun.visible = not _player.is_downed
+	if not _gun.visible:
+		return
+	if _hand == -2:
+		_hand = _skeleton.find_bone(MUZZLE_BONE)
+	if _hand < 0:
+		return
+	var hand := _skeleton.global_transform * _skeleton.get_bone_global_pose(_hand).origin
+	# The model is imported facing +Z.
+	var forward := Vector3(_model.global_basis.z.x, 0.0, _model.global_basis.z.z).normalized()
+	if forward.length_squared() < 0.5:
+		return
+	var s: float = float(_gun_spec["length"]) * model_scale / _gun_units
+	var b := Basis(forward, Vector3.UP, forward.cross(Vector3.UP)).scaled(Vector3.ONE * s)
+	var grip := hand + (forward * PlayerModelGuns.HOLD_AHEAD - Vector3.UP * PlayerModelGuns.HOLD_DROP) * model_scale
+	_gun.global_transform = Transform3D(b, grip - b * (_gun_spec["grip"] as Vector3))
 
 
 func _on_attacked(kind: StringName, _combo_step: int) -> void:
