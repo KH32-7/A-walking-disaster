@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="JournalTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/journal_template.gd" id="1_jtpl"]
+
+[resource]
+script = ExtResource("1_jtpl")
+id = &"quiet_day"
+lines = Array[String](["조용한 하루였다.", "별일 없는 하루. 그게 제일 좋다.", "다들 각자 할 일을 했다. 평범한 하루였다.", "특별한 일은 없었다. 저녁 국이 조금 짰다."])
+priority = 1

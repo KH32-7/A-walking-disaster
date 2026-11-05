@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="JournalTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/journal_template.gd" id="1_jtpl"]
+
+[resource]
+script = ExtResource("1_jtpl")
+id = &"epilogue_quiet"
+lines = Array[String](["{name}의 기록은 짧지만, 매일 같은 자리에 있었다.", "{name|이} 있어서 학교의 하루가 굴러갔다."])
+priority = 0

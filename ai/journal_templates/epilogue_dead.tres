@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="JournalTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/journal_template.gd" id="1_jtpl"]
+
+[resource]
+script = ExtResource("1_jtpl")
+id = &"epilogue_dead"
+lines = Array[String](["{name}의 이름은 학교 게시판 맨 위에 적혀 있다.", "{name|을} 기억하는 사람들이 해마다 같은 날 모닥불을 피운다.", "{name|이} 하던 일은 다른 손들이 이어 맡았다."])
+priority = 0

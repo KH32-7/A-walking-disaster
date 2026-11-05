@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="JournalTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/journal_template.gd" id="1_jtpl"]
+
+[resource]
+script = ExtResource("1_jtpl")
+id = &"night_campfire"
+lines = Array[String](["모닥불 앞에 모여 늦게까지 이야기했다.", "모닥불 앞에서 누군가 옛날 노래를 불렀다. 다들 가사를 반쯤 틀렸다.", "모닥불을 피웠다. 오늘은 무서운 이야기가 금지였다."])
+priority = 15

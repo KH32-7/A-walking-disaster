@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="JournalTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/journal_template.gd" id="1_jtpl"]
+
+[resource]
+script = ExtResource("1_jtpl")
+id = &"wedding"
+lines = Array[String](["{name|과} {other|이} 결혼했다. 꽃은 없었지만 다들 오래 박수를 쳤다.", "{name|과} {other}의 결혼식. 비상식량으로 만든 케이크가 생각보다 맛있었다.", "{name|과} {other|이} 가족이 됐다. 오늘은 모두 일을 쉬었다.", "{name|과} {other|이} 서로를 가족이라고 부르기 시작했다."])
+priority = 85

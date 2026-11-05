@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="JournalTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/journal_template.gd" id="1_jtpl"]
+
+[resource]
+script = ExtResource("1_jtpl")
+id = &"died"
+lines = Array[String](["{name|을} 떠나보냈다. 다들 {name|이} 좋아하던 노래를 불렀다.", "{name|이} 우리 곁을 떠났다. 식탁의 {name} 자리는 한동안 비워 두기로 했다.", "{name|과} 작별했다. 운동장 한쪽에 작은 표지를 세웠다.", "오늘 {name|을} 잃었다. {name|이} 하던 일은 다 같이 나눠 맡았다."])
+priority = 100
