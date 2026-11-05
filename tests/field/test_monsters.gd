@@ -40,6 +40,8 @@ func run() -> bool:
 		_test_alarm,
 		_test_split,
 		_test_visual,
+		_test_size,
+		_test_outline,
 	]
 	for test in tests:
 		test.call()
@@ -349,6 +351,42 @@ func _test_visual() -> void:
 	var plain := _spawn(_def(), Vector3(5, 0, 0))
 	_check(not plain.has_node(^"Visual") and (plain.get_node(^"Body") as Node3D).visible,
 			"a monster id with no art keeps its grey box")
+
+
+## User feedback 2026-11-06: every non-boss monster is MonsterRules.SIZE_MULT bigger, reach grows
+## with the body, split children are not scaled twice.
+func _test_size() -> void:
+	var vine := _spawn(VINE, Vector3.ZERO)
+	_check(is_equal_approx(vine.scale.x, MonsterRules.SIZE_MULT), "normal monster is SIZE_MULT bigger")
+	_check(is_equal_approx(vine.attack_reach(), VINE.attack_range + 0.4 * (MonsterRules.SIZE_MULT - 1.0)),
+			"attack reach grows with the body radius")
+	var boss_def := _def()
+	boss_def.tier = Enums.MonsterTier.BOSS
+	var boss := _spawn(boss_def, Vector3(5, 0, 0))
+	_check(is_equal_approx(boss.scale.x, 1.0) and is_equal_approx(boss.attack_reach(), boss_def.attack_range),
+			"bosses keep their size")
+	var blob := _spawn(BLOB, Vector3(10, 0, 0))
+	var child: Monster = (blob._behaviors[0] as MonsterBehavior).make_children()[0]
+	_root.add_child(child)
+	child.set_physics_process(false)
+	_check(is_equal_approx(child.scale.x, MonsterRules.SIZE_MULT * MonsterRules.SPLIT_SIZE_RATIO),
+			"split child is not scaled twice")
+
+
+## User feedback 2026-11-06: red outline on every monster, gone when it dies.
+func _test_outline() -> void:
+	for def: MonsterDef in [VINE, _def()]:
+		var m := _spawn(def, Vector3.ZERO)
+		var looks := m.outline_meshes()
+		_check(not looks.is_empty(), "%s has meshes to outline" % def.id)
+		var red := true
+		for look in looks:
+			var mat := look.material_overlay as BaseMaterial3D
+			red = red and mat != null and mat.stencil_mode == BaseMaterial3D.STENCIL_MODE_OUTLINE 					and mat.stencil_color == Monster.OUTLINE_COLOR
+		_check(red, "%s has the red outline" % def.id)
+		m.take_damage(1000000.0)
+		_check(looks.all(func(g: GeometryInstance3D) -> bool: return g.material_overlay == null),
+				"%s outline is off once dead" % def.id)
 
 
 # --- Helpers --------------------------------------------------------------

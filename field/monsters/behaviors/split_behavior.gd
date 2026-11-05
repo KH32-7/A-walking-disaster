@@ -37,6 +37,7 @@ func make_children() -> Array[Monster]:
 		child.raid_goal = monster.raid_goal  # B-23: children of a raider keep raiding
 		child.transform = monster.transform
 		child.scale = monster.scale * MonsterRules.SPLIT_SIZE_RATIO
+		child.size_applied = true  # the parent's scale already holds MonsterRules.SIZE_MULT
 		var angle := TAU * i / MonsterRules.SPLIT_COUNT
 		child.position += Vector3(cos(angle), 0.0, sin(angle)) * MonsterRules.SPLIT_SPREAD
 		if has_target:

@@ -46,8 +46,6 @@ const RETREAT_LABEL := "물러남"
 const REVIVE_PROMPT := "%s 일으키기"
 const REVIVE_HOLD_LABEL := "일으키는 중"
 const WORLD_MASK := 1 << (Enums.LAYER_WORLD - 1)
-## Same as the player's shots: world + monsters, never the player (2) or allies (3).
-const SHOT_MASK := WeaponHolder.SHOT_MASK
 const MAX_COVER_PASSES := WeaponHolder.MAX_COVER_PASSES
 ## Shots aim at this height on the target (low enough for short monsters).
 const AIM_HEIGHT := 0.5
@@ -541,25 +539,32 @@ func _on_player_hit(hit: Node, _amount: float, _info: Dictionary) -> void:
 
 
 func _shoot_ray(origin: Vector3, direction: Vector3, max_range: float, amount: float, info: Dictionary) -> Node:
+	# Same line as the player's shots (WeaponHolder): walls by ray, monsters at any height.
 	var space := get_world_3d().direct_space_state
-	var to := origin + direction * max_range
+	var dir := Vector3(direction.x, 0.0, direction.z).normalized()
 	var exclude: Array[RID] = [get_rid()]
-	for i in MAX_COVER_PASSES + 1:
-		var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(origin, to, SHOT_MASK, exclude))
-		if hit.is_empty():
-			break
-		if _is_low_cover(hit["collider"]):
-			exclude.append(hit["rid"])
-			continue
-		Fx.spawn(&"bullet_tracer", origin, {"to": hit["position"]})
+	var wall := WeaponHolder.wall_on_line(space, origin, dir, max_range, exclude)
+	var end: Vector3 = wall.get("position", origin + dir * max_range)
+	var hits := WeaponHolder.monsters_on_line(space, origin, dir, origin.distance_to(end), 0.0,
+			combat.shot_hit_below, combat.shot_hit_above, exclude)
+	for hit: Dictionary in hits:
 		var victim := _damage_target(hit["collider"])
 		if victim != null:
-			var hit_info := info.duplicate()
-			hit_info["position"] = hit["position"]
-			_deal(victim, amount, hit_info)
-		return victim
-	Fx.spawn(&"bullet_tracer", origin, {"to": to})
+			return _shot_hit(origin, hit["position"], victim, amount, info)
+	if wall.has("collider"):
+		return _shot_hit(origin, end, _damage_target(wall["collider"]), amount, info)
+	Fx.spawn(&"bullet_tracer", origin, {"to": end})
 	return null
+
+
+## Tracer to `point`, damage to `victim` (null: the shot only stops there).
+func _shot_hit(origin: Vector3, point: Vector3, victim: Node, amount: float, info: Dictionary) -> Node:
+	Fx.spawn(&"bullet_tracer", origin, {"to": point})
+	if victim != null:
+		var hit_info := info.duplicate()
+		hit_info["position"] = point
+		_deal(victim, amount, hit_info)
+	return victim
 
 
 func _deal(victim: Node, amount: float, info: Dictionary) -> void:

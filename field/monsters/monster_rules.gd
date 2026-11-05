@@ -36,6 +36,11 @@ const RETURN_DISTANCE := 40.0
 ## Fraction of max hp healed per second while returning.
 const RETURN_REGEN_RATIO := 0.05
 
+# --- Size (user feedback 2026-11-06: monsters read too small next to the player) ---
+## Every non-boss monster's body (model, collision, weak point) x this. Elites stack ELITE_SIZE_MULT
+## on top. Monster.attack_reach() grows with it so the gap to the target stays as designed.
+const SIZE_MULT := 1.3
+
 # --- Movement ---
 const WANDER_SPEED_MULT := 0.4
 const WANDER_PAUSE_MIN_SEC := 1.5
@@ -43,7 +48,7 @@ const WANDER_PAUSE_MAX_SEC := 4.0
 const WANDER_LEG_MAX_SEC := 8.0
 const DEFAULT_WANDER_RADIUS := 20.0
 ## Pack followers wander inside this radius around the leader.
-const PACK_FOLLOW_RADIUS := 3.0
+const PACK_FOLLOW_RADIUS := 3.0 * SIZE_MULT
 const ARRIVE_DISTANCE := 0.6
 const TURN_SPEED_DEG := 360.0
 const LOOK_AROUND_SPEED_DEG := 90.0
@@ -69,7 +74,7 @@ const REGION_MAX_ALIVE := 40
 const NEST_SPAWN_MIN := 1
 const NEST_SPAWN_MAX := 2
 ## Spawned monsters appear inside this radius around the nest.
-const SPAWN_SCATTER_RADIUS := 2.0
+const SPAWN_SCATTER_RADIUS := 2.0 * SIZE_MULT
 
 # --- Roaming packs (RoamingSpawner). Not in the design yet (user request 2026-11-05). ---
 ## Packs scattered over outdoor navmesh when the region loads.

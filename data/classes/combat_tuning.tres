@@ -31,6 +31,9 @@ bloom_recover_deg_per_sec = 6.0
 muzzle_height = 1.0
 cover_damage_mult = 0.5
 cover_near_target_m = 2.0
+shot_hit_below = 1.5
+shot_hit_above = 2.0
+shot_radius_by_assist = Array[float]([0.0, 0.25, 0.4, 0.55])
 infinite_ammo_defs = Array[StringName]([&"pistol"])
 weapon_types = Dictionary[StringName, Dictionary]({
 &"pistol": {
