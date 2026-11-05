@@ -33,6 +33,8 @@ const KitScatter := preload("res://field/buildings/kit_scatter.gd")
 const GroundSplat := preload("res://field/buildings/ground_splat.gdshader")
 ## Greybox stand-ins of the kit dressing. The region scene hides them when the pack meshes load.
 const KIT_GREYBOX_GROUP := &"kit_greybox"
+## Water surfaces (deep and shallow) for Lane D's water shader (region_dressing.gd _is_water).
+const WATER_SURFACE_GROUP := &"water_surface"
 ## Markers inside kit buildings must be this far from walls and furniture.
 const KIT_MARKER_CLEAR := 0.3
 ## B-26 kit dressing: mesh picks and plants use their own seed so the layout seeds keep the map as is.
@@ -46,13 +48,27 @@ const KIT_TERRAIN := {
 	"dirt": "res://assets/environment/nature/pure_nature_redwood/textures/terrain/mud_a.png",
 }
 const KIT_GROUND_LIFT := 0.01
+const ROAD_BRIGHT := 1.5
+const KitGrass := preload("res://field/buildings/kit_grass.gd")
+## Lights on lamp props: piece -> lamp height (m). Warm, no shadows (many of them).
+const LAMP_LIGHTS := {"parking_lot_light_pole_01": 6.4, "military_light_tower_big": 7.0, "mobile_light_tower": 2.3}
+const LAMP_COLOR := Color(1.0, 0.8, 0.55)
+const LAMP_ENERGY := 2.2
+const LAMP_RANGE := 11.0
 ## Splat map: metres per pixel, and blur radius in metres for R road, G vegetation, B dirt.
 const SPLAT_RES := 0.5
 const SPLAT_BLUR := Vector3(1.0, 2.5, 2.5)
 const KIT_CARS := ["car_sedan_01", "car_sedan_02", "car_sedan_03", "car_crossover_01", "car_crossover_02",
 	"car_crossover_04", "car_crossover_05", "car_minivan_01", "police_sedan", "car_sport_01"]
+## Clutter kinds stretched along their greybox piece: kind -> pack piece (length along its local Z).
+const KIT_STRETCH := {"Barricade": "concrete_bump_5m", "LowWall": "concrete_bump_5m",
+	"Branch": "redwood_hollow_log_0", "Bench": "patio_bench_b"}
 ## Clutter kinds drawn with pack meshes; their box takes the mesh size.
 const KIT_CLUTTER := {
+	"Planter": ["bushes_04", "bushes_06", "bushes_08"],
+	"Cart": ["riding_lawn_mower", "wheelbarrow"],
+	"VendingMachine": ["vending_machine_01", "vending_machine_02"],
+	"Bin": ["urn_street_02", "curbside_trash_bin_03"],
 	"Crate": ["barrel_01", "barrel_02", "plastic_barrel_02", "curbside_trash_bin_01", "curbside_trash_bin_03",
 		"tool_cabinet", "pile_garbage_02"],
 	"CratePile": ["pile_garbage_01", "pile_garbage_03", "commercial_dumpster_02"],
@@ -71,8 +87,8 @@ const KIT_PLANTS := {
 		"magnus_1", "magnus_2", "bushes_04", "bushes_06", "bushes_07", "bushes_08", "bushes_02", "bushes_05",
 		"grass_04", "grass_05", "fern_01_1", "fern_02_1", "clovers_2", "fungi_polyp_1", "dead_leaves_2"]],
 	"land": [0.2, ["grass_1", "grass_2", "grass_06", "grass_01", "grass_02", "clovers_1", "clovers_2",
-		"dead_leaves_1", "dead_leaves_2", "branches", "rubble_sparse_1", "thin_fern1", "magnus_1"]],
-	"road": [0.02, ["dead_leaves_1", "dead_leaves_2", "rubble_sparse_2", "rubble_sparse_3", "branches", "grass_06"]],
+		"dead_leaves_1", "dead_leaves_2", "branches", "thin_fern1", "magnus_1"]],
+	"road": [0.02, ["dead_leaves_1", "dead_leaves_2", "branches", "grass_06"]],
 }
 ## Overgrowth bands along every edge (roads, buildings, water banks, vegetation zones) so no edge reads
 ## as a straight line: one piece every EDGE_STEP metres, up to EDGE_REACH metres out.
@@ -108,6 +124,41 @@ const WATER_SHADER := preload("res://art/shaders/water_toon.gdshader")
 ## No pack sidewalks: their straight slabs fought the crumbled splat road edge and broke at the
 ## odd road corners (user feedback 2026-11-06).
 const POLE_STEP := 20.0
+## Filler scenes for dead space: [name, LootSpot kind ("" = none), [[piece ("car" = a random car),
+## x, z (m, before PROP_SCALE), yaw (deg), collide]]].
+const FILLER_KITS := [
+	["Camp", "DRAWER", [["campfire_patio", 0.0, 0.0, 0.0, false], ["adirondack_chair", 1.6, 0.3, 200.0, true],
+		["adirondack_chair", -1.5, 0.6, -20.0, true], ["rolled_sleeping_bag", 0.4, -1.8, 90.0, false],
+		["military_sleeping_bag", -1.2, -1.9, 80.0, false], ["hiking_backpack", 1.9, -1.2, 30.0, false],
+		["cooler_box_water", -2.0, -0.6, 0.0, false], ["firewood_rack", 0.0, 2.2, 90.0, true]]],
+	["Wreck", "TOOLBOX", [["car", 0.0, 0.0, 25.0, true], ["traffic_cone", 3.0, 1.2, 0.0, false],
+		["traffic_cone_big", -2.8, -1.5, 0.0, true], ["pile_garbage_01", 1.8, -2.2, 40.0, true],
+		["backpack", -1.0, 2.0, 0.0, false]]],
+	["Garden", "TOOLBOX", [["backyard_shed_03", 0.0, 0.0, 0.0, true], ["wheelbarrow", 3.2, 1.0, 30.0, true],
+		["lawn_mower_01", 2.8, -1.6, -20.0, true], ["compost_bin", -2.8, 0.6, 0.0, true],
+		["garden_hose", 1.6, 2.6, 0.0, false], ["garden_gnome_01", -1.8, 2.6, 0.0, false]]],
+	["SupplyDrop", "SUPPLY_CRATE", [["hesco_barrier_01", -2.0, -1.2, 0.0, true], ["hesco_barrier_02", -2.0, 0.3, 0.0, true],
+		["military_ammo_crate_large", 0.2, -0.4, 10.0, true], ["military_meal_crate", 1.1, 0.5, -20.0, true],
+		["military_rifle_crate", 0.3, 1.3, 80.0, true], ["military_equipment_case", 1.6, -1.2, 30.0, true],
+		["sandbag_pile_06", -0.4, -2.4, 0.0, true]]],
+	["FallenTrees", "", [["redwood_hollow_log_1", 0.0, 0.0, 35.0, true], ["redwood_hollow_log_0", 2.2, 1.8, -60.0, true],
+		["fungi_polyp_1", -1.0, 1.4, 0.0, false], ["dead_leaves_2", 1.0, -1.5, 0.0, false],
+		["thin_fern4", -1.8, -1.0, 0.0, false]]],
+	["Junk", "DRAWER", [["pallet", 0.0, 0.0, 0.0, false], ["store_inventory_stack_02", 1.4, 0.4, 15.0, true],
+		["barrel_01", -1.2, 0.9, 0.0, true], ["barrel_02", -1.6, 0.1, 0.0, true], ["trash_bag_01", 0.6, -1.3, 0.0, true],
+		["tv_box", -0.4, 1.8, 70.0, false], ["plastic_table", 2.6, -1.4, 0.0, true]]],
+	["Picnic", "DRAWER", [["outdoor_dining_table_b", 0.0, 0.0, 0.0, true], ["patio_chair_01", 1.0, 0.6, 180.0, true],
+		["patio_chair_01", -1.0, -0.6, 0.0, true], ["gas_grill", 2.4, -1.6, 90.0, true],
+		["patio_umbrella", 0.0, 0.0, 0.0, false], ["cooler_box_water", -1.8, 1.6, 0.0, false]]],
+	["Playground", "", [["small_kids_slide", 0.0, 0.0, 0.0, true], ["wooden_swing", 3.0, 0.5, 90.0, true],
+		["backyard_trampoline", -3.2, 0.2, 0.0, true]]],
+]
+const FILL_STEP := 4.0
+## A site must be this far from anything already placed, and this far from the other sites.
+const FILL_MIN_CLEAR := 9.0
+const FILL_SPACING := 16.0
+const FILL_MAX := 24
+const FILL_RADIUS := 4.5
 ## Junk along building walls (outside).
 const WALL_JUNK := ["trash_bag_01", "trash_bag_02", "barrel_01", "barrel_02", "pallet", "curbside_trash_bin_01",
 	"conditioner_07", "conditioner_08", "plastic_barrel_02", "pile_garbage_02", "firewood_rack", "wheelbarrow",
@@ -154,7 +205,8 @@ const TREE_TRUNK_RADIUS := 0.3
 const TREE_TRUNK_H := 2.4
 const TREE_CROWN_R := 1.6
 ## Rocks on the unscaled map; the count grows with the area so the density stays.
-const ROCK_COUNT := 40
+## B-26 (user feedback 2026-11-06: too many rocks): 40 -> 18.
+const ROCK_COUNT := 18
 const ROCK_SPACING := 6.0
 const CLEAR_MARKER := 3.0
 const CLEAR_ROUTE := 2.5
@@ -254,6 +306,12 @@ var out_kit := ""
 var out_splat := ""
 var kit_cover := {}
 var shop_fill := []
+## Roads whose zone id starts with this get lane lines and power poles ("" = every road).
+var kit_street_prefix := ""
+## Path texture instead of the street asphalt (park paths), "" = KIT_TERRAIN.road.
+var kit_road_texture := ""
+## Furniture along road edges instead of STREET_PROPS (park benches and bins), [] = STREET_PROPS.
+var street_props := []
 
 var _map: Dictionary
 var _zones := {}
@@ -273,7 +331,11 @@ var _kit := {}
 ## piece -> PackedFloat32Array (x, y, z, yaw, scale), ground polygons by KIT_GROUND key.
 var _kit_items: Array[Dictionary] = []
 var _kit_plants := {}
-var _kit_ground := {"land": [], "road": [], "vegetation": [], "water": []}
+var _kit_ground := {"land": [], "road": [], "vegetation": [], "water": [], "shallow": []}
+## Zone ids of _kit_ground.road, same order (streets get lane lines and poles, see kit_street_prefix).
+var _kit_road_ids: Array[String] = []
+## Where the kit ground mesh must not cover (ramps going down, park underpass); set by structures.
+var _kit_ground_holes: Array[PackedVector2Array] = []
 var _kit_rng := RandomNumberGenerator.new()
 ## Layout CSG path -> [texture, tile]: textured at runtime when the kit loads (flooded_mall.gd).
 var _kit_skins := {}
@@ -311,6 +373,7 @@ func _initialize() -> void:
 	_build_pois()
 	_build_roadside()
 	_build_wall_dressing()
+	_build_fillers()
 	_build_nature()
 	_build_bounds()
 	_build_outskirts()
@@ -370,7 +433,9 @@ func _build_terrain() -> void:
 	water.name = "DeepWater"
 	_root.add_child(water)
 	for i in deep.size():
-		water.add_child(_prism("Surface%d" % i, deep[i], WATER_SURFACE_Y - 0.05, 0.05, "deep", false))
+		var surface := _prism("Surface%d" % i, deep[i], WATER_SURFACE_Y - 0.05, 0.05, "deep", false)
+		surface.add_to_group(WATER_SURFACE_GROUP, true)
+		water.add_child(surface)
 	var lip := _combiner("Edge")
 	lip.visible = false
 	water.add_child(lip)
@@ -399,9 +464,14 @@ func _build_terrain() -> void:
 			var overlay := _prism(_title(zone.id), _poly(zone), 0.0, OVERLAY_Y[kind], kind, false)
 			overlays.add_child(overlay)
 			# B-26: roads and vegetation are painted into the kit ground (splat map) instead.
-			if _kit_ground.has(kind):
+			if kind == "road" or kind == "vegetation":
 				_kit_ground[kind].append(_poly(zone))
 				overlay.add_to_group(KIT_GREYBOX_GROUP, true)
+				if kind == "road":
+					_kit_road_ids.append(zone.id)
+			elif kind == "shallow":
+				_kit_ground.shallow.append(_poly(zone))
+				overlay.add_to_group(WATER_SURFACE_GROUP, true)
 
 	var blocked := Node3D.new()
 	blocked.name = "Blocked"
@@ -411,12 +481,20 @@ func _build_terrain() -> void:
 			var shape := _prism(_title(zone.id), _poly(zone), 0.0, blocked_h.get(zone.id, DEFAULT_BLOCKED_H), "blocked", true)
 			_nav(shape)
 			blocked.add_child(shape)
-			if zone.id.begins_with("bus"):
+			if _kit_blocked(zone, _poly(zone), blocked_h.get(zone.id, DEFAULT_BLOCKED_H)):
 				shape.add_to_group(KIT_GREYBOX_GROUP, true)
-				_kit_bus_row(_bounds(_poly(zone)))
-			elif zone.id == "rubble":
-				shape.add_to_group(KIT_GREYBOX_GROUP, true)
-				_kit_rubble(_poly(zone), blocked_h.get(zone.id, DEFAULT_BLOCKED_H))
+
+
+## Region hook (B-26): draws a blocked zone with pack pieces, returns true if it did (its greybox
+## prism then hides; the prism keeps the collision). Default: bus lanes and collapsed houses.
+func _kit_blocked(zone: Dictionary, poly: PackedVector2Array, h: float) -> bool:
+	if zone.id.begins_with("bus"):
+		_kit_bus_row(_bounds(poly))
+		return true
+	if zone.id == "rubble":
+		_kit_rubble(poly, h)
+		return true
+	return false
 
 
 # --- buildings -------------------------------------------------------------
@@ -548,7 +626,12 @@ func _save_buildings() -> Error:
 		CityKit.build_meshes(buildings, StringName(id), b[0], b[1], _kit[id])
 	var ground := MeshInstance3D.new()
 	ground.name = "Ground"
-	ground.mesh = _flat_mesh(_kit_ground.land, KIT_GROUND_LIFT)
+	var land: Array[PackedVector2Array] = []
+	for poly: PackedVector2Array in _kit_ground.land:
+		land.append(poly)
+	for cut in _kit_ground_holes:
+		land = _clip_all(land, cut)
+	ground.mesh = _flat_mesh(land, KIT_GROUND_LIFT)
 	var mat := ShaderMaterial.new()
 	mat.shader = GroundSplat
 	mat.set_shader_parameter(&"splat_map", _bake_splat())
@@ -556,9 +639,24 @@ func _save_buildings() -> Error:
 	mat.set_shader_parameter(&"splat_size", Vector2(MAP_HALF, MAP_HALF) * 2.0)
 	for key: String in KIT_TERRAIN:
 		mat.set_shader_parameter(StringName(key), load(KIT_TERRAIN[key]))
+	if not kit_road_texture.is_empty():
+		mat.set_shader_parameter(&"road", load(kit_road_texture))
+	# The pack asphalt is a dark grey; the cool grade crushed it to black (feedback 2026-11-06).
+	mat.set_shader_parameter(&"road_bright", ROAD_BRIGHT)
 	ground.material_override = mat
 	ground.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(ground)
+	var grass := Node3D.new()
+	grass.name = "Grass"
+	grass.set_script(KitGrass)
+	grass.set(&"splat", mat.get_shader_parameter(&"splat_map"))
+	grass.set(&"origin", Vector2(-MAP_HALF, -MAP_HALF))
+	grass.set(&"size", Vector2(MAP_HALF, MAP_HALF) * 2.0)
+	grass.set(&"ground_y", KIT_GROUND_LIFT)
+	root.add_child(grass)
+	var lights := Node3D.new()
+	lights.name = "Lights"
+	root.add_child(lights)
 	var props := Node3D.new()
 	props.name = "Props"
 	root.add_child(props)
@@ -569,7 +667,10 @@ func _save_buildings() -> Error:
 			var mi := MeshInstance3D.new()
 			mi.name = "Slab"
 			mi.mesh = _flat_mesh([item.slab], item.y)
-			mi.material_override = CityKit.ground_material(item.texture, item.tile, item.get("tint", Color.WHITE))
+			if item.get("splat", false):
+				mi.material_override = mat # the ground's own splat material, seamless with it
+			else:
+				mi.material_override = CityKit.ground_material(item.texture, item.tile, item.get("tint", Color.WHITE))
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			parent.add_child(mi, true)
 		elif item.has("water"):
@@ -595,6 +696,16 @@ func _save_buildings() -> Error:
 			parent.add_child(far, true)
 		else:
 			CityKit.place(parent, item.folder, item.piece, item.xf)
+			if LAMP_LIGHTS.has(item.piece):
+				var lamp := OmniLight3D.new()
+				lamp.name = "Lamp"
+				lamp.light_color = LAMP_COLOR
+				lamp.light_energy = LAMP_ENERGY
+				lamp.omni_range = LAMP_RANGE
+				lamp.shadow_enabled = false
+				var lamp_h: float = LAMP_LIGHTS[item.piece] * (item.xf as Transform3D).basis.get_scale().y
+				lamp.position = (item.xf as Transform3D).origin + Vector3.UP * lamp_h
+				lights.add_child(lamp, true)
 	var skins := {}
 	for path: String in _kit_skins:
 		var skin: Array = _kit_skins[path]
@@ -643,11 +754,24 @@ func _bake_splat() -> ImageTexture:
 		var radius := maxi(1, roundi(SPLAT_BLUR[c] / SPLAT_RES))
 		for pass_i in 2:
 			_box_blur(channels[c], n, radius)
-	var img := Image.create(n, n, false, Image.FORMAT_RGB8)
+	# Alpha: soft grass density (kit_grass.gd) on land, off roads, water, buildings and their porches.
+	var grass := PackedFloat32Array()
+	grass.resize(n * n)
+	for poly: PackedVector2Array in _kit_ground.land:
+		_raster(grass, n, poly)
+	var bare := PackedFloat32Array()
+	bare.resize(n * n)
+	for poly: PackedVector2Array in _kit_ground.road + _kit_ground.water + _kit_ground.shallow + _kit_blocked_polys():
+		_raster(bare, n, poly)
+	for i in n * n:
+		grass[i] = maxf(grass[i] - bare[i], 0.0)
+	_box_blur(grass, n, 2)
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	for y in n:
 		for x in n:
 			var i := y * n + x
-			img.set_pixel(x, y, Color(channels[0][i], channels[1][i], channels[2][i]))
+			var g := clampf(grass[i] * 1.3 - channels[0][i] * 0.8 - channels[2][i] * 0.35, 0.0, 1.0)
+			img.set_pixel(x, y, Color(channels[0][i], channels[1][i], channels[2][i], g))
 	var tex := ImageTexture.create_from_image(img)
 	var err := ResourceSaver.save(tex, out_splat, ResourceSaver.FLAG_COMPRESS)
 	if err != OK:
@@ -1123,7 +1247,7 @@ func _build_nature() -> void:
 		# Boulder about as wide as the greybox rock, a quarter sunk.
 		var boulder: String = KIT_ROCKS[_kit_rng.randi_range(0, KIT_ROCKS.size() - 1)]
 		var info: Array = CityKit.PROPS[boulder]
-		var s: float = rock.radius * 2.4 / (info[2] as Vector3).x
+		var s: float = rock.radius * 1.5 / (info[2] as Vector3).x
 		var lift: float = -(info[1] as Vector3).y * s - (info[2] as Vector3).y * s * 0.3
 		_kit_add(boulder, rocks[i], rock.rotation.y, lift, s)
 	_build_ground_cover(trees)
@@ -1131,7 +1255,7 @@ func _build_nature() -> void:
 
 
 func _build_ground_cover(trees: PackedVector2Array) -> void:
-	var water: Array = _kit_ground.water
+	var water: Array = _kit_ground.water + _kit_ground.shallow
 	var buildings := _kit_blocked_polys()
 	var doors := []
 	for id: String in zone_doors:
@@ -1170,7 +1294,7 @@ func _build_ground_cover(trees: PackedVector2Array) -> void:
 
 	# Overgrowth bands just outside every edge.
 	var edges: Array = []
-	for key: String in ["road", "vegetation", "water"]:
+	for key: String in ["road", "vegetation", "water", "shallow"]:
 		edges.append_array(_kit_ground[key])
 	for zone: Dictionary in _map.zones:
 		if zone.floor == 0 and zone.kind in ["indoor", "blocked"]:
@@ -1343,6 +1467,9 @@ func _kit_cover(kind: String, center: Vector2, size: Vector2, rot_deg: float) ->
 			_kit_add("concrete_bump_5m", center, yaw + (0.0 if along_z else PI * 0.5), 0.0, length / 5.0)
 		"pump":
 			pass # Drawn by the gas station canopy's pump island (_build_pois); only the greybox hides.
+		"bench":
+			var bench_len: float = (CityKit.PROPS.patio_bench_b[2] as Vector3).z
+			_kit_add("patio_bench_b", center, yaw + (0.0 if along_z else PI * 0.5), 0.0, length / bench_len)
 		"shelves":
 			_kit_shelf_row(center, yaw + (PI * 0.5 if along_z else 0.0), length, 0.0)
 
@@ -1381,7 +1508,7 @@ func _build_wall_dressing() -> void:
 	for zone: Dictionary in _map.zones:
 		if zone.floor == 0 and zone.kind == "indoor":
 			outlines.append(_poly(zone))
-	var water: Array = _kit_ground.water
+	var water: Array = _kit_ground.water + _kit_ground.shallow
 	var roads: Array = _kit_ground.road
 	var placed := 0
 	for poly: PackedVector2Array in outlines:
@@ -1417,6 +1544,82 @@ func _build_wall_dressing() -> void:
 					_root.get_node("LowCoverKit" if low else "PropsKit").add_child(_box("Wall_%s_%d" % [piece, placed],
 						p, Vector2(size.x, size.z), 0.0, size.y, 0.0, "cover" if low else "blocked"))
 	print("wall junk: %d" % placed)
+
+
+## Small scenes on the emptiest open ground (user feedback 2026-11-06: keep the map size, fill the
+## dead space). Ground is scored by its distance to everything already there (pack pieces, taken
+## spots, markers); the farthest spots, FILL_SPACING apart, get a FILLER_KITS scene, most with a
+## LootSpot so there is a reason to walk there. Runs before the trees, which then grow around them.
+func _build_fillers() -> void:
+	if out_kit.is_empty():
+		return
+	var keep_out := _keep_out_polygons()
+	var routes := _route_segments()
+	var points := _keep_out_points()
+	var loot_scene := _scene_of("LootSpot")
+	var content := PackedVector2Array()
+	for it: Dictionary in _kit_items:
+		if it.has("xf"):
+			var o: Vector3 = (it.xf as Transform3D).origin
+			content.append(Vector2(o.x, o.z))
+	for t in _taken:
+		content.append(Vector2(t.x, t.y))
+	for m: Dictionary in _map.markers:
+		if m.floor == 0:
+			content.append(_xz(m.position))
+	for m: Dictionary in _extra_markers:
+		content.append(Vector2(m.pos.x, m.pos.z))
+	var cands: Array = []
+	var y := -MAP_HALF + FILL_STEP
+	while y < MAP_HALF - FILL_STEP:
+		var x := -MAP_HALF + FILL_STEP
+		while x < MAP_HALF - FILL_STEP:
+			var p := Vector2(x, y)
+			x += FILL_STEP
+			if not _open(p, keep_out, routes, CLEAR_ROUTE + 3.0):
+				continue
+			var d := INF
+			for q in content:
+				d = minf(d, p.distance_squared_to(q))
+			cands.append([sqrt(d), p])
+		y += FILL_STEP
+	cands.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
+	var sites := PackedVector2Array()
+	for c: Array in cands:
+		if c[0] < FILL_MIN_CLEAR or sites.size() >= FILL_MAX:
+			break
+		if not _near(c[1], sites, FILL_SPACING):
+			sites.append(c[1])
+	var pieces := 0
+	var loot := 0
+	for s in sites.size():
+		var site := sites[s]
+		var kit: Array = FILLER_KITS[_kit_rng.randi_range(0, FILLER_KITS.size() - 1)]
+		var yaw := _kit_rng.randf() * TAU
+		for piece_def: Array in kit[2]:
+			var piece: String = piece_def[0]
+			if piece == "car":
+				piece = KIT_CARS[_kit_rng.randi_range(0, KIT_CARS.size() - 1)]
+			var scale := 1.0 if piece in KIT_CARS else PROP_SCALE
+			var at := site + Vector2(piece_def[1], piece_def[2]).rotated(-yaw) * PROP_SCALE
+			var piece_yaw := yaw + deg_to_rad(piece_def[3])
+			var size := _kit_size(piece, piece_yaw, scale)
+			if not _open(at, keep_out, routes, CLEAR_ROUTE) or _near_points(at, points, 0.8) or _in_prop(at, 0.3):
+				continue
+			_kit_add(piece, at, piece_yaw, 0.0, scale)
+			pieces += 1
+			if piece_def[4] and size.y >= CityKit.PROP_MIN_COLLIDE_H:
+				var low := size.y <= LOW_COVER_MAX_H
+				_root.get_node("LowCoverKit" if low else "PropsKit").add_child(_box("Fill%d_%s_%d" % [s, piece, pieces],
+					at, Vector2(size.x, size.z), 0.0, size.y, 0.0, "cover" if low else "blocked"))
+		_taken.append(Vector3(site.x, site.y, FILL_RADIUS))
+		if kit[1] != "":
+			var spot := site + Vector2(FILL_RADIUS * 0.8, 0.0).rotated(-yaw - 0.6)
+			if _open(spot, keep_out, routes, 1.0) and not _in_prop(spot, 0.8):
+				_add_extra(loot_scene, "LootSpot_fill_%d" % s, Vector3(spot.x, 0.0, spot.y), _kit_rng.randf() * TAU,
+					{"container_type": kit[1], "loot_table_id": ""})
+				loot += 1
+	print("fillers: %d sites, %d pieces, %d loot spots" % [sites.size(), pieces, loot])
 
 
 ## A row of count pieces side by side (spacing metres apart) somewhere open inside poly, like parked
@@ -1503,16 +1706,17 @@ func _kit_clutter(pieces: Array) -> Array:
 			var along_z: bool = piece[4] > piece[3]
 			out.append([piece, car, maxf(piece[3], piece[4]) / (CityKit.PROPS[car][2] as Vector3).x,
 				PI * 0.5 if along_z else 0.0])
-		elif kind in ["Barricade", "LowWall"]:
-			# Concrete barrier scaled to the piece's long side. LowWall becomes "Barrier" so Lane D does
-			# not grow vines on its hidden greybox box.
+		elif KIT_STRETCH.has(kind):
+			# A long piece scaled to the greybox piece's long side (its own length runs along local Z).
+			# LowWall becomes "Barrier" so Lane D does not grow vines on its hidden greybox box.
+			var mesh: String = KIT_STRETCH[kind]
 			var along_z: bool = piece[4] > piece[3]
 			var length: float = maxf(piece[3], piece[4])
-			var s: float = length / 5.0
-			var bump: Vector3 = CityKit.PROPS.concrete_bump_5m[2]
-			var w: float = bump.x * s
+			var dims: Vector3 = CityKit.PROPS[mesh][2]
+			var s: float = length / dims.z
+			var w: float = dims.x * s
 			out.append([["Barrier" if kind == "LowWall" else kind, piece[1], piece[2], w if along_z else length,
-				length if along_z else w, bump.y * s, piece[6]], "concrete_bump_5m", s, 0.0 if along_z else PI * 0.5])
+				length if along_z else w, dims.y * s, piece[6]], mesh, s, 0.0 if along_z else PI * 0.5])
 		elif KIT_CLUTTER.has(kind):
 			var pool: Array = KIT_CLUTTER[kind]
 			var mesh: String = pool[_kit_rng.randi_range(0, pool.size() - 1)]
@@ -1720,11 +1924,15 @@ func _build_roadside() -> void:
 	var points := _keep_out_points()
 	var blocked := _kit_blocked_polys()
 	var roads: Array = _kit_ground.road
-	var water: Array = _kit_ground.water
+	var water: Array = _kit_ground.water + _kit_ground.shallow
 	var inside_any := func(p: Vector2, polys: Array) -> bool:
 		return polys.any(func(q: PackedVector2Array) -> bool: return Geometry2D.is_point_in_polygon(p, q))
 	var poles := 0
-	for poly: PackedVector2Array in roads:
+	var streets: Array = []
+	for k in roads.size():
+		if _kit_road_ids[k].begins_with(kit_street_prefix):
+			streets.append(roads[k])
+	for poly: PackedVector2Array in streets:
 		for i in poly.size():
 			var a := poly[i]
 			var b := poly[(i + 1) % poly.size()]
@@ -1760,32 +1968,64 @@ func _build_roadside() -> void:
 					_kit_items.append({"piece": "wires_20m_01", "folder": "outdoor_environment",
 						"xf": Transform3D(wire_basis, Vector3(p.x, 0.0, p.y)), "holder": ""})
 				prev = p
-	# Lane lines down straight roads (4 corners, longer than wide).
+	# Lane lines down the long axis of every road wide enough for traffic (any outline): a 10 m piece
+	# wherever its whole length stays inside the road, 1.5 m clear of the edges.
 	var lines := 0
-	for poly: PackedVector2Array in roads:
-		if poly.size() != 4:
+	for poly: PackedVector2Array in streets:
+		var axis := _main_axis(poly)
+		var c: Vector2 = axis[0]
+		var dir: Vector2 = axis[1]
+		var lo := INF
+		var hi := -INF
+		for q in poly:
+			lo = minf(lo, (q - c).dot(dir))
+			hi = maxf(hi, (q - c).dot(dir))
+		var width := _area(poly) / maxf(hi - lo, 0.1)
+		if width < 5.0 or width > 18.0 or hi - lo < 15.0:
 			continue
-		var e0 := poly[1] - poly[0]
-		var e1 := poly[2] - poly[1]
-		var long_first := e0.length() >= e1.length()
-		var width := (e1 if long_first else e0).length()
-		var start := (poly[0] + poly[3]) * 0.5 if long_first else (poly[0] + poly[1]) * 0.5
-		var stop := (poly[1] + poly[2]) * 0.5 if long_first else (poly[3] + poly[2]) * 0.5
-		var length := start.distance_to(stop)
-		if width < 5.0 or width > 16.0 or length < 15.0:
-			continue
-		var dir := (stop - start) / length
 		var piece := "line_double_yellow_10m" if width >= 9.0 else "line_broken_white_10m"
-		var t := 4.0
-		while t + 10.0 <= length - 4.0:
-			var end := start + dir * (t + 10.0)
-			t += 10.0
-			if inside_any.call(end, water) and not inside_any.call(end, roads):
+		var t := lo + 3.0
+		while t + 10.0 <= hi - 3.0:
+			var a := c + dir * t
+			var end := c + dir * (t + 10.0)
+			t += 11.0
+			var ok := true
+			for k in 3:
+				var q := a.lerp(end, k * 0.5)
+				if not Geometry2D.is_point_in_polygon(q, poly) or _dist_to_ring(q, poly) < 1.5:
+					ok = false
+			if not ok:
 				continue
 			_kit_items.append({"piece": piece, "folder": "street", "xf": Transform3D(Basis(Vector3.UP,
 				atan2(dir.x, dir.y)), Vector3(end.x, KIT_GROUND_LIFT + 0.01, end.y)), "holder": ""})
 			lines += 1
 	print("roadside: %d poles, %d lane lines" % [poles, lines])
+
+
+## [center, unit direction] of a polygon's long axis (principal axis of its outline, sampled
+## every metre so long edges weigh more than short ones).
+func _main_axis(poly: PackedVector2Array) -> Array:
+	var pts := PackedVector2Array()
+	for i in poly.size():
+		var a := poly[i]
+		var b := poly[(i + 1) % poly.size()]
+		var n := maxi(1, int(a.distance_to(b)))
+		for k in n:
+			pts.append(a.lerp(b, float(k) / n))
+	var c := Vector2.ZERO
+	for p in pts:
+		c += p
+	c /= pts.size()
+	var xx := 0.0
+	var xy := 0.0
+	var yy := 0.0
+	for p in pts:
+		var d := p - c
+		xx += d.x * d.x
+		xy += d.x * d.y
+		yy += d.y * d.y
+	var angle := 0.5 * atan2(2.0 * xy, xx - yy)
+	return [c, Vector2(cos(angle), sin(angle))]
 
 
 ## Outside the map (no collision, the map bounds stop the player): forest ring, roads running on
@@ -1957,7 +2197,8 @@ func _build_street() -> void:
 			while t < length - 2.0:
 				var p := a + dir * t + normal * STREET_OUT
 				t += STREET_STEP * _kit_rng.randf_range(0.8, 1.4)
-				var piece: String = STREET_PROPS[_kit_rng.randi_range(0, STREET_PROPS.size() - 1)]
+				var pool: Array = street_props if not street_props.is_empty() else STREET_PROPS
+				var piece: String = pool[_kit_rng.randi_range(0, pool.size() - 1)]
 				# Front (-X) looks back at the road.
 				var yaw := atan2(-normal.y, normal.x)
 				var size := _kit_size(piece, yaw, PROP_SCALE)

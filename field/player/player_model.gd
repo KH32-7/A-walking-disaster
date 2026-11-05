@@ -22,6 +22,9 @@ extends Node3D
 ## Model scene under res://assets/. Imported facing +Z; the player faces -Z.
 @export_file("*.fbx", "*.glb", "*.tscn") var model_path := "res://assets/characters/hero/hero.fbx"
 @export_file("*.res", "*.tres") var library_path := "res://assets/characters/anims/humanoid.res"
+## Drawn larger than life so the hero reads from the top-down camera (user feedback 2026-11-06).
+## Collision is the player's capsule and does not change.
+@export var model_scale := 1.3
 ## Node shown when the model can't be loaded.
 @export var fallback: NodePath = ^"../Greybox"
 
@@ -73,6 +76,7 @@ func _ready() -> void:
 		return
 	_model = scene.instantiate() as Node3D
 	_model.rotation.y = PI
+	_model.scale = Vector3.ONE * model_scale
 	add_child(_model)
 	var fb := get_node_or_null(fallback) as Node3D
 	if fb != null:

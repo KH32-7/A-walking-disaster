@@ -18,6 +18,17 @@ extends "res://field/build/layout_builder.gd"
 const MAP_PATH := "res://levels/field/city_park/build/city_park_map.json"
 const OUT_SCENE := "res://levels/field/city_park/layout.tscn"
 const OUT_NAVMESH := "res://levels/field/city_park/layout_navmesh.res"
+## B-26 pack dressing (layout_builder.gd), user feedback 2026-11-06: the park in the packs too.
+const OUT_KIT := "res://levels/field/city_park/buildings.tscn"
+const OUT_SPLAT := "res://levels/field/city_park/ground_splat.res"
+const KIT_COVER := {"PlazaBench": "bench", "BusBench": "bench"}
+## Park paths are gravel; only the roads (road_*) get lane lines and poles.
+const KIT_PATH_TEXTURE := "res://assets/environment/city/american_suburb/textures/terrain/rocks_ground_01.png"
+const KIT_STREET_PREFIX := "road_"
+const PARK_FURNITURE := ["patio_bench_b", "patio_bench_a", "patio_bench_b", "urn_street_01", "urn_street_02",
+	"parking_lot_light_pole_01", "curbside_trash_bin_03", "garden_gnome_02"]
+## Kept clear around the boss arena centre (the giant needs room).
+const ARENA_CLEAR := 18.0
 
 ## Greenhouse: tall glass hall (plants up to the ceiling). Stage back room a little higher.
 const WALL_H := {"gh_in": 5.0, "stage_in": 3.5}
@@ -122,6 +133,12 @@ func _init() -> void:
 	nature_seed = NATURE_SEED
 	loot_seed = LOOT_SEED
 	clutter_seed = CLUTTER_SEED
+	out_kit = OUT_KIT
+	out_splat = OUT_SPLAT
+	kit_cover = KIT_COVER
+	kit_street_prefix = KIT_STREET_PREFIX
+	kit_road_texture = KIT_PATH_TEXTURE
+	street_props = PARK_FURNITURE
 
 
 func _build_structures() -> void:
@@ -163,6 +180,7 @@ func _build_underpass() -> void:
 		keep.operation = CSGShape3D.OPERATION_INTERSECTION
 		_add_local(copy, keep)
 		roof.add_child(copy)
+		copy.add_to_group(KIT_GREYBOX_GROUP, true) # B-26: the pack ground slab below draws it
 		var over_cut := _box_along("UnderpassCut", a, b, outer, -0.5, 1.0, "ground")
 		over_cut.operation = CSGShape3D.OPERATION_SUBTRACTION
 		_add_local(shape, over_cut)
@@ -194,7 +212,99 @@ func _build_underpass() -> void:
 
 	_root.get_node("IndoorZones").add_child(
 		_indoor_zone(UNDERPASS_BUILDING, [strip], UNDERPASS_FLOOR_Y - 0.5, -0.5))
+	# B-26: the kit ground leaves the whole strip open; over the tunnel it lays the same ground as a
+	# roof of the underpass, so it hides when the player goes in.
+	_kit_ground_holes.append(strip)
+	_kit_items.append({"slab": _strip(foot_a, foot_b, outer), "y": KIT_GROUND_LIFT, "splat": true,
+		"holder": "roof:%s" % UNDERPASS_BUILDING})
 	print("underpass: %.0fm, ramps %.0fm, floor y %.1f" % [a.distance_to(b), UNDERPASS_RAMP_LEN, UNDERPASS_FLOOR_Y])
+
+
+## B-26: fallen old trees as Redwood logs, the slide tower as a big slide, the broken flower bed as
+## bushes, the fallen street lamp as a lamp post lying down. Prisms keep the collision.
+func _kit_blocked(zone: Dictionary, poly: PackedVector2Array, h: float) -> bool:
+	var r := _bounds(poly)
+	var along_z := r.size.y > r.size.x
+	var length := maxf(r.size.x, r.size.y)
+	var c := r.get_center()
+	match zone.id:
+		"log_ne", "log_w":
+			var log_len: float = (CityKit.PROPS.redwood_hollow_log_2[2] as Vector3).z
+			_kit_add("redwood_hollow_log_2", c, 0.0 if along_z else PI * 0.5, 0.0, length / log_len)
+			_kit_add("fungi_polyp_1", c + Vector2(0.8, 0.6), 0.0, 0.0, 1.4)
+			return true
+		"pg_tower":
+			var slide: Vector3 = CityKit.PROPS.big_kids_slide[2]
+			_kit_add("big_kids_slide", c, 0.0, 0.0, maxf(r.size.x / slide.x, r.size.y / slide.z) * 1.1)
+			return true
+		"plaza_cover1":
+			for k in 3:
+				var at := r.position + r.size * Vector2(0.25 + 0.25 * k, 0.5)
+				_kit_add(["bushes_04", "bushes_06", "bushes_08"][k], at, _kit_rng.randf() * TAU, 0.0, 1.2)
+			return true
+		"plaza_cover2":
+			var axis := Vector2(0.0, 1.0) if along_z else Vector2(1.0, 0.0)
+			var yaw := atan2(-axis.y, axis.x)
+			var lying := Basis(Vector3.UP, yaw) * Basis(Vector3.BACK, -PI * 0.5)
+			var base := c - axis * 3.4
+			_kit_items.append({"piece": "parking_lot_light_pole_01", "folder": "outdoor_environment",
+				"xf": Transform3D(lying, Vector3(base.x, 0.25, base.y)), "holder": ""})
+			return true
+	return super(zone, poly, h)
+
+
+## B-26 special places from the landmark looks in the map file.
+func _build_pois() -> void:
+	var keep_out := _keep_out_polygons()
+	var routes := _route_segments()
+	var placed := 0
+	# 야외 공연장: rows of benches facing the stage, speakers by the stage.
+	var amph := _poly(_zones.amph_lm)
+	for k in 5:
+		placed += _poi_row(["patio_bench_b"], 4, 2.5, amph, keep_out, routes)
+	for piece: String in ["speaker_box", "speaker_box", "plastic_table", "patio_chair_01", "patio_chair_01"]:
+		placed += int(_poi_try(piece, amph, keep_out, routes, true))
+	# 덩굴 놀이터: playground gear and benches for the parents.
+	var pg := _poly(_zones.pg_lm)
+	for piece: String in ["big_kids_slide", "small_kids_slide", "small_kids_slide", "wooden_swing", "wooden_swing",
+			"wooden_swing", "backyard_trampoline", "backyard_trampoline", "basketball_hoop", "patio_bench_a",
+			"patio_bench_a", "garden_gnome_01", "garden_gnome_02"]:
+		placed += int(_poi_try(piece, pg, keep_out, routes, not piece.begins_with("garden_gnome")))
+	# 유리 온실: the gardeners' yard.
+	var gh := _poly(_zones.gh_lm)
+	for piece: String in ["compost_bin", "compost_bin", "wheelbarrow", "wheelbarrow", "garden_hose", "tool_cabinet",
+			"lawn_mower_01", "riding_lawn_mower", "plastic_storage_bin", "plastic_storage_bin", "pallet",
+			"firewood_rack"]:
+		placed += int(_poi_try(piece, gh, keep_out, routes, piece not in ["garden_hose", "pallet"]))
+	# 관리사무소: the staff's cars and the mail.
+	var office := _poly(_zones.office_lm)
+	placed += _poi_row(["service_van", "car_minivan_01", "car_crossover_03"], 2, 3.0, office, keep_out, routes)
+	for piece: String in ["rural_mailbox_01", "electrical_service_meter", "patio_bench_a", "curbside_trash_bin_01"]:
+		placed += int(_poi_try(piece, office, keep_out, routes, piece != "electrical_service_meter"))
+	# 연못: picnic spots on the banks.
+	var pond := _poly(_zones.pond_lm)
+	for k in 3:
+		for piece: String in ["outdoor_dining_table_a", "patio_umbrella", "patio_bench_b"]:
+			placed += int(_poi_try(piece, pond, keep_out, routes, piece != "patio_umbrella"))
+	# 고목 광장: only round the edge, the middle is the giant's arena.
+	var plaza := _poly(_zones.plaza_lm)
+	var arena := _arena_center()
+	var ring_keep := keep_out.duplicate()
+	var circle := PackedVector2Array()
+	for k in 24:
+		circle.append(arena + Vector2(ARENA_CLEAR, 0.0).rotated(TAU * k / 24.0))
+	ring_keep.append(circle)
+	for piece: String in ["patio_bench_b", "patio_bench_b", "urn_street_02", "parking_lot_light_pole_01",
+			"parking_lot_light_pole_01", "bushes_05", "bushes_03"]:
+		placed += int(_poi_try(piece, plaza, ring_keep, routes, true))
+	print("pois: %d pieces" % placed)
+
+
+func _arena_center() -> Vector2:
+	for m: Dictionary in _map.markers:
+		if m["class"] == "BossArena":
+			return _xz(m.position)
+	return _bounds(_poly(_zones.plaza_lm)).get_center()
 
 
 ## The gate point for B-20, in the middle of the tunnel.
