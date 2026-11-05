@@ -77,6 +77,7 @@ func _check_data() -> bool:
 	var child := ResidentPool.get_profile(&"demo_child")
 	ok = _expect(child.get("age_stage") == Enums.AgeStage.CHILD and &"monster_mark" in child.get("traits", [])
 		and Enums.AccessNeed.LANGUAGE in child.get("access_needs", []), "demo_child: child, monster mark, language") and ok
+	ok = _expect(&"migrant" in child.get("origin_tags", []), "demo_child: origin_tags migrant (issue #107)") and ok
 	for id in ResidentPool.reviewed_ids():
 		var errors: PackedStringArray = ResidentPool.templates[id].validate(banned)
 		ok = _expect(errors.is_empty(), "%s invalid: %s" % [id, errors]) and ok
@@ -94,6 +95,17 @@ func _check_tool() -> bool:
 func _check_rejects() -> bool:
 	var banned := ResidentTemplate.load_banned_words()
 	var ok := _expect(_fake().validate(banned).is_empty(), "fake entry should be valid: %s" % _fake().validate(banned))
+
+	var odd := _fake(&"test_odd")
+	odd.gender = &"robot"
+	odd.origin_tags = [&"Migrant"]
+	ok = _expect(odd.validate(banned).size() == 2, "bad gender / origin tag not caught: %s" % odd.validate(banned)) and ok
+	var given := _fake(&"test_given")
+	given.gender = &"female"
+	given.origin_tags = [&"migrant"]
+	var p := given.to_profile()
+	ok = _expect(given.validate(banned).is_empty() and p.get("gender") == &"female" and p.get("origin_tags") == [&"migrant"]
+		and not _fake().to_profile().has("gender"), "gender / origin_tags in profile %s" % p) and ok
 
 	var pity := _fake(&"test_pity")
 	pity.background = "다리를 다친 불쌍한 노인."

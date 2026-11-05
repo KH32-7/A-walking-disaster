@@ -13,7 +13,7 @@ func run() -> bool:
 	_saved_economy = Economy.save_data().duplicate(true)
 	var ok := _check_place_and_rotate() and _check_stacking() and _check_items() \
 		and _check_bonus_row() and _check_resize_refusal() and _check_unload() and _check_lose() \
-		and _check_take_and_consume() and _check_looting_api() and _check_save()
+		and _check_take_and_consume() and _check_defense_load() and _check_looting_api() and _check_save()
 	Bag.load_data(_saved_bag)
 	Armory.load_data(_saved_armory)
 	Economy.load_data(_saved_economy)
@@ -133,6 +133,25 @@ func _check_take_and_consume() -> bool:
 	ok = _expect(not Bag.consume(&"food", 16) and Bag.count(&"food") == 15, "over-consume changed bag") and ok
 	ok = _expect(Bag.consume(&"food", 12) and Bag.count(&"food") == 3, "consume") and ok
 	return ok
+
+
+## Base defense (issues #110 #121): equipped gun's ammo (capped) and consumables come from storage,
+## unload_to_base puts back what was not used.
+func _check_defense_load() -> bool:
+	_reset()
+	Economy.load_data({"amounts": {&"ammo_pistol": 200, &"ammo_rifle": 50, &"first_aid_kit": 1}})
+	var pistol := Armory.create_item(&"pistol")
+	var ok := _expect(Armory.equip(Armory.PLAYER_ID, Enums.EquipSlot.MAIN, pistol), "equip pistol")
+	var ammo := StringName(Armory.get_item_stats(pistol).get("ammo_id", &""))
+	ok = _expect(ammo == &"ammo_pistol", "pistol ammo_id %s" % ammo) and ok
+	var moved := Bag.load_for_defense()
+	ok = _expect(moved == {&"ammo_pistol": Bag.DEFENSE_AMMO_MAX, &"first_aid_kit": 1}, "load_for_defense %s" % moved) and ok
+	ok = _expect(Economy.get_amount(&"ammo_pistol") == 200 - Bag.DEFENSE_AMMO_MAX
+		and Economy.get_amount(&"ammo_rifle") == 50, "storage after defense load") and ok
+	ok = _expect(Bag.consume(&"ammo_pistol", 30), "fire 30") and ok
+	Bag.unload_to_base()
+	return _expect(Bag.is_empty() and Economy.get_amount(&"ammo_pistol") == 170
+		and Economy.get_amount(&"first_aid_kit") == 1, "defense unload put back %d" % Economy.get_amount(&"ammo_pistol")) and ok
 
 
 func _check_looting_api() -> bool:
