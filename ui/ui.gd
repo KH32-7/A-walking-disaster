@@ -6,9 +6,13 @@ extends Node
 ##
 ## Layers (CanvasLayer):  hud (10)  <  screens (20)  <  overlay (30: subtitles, toasts)
 ## Screen scenes may implement:  open_with(args: Dictionary)  and  on_closing()
+## open_with runs before _ready on the first open, and again (in the tree) on a re-open.
 
 signal screen_opened(screen_id: StringName)
 signal screen_closed(screen_id: StringName)
+## The build panel asked to place a building (D-06). Lane C starts the grid placement preview
+## (C-03) and calls Colony.place_building() when the player confirms.
+signal build_requested(def_id: StringName)
 ## The theme was rebuilt (text size / high contrast changed). Screens normally just inherit it.
 signal theme_changed(theme: Theme)
 
@@ -49,20 +53,90 @@ func _ready() -> void:
 
 ## The field HUD (D-04). Created on first use, shown only in FlowState.FIELD.
 var field_hud: FieldHud
+## Noise rings, monster ?/!, edge arrows (D-05). Lives with the field HUD.
+var world_markers: WorldMarkers
 
 
 func show_field_hud(on: bool) -> void:
 	if on and field_hud == null:
+		world_markers = WorldMarkers.new()
+		world_markers.name = &"WorldMarkers"
+		hud.add_child(world_markers)  # under the HUD widgets
 		field_hud = FieldHud.new()
 		field_hud.name = &"FieldHud"
 		hud.add_child(field_hud)
-	if field_hud != null:
-		field_hud.visible = on
-		field_hud.process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
+	for n: Control in [field_hud, world_markers]:
+		if n != null:
+			n.visible = on
+			n.process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
+
+
+## Base HUD (D-06): top bar, notifications, bottom menu. Shown in the base flow states.
+var base_hud: BaseHud
+const BASE_STATES := [Enums.FlowState.BASE_MORNING, Enums.FlowState.BASE_STAY, Enums.FlowState.EVENING,
+	Enums.FlowState.NIGHT]
+
+
+func show_base_hud(on: bool) -> void:
+	if on and base_hud == null:
+		base_hud = BaseHud.new()
+		base_hud.name = &"BaseHud"
+		hud.add_child(base_hud)
+	if base_hud != null:
+		base_hud.visible = on
+		base_hud.process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
+		if on:
+			base_hud.refresh()
+
+
+## Loot hook (D-08): when the player's current interactable (Player.interacting(), B-03) is a
+## container that finishes opening, the bag screen opens with it. Tab opens the bag alone.
+var _watched_container: Node = null
+
+
+func _process(_delta: float) -> void:
+	if GameState.flow_state != Enums.FlowState.FIELD:
+		return
+	var p := get_tree().get_first_node_in_group(&"player")
+	if p == null or not p.has_method(&"interacting"):
+		return
+	var c: Node = p.call(&"interacting")
+	if c != _watched_container:
+		if _watched_container != null and is_instance_valid(_watched_container) 				and _watched_container.is_connected(&"opened", _on_container_opened):
+			_watched_container.disconnect(&"opened", _on_container_opened)
+		_watched_container = c
+		if c != null and c.has_signal(&"opened"):
+			c.connect(&"opened", _on_container_opened)
+
+
+func _on_container_opened(_slot_count: int) -> void:
+	open(&"bag", {"container": _watched_container})
+
+
+func _input(event: InputEvent) -> void:
+	if GameState.flow_state == Enums.FlowState.FIELD and _stack.is_empty() and event.is_action_pressed(&"bag"):
+		open(&"bag")
+		get_viewport().set_input_as_handled()
+
+
+## Flow screens (D-07): opened when the router enters the state, closed when it leaves.
+const FLOW_SCREENS := {
+	Enums.FlowState.SORTIE_PREP: &"sortie_prep",
+	Enums.FlowState.RESULT: &"result",
+	Enums.FlowState.EVENING: &"evening",
+}
 
 
 func _on_flow_state_changed(state: Enums.FlowState) -> void:
 	show_field_hud(state == Enums.FlowState.FIELD)
+	show_base_hud(state in BASE_STATES)
+	for st: Enums.FlowState in FLOW_SCREENS:
+		var id: StringName = FLOW_SCREENS[st]
+		if st == state:
+			if has_screen(id) and not is_open(id):
+				open(id)
+		elif is_open(id):
+			close(id)
 
 
 # --- public API (contracts.md) ---
@@ -91,9 +165,10 @@ func open(screen_id: StringName, args: Dictionary = {}) -> void:
 	node.name = String(screen_id)
 	(node as Control).set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	node.process_mode = Node.PROCESS_MODE_ALWAYS if def.pauses_game else Node.PROCESS_MODE_INHERIT
+	# First open: hand the args over before _ready so the screen builds with them.
+	_call_open(node, args)
 	screens.add_child(node)
 	_stack.append({"id": screen_id, "node": node, "def": def})
-	_call_open(node, args)
 	_refresh_visibility()
 	screen_opened.emit(screen_id)
 
@@ -172,7 +247,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"ui_cancel") or event.is_action_pressed(&"pause"):
 		var def: ScreenDef = _stack.back().def
 		if def.closes_on_cancel:
-			close_top()
+			# MenuScreens may route "back" through the game flow (sortie prep → cancel_sortie_prep).
+			var node: Node = _stack.back().node
+			if node.has_method(&"close"):
+				node.call(&"close")
+			else:
+				close_top()
 			get_viewport().set_input_as_handled()
 
 

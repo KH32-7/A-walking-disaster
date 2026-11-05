@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ComboDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/combo_def.gd" id="1_combo"]
+
+[resource]
+script = ExtResource("1_combo")
+id = &"shock_puddle"
+element_a = 3
+element_b = 4
+name = "감전 웅덩이"
+description = "젖은 적에게 연쇄 거리 2배, 연쇄 피해 x1.5"
+effect_params = {
+"wet_chain_range_mult": 2.0,
+"wet_chain_damage_mult": 1.5
+}

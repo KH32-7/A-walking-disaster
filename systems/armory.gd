@@ -1,5 +1,9 @@
 extends Node
-## Autoload `Armory`. Owner: Lane A (tasks A-07 .. A-09).
+## Autoload `Armory`. Owner: Lane A (tasks A-07 .. A-10).
+## A-09: upgrade (preview_upgrade / upgrade), upgrade transfer, repair, auto repair, crafting.
+## Formulas live in UpgradeRules (systems/upgrade_rules.gd), recipes in data/recipes/.
+## A-10: essence engraving / overwrite / removal, slot opening, refining, disassembly, combos.
+## Numbers and effect math live in EssenceRules (systems/essence_rules.gd), defs in data/essences/.
 ## Owns every equipment ItemInstance (player's and residents') and who wears what.
 ## Lane B reads the player's equipped stats; Lane C reads residents' equipped stats.
 ## Player and residents use the same API: owner_id is PLAYER_ID or a resident id.
@@ -15,6 +19,7 @@ const BAG_ID := &"bag"
 
 const ITEMS_DIR := "res://data/items"
 const AFFIXES_DIR := "res://data/items/affixes"
+const RECIPES_DIR := "res://data/recipes"
 
 ## Per rarity (design 05 "등급"): stat multiplier, affix count, essence slots.
 const RARITY_MULT := [1.0, 1.15, 1.3, 1.5, 1.75]
@@ -38,6 +43,10 @@ const ARMOR_SLOTS := [Enums.EquipSlot.HEAD, Enums.EquipSlot.BODY, Enums.EquipSlo
 var defs: Dictionary = {}
 ## affix id -> Affix
 var affixes: Dictionary = {}
+## recipe id -> Recipe (A-09)
+var recipes: Dictionary = {}
+## Design 05 "자동 수리": repair gear at the evening settlement (run_auto_repair). Saved.
+var auto_repair_enabled := false
 
 ## uid -> ItemInstance
 var _items: Dictionary = {}
@@ -47,6 +56,7 @@ var _next_id := 1
 func _ready() -> void:
 	_load_defs()
 	SaveSystem.register_provider(&"armory", self)
+	_register_debug.call_deferred()
 
 
 # --- Definitions ---
@@ -226,8 +236,13 @@ func get_combat_class(owner_id: StringName) -> int:
 ## Armor: defense, noise_mod, weight. Bags: grid_w, grid_h. Affix stats are added under their own
 ## key (attack_pct, crit_pctp, reload_pct, stamina_pct, max_hp, rescuer_guard_pct ...).
 ## `damage` already includes rarity, upgrade and attack_pct: do not apply the upgrade factor again.
-## Also: def_id, slot, combat_class, light, rarity, upgrade_level, durability, broken,
-## essence_slots, element, essence_effects, combo (the last three are filled by A-10).
+## Also: def_id, slot, combat_class, light, rarity, upgrade_level, durability, broken, essence_slots.
+## A-10 (essences, see EssenceRules.weapon_effects for the shapes):
+##   element (Enums.Element: attack element of a weapon = first filled slot; NONE otherwise),
+##   essence_effects (Array of {element, essence_ids, grade, mult, params}; accessories: params
+##   {resist_ratio}), combo (Dictionary or null; weapons only), element_resist ({Element: ratio},
+##   accessories), engravable, opened_slot, engravings (essence id per usable slot, &"" = empty),
+##   magic (any engraving), name_prefix ("덩굴 감긴" ...), display_name (prefix + def name).
 func get_item_stats(item_uid: StringName) -> Dictionary:
 	var item := get_item(item_uid)
 	if item == null:
@@ -266,19 +281,19 @@ func get_item_stats(item_uid: StringName) -> Dictionary:
 	stats["upgrade_level"] = item.upgrade_level
 	stats["durability"] = item.durability
 	stats["broken"] = broken
-	stats["essence_slots"] = RARITY_ESSENCE_SLOTS[item.rarity]
-	stats["element"] = Enums.Element.NONE  # TODO(A-10)
-	stats["essence_effects"] = []  # TODO(A-10)
-	stats["combo"] = null  # TODO(A-10)
+	stats["essence_slots"] = RARITY_ESSENCE_SLOTS[item.rarity] + (EssenceRules.OPEN_SLOT_COUNT if item.opened_slot else 0)
+	_add_essence_stats(item, def, stats)
 	return stats
 
 
 ## Totals over everything `owner_id` wears, for movement / health / bag (Lane B, Lane C):
 ## defense (armor only), armor_noise (sum of armor noise_mod, capped at ARMOR_NOISE_CAP),
-## max_hp, stamina_pct, crit_pctp, rescuer_guard_pct, move_speed_mult, bag_grid (Vector2i).
+## max_hp, stamina_pct, crit_pctp, rescuer_guard_pct, move_speed_mult, bag_grid (Vector2i),
+## element_resist ({Enums.Element: ratio} from engraved accessories, A-10).
 func get_owner_summary(owner_id: StringName) -> Dictionary:
 	var summary := {"defense": 0.0, "armor_noise": 0.0, "max_hp": 0, "stamina_pct": 0,
-		"crit_pctp": 0, "rescuer_guard_pct": 0, "move_speed_mult": 1.0, "bag_grid": DEFAULT_BAG_GRID}
+		"crit_pctp": 0, "rescuer_guard_pct": 0, "move_speed_mult": 1.0, "bag_grid": DEFAULT_BAG_GRID,
+		"element_resist": {}}
 	var equipped := list_equipped(owner_id)
 	var bag_bonus := 0
 	for slot: int in equipped:
@@ -290,11 +305,649 @@ func get_owner_summary(owner_id: StringName) -> Dictionary:
 			summary["armor_noise"] += stats.get("noise_mod", 0.0)
 			summary["move_speed_mult"] *= stats.get("move_speed_mult", 1.0)
 			bag_bonus += int(stats.get("bag_bonus_cells", 0))
+			var resist: Dictionary = summary["element_resist"]
+			for element: int in stats.get("element_resist", {}):
+				resist[element] = resist.get(element, 0.0) + stats["element_resist"][element]
 		elif slot == Enums.EquipSlot.BAG:
 			summary["bag_grid"] = Vector2i(int(stats["grid_w"]), int(stats["grid_h"]))
 	summary["armor_noise"] = minf(summary["armor_noise"], ARMOR_NOISE_CAP)
 	summary["bag_bonus_cells"] = bag_bonus
 	return summary
+
+
+# --- Facilities (A-09) ---
+
+## Facility state for upgrades, repair and crafting, read from Colony:
+## {"level": highest level among completed buildings of `facility` (0 = none built),
+##  "dex": best dexterity among its active workers (0 = nobody assigned)}.
+## Every A-09 function that takes `ctx` accepts overrides {"facility_level": int, "dex": int}
+## (previews of "what if", tests, debug). Upgrade previews also accept {"family_mat": id}.
+func facility_context(facility: StringName, ctx: Dictionary = {}) -> Dictionary:
+	if ctx.has("facility_level") and ctx.has("dex"):
+		return {"level": int(ctx["facility_level"]), "dex": int(ctx["dex"])}
+	var level := 0
+	var dex := 0
+	for building_uid: StringName in Colony.building_ids(facility):
+		var b: Dictionary = Colony.get_building(building_uid)
+		level = maxi(level, int(b.get("level", 1)))
+		for worker in b.get("workers", []):
+			var r: Dictionary = Colony.get_resident(StringName(worker))
+			if r.is_empty() or int(r.get("status", Enums.ResidentStatus.ACTIVE)) != Enums.ResidentStatus.ACTIVE:
+				continue
+			var stats: Dictionary = r.get("stats", {})
+			dex = maxi(dex, int(stats.get(&"dex", 0)))
+	return {"level": int(ctx.get("facility_level", level)), "dex": int(ctx.get("dex", dex))}
+
+
+# --- Upgrade (A-09) ---
+
+## For the upgrade screen (D-12). Always returns:
+##   ok, reason (&"" when ok; else no_item, lost, max_level, no_facility, facility_level,
+##   no_worker, cost), uid, current_level, next_level, max_level (facility cap), facility,
+##   facility_level, dex, discount (dex >= 8: -20%), cost {res: n} (empty at +10),
+##   missing {res: shortfall}, family_options (Array of ids; non-empty from +9), family_mat,
+##   stats (now), stats_after (at next_level; empty at +10).
+func preview_upgrade(item_uid: StringName, ctx: Dictionary = {}) -> Dictionary:
+	var out := {"ok": false, "reason": &"", "uid": item_uid, "cost": {}, "missing": {},
+		"family_options": [], "family_mat": &"", "stats": {}, "stats_after": {}}
+	var item := get_item(item_uid)
+	if item == null:
+		out["reason"] = &"no_item"
+		return out
+	var def := get_def(item.def_id)
+	var facility := UpgradeRules.facility_for_slot(def.slot)
+	var fac := facility_context(facility, ctx)
+	var next := item.upgrade_level + 1
+	out["current_level"] = item.upgrade_level
+	out["next_level"] = next
+	out["facility"] = facility
+	out["facility_level"] = fac["level"]
+	out["max_level"] = UpgradeRules.facility_cap(fac["level"])
+	out["dex"] = fac["dex"]
+	out["discount"] = UpgradeRules.has_discount(fac["dex"])
+	out["stats"] = get_item_stats(item_uid)
+	if next <= MAX_UPGRADE:
+		if next >= UpgradeRules.FAMILY_FROM:
+			var options := _family_options(item)
+			var chosen := StringName(ctx.get("family_mat", &""))
+			out["family_options"] = options
+			out["family_mat"] = chosen if chosen in options else options[0]
+		out["cost"] = UpgradeRules.upgrade_cost(next, fac["dex"], out["family_mat"])
+		out["missing"] = _missing(out["cost"])
+		out["stats_after"] = _stats_at_level(item, next)
+
+	if item.owner == LOST_ID:
+		out["reason"] = &"lost"
+	elif next > MAX_UPGRADE:
+		out["reason"] = &"max_level"
+	elif fac["level"] <= 0:
+		out["reason"] = &"no_facility"
+	elif next > out["max_level"]:
+		out["reason"] = &"facility_level"
+	elif fac["dex"] <= 0:
+		out["reason"] = &"no_worker"
+	elif not out["missing"].is_empty():
+		out["reason"] = &"cost"
+	out["ok"] = out["reason"] == &""
+	return out
+
+
+## Raises the item one level and pays through Economy. False (nothing changes) when
+## preview_upgrade() says it is not possible.
+func upgrade(item_uid: StringName, ctx: Dictionary = {}) -> bool:
+	var preview := preview_upgrade(item_uid, ctx)
+	if not preview["ok"] or not Economy.apply(_negated(preview["cost"])):
+		return false
+	var item := get_item(item_uid)
+	item.upgrade_level = preview["next_level"]
+	_emit_changed(item)
+	return true
+
+
+## Moving an upgrade to another item of the same slot (design 05 "강화 옮기기"):
+## the target gets source level - 2, the source drops to +0, costs scrap 20.
+## Returns ok, reason (&"" or no_item, same_item, lost, slot_mismatch, no_facility, no_worker,
+## no_gain, cost), from_level, to_level, result_level, facility, facility_level, cost, missing.
+func preview_transfer(from_uid: StringName, to_uid: StringName, ctx: Dictionary = {}) -> Dictionary:
+	var out := {"ok": false, "reason": &"", "cost": {UpgradeRules.SCRAP: UpgradeRules.TRANSFER_SCRAP},
+		"missing": {}}
+	var from := get_item(from_uid)
+	var to := get_item(to_uid)
+	if from == null or to == null:
+		out["reason"] = &"no_item"
+		return out
+	var from_def := get_def(from.def_id)
+	var to_def := get_def(to.def_id)
+	var facility := UpgradeRules.facility_for_slot(to_def.slot)
+	var fac := facility_context(facility, ctx)
+	out["from_level"] = from.upgrade_level
+	out["to_level"] = to.upgrade_level
+	out["result_level"] = maxi(from.upgrade_level - UpgradeRules.TRANSFER_LOSS, 0)
+	out["facility"] = facility
+	out["facility_level"] = fac["level"]
+	out["missing"] = _missing(out["cost"])
+	if from_uid == to_uid:
+		out["reason"] = &"same_item"
+	elif from.owner == LOST_ID or to.owner == LOST_ID:
+		out["reason"] = &"lost"
+	elif from_def.slot != to_def.slot:
+		out["reason"] = &"slot_mismatch"
+	elif fac["level"] <= 0:
+		out["reason"] = &"no_facility"
+	elif fac["dex"] <= 0:
+		out["reason"] = &"no_worker"
+	elif out["result_level"] <= to.upgrade_level:
+		out["reason"] = &"no_gain"
+	elif not out["missing"].is_empty():
+		out["reason"] = &"cost"
+	out["ok"] = out["reason"] == &""
+	return out
+
+
+func transfer_upgrade(from_uid: StringName, to_uid: StringName, ctx: Dictionary = {}) -> bool:
+	var preview := preview_transfer(from_uid, to_uid, ctx)
+	if not preview["ok"] or not Economy.apply(_negated(preview["cost"])):
+		return false
+	var from := get_item(from_uid)
+	var to := get_item(to_uid)
+	to.upgrade_level = preview["result_level"]
+	from.upgrade_level = 0
+	_emit_changed(from)
+	_emit_changed(to)
+	return true
+
+
+# --- Repair (A-09) ---
+
+## 1 scrap per 10 lost durability, at the workshop (weapons) or sewing room (armor, bags).
+## Returns ok, reason (&"" or no_item, lost, full, no_facility, cost), lost, facility, cost, missing.
+func preview_repair(item_uid: StringName, ctx: Dictionary = {}) -> Dictionary:
+	var out := {"ok": false, "reason": &"", "lost": 0.0, "cost": {}, "missing": {}}
+	var item := get_item(item_uid)
+	if item == null:
+		out["reason"] = &"no_item"
+		return out
+	var def := get_def(item.def_id)
+	var facility := UpgradeRules.facility_for_slot(def.slot)
+	var lost := maxf(def.durability_max - item.durability, 0.0)
+	out["lost"] = lost
+	out["facility"] = facility
+	if lost > 0.0:
+		out["cost"] = {UpgradeRules.SCRAP: UpgradeRules.repair_cost(lost)}
+		out["missing"] = _missing(out["cost"])
+	if item.owner == LOST_ID:
+		out["reason"] = &"lost"
+	elif lost <= 0.0:
+		out["reason"] = &"full"
+	elif facility_context(facility, ctx)["level"] <= 0:
+		out["reason"] = &"no_facility"
+	elif not out["missing"].is_empty():
+		out["reason"] = &"cost"
+	out["ok"] = out["reason"] == &""
+	return out
+
+
+## Restores full durability and pays the scrap.
+func repair(item_uid: StringName, ctx: Dictionary = {}) -> bool:
+	var preview := preview_repair(item_uid, ctx)
+	if not preview["ok"] or not Economy.apply(_negated(preview["cost"])):
+		return false
+	var item := get_item(item_uid)
+	item.durability = get_def(item.def_id).durability_max
+	_emit_changed(item)
+	return true
+
+
+## Player toggle (design 05 "자동 수리"). Saved with the armory.
+func set_auto_repair(enabled: bool) -> void:
+	auto_repair_enabled = enabled
+
+
+## Evening settlement: repairs damaged gear that belongs to `facility` (UpgradeRules.WEAPON_FACILITY
+## or GEAR_FACILITY), worn gear first, then most damaged. Needs auto repair on, the facility built and
+## someone working there (maintenance / tailoring). Spends scrap through Economy itself (do not add it
+## to the settlement "changes" again); runs out gracefully with partial repairs.
+## scrap_budget < 0 = whatever is in storage. Returns {"reason": &"" or disabled / no_facility /
+## no_worker, "repaired": {uid: durability restored}, "scrap": spent}.
+func run_auto_repair(facility: StringName, scrap_budget: int = -1, ctx: Dictionary = {}) -> Dictionary:
+	var result := {"reason": &"", "repaired": {}, "scrap": 0}
+	var fac := facility_context(facility, ctx)
+	if not auto_repair_enabled:
+		result["reason"] = &"disabled"
+	elif fac["level"] <= 0:
+		result["reason"] = &"no_facility"
+	elif fac["dex"] <= 0:
+		result["reason"] = &"no_worker"
+	if result["reason"] != &"":
+		return result
+	var budget := Economy.get_amount(UpgradeRules.SCRAP)
+	if scrap_budget >= 0:
+		budget = mini(budget, scrap_budget)
+
+	var damaged: Array[ItemInstance] = []
+	for uid: StringName in _items:
+		var item: ItemInstance = _items[uid]
+		var def := get_def(item.def_id)
+		if item.owner != LOST_ID and item.durability < def.durability_max \
+				and UpgradeRules.facility_for_slot(def.slot) == facility:
+			damaged.append(item)
+	damaged.sort_custom(_repair_order)
+
+	var plan := {}
+	var spent := 0
+	for item in damaged:
+		var lost := get_def(item.def_id).durability_max - item.durability
+		var pay := mini(UpgradeRules.repair_cost(lost), budget - spent)
+		if pay <= 0:
+			break
+		plan[item.uid] = minf(lost, UpgradeRules.repair_amount(pay))
+		spent += pay
+	if spent == 0 or not Economy.apply({UpgradeRules.SCRAP: -spent}):
+		return result
+	for uid: StringName in plan:
+		var item := get_item(uid)
+		item.durability = minf(item.durability + plan[uid], get_def(item.def_id).durability_max)
+		_emit_changed(item)
+	result["repaired"] = plan
+	result["scrap"] = spent
+	return result
+
+
+# --- Crafting (A-09) ---
+
+func get_recipe(recipe_id: StringName) -> Recipe:
+	return recipes.get(recipe_id)
+
+
+## Recipe ids, sorted. facility &"" = all; by_worker: -1 all, 0 player-crafted only, 1 worker only.
+func list_recipes(facility: StringName = &"", by_worker: int = -1) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for id: StringName in recipes:
+		var recipe: Recipe = recipes[id]
+		if (facility == &"" or recipe.facility == facility) \
+				and (by_worker < 0 or recipe.by_worker == (by_worker == 1)):
+			out.append(id)
+	out.sort()
+	return out
+
+
+## GameState flag that unlocks a blueprint recipe: blueprint_<ItemDef.blueprint_id>, or
+## blueprint_<output_id> when the def has no blueprint_id.
+func blueprint_flag(recipe_id: StringName) -> StringName:
+	var recipe := get_recipe(recipe_id)
+	if recipe == null:
+		return &""
+	var def := get_def(recipe.output_id)
+	var key := def.blueprint_id if def != null and def.blueprint_id != &"" else recipe.output_id
+	return StringName("blueprint_%s" % key)
+
+
+## Morning crafting by the player (equipment). Returns ok, reason (&"" or no_recipe, worker_only,
+## blueprint, no_facility, facility_level, no_worker, cost), recipe_id, output_id, output_qty,
+## equipment (bool), facility, facility_level, dex, cost, missing, blueprint_flag,
+## higher_chance (equipment: chance of Uncommon or better).
+func preview_craft(recipe_id: StringName, ctx: Dictionary = {}) -> Dictionary:
+	var out := {"ok": false, "reason": &"", "recipe_id": recipe_id, "cost": {}, "missing": {}}
+	var recipe := get_recipe(recipe_id)
+	if recipe == null:
+		out["reason"] = &"no_recipe"
+		return out
+	var fac := facility_context(recipe.facility, ctx)
+	var equipment := get_def(recipe.output_id) != null
+	out["output_id"] = recipe.output_id
+	out["output_qty"] = recipe.output_qty
+	out["equipment"] = equipment
+	out["facility"] = recipe.facility
+	out["facility_level"] = fac["level"]
+	out["dex"] = fac["dex"]
+	out["cost"] = Dictionary(recipe.inputs).duplicate()
+	out["missing"] = _missing(out["cost"])
+	out["blueprint_flag"] = blueprint_flag(recipe_id) if recipe.blueprint_required else &""
+	out["higher_chance"] = UpgradeRules.craft_higher_chance(fac["dex"]) if equipment else 0.0
+	if recipe.by_worker:
+		out["reason"] = &"worker_only"
+	elif recipe.blueprint_required and not GameState.has_flag(out["blueprint_flag"]):
+		out["reason"] = &"blueprint"
+	elif fac["level"] <= 0:
+		out["reason"] = &"no_facility"
+	elif fac["level"] < recipe.facility_level:
+		out["reason"] = &"facility_level"
+	elif fac["dex"] <= 0:
+		out["reason"] = &"no_worker"
+	elif not out["missing"].is_empty():
+		out["reason"] = &"cost"
+	out["ok"] = out["reason"] == &""
+	return out
+
+
+## Crafts once and pays through Economy. Equipment goes to storage with a rarity rolled from the
+## worker's dexterity (pass an rng for repeatable rolls). Returns {"ok", "reason", "uid" (equipment),
+## "rarity", "resources" {id: n} (resource outputs)}.
+func craft(recipe_id: StringName, ctx: Dictionary = {}, rng: RandomNumberGenerator = null) -> Dictionary:
+	var preview := preview_craft(recipe_id, ctx)
+	var out := {"ok": false, "reason": preview["reason"], "uid": &"", "rarity": -1, "resources": {}}
+	if not preview["ok"]:
+		return out
+	if not Economy.apply(_negated(preview["cost"])):
+		out["reason"] = &"cost"
+		return out
+	var recipe := get_recipe(recipe_id)
+	if preview["equipment"]:
+		if rng == null:
+			rng = RandomNumberGenerator.new()
+		var def := get_def(recipe.output_id)
+		var rarity := UpgradeRules.roll_craft_rarity(preview["dex"], rng, def.rarity_min)
+		out["uid"] = create_item(recipe.output_id, rarity, rng)
+		out["rarity"] = rarity
+	else:
+		Economy.apply({recipe.output_id: recipe.output_qty})
+		out["resources"] = {recipe.output_id: recipe.output_qty}
+	out["ok"] = true
+	return out
+
+
+## Lane C's evening settlement: what `count` crafts of a worker recipe (ammo, consumables) would use
+## and make, limited by `stock` (resource_id -> amount; empty = current Economy amounts).
+## Does NOT change Economy: add "changes" to the settlement report and A applies it.
+## Returns {"ok", "reason" (&"" or no_recipe, not_worker_recipe), "count" (crafts possible),
+## "consumed" {id: n}, "produced" {id: n}, "changes" {id: net}}.
+func craft_by_worker(recipe_id: StringName, count: int, stock: Dictionary = {}) -> Dictionary:
+	var out := {"ok": false, "reason": &"", "count": 0, "consumed": {}, "produced": {}, "changes": {}}
+	var recipe := get_recipe(recipe_id)
+	if recipe == null:
+		out["reason"] = &"no_recipe"
+		return out
+	if not recipe.by_worker:
+		out["reason"] = &"not_worker_recipe"
+		return out
+	var made := maxi(count, 0)
+	for id: StringName in recipe.inputs:
+		var have := int(stock.get(id, 0)) if not stock.is_empty() else Economy.get_amount(id)
+		made = mini(made, have / maxi(recipe.inputs[id], 1))
+	out["ok"] = true
+	out["count"] = made
+	if made == 0:
+		return out
+	var consumed: Dictionary = out["consumed"]
+	var produced: Dictionary = out["produced"]
+	var changes: Dictionary = out["changes"]
+	for id: StringName in recipe.inputs:
+		consumed[id] = recipe.inputs[id] * made
+		changes[id] = changes.get(id, 0) - recipe.inputs[id] * made
+	produced[recipe.output_id] = recipe.output_qty * made
+	changes[recipe.output_id] = changes.get(recipe.output_id, 0) + recipe.output_qty * made
+	return out
+
+
+# --- Essences (A-10) ---
+# Design 06 "각인 규칙": at the essence workshop with a worker assigned. Weapons and accessories only.
+# Every function that takes `ctx` accepts overrides {"facility_level": int, "worker": bool,
+# "mark": bool} (previews, tests, debug); otherwise they are read from Colony.
+# Blocked reasons are StringNames; the Economy is changed only when the preview says ok.
+
+## Essence workshop state: {"level" (0 = not built), "worker" (someone assigned),
+## "mark" (a worker with the 마물 흔적 trait: refining needs one fewer essence)}.
+func essence_context(ctx: Dictionary = {}) -> Dictionary:
+	var workers := Colony.facility_workers(EssenceRules.FACILITY)
+	var mark := false
+	for resident_id in workers:
+		for trait_id in Colony.get_resident(resident_id).get("traits", []):
+			var trait_def := BaseDB.get_trait(StringName(trait_id))
+			if trait_def != null and trait_def.effect(EssenceRules.MARK_EFFECT) > 0.0:
+				mark = true
+	return {"level": int(ctx.get("facility_level", Colony.facility_level(EssenceRules.FACILITY))),
+		"worker": bool(ctx.get("worker", not workers.is_empty())), "mark": bool(ctx.get("mark", mark))}
+
+
+## Weapons and accessories take essences (design 06 "대상").
+func is_engravable(item_uid: StringName) -> bool:
+	var item := get_item(item_uid)
+	if item == null:
+		return false
+	var def := get_def(item.def_id)
+	return def != null and (def.is_weapon() or def.slot == Enums.EquipSlot.ACCESSORY)
+
+
+## Usable essence slots: by rarity (RARITY_ESSENCE_SLOTS) + the opened slot; 0 if not engravable.
+func essence_slot_count(item_uid: StringName) -> int:
+	if not is_engravable(item_uid):
+		return 0
+	var item := get_item(item_uid)
+	return RARITY_ESSENCE_SLOTS[item.rarity] + (EssenceRules.OPEN_SLOT_COUNT if item.opened_slot else 0)
+
+
+## Essence id per usable slot (&"" = empty), length = essence_slot_count().
+func get_engravings(item_uid: StringName) -> Array[StringName]:
+	var out: Array[StringName] = []
+	var item := get_item(item_uid)
+	if item == null:
+		return out
+	out.resize(essence_slot_count(item_uid))
+	out.fill(&"")
+	for entry: Dictionary in item.engravings:
+		var index := int(entry.get("slot_index", -1))
+		if index >= 0 and index < out.size():
+			out[index] = StringName(entry.get("essence_def_id", ""))
+	return out
+
+
+## For the engraving screen (D-12). Engraving a filled slot overwrites it (the old essence is lost).
+## Always returns ok, reason (&"" when ok; else no_item, unknown_essence, lost, not_engravable,
+## no_slots, bad_slot, same_essence, no_facility, no_worker, cost), uid, essence_id, slot, slot_count,
+## replaces (essence id being overwritten or &""), facility, facility_level, worker, cost {id: n},
+## missing {id: shortfall}, stats (now), stats_after (with the engraving; empty for a bad slot).
+func preview_engrave(item_uid: StringName, essence_id: StringName, slot: int = 0, ctx: Dictionary = {}) -> Dictionary:
+	var out := _essence_preview_base(item_uid, ctx)
+	out.merge({"essence_id": essence_id, "slot": slot, "replaces": &""})
+	var item := get_item(item_uid)
+	if item == null:
+		out["reason"] = &"no_item"
+		return out
+	var essence := EssenceRules.get_essence(essence_id)
+	var current := get_engravings(item_uid)
+	if essence != null:
+		out["cost"] = EssenceRules.engrave_cost(essence_id)
+		out["missing"] = _missing(out["cost"])
+	if slot >= 0 and slot < current.size():
+		out["replaces"] = current[slot]
+		if essence != null:
+			current[slot] = essence_id
+			out["stats_after"] = _stats_with_engravings(item, current)
+	if essence == null:
+		out["reason"] = &"unknown_essence"
+	elif item.owner == LOST_ID:
+		out["reason"] = &"lost"
+	elif not is_engravable(item_uid):
+		out["reason"] = &"not_engravable"
+	elif out["slot_count"] == 0:
+		out["reason"] = &"no_slots"
+	elif slot < 0 or slot >= out["slot_count"]:
+		out["reason"] = &"bad_slot"
+	elif out["replaces"] == essence_id:
+		out["reason"] = &"same_essence"
+	else:
+		out["reason"] = _workshop_reason(out, 1)
+	out["ok"] = out["reason"] == &""
+	return out
+
+
+## Engraves (or overwrites) and pays through Economy. False (nothing changes) when not possible.
+func engrave(item_uid: StringName, essence_id: StringName, slot: int = 0, ctx: Dictionary = {}) -> bool:
+	var preview := preview_engrave(item_uid, essence_id, slot, ctx)
+	if not preview["ok"] or not Economy.apply(_negated(preview["cost"])):
+		return false
+	var item := get_item(item_uid)
+	_set_engraving(item, slot, essence_id)
+	_emit_changed(item)
+	return true
+
+
+## Removing an engraving: the essence is lost (design 06 "덮어쓰기·제거"). Returns ok, reason (&"" or
+## no_item, lost, bad_slot, empty_slot, no_facility, no_worker, cost), uid, slot, slot_count, removed,
+## facility, facility_level, worker, cost, missing, stats, stats_after.
+func preview_remove_engraving(item_uid: StringName, slot: int, ctx: Dictionary = {}) -> Dictionary:
+	var out := _essence_preview_base(item_uid, ctx)
+	out.merge({"slot": slot, "removed": &""})
+	var item := get_item(item_uid)
+	if item == null:
+		out["reason"] = &"no_item"
+		return out
+	var current := get_engravings(item_uid)
+	out["cost"] = EssenceRules.REMOVE_COST.duplicate()
+	out["missing"] = _missing(out["cost"])
+	if slot >= 0 and slot < current.size():
+		out["removed"] = current[slot]
+		current[slot] = &""
+		out["stats_after"] = _stats_with_engravings(item, current)
+	if item.owner == LOST_ID:
+		out["reason"] = &"lost"
+	elif slot < 0 or slot >= out["slot_count"]:
+		out["reason"] = &"bad_slot"
+	elif out["removed"] == &"":
+		out["reason"] = &"empty_slot"
+	else:
+		out["reason"] = _workshop_reason(out, 1)
+	out["ok"] = out["reason"] == &""
+	return out
+
+
+func remove_engraving(item_uid: StringName, slot: int, ctx: Dictionary = {}) -> bool:
+	var preview := preview_remove_engraving(item_uid, slot, ctx)
+	if not preview["ok"] or not Economy.apply(_negated(preview["cost"])):
+		return false
+	var item := get_item(item_uid)
+	_set_engraving(item, slot, &"")
+	_emit_changed(item)
+	return true
+
+
+## "슬롯 열기": a Common weapon gets 1 essence slot for parts 3 + scrap 10. Returns ok, reason (&"" or
+## no_item, lost, not_weapon, has_slots, already_open, no_facility, no_worker, cost), uid, slot_count,
+## facility, facility_level, worker, cost, missing, stats, stats_after.
+func preview_open_slot(item_uid: StringName, ctx: Dictionary = {}) -> Dictionary:
+	var out := _essence_preview_base(item_uid, ctx)
+	var item := get_item(item_uid)
+	if item == null:
+		out["reason"] = &"no_item"
+		return out
+	out["cost"] = EssenceRules.OPEN_SLOT_COST.duplicate()
+	out["missing"] = _missing(out["cost"])
+	if not item.opened_slot:
+		item.opened_slot = true
+		out["stats_after"] = get_item_stats(item_uid)
+		item.opened_slot = false
+	if item.owner == LOST_ID:
+		out["reason"] = &"lost"
+	elif not get_def(item.def_id).is_weapon():
+		out["reason"] = &"not_weapon"
+	elif item.opened_slot:
+		out["reason"] = &"already_open"
+	elif RARITY_ESSENCE_SLOTS[item.rarity] > 0:
+		out["reason"] = &"has_slots"
+	else:
+		out["reason"] = _workshop_reason(out, 1)
+	out["ok"] = out["reason"] == &""
+	return out
+
+
+func open_slot(item_uid: StringName, ctx: Dictionary = {}) -> bool:
+	var preview := preview_open_slot(item_uid, ctx)
+	if not preview["ok"] or not Economy.apply(_negated(preview["cost"])):
+		return false
+	var item := get_item(item_uid)
+	item.opened_slot = true
+	_emit_changed(item)
+	return true
+
+
+## Refining (workshop Lv2): 3 of one essence -> 1 of the next grade, same element; the 마물 흔적
+## worker needs 2. Returns ok, reason (&"" or unknown_essence, max_grade, bad_times, no_facility,
+## facility_level, no_worker, cost), essence_id, output_id, times, input_qty (per refine), mark,
+## facility, facility_level, worker, cost {essence: n}, gain {output: times}, missing.
+func preview_refine(essence_id: StringName, times: int = 1, ctx: Dictionary = {}) -> Dictionary:
+	var out := _essence_preview_base(&"", ctx)
+	for key in ["uid", "slot_count", "stats", "stats_after"]:
+		out.erase(key)
+	var fac := essence_context(ctx)
+	out.merge({"essence_id": essence_id, "output_id": EssenceRules.refine_output(essence_id), "times": times,
+		"input_qty": EssenceRules.refine_input(fac["mark"]), "mark": fac["mark"], "gain": {}})
+	if EssenceRules.is_essence(essence_id) and times > 0:
+		out["cost"] = {essence_id: out["input_qty"] * times}
+		out["missing"] = _missing(out["cost"])
+		if out["output_id"] != &"":
+			out["gain"] = {out["output_id"]: times}
+	if not EssenceRules.is_essence(essence_id):
+		out["reason"] = &"unknown_essence"
+	elif out["output_id"] == &"":
+		out["reason"] = &"max_grade"
+	elif times < 1:
+		out["reason"] = &"bad_times"
+	else:
+		out["reason"] = _workshop_reason(out, EssenceRules.REFINE_FACILITY_LEVEL)
+	out["ok"] = out["reason"] == &""
+	return out
+
+
+func refine(essence_id: StringName, times: int = 1, ctx: Dictionary = {}) -> bool:
+	var preview := preview_refine(essence_id, times, ctx)
+	if not preview["ok"]:
+		return false
+	var changes := _negated(preview["cost"])
+	changes.merge(preview["gain"])
+	return Economy.apply(changes)
+
+
+## Disassembling a magic weapon (or engraved accessory) in storage: the item is destroyed and each
+## engraved essence comes back with a 50% chance. Returns ok, reason (&"" or no_item, lost,
+## not_in_storage, no_engraving, no_facility), uid, essences (engraved ids), return_chance,
+## facility, facility_level, worker.
+func preview_disassemble(item_uid: StringName, ctx: Dictionary = {}) -> Dictionary:
+	var out := _essence_preview_base(item_uid, ctx)
+	out.merge({"essences": [], "return_chance": EssenceRules.DISASSEMBLE_RETURN_CHANCE})
+	out.erase("stats_after")
+	var item := get_item(item_uid)
+	if item == null:
+		out["reason"] = &"no_item"
+		return out
+	var essences: Array = out["essences"]
+	for id in get_engravings(item_uid):
+		if id != &"":
+			essences.append(id)
+	if item.owner == LOST_ID:
+		out["reason"] = &"lost"
+	elif item.owner != STORAGE_ID:
+		out["reason"] = &"not_in_storage"
+	elif essences.is_empty():
+		out["reason"] = &"no_engraving"
+	elif out["facility_level"] <= 0:
+		out["reason"] = &"no_facility"
+	out["ok"] = out["reason"] == &""
+	return out
+
+
+## Destroys the item and adds the essences that came back. Returns {"ok", "reason",
+## "returned" {id: n}, "lost" {id: n}} (pass an rng for repeatable rolls).
+func disassemble(item_uid: StringName, ctx: Dictionary = {}, rng: RandomNumberGenerator = null) -> Dictionary:
+	var preview := preview_disassemble(item_uid, ctx)
+	var out := {"ok": false, "reason": preview["reason"], "returned": {}, "lost": {}}
+	if not preview["ok"]:
+		return out
+	if rng == null:
+		rng = RandomNumberGenerator.new()
+	var returned := EssenceRules.roll_disassemble(preview["essences"], rng)
+	var lost := {}
+	for id: StringName in preview["essences"]:
+		lost[id] = lost.get(id, 0) + 1
+	for id: StringName in returned:
+		lost[id] -= returned[id]
+		if lost[id] <= 0:
+			lost.erase(id)
+	remove_item(item_uid)
+	Economy.apply(returned)
+	out["ok"] = true
+	out["returned"] = returned
+	out["lost"] = lost
+	return out
 
 
 # --- Save provider ---
@@ -303,12 +956,13 @@ func save_data() -> Dictionary:
 	var items := []
 	for uid: StringName in _items:
 		items.append(_items[uid].to_dict())
-	return {"next_id": _next_id, "items": items}
+	return {"next_id": _next_id, "items": items, "auto_repair": auto_repair_enabled}
 
 
 func load_data(data: Dictionary) -> void:
 	_items.clear()
 	_next_id = int(data.get("next_id", 1))
+	auto_repair_enabled = bool(data.get("auto_repair", false))
 	for entry: Dictionary in data.get("items", []):
 		var item := ItemInstance.from_dict(entry)
 		if get_def(item.def_id) == null:
@@ -318,6 +972,160 @@ func load_data(data: Dictionary) -> void:
 
 
 # --- Internals ---
+
+## Equipped items changed stats: tell whoever shows that owner.
+func _emit_changed(item: ItemInstance) -> void:
+	if item.slot >= 0:
+		EventBus.equipment_changed.emit(item.owner, item.slot)
+
+
+## {id: shortfall} for everything in `cost` that Economy does not have enough of.
+func _missing(cost: Dictionary) -> Dictionary:
+	var missing := {}
+	for id: StringName in cost:
+		var short := int(cost[id]) - Economy.get_amount(id)
+		if short > 0:
+			missing[id] = short
+	return missing
+
+
+func _negated(cost: Dictionary) -> Dictionary:
+	var out := {}
+	for id: StringName in cost:
+		out[id] = -int(cost[id])
+	return out
+
+
+## get_item_stats() as if the item were at `level`.
+func _stats_at_level(item: ItemInstance, level: int) -> Dictionary:
+	var saved := item.upgrade_level
+	item.upgrade_level = level
+	var stats := get_item_stats(item.uid)
+	item.upgrade_level = saved
+	return stats
+
+
+## Auto repair order: worn gear first, then lowest durability, then uid.
+func _repair_order(a: ItemInstance, b: ItemInstance) -> bool:
+	if (a.slot >= 0) != (b.slot >= 0):
+		return a.slot >= 0
+	if a.durability != b.durability:
+		return a.durability < b.durability
+	return String(a.uid) < String(b.uid)
+
+
+## Family materials allowed for the +9/+10 cost: the item's element material once it has one
+## (A-10), otherwise any of the four, the one with the most in storage first.
+func _family_options(item: ItemInstance) -> Array:
+	var element: int = get_item_stats(item.uid).get("element", Enums.Element.NONE)
+	var own := UpgradeRules.family_material(element)
+	if own != &"":
+		return [own]
+	var options: Array = []
+	for i in UpgradeRules.FAMILY_MATERIALS.size():
+		options.append([UpgradeRules.FAMILY_MATERIALS[i], Economy.get_amount(UpgradeRules.FAMILY_MATERIALS[i]), i])
+	options.sort_custom(func(a: Array, b: Array) -> bool:
+		return a[1] > b[1] if a[1] != b[1] else a[2] < b[2])
+	return options.map(func(entry: Array) -> StringName: return entry[0])
+
+
+## Fills the A-10 keys of get_item_stats().
+func _add_essence_stats(item: ItemInstance, def: ItemDef, stats: Dictionary) -> void:
+	var engravings := get_engravings(item.uid)
+	var prefix := EssenceRules.name_prefix(engravings) if def.is_weapon() else ""
+	stats["engravable"] = is_engravable(item.uid)
+	stats["opened_slot"] = item.opened_slot
+	stats["engravings"] = engravings
+	stats["magic"] = engravings.any(func(id: StringName) -> bool: return id != &"")
+	stats["name_prefix"] = prefix
+	stats["display_name"] = ("%s %s" % [prefix, def.name]) if prefix != "" else def.name
+	stats["element"] = Enums.Element.NONE
+	stats["essence_effects"] = []
+	stats["combo"] = null
+	if def.is_weapon():
+		var magic := EssenceRules.weapon_effects(engravings)
+		stats["element"] = magic["element"]
+		stats["essence_effects"] = magic["effects"]
+		stats["combo"] = magic["combo"]
+	elif def.slot == Enums.EquipSlot.ACCESSORY:
+		stats["essence_effects"] = EssenceRules.accessory_effects(engravings)
+		stats["element_resist"] = EssenceRules.accessory_resist(engravings)
+
+
+## get_item_stats() with these engravings (essence id per slot) instead of the item's own.
+func _stats_with_engravings(item: ItemInstance, by_slot: Array) -> Dictionary:
+	var saved := item.engravings
+	item.engravings = []
+	for i in by_slot.size():
+		if by_slot[i] != &"":
+			item.engravings.append({"slot_index": i, "essence_def_id": StringName(by_slot[i])})
+	var stats := get_item_stats(item.uid)
+	item.engravings = saved
+	return stats
+
+
+## Puts `essence_id` in `slot` (&"" clears it). Keeps the list sorted by slot.
+func _set_engraving(item: ItemInstance, slot: int, essence_id: StringName) -> void:
+	var kept: Array = []
+	for entry: Dictionary in item.engravings:
+		if int(entry.get("slot_index", -1)) != slot:
+			kept.append(entry)
+	if essence_id != &"":
+		kept.append({"slot_index": slot, "essence_def_id": essence_id})
+	kept.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["slot_index"] < b["slot_index"])
+	item.engravings = kept
+
+
+## Common fields of the A-10 previews.
+func _essence_preview_base(item_uid: StringName, ctx: Dictionary) -> Dictionary:
+	var fac := essence_context(ctx)
+	var out := {"ok": false, "reason": &"", "uid": item_uid, "slot_count": essence_slot_count(item_uid),
+		"facility": EssenceRules.FACILITY, "facility_level": fac["level"], "worker": fac["worker"],
+		"cost": {}, "missing": {}, "stats": get_item_stats(item_uid), "stats_after": {}}
+	return out
+
+
+## Workshop checks shared by the A-10 previews: built, level, worker, then cost.
+func _workshop_reason(out: Dictionary, min_level: int) -> StringName:
+	if out["facility_level"] <= 0:
+		return &"no_facility"
+	if out["facility_level"] < min_level:
+		return &"facility_level"
+	if not out["worker"]:
+		return &"no_worker"
+	if not out["missing"].is_empty():
+		return &"cost"
+	return &""
+
+
+## Debug console (debug builds only): engrave the player's weapon for free.
+func _register_debug() -> void:
+	DebugConsole.register(&"engrave", _cmd_engrave,
+		"engrave <essence_id|none> [slot 0-1] [main|sub] - 플레이어 무기에 무료 각인 (일반 무기는 슬롯을 연다)")
+
+
+func _cmd_engrave(args: PackedStringArray) -> String:
+	if args.is_empty():
+		return "usage: engrave <essence_id|none> [slot] [main|sub]. ids: %s" % [EssenceRules.list_essences()]
+	var slot := int(args[1]) if args.size() > 1 and args[1].is_valid_int() else 0
+	var equip_slot := Enums.EquipSlot.SUB if args.size() > 2 and args[2] == "sub" else Enums.EquipSlot.MAIN
+	var uid := get_equipped(PLAYER_ID, equip_slot)
+	if uid == &"":
+		return "no weapon equipped"
+	var essence_id := &"" if args[0] == "none" else StringName(args[0])
+	if essence_id != &"" and not EssenceRules.is_essence(essence_id):
+		return "unknown essence %s" % essence_id
+	var item := get_item(uid)
+	if essence_slot_count(uid) == 0:
+		item.opened_slot = true
+	if slot < 0 or slot >= essence_slot_count(uid):
+		return "slot %d out of range (%d slots)" % [slot, essence_slot_count(uid)]
+	_set_engraving(item, slot, essence_id)
+	_emit_changed(item)
+	var stats := get_item_stats(uid)
+	return "%s: element %d, effects %d, combo %s" % [stats["display_name"], stats["element"],
+		stats["essence_effects"].size(), stats["combo"]["name"] if stats["combo"] != null else "-"]
+
 
 func _to_storage(item_uid: StringName) -> void:
 	var item := get_item(item_uid)
@@ -366,3 +1174,11 @@ func _load_defs() -> void:
 				push_error("Armory: %s is not an Affix with an id" % file)
 				continue
 			affixes[affix.id] = affix
+	recipes.clear()
+	for file in ResourceLoader.list_directory(RECIPES_DIR):
+		if file.ends_with(".tres"):
+			var recipe := load(RECIPES_DIR.path_join(file)) as Recipe
+			if recipe == null or recipe.id == &"":
+				push_error("Armory: %s is not a Recipe with an id" % file)
+				continue
+			recipes[recipe.id] = recipe

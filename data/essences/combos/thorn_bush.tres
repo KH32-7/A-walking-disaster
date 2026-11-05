@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ComboDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/combo_def.gd" id="1_combo"]
+
+[resource]
+script = ExtResource("1_combo")
+id = &"thorn_bush"
+name = "가시 덤불"
+description = "적중 지점에 3초 가시 장판 (초당 피해 5, 이동 -30%)"
+effect_params = {
+"zone_sec": 3.0,
+"zone_radius": 1.5,
+"dps": 5.0,
+"slow_ratio": 0.3
+}

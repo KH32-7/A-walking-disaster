@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="ResidentTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/resident_template.gd" id="1_rtpl"]
+
+[resource]
+script = ExtResource("1_rtpl")
+id = &"teacher_namgung"
+name = "남궁선"
+age_stage = 3
+former_job = &"teacher"
+traits = Array[StringName]([&"easygoing", &"optimist"])
+likes = Array[StringName]([&"books", &"coffee"])
+dislikes = Array[StringName]([&"rushing", &"dust"])
+access_needs = Array[int]([0])
+background = "초등학교 과학 교사. 의족을 쓰는데, 대피하던 날 의족 연결부가 부러져 학교 과학실에 남았다. 과학실 재료로 연결부를 임시로 고쳐 두고 구조를 기다렸다."
+fragments = Array[String](["수업 시간마다 아이들에게 '왜?'를 세 번 묻게 했다. 기지 아이들에게도 그렇게 가르칠 생각이다.", "의족에는 학생들이 붙여 준 스티커가 가득하다. 새 연결부를 만들어 주면 스티커부터 옮겨 붙일 것이다."])
+contribution = "아이들을 가르치고 물 거르기 같은 생활 과학을 맡는다."
+first_line = "다리 고칠 부품 있으면 좋겠는데. 없어도 괜찮아요."
+rescue_lines = Array[String](["계단은 한 칸씩 갈게요. 기다려 줘요.", "저건 물 거르는 데 쓸 수 있어요.", "숨 고르고요. 셋 세고 가요."])
+situation = "초등학교 과학실"

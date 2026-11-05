@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="JournalTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/journal_template.gd" id="1_jtpl"]
+
+[resource]
+script = ExtResource("1_jtpl")
+id = &"epilogue_stay"
+lines = Array[String](["{name|은} 학교에 남아 다른 남겨진 사람들을 맞이한다.", "{name|은} 도시에 남았다. 다시 지은 학교에서 오늘도 문을 연다.", "{joined}일차에 온 {name|은} 지금도 학교에 산다. 할 일이 줄지 않는다고 투덜대면서."])
+priority = 0

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ZoneDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/zone_def.gd" id="1_nartr"]
+
+[resource]
+script = ExtResource("1_nartr")
+id = &"playground"
+display_name = "운동장"
+size = Vector2i(20, 12)
+clear_work = 40
+clear_yield = Dictionary[StringName, int]({
+&"stone": 30
+})
+note = "넓은 평지, 주 건설 부지"

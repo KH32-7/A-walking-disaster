@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="JournalTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/journal_template.gd" id="1_jtpl"]
+
+[resource]
+script = ExtResource("1_jtpl")
+id = &"sortie_downed"
+lines = Array[String](["{region}에서 쓰러졌다. 그래도 돌아왔다. 다음엔 다른 길로 간다.", "{region}에서 크게 고생했다. 잃은 것은 다시 찾으면 된다.", "오늘 {region|은} 버거웠다. 붕대를 새로 감았다."])
+priority = 22

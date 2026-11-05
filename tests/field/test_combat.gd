@@ -30,6 +30,7 @@ func run() -> bool:
 	await _test_melee_combo_and_backstab()
 	await _test_block()
 	await _test_magazine_and_reload()
+	await _test_one_hand_only()
 	_restore_loadout()
 	return _ok
 
@@ -87,6 +88,30 @@ func _test_combo_and_block_rules() -> void:
 
 
 # --- In the world ---------------------------------------------------------
+
+## B-10 부축: only light weapons while player.one_hand_only.
+func _test_one_hand_only() -> void:
+	var w := await _world()
+	_equip(&"rifle", Enums.EquipSlot.MAIN)
+	_equip(&"pistol", Enums.EquipSlot.SUB)
+	w.holder.switch_to(Enums.EquipSlot.MAIN)
+	w.player.one_hand_only = true
+	w.holder.step(1.0 / 60.0, {})
+	_expect(w.holder.active_slot == Enums.EquipSlot.SUB, "supporting falls back to the light pistol")
+	_expect(not w.holder.switch_to(Enums.EquipSlot.MAIN), "rifle refused while supporting")
+	# Only a two-hand rifle (SUB takes light weapons only, so leave it empty): no attack at all.
+	Armory.unequip(Armory.PLAYER_ID, Enums.EquipSlot.SUB)
+	w.player.one_hand_only = false
+	w.holder.switch_to(Enums.EquipSlot.MAIN)
+	w.player.one_hand_only = true
+	var ammo := w.holder.ammo_in_magazine()
+	w.holder.step(1.0 / 60.0, {"attack": true})
+	_expect(w.holder.active_slot == Enums.EquipSlot.MAIN and w.holder.ammo_in_magazine() == ammo,
+		"no two-hand attack while supporting")
+	w.player.one_hand_only = false
+	_expect(w.holder.switch_to(Enums.EquipSlot.MAIN), "rifle usable again")
+	w.root.free()
+
 
 func _test_six_weapons() -> void:
 	for def_id in SIX_WEAPONS:

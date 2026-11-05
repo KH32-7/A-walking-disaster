@@ -1,0 +1,28 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://levels/base/base_school/base_school.gd" id="1_base"]
+[ext_resource type="PackedScene" path="res://levels/base/base_school/layout.tscn" id="2_layout"]
+[ext_resource type="PackedScene" path="res://field/player/player.tscn" id="3_player"]
+[ext_resource type="PackedScene" path="res://field/camera/field_camera.tscn" id="4_camera"]
+[ext_resource type="Script" path="res://base/building/build_mode.gd" id="5_build_mode"]
+[ext_resource type="Script" path="res://base/building/building_views.gd" id="6_views"]
+[ext_resource type="Script" path="res://base/residents/resident_crowd.gd" id="7_crowd"]
+
+[node name="BaseSchool" type="Node3D"]
+script = ExtResource("1_base")
+
+[node name="Layout" parent="." instance=ExtResource("2_layout")]
+
+[node name="Player" parent="." instance=ExtResource("3_player")]
+
+[node name="FieldCamera" parent="." node_paths=PackedStringArray("target") instance=ExtResource("4_camera")]
+target = NodePath("../Player")
+
+[node name="BuildingViews" type="Node3D" parent="."]
+script = ExtResource("6_views")
+
+[node name="BuildMode" type="Node3D" parent="."]
+script = ExtResource("5_build_mode")
+
+[node name="Residents" type="Node3D" parent="."]
+script = ExtResource("7_crowd")

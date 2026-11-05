@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="EssenceDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/essence_def.gd" id="1_ess"]
+
+[resource]
+script = ExtResource("1_ess")
+id = &"essence_green_mid"
+name = "중급 녹 정수"
+element = 1
+grade = 1
+effect_params = {
+"root_chance": 0.15,
+"root_sec": 1.5,
+"lifesteal_ratio": 0.04
+}
+scaling_keys = Array[StringName]([&"root_chance", &"root_sec", &"lifesteal_ratio"])
+resist_ratio = 0.3
+name_prefix = "덩굴 감긴"
+vfx_shape = &"petal"

@@ -18,6 +18,8 @@ signal reload_started(duration_sec: float)
 signal reload_finished()
 ## kind: &"shot" or &"swing". combo_step: 1..3 for swings, 0 for shots.
 signal attacked(kind: StringName, combo_step: int)
+## One bullet path (per pellet), same points as Fx "bullet_tracer". hit = it stopped on something.
+signal shot_traced(from: Vector3, to: Vector3, hit: bool)
 signal hit_landed(target: Node, amount: float, info: Dictionary)
 signal blocked(perfect: bool)
 signal guard_broken()
@@ -94,8 +96,11 @@ func step(delta: float, input: Dictionary) -> void:
 		switch_to(Enums.EquipSlot.SUB)
 	elif input.get("weapon_swap", false):
 		switch_to(_other_slot())
+	if not usable(current_stats()):
+		# Supporting someone (B-10): fall back to the light weapon in the other slot if there is one.
+		switch_to(_other_slot())
 	var stats := current_stats()
-	if stats.is_empty():
+	if stats.is_empty() or not usable(stats):
 		_set_blocking(false)
 		return
 	if is_gun(stats):
@@ -119,9 +124,18 @@ static func is_gun(stats: Dictionary) -> bool:
 	return int(stats.get("combat_class", -1)) == Enums.CombatClass.GUN
 
 
-## Makes `slot` active. Fails when nothing is equipped there.
+## False for a two-hand weapon while the player supports someone (02 "함께 나오기": 부축 중엔
+## 권총, 단검 같은 한 손 무기만). Light = ItemDef.light (보조무기 가능).
+func usable(stats: Dictionary) -> bool:
+	if stats.is_empty() or _player == null or not _player.one_hand_only:
+		return true
+	return bool(stats.get("light", false))
+
+
+## Makes `slot` active. Fails when nothing is equipped there, or it is two-handed while supporting.
 func switch_to(slot: Enums.EquipSlot) -> bool:
-	if Armory.get_equipped(owner_id, slot) == &"":
+	var uid := Armory.get_equipped(owner_id, slot)
+	if uid == &"" or not usable(Armory.get_item_stats(uid)):
 		return false
 	if slot == active_slot:
 		return true
@@ -211,6 +225,7 @@ func shoot_ray(origin: Vector3, direction: Vector3, max_range: float, amount: fl
 		var hit := space.intersect_ray(query)
 		if hit.is_empty():
 			Fx.spawn(&"bullet_tracer", origin, {"to": target_point})
+			shot_traced.emit(origin, target_point, false)
 			return null
 		var collider := hit["collider"] as Node
 		if _is_low_cover(collider) and pass_index < MAX_COVER_PASSES:
@@ -219,6 +234,7 @@ func shoot_ray(origin: Vector3, direction: Vector3, max_range: float, amount: fl
 			continue
 		var point: Vector3 = hit["position"]
 		Fx.spawn(&"bullet_tracer", origin, {"to": point})
+		shot_traced.emit(origin, point, true)
 		var target := _damage_target(collider)
 		if target == null:
 			Fx.spawn(&"bullet_impact", point, {"normal": hit["normal"]})

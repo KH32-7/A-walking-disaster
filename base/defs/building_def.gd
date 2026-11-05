@@ -61,11 +61,16 @@ const POWER_PRIORITY_OTHER := 3
 ## Defense structures (10 탭): max durability and contribution to the automatic raid judgment.
 @export var durability := 0
 @export var defense_value := 0.0
+## Explicit cost per level [Lv1, Lv2, Lv3] when the ×2/×3 rule does not apply ({} = use the rule).
+## 무전실: 처음부터 Lv1, Lv2는 고철 30 + 무전 부품 5.
+@export var level_cost_override: Array[Dictionary] = []
 @export var note: String = ""
 
 
 func cost_for_level(level: int) -> Dictionary:
 	var lv := clampi(level, 1, MAX_LEVEL)
+	if lv - 1 < level_cost_override.size() and not level_cost_override[lv - 1].is_empty():
+		return level_cost_override[lv - 1].duplicate()
 	var result := {}
 	for res: StringName in cost:
 		result[res] = cost[res] * LEVEL_COST_MULT[lv - 1]

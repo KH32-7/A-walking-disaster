@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="JournalTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/journal_template.gd" id="1_jtpl"]
+
+[resource]
+script = ExtResource("1_jtpl")
+id = &"joined"
+lines = Array[String](["{name|이} 우리와 함께 지내기로 했다.", "{name|이} 새로 들어왔다. 식탁에 의자를 하나 더 놓았다.", "새 얼굴이 생겼다. {name|이} 짐을 풀었다.", "{name|이} 학교에 자리를 잡았다. 벌써 할 일을 묻는다."])
+priority = 50

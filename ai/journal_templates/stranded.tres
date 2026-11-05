@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="JournalTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/journal_template.gd" id="1_jtpl"]
+
+[resource]
+script = ExtResource("1_jtpl")
+id = &"stranded"
+lines = Array[String](["{region}에 {name|을} 두고 왔다. 내일 꼭 데리러 간다.", "{name|이} 아직 {region}에 있다. 침상은 그대로 비워 두었다.", "오늘은 {region}에서 {name|과} 함께 돌아오지 못했다. 무전기를 밤새 켜 두기로 했다.", "{region}에서 {name|을} 데려오지 못했다. 아무도 두고 가지 않는다. 다시 간다."])
+priority = 90

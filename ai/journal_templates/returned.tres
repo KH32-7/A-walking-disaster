@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="JournalTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/journal_template.gd" id="1_jtpl"]
+
+[resource]
+script = ExtResource("1_jtpl")
+id = &"returned"
+lines = Array[String](["{name|이} 돌아왔다. 다들 한동안 말없이 웃기만 했다.", "기다리던 {name|이} 돌아왔다. 남겨 둔 자리는 그대로였다.", "{name|을} 다시 데려왔다. 약속을 지켰다.", "{name|이} 돌아온 날. 저녁 식탁이 유난히 시끄러웠다."])
+priority = 80
