@@ -16,6 +16,10 @@ const SUBURB_DIR := "res://assets/environment/city/american_suburb/models/"
 const NATURE_DIR := "res://assets/environment/nature/pure_nature_redwood/models/"
 const CELL := 2.0
 const FIT_MAX_SCALE := 1.6
+## Every building model is drawn this much larger than its footprint, scaled from the footprint's
+## centre (user feedback 2026-11-06: buildings looked small next to the forest). The grid footprint,
+## placement and collision are unchanged; only the look grows.
+const VISUAL_SCALE := 1.35
 
 ## Buildings with no grid size in data (prebuilt / attached) get a sandbox footprint here.
 const SIZE_OVERRIDE := {&"radio_room": Vector2i(3, 3)}
@@ -201,7 +205,7 @@ static func build(def_id: StringName, size_cells: Vector2i) -> Node3D:
 		var xf := fit_transform(model, at, rot, td if swapped else tw, tw if swapped else td, fill)
 		var holder := Node3D.new()
 		holder.name = "%s_%d" % [model, placed]
-		holder.transform = xf
+		holder.transform = Transform3D(Basis.from_scale(Vector3.ONE * VISUAL_SCALE)) * xf
 		for p: Dictionary in mesh_parts(model):
 			var mi := MeshInstance3D.new()
 			mi.mesh = p["mesh"]

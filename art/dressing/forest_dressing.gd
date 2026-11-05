@@ -30,6 +30,11 @@ const LOGS := ["redwood_hollow_log_0", "redwood_hollow_log_1", "redwood_hollow_l
 	"redwood_hollow_log2_0", "redwood_hollow_log2_1", "redwood_hollow_log2_2"]
 const PEBBLES := ["rubble_sparse_1", "rubble_sparse_2", "rubble_sparse_3", "boulder_1", "boulder_3"]
 const CAMP_PROPS := ["food_supplies_crat", "water_canister", "hiking_backpack", "plastic_storage_bin", "cooler_box_water"]
+## Camp props fit this box (m) at up to this scale, this far apart (user feedback 2026-11-06: they
+## read tiny next to the buildings and the forest).
+const CAMP_PROP_SIZE := Vector2(1.9, 1.6)
+const CAMP_PROP_MAX_SCALE := 2.6
+const CAMP_PROP_SPACING := 2.3
 
 const MAP_MIN := Vector2(-110.0, -90.0)
 const MAP_MAX := Vector2(110.0, 82.0)
@@ -543,9 +548,9 @@ func _pick_floor(_p: Vector2) -> Array:
 func _pick_rock(_p: Vector2) -> Array:
 	var r := _rng.randf()
 	if r < 0.2:
-		return _pick(BIG_BOULDERS, 0.6, 1.0)
+		return _pick(BIG_BOULDERS, 0.3, 0.5)  # rocks halved (user feedback 2026-11-06)
 	if r < 0.5:
-		return _pick(BOULDERS, 0.7, 1.3)
+		return _pick(BOULDERS, 0.35, 0.65)
 	if r < 0.65:
 		return _pick(LOGS, 0.8, 1.1)
 	return []
@@ -553,7 +558,7 @@ func _pick_rock(_p: Vector2) -> Array:
 
 func _pick_pebble(_p: Vector2) -> Array:
 	if _rng.randf() < 0.5:
-		return _pick(PEBBLES, 0.4, 0.9)
+		return _pick(PEBBLES, 0.2, 0.45)
 	return []
 
 
@@ -625,10 +630,11 @@ func _camp() -> void:
 	var gather := _layout.get_node_or_null(^"GatherPoint") as Node3D
 	if gather != null:
 		for i in CAMP_PROPS.size():
-			var at := gather.global_position + Vector3(-4.0 + i * 1.6, 0, -3.0)
+			var at := gather.global_position + Vector3(-5.0 + i * CAMP_PROP_SPACING, 0, -3.0)
 			var holder := Node3D.new()
 			holder.name = "Camp_%s" % CAMP_PROPS[i]
-			holder.transform = Models.fit_transform(CAMP_PROPS[i], at, _rng.randf_range(-20, 20), 1.2, 1.0)
+			holder.transform = Models.fit_transform(CAMP_PROPS[i], at, _rng.randf_range(-20, 20),
+					CAMP_PROP_SIZE.x, CAMP_PROP_SIZE.y, false, CAMP_PROP_MAX_SCALE)
 			for part: Dictionary in Models.mesh_parts(CAMP_PROPS[i]):
 				var mi := MeshInstance3D.new()
 				mi.mesh = part["mesh"]
