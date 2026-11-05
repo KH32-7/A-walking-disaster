@@ -39,6 +39,7 @@ func _add_buildings() -> void:
 		return
 	var kit := (load(BUILDINGS_PATH) as PackedScene).instantiate()
 	add_child(kit)
+	CityKit.tune_look(kit)
 	# Layout CSG that stays (stairs, ramp) gets pack textures; Lane D's toon skin leaves ShaderMaterials.
 	var skins: Dictionary = kit.get_meta(&"layout_skins", {})
 	for path: NodePath in skins:

@@ -149,6 +149,23 @@ const PROPS := {
 	"sequoia2": ["nature/trees", Vector3(-7.93, -0.76, -7.50), Vector3(16.30, 36.15, 15.27)],
 	"sequoia3": ["nature/trees", Vector3(-8.36, -0.76, -8.41), Vector3(16.21, 38.28, 16.87)],
 	# Outdoor, vehicles, nature (Redwood pack: folder nature/<sub>).
+	"campfire_patio": ["outdoor_environment", Vector3(-0.51, -0.00, -0.53), Vector3(1.04, 0.48, 1.06)],
+	"adirondack_chair": ["outdoor_environment", Vector3(-0.43, 0.00, -0.37), Vector3(0.90, 0.96, 0.84)],
+	"compost_bin": ["outdoor_environment", Vector3(-0.34, -0.00, -0.97), Vector3(0.69, 1.07, 1.95)],
+	"tv_box": ["outdoor_environment", Vector3(-0.08, -0.00, -0.83), Vector3(0.17, 0.82, 1.60)],
+	"dumpster_enclosure": ["outdoor_environment", Vector3(-2.07, -0.02, -5.10), Vector3(2.10, 2.22, 5.10)],
+	"charcoal_grill_ball": ["outdoor_environment", Vector3(-0.56, -0.01, -0.42), Vector3(0.97, 1.37, 0.83)],
+	"gas_grill": ["outdoor_environment", Vector3(-0.36, -0.00, -0.82), Vector3(0.73, 1.40, 1.62)],
+	"lounge_chair": ["outdoor_environment", Vector3(-0.87, 0.00, -0.33), Vector3(1.48, 0.92, 0.68)],
+	"outdoor_dining_table_b": ["outdoor_environment", Vector3(-0.59, 0.00, -1.16), Vector3(1.18, 0.84, 2.23)],
+	"garden_hose": ["outdoor_environment", Vector3(-0.58, -0.00, -0.32), Vector3(0.80, 0.52, 0.53)],
+	"rolled_sleeping_bag": ["gameplay_props", Vector3(-0.18, -0.00, -0.36), Vector3(0.36, 0.36, 0.71)],
+	"hiking_backpack": ["gameplay_props", Vector3(-0.29, -0.00, -0.33), Vector3(0.58, 0.91, 0.63)],
+	"cooler_box_water": ["gameplay_props", Vector3(-0.18, 0.00, -0.25), Vector3(0.36, 0.40, 0.50)],
+	"plastic_storage_bin": ["gameplay_props", Vector3(-0.24, -0.00, -0.34), Vector3(0.47, 0.40, 0.69)],
+	"backpack": ["gameplay_props", Vector3(-0.26, -0.00, -0.21), Vector3(0.52, 0.72, 0.43)],
+	"water_canister": ["gameplay_props", Vector3(-0.14, 0.00, -0.25), Vector3(0.28, 0.58, 0.50)],
+	"redwood_hollow_log_2": ["nature/hollow_logs", Vector3(-0.63, 0.00, -3.46), Vector3(1.25, 1.19, 6.92)],
 	"sidewalk_curbstone_a_8m": ["street", Vector3(-8.00, -0.00, -0.09), Vector3(8.00, 0.14, 2.54)],
 	"sidewalk_curbstone_a_4m": ["street", Vector3(-4.00, -0.00, -0.09), Vector3(4.00, 0.14, 2.54)],
 	"sidewalk_curbstone_a_2m": ["street", Vector3(-2.00, -0.00, -0.09), Vector3(2.00, 0.14, 2.54)],
@@ -731,3 +748,56 @@ static func ground_material(texture_path: String, tile: float, tint := Color.WHI
 	mat.set_shader_parameter(&"tile_size", tile)
 	mat.set_shader_parameter(&"albedo", tint)
 	return mat
+
+
+# --- runtime look --------------------------------------------------------------
+
+## Foliage (leaves, needles, grass, ferns: the packs' double-sided toon materials) multiplied by this,
+## from the packs' bright yellow-green to a deep green (user feedback 2026-11-06).
+const FOLIAGE_TINT := Color(0.55, 0.68, 0.52)
+## Higher than Godot's 1.0 keeps the trees' generated LODs detailed further out.
+const KIT_LOD_BIAS := 3.0
+
+
+## Darkens pack foliage and raises the LOD bias under root. Materials and multimesh meshes are
+## copied at runtime, never saved.
+static func tune_look(root: Node) -> void:
+	var cache := {}
+	for g: GeometryInstance3D in root.find_children("*", "GeometryInstance3D", true, false):
+		g.lod_bias = KIT_LOD_BIAS
+		if g is MeshInstance3D:
+			var mi := g as MeshInstance3D
+			if mi.mesh == null:
+				continue
+			for s in mi.mesh.get_surface_count():
+				var dark := _dark(mi.get_active_material(s), cache)
+				if dark != null:
+					mi.set_surface_override_material(s, dark)
+		elif g is MultiMeshInstance3D:
+			var mm := (g as MultiMeshInstance3D).multimesh
+			if mm == null or mm.mesh == null:
+				continue
+			var mesh := mm.mesh
+			var copy: Mesh = null
+			for s in mesh.get_surface_count():
+				var dark := _dark(mesh.surface_get_material(s), cache)
+				if dark != null:
+					if copy == null:
+						copy = mesh.duplicate()
+					copy.surface_set_material(s, dark)
+			if copy != null:
+				mm.mesh = copy
+
+
+static func _dark(mat: Material, cache: Dictionary) -> Material:
+	var sm := mat as ShaderMaterial
+	if sm == null or sm.shader == null or not "double_sided" in sm.shader.resource_path:
+		return null
+	if not cache.has(sm):
+		var d := sm.duplicate() as ShaderMaterial
+		var albedo: Variant = sm.get_shader_parameter(&"albedo")
+		var base: Color = albedo if albedo is Color else Color.WHITE
+		d.set_shader_parameter(&"albedo", Color(base.r * FOLIAGE_TINT.r, base.g * FOLIAGE_TINT.g,
+			base.b * FOLIAGE_TINT.b, base.a))
+		cache[sm] = d
+	return cache[sm]

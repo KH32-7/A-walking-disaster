@@ -21,6 +21,8 @@ uniform float road_tile = 6.0;
 uniform float dirt_tile = 5.0;
 // How far noise pushes the edges (splat units). Higher = more ragged.
 uniform float edge_noise = 0.55;
+// The pack asphalt is dark; lift it so the cool grade does not crush it to black.
+uniform float road_bright = 1.0;
 uniform vec4 tint : source_color = vec4(1.0);
 
 uniform vec4 shade_color : source_color = vec4(0.42, 0.50, 0.58, 1.0);
@@ -73,7 +75,7 @@ void fragment() {
 	// Crumbled shoulder: dirt just outside the asphalt.
 	float shoulder = smoothstep(0.15, 0.45, s.r + n * edge_noise) * (1.0 - r);
 	col = mix(col, tex2(dirt, xz, dirt_tile), shoulder * 0.7);
-	col = mix(col, tex2(road, xz, road_tile), r);
+	col = mix(col, tex2(road, xz, road_tile) * road_bright, r);
 	col *= mix(0.86, 1.06, value_noise(xz * 0.13 + vec2(17.0, 5.0)));
 	ALBEDO = tint.rgb * col;
 }

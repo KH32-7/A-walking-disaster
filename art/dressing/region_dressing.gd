@@ -190,10 +190,15 @@ func _water(layout: Node) -> void:
 	mat.shader = WATER
 	if bool(Settings.get_value(&"reduce_flash")):
 		mat.set_shader_parameter(&"sparkle_amount", 0.0)
+	# Shallow overlays (a few cm over the ground) would read as foam everywhere: the foam is the depth
+	# difference to what is under the surface. They get a thin foam band only (B-26 feedback 2026-11-06).
+	var shallow_mat := mat.duplicate() as ShaderMaterial
+	shallow_mat.set_shader_parameter(&"foam_width", 0.005)
 	for n in layout.find_children("*", "CSGShape3D", true, false):
 		if not _is_water(n):
 			continue
-		(n as CSGShape3D).set(&"material", mat)
+		var is_shallow := n.get_parent() != null and String(n.get_parent().name) == "Overlays"
+		(n as CSGShape3D).set(&"material", shallow_mat if is_shallow else mat)
 		var box := (n as CSGShape3D).get_aabb()
 		var xf := (n as Node3D).global_transform
 		for i in int(debris_count / 2.0):
