@@ -1,6 +1,7 @@
 extends RefCounted
 ## main.tscn integration (A-05): the real base and field scenes load under World, the flow screens
-## open, and the stand-in prompts (core/flow_prompts.gd) show on TITLE / BASE_STAY / NIGHT.
+## open, and the stand-in prompts (core/flow_prompts.gd) show on TITLE / BASE_STAY / NIGHT
+## (TITLE: or the real title screen once D-19 registered it).
 ## Two sortie days and one stay day with the real scenes. Uses a throwaway save location.
 
 const TEST_SAVES := "user://test_main_flow_saves"
@@ -26,7 +27,8 @@ func run() -> bool:
 	_main.name = &"Main"
 	_tree.root.add_child(_main)
 	await _frames(3)
-	var ok := _expect(_prompt_count() > 0, "title prompt not shown")
+	# D-19: once Lane D registers the `title` screen the stand-in prompt steps aside (flow_prompts.gd).
+	var ok := _expect(_prompt_count() > 0 or UI.is_open(&"title"), "title not shown")
 	var dr := SceneRouter.default_region()
 	ok = ok and _expect(ResourceLoader.exists(SceneRouter.REGION_SCENE_FMT % [dr, dr]), "default_region %s has no map" % dr)
 	ok = ok and _expect(SceneRouter.start_new_game(0), "start_new_game refused")
