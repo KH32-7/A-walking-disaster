@@ -16,6 +16,7 @@
 [ext_resource type="Resource" path="res://data/regions/flooded_mall/rescues/lost_child.tres" id="14_child"]
 [ext_resource type="Script" path="res://field/companion/companion_manager.gd" id="15_companions"]
 [ext_resource type="Script" path="res://field/monsters/roaming_spawner.gd" id="16_roaming"]
+[ext_resource type="Script" path="res://field/routes/hidden_route_manager.gd" id="90_hidden_routes"]
 
 [sub_resource type="Environment" id="Env_greybox"]
 background_mode = 1
@@ -68,5 +69,8 @@ spawns = Array[Resource]([ExtResource("12_elder"), ExtResource("13_wheelchair"),
 
 [node name="CompanionManager" type="Node" parent="."]
 script = ExtResource("15_companions")
+
+[node name="HiddenRouteManager" type="Node" parent="."]
+script = ExtResource("90_hidden_routes")
 
 [node name="FieldCamera" parent="." instance=ExtResource("10_camera")]
