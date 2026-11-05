@@ -88,6 +88,10 @@ func _test_build_mode(base: Node3D) -> bool:
 	ok = _check(Economy.get_amount(&"wood") == wood - 10, "이동은 무료") and ok
 	ok = _check(not mode.preview_at(Vector3(200, 0, 200))["ok"], "부지 밖은 불가") and ok
 	mode.cancel()
+	# D-06 건설 패널 "배치하기" (UI.build_requested) starts the same build mode.
+	UI.build_requested.emit(&"bonfire")
+	ok = _check(mode.active and mode.def_id == &"bonfire", "건설 패널 배치하기 → 건설 모드") and ok
+	mode.cancel()
 	if OS.is_debug_build():
 		var out := DebugConsole.execute("place at lumber_yard front_yard 1 0")
 		ok = _check(out.begins_with("건설 현장"), "콘솔 place at: " + out) and ok

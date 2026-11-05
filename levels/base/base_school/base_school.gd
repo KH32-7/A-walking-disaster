@@ -26,6 +26,10 @@ func _ready() -> void:
 	residents.layout = layout
 	# Paths asked for before the navmesh exists come back empty: ask again once it is baked.
 	layout.navigation_ready.connect(residents.retarget)
+	# D-06 건설 패널 "배치하기" → grid placement here (C-03). The connection ends with this node.
+	UI.build_requested.connect(_on_build_requested)
+	build_mode.placed.connect(func(uid: StringName) -> void:
+		EventBus.notification_posted.emit("%s 건설 현장을 놓았다" % BaseDB.get_building(Colony.get_building(uid)["def_id"]).display_name, &"info"))
 	if ResourceLoader.exists(DRESSING):
 		var dressing := (load(DRESSING) as PackedScene).instantiate()
 		dressing.name = "Dressing"
@@ -33,6 +37,11 @@ func _ready() -> void:
 	else:
 		_add_greybox_lighting()
 	_place_player()
+
+
+func _on_build_requested(def_id: StringName) -> void:
+	if not build_mode.start(def_id):
+		EventBus.notification_posted.emit("이 건물은 격자에 놓을 수 없어요", &"warn")
 
 
 ## Puts the player on the layout's PlayerSpawn (spawn_id "main").

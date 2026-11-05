@@ -25,7 +25,25 @@ var at_target := true
 var _agent: NavigationAgent3D
 var _label: Label3D
 var _model_root: Node3D
+var _look: Node3D  # CharacterLook (art/characters/character.tscn), or null → greybox capsule
+var _applied_look: Dictionary = {}
 var _last_states: Array = []
+
+const CHARACTER_SCENE := "res://art/characters/character.tscn"
+## Appearance presets (data/ui/appearance, Lane D) used until 입주 의식 (C-13 / D-13) sets one.
+const CHILD_PRESET := &"child_yellow"
+const ELDER_PRESET := &"elder_grey"
+const ADULT_PRESETS: Array[StringName] = [&"worker_short", &"bob_teal", &"long_rain", &"tied_nurse"]
+
+
+## Preset for a resident without a chosen look: by age, adults spread by id so they differ.
+static func default_preset(r: Dictionary) -> StringName:
+	match int(r.get("age_stage", Enums.AgeStage.ADULT)):
+		Enums.AgeStage.BABY, Enums.AgeStage.CHILD:
+			return CHILD_PRESET
+		Enums.AgeStage.ELDER:
+			return ELDER_PRESET
+	return ADULT_PRESETS[absi(hash(StringName(r.get("id", &"")))) % ADULT_PRESETS.size()]
 
 
 func setup(id: StringName) -> void:
@@ -48,16 +66,21 @@ func _ready() -> void:
 	_model_root = Node3D.new()
 	_model_root.name = "Model"
 	add_child(_model_root)
-	var mesh := MeshInstance3D.new()
-	var capsule_mesh := CapsuleMesh.new()
-	capsule_mesh.radius = BODY_RADIUS
-	capsule_mesh.height = BODY_HEIGHT
-	mesh.mesh = capsule_mesh
-	mesh.position.y = BODY_HEIGHT * 0.5
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.85, 0.6, 0.45)
-	mesh.material_override = mat
-	_model_root.add_child(mesh)
+	if ResourceLoader.exists(CHARACTER_SCENE):
+		# Lane D's character (D-09): one scene for everyone, looks set by CharacterLook.apply().
+		_look = (load(CHARACTER_SCENE) as PackedScene).instantiate()
+		_model_root.add_child(_look)
+	else:
+		var mesh := MeshInstance3D.new()
+		var capsule_mesh := CapsuleMesh.new()
+		capsule_mesh.radius = BODY_RADIUS
+		capsule_mesh.height = BODY_HEIGHT
+		mesh.mesh = capsule_mesh
+		mesh.position.y = BODY_HEIGHT * 0.5
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(0.85, 0.6, 0.45)
+		mesh.material_override = mat
+		_model_root.add_child(mesh)
 	_label = Label3D.new()
 	_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_label.font_size = 36
@@ -98,8 +121,17 @@ func refresh_from_colony() -> void:
 	if r.is_empty():
 		return
 	var age := int(r["age_stage"])
-	var small := age == Enums.AgeStage.CHILD or age == Enums.AgeStage.BABY
-	_model_root.scale = Vector3.ONE * (CHILD_SCALE if small else 1.0)
+	if _look != null:
+		_look.set(&"age_stage", age)  # CharacterLook sizes the body by age (D-09)
+		var appearance: Dictionary = r["appearance"].duplicate()
+		if not appearance.has("preset"):
+			appearance["preset"] = default_preset(r)
+		if appearance != _applied_look:
+			_applied_look = appearance
+			_look.call(&"apply", appearance)
+	else:
+		var small := age == Enums.AgeStage.CHILD or age == Enums.AgeStage.BABY
+		_model_root.scale = Vector3.ONE * (CHILD_SCALE if small else 1.0)
 	var states := needs_state()
 	var text := String(r["nickname"]) if r["nickname"] != "" else String(r["name"])
 	if not states.is_empty():
