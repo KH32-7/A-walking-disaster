@@ -19,7 +19,14 @@ func run() -> bool:
 	UI.open(&"sortie_prep")
 	await get_tree().process_frame
 	var s = UI.get_screen(&"sortie_prep")
-	ok = _expect(s != null and s.loadout().region_id == &"flooded_mall", "prep picks the first open region") and ok
+	# First region in the list that has a map (city_park once B-24 lands, flooded_mall before) (#101).
+	var first_open: StringName = &""
+	for region: Dictionary in s.REGIONS if s != null else []:
+		if s.is_open_region(region.id):
+			first_open = region.id
+			break
+	ok = _expect(s != null and first_open != &"" and s.loadout().region_id == first_open,
+		"prep picks the first open region (%s)" % first_open) and ok
 	UI.close_all()
 	# flow-driven open/close
 	UI._on_flow_state_changed(Enums.FlowState.EVENING)

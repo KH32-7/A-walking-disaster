@@ -139,5 +139,6 @@ func _build_body(b: Control) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"ui_accept"):
-		close()
+		# Mark handled first: close() removes this node, so get_viewport() is null afterwards (#86).
 		get_viewport().set_input_as_handled()
+		close()

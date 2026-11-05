@@ -42,6 +42,8 @@ var _hint_title: Label
 var _hint_body: Label
 var _hint_key: KeyChip
 var _hint_key_label: Label
+const SORTIE_PREP := preload("res://ui/screens/sortie_prep_screen.gd")
+
 var _region: Control
 var _region_l1: Label
 var _region_l2: Label
@@ -568,7 +570,7 @@ func _build_objectives(list: Array) -> void:
 func _on_sortie_started(loadout: Dictionary) -> void:
 	_dusk_local = GameState.SORTIE_DUSK_SEC
 	_set_timer(_dusk_local)
-	var region := String(loadout.get("region_name", loadout.get("region_id", "")))
+	var region := String(loadout.get("region_name", region_display_name(StringName(loadout.get("region_id", &"")))))
 	var wx := "비" if GameState.is_raining() else "맑음"
 	show_region("해솔시 · %d일차 · %s" % [GameState.day, wx], region)
 
@@ -624,3 +626,19 @@ func _clear(n: Node) -> void:
 	for c in n.get_children():
 		n.remove_child(c)
 		c.queue_free()
+
+
+## Display name for a region id (#101): RegionDef `data/regions/<id>.tres` (B-24) when it exists,
+## otherwise the sortie prep list, otherwise the id itself.
+static func region_display_name(region_id: StringName) -> String:
+	if region_id == &"":
+		return ""
+	var path := "res://data/regions/%s.tres" % region_id
+	if ResourceLoader.exists(path):
+		var def: Resource = load(path)
+		if def != null and &"name" in def and String(def.get(&"name")) != "":
+			return String(def.get(&"name"))
+	for r: Dictionary in SORTIE_PREP.REGIONS:
+		if r.id == region_id:
+			return String(r.name)
+	return String(region_id)
