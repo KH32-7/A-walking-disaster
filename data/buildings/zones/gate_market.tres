@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ZoneDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/zone_def.gd" id="1_slwok"]
+
+[resource]
+script = ExtResource("1_slwok")
+id = &"gate_market"
+display_name = "교문 밖 상가"
+size = Vector2i(12, 10)
+clear_work = 100
+clear_yield = Dictionary[StringName, int]({
+&"scrap": 40,
+&"stone": 40
+})
+unlock_tier = 2
+note = "교역소 부지, 성벽 둘레 증가"

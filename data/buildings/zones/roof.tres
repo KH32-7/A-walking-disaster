@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ZoneDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/zone_def.gd" id="1_1ixwg"]
+
+[resource]
+script = ExtResource("1_1ixwg")
+id = &"roof"
+display_name = "옥상"
+size = Vector2i(8, 8)
+clear_work = 20
+clear_cost = Dictionary[StringName, int]({
+&"plank": 10
+})
+floor_index = 1
+note = "계단 수리(목재판 10). 태양광, 경비 초소 시야 +50%. 승강기가 있어야 모두 올라감"
