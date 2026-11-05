@@ -106,7 +106,7 @@ func _build_body(b: Control) -> void:
 	var direct_ok := RaidFlow.can_direct()
 	var dcol := _choice("직접 방어", "D", &"ButtonPrimary" if direct_ok else &"ButtonCancel",
 		"기지에서 3파를 직접 막아요. 파 사이 20초 동안 함정과 경비 자리를 정해요." if direct_ok
-		else "직접 방어전은 아직 열리지 않았어요.")
+		else "지금은 자동 판정만 할 수 있어요.")
 	_direct_btn = dcol[1]
 	_direct_btn.disabled = not direct_ok
 	_direct_btn.pressed.connect(_choose.bind(true))

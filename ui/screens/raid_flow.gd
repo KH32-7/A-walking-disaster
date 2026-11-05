@@ -140,7 +140,7 @@ static func choose(raid: Dictionary, direct: bool) -> bool:
 
 
 static func can_direct() -> bool:
-	return Colony.has_method(DIRECT_API)
+	return RaidRules.DIRECT_DEFENSE and Colony.has_method(DIRECT_API)
 
 
 # --- text helpers (shared by the raid screens and the defense HUD) ---

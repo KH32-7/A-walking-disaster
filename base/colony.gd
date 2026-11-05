@@ -1227,7 +1227,7 @@ func roll_raid(time: Enums.RaidTime, force: bool = false) -> Dictionary:
 		"strength": 0.0, "target": &"base", "warning_sec": 0.0, "family": Enums.Element.NONE, "notice": &"none"}
 	var small := false
 	if not force:
-		if day < RaidRules.FIRST_RAID_DAY or last_raid_day == day:
+		if not RaidRules.RAIDS or day < RaidRules.FIRST_RAID_DAY or last_raid_day == day:
 			return raid
 		var chance := RaidRules.raid_chance(time, threat)
 		if _rng.randf() >= float(chance["chance"]):
@@ -1564,6 +1564,10 @@ func direct_defense() -> Dictionary:
 ## Starts a played defence of `raid` (already started with start_raid). `on_done` runs after the result.
 ## A (night raids, SceneRouter) can call this instead of resolve_raid(AUTO) to let the player fight.
 func begin_direct_defense(raid: Dictionary, first_wave: int, on_done: Callable) -> void:
+	if not RaidRules.DIRECT_DEFENSE:
+		resolve_raid(raid, Enums.RaidMode.AUTO)  # 방어전 꺼짐: 자동 판정
+		on_done.call()
+		return
 	if defense_requested.get_connections().is_empty():
 		resolve_raid(raid, Enums.RaidMode.PLAYED)
 		on_done.call()
@@ -1575,6 +1579,8 @@ func begin_direct_defense(raid: Dictionary, first_wave: int, on_done: Callable) 
 ## D-14 경보 카드의 "직접 방어" (RaidFlow.choose). The battle is already set up for a raid Colony
 ## began (its prep waits while the card is open); otherwise this starts one. Returns true.
 func start_defense(raid: Dictionary) -> bool:
+	if not RaidRules.DIRECT_DEFENSE:
+		return false
 	if not _defense.is_empty() and StringName(_defense["raid"].get("raid_id", &"")) == StringName(raid.get("raid_id", &"")):
 		return true
 	if active_raid.is_empty():
@@ -1741,7 +1747,7 @@ func _roll_field_day_raid() -> void:
 	_field_raid = {}
 	_emergency_requested = false
 	var day := GameState.day
-	if day < RaidRules.FIRST_RAID_DAY or last_raid_day == day:
+	if not RaidRules.RAIDS or day < RaidRules.FIRST_RAID_DAY or last_raid_day == day:
 		return
 	if _rng.randf() >= float(RaidRules.raid_chance(Enums.RaidTime.DAY, threat)["chance"]):
 		return

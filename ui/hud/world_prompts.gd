@@ -16,6 +16,8 @@ const NEEDS := {ExtractPoint.Type.KEY: "열쇠 필요", ExtractPoint.Type.BATTER
 
 var _chip: PanelContainer
 var _chip_label: Label
+var _chip_key: KeyChip
+var _chip_sub: Label
 var _font: Font
 
 
@@ -36,9 +38,18 @@ func _ready() -> void:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override(&"separation", 8)
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	h.add_child(KeyChip.new("F"))
+	_chip_key = KeyChip.new("F")
+	h.add_child(_chip_key)
+	var lines := VBoxContainer.new()
+	lines.add_theme_constant_override(&"separation", 0)
+	lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_chip_label = MenuScreen.label("", &"LabelHud", 17)
-	h.add_child(_chip_label)
+	lines.add_child(_chip_label)
+	_chip_sub = MenuScreen.label("", &"LabelHud", 14)
+	_chip_sub.add_theme_color_override(&"font_color", UiTokens.TEXT_DIM)
+	_chip_sub.visible = false
+	lines.add_child(_chip_sub)
+	h.add_child(lines)
 	_chip.add_child(h)
 	add_child(_chip)
 	_chip.visible = false
@@ -48,11 +59,31 @@ func _process(_delta: float) -> void:
 	var cam := get_viewport().get_camera_3d()
 	var player := get_tree().get_first_node_in_group(&"player") as Node3D
 	var menu := not UI.stack_ids().is_empty()
-	visible = cam != null and player != null and not menu and GameState.flow_state != Enums.FlowState.TITLE
+	var base_cam := cam as BaseCamera
+	visible = cam != null and (player != null or base_cam != null) and not menu and GameState.flow_state != Enums.FlowState.TITLE
 	if not visible:
 		return
-	_update_chip(cam, player)
+	if base_cam != null:
+		_update_click_chip(base_cam)
+	else:
+		_update_chip(cam, player)
 	queue_redraw()
+
+
+## Base: no player — "[클릭] 서하은 · 이야기하기" beside whatever is under the mouse (BaseCamera.hover).
+func _update_click_chip(cam: BaseCamera) -> void:
+	var h := cam.hover
+	_chip.visible = not h.is_empty()
+	if not _chip.visible:
+		return
+	_chip_key.key_text = "클릭"
+	_chip_label.text = String(h["text"])
+	_chip_sub.text = String(h.get("sub", ""))
+	_chip_sub.visible = _chip_sub.text != ""
+	var p := cam.unproject_position(Vector3(h["pos"]) + Vector3.UP * CHIP_HEIGHT)
+	var sz := _chip.get_combined_minimum_size()
+	_chip.size = sz
+	_chip.position = Vector2(p.x + 18.0, p.y - sz.y * 0.5)
 
 
 func _update_chip(cam: Camera3D, player: Node3D) -> void:
@@ -62,7 +93,9 @@ func _update_chip(cam: Camera3D, player: Node3D) -> void:
 	_chip.visible = text != "" and not hold
 	if not _chip.visible:
 		return
+	_chip_key.key_text = "F"
 	_chip_label.text = text
+	_chip_sub.visible = false
 	var at := target.global_position + Vector3.UP * CHIP_HEIGHT
 	if cam.is_position_behind(at):
 		_chip.visible = false
