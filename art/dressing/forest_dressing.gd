@@ -37,6 +37,11 @@ const CAMP_PROP_MAX_SCALE := 2.6
 const CAMP_PROP_SPACING := 2.3
 ## Quarry rock piles on the rock ResourceNodes (halved, user feedback 2026-11-06).
 const RESOURCE_ROCK_SCALE := 0.5
+## Ground patches (clearing, its edge band, cleared zones) fade out over this many metres of their
+## edge, and noise moves that edge in and out by this much.
+const PATCH_SHADER := preload("res://art/shaders/ground_patch.gdshader")
+const PATCH_FEATHER := 4.0
+const PATCH_RAGGED := 2.5
 
 const MAP_MIN := Vector2(-110.0, -90.0)
 const MAP_MAX := Vector2(110.0, 82.0)
@@ -305,16 +310,41 @@ func _terrain_material(file: String, fallback: Color, uv_metres: float) -> Stand
 	return m
 
 
+## A ground patch whose rounded-rectangle edge (half, radius: its mesh outline) fades into the ground
+## below with a noisy border. priority: drawing order among the overlapping patches (higher on top).
+func _patch_material(file: String, fallback: Color, uv_metres: float, half: Vector2, radius: float,
+		priority: int) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = PATCH_SHADER
+	m.render_priority = priority
+	var path := TERRAIN + file
+	m.set_shader_parameter(&"albedo", Color.WHITE if ResourceLoader.exists(path) else fallback)
+	if ResourceLoader.exists(path):
+		m.set_shader_parameter(&"albedo_texture", load(path))
+	m.set_shader_parameter(&"uv_metres", uv_metres)
+	m.set_shader_parameter(&"half_size", half)
+	m.set_shader_parameter(&"corner_radius", minf(radius, minf(half.x, half.y)))
+	m.set_shader_parameter(&"feather", PATCH_FEATHER)
+	m.set_shader_parameter(&"ragged", PATCH_RAGGED)
+	return m
+
+
 func _ground() -> void:
 	var soil := PlaneMesh.new()
 	soil.size = MAP_MAX - MAP_MIN
 	_add_mesh(self, "ForestFloor", soil, Vector3((MAP_MIN.x + MAP_MAX.x) * 0.5, 0.01, (MAP_MIN.y + MAP_MAX.y) * 0.5),
 		_terrain_material("soil_pine_a.png", Color("4a5a36"), 6.0))
-	var edge := _clearing.grow(5.0)
-	_add_mesh(self, "ClearingEdge", _rounded_rect(edge.size * 0.5, CLEARING_RADIUS + 5.0), _at(edge.get_center(), 0.03),
-		_terrain_material("grass_pine_a.png", Color("5f8a3a"), 5.0))
-	_add_mesh(self, "Clearing", _rounded_rect(_clearing.size * 0.5, CLEARING_RADIUS), _at(_clearing.get_center(), 0.05),
-		_terrain_material("grass01_a.png", Color("7fb84a"), 4.0))
+	# Grass patches over the soil whose edges crumble in (ground_patch.gdshader) instead of ending on a
+	# straight line (user feedback 2026-11-06). The edge band is wider so the clearing still reaches its
+	# old line once the fade eats into it.
+	var edge := _clearing.grow(5.0 + PATCH_FEATHER)
+	_add_mesh(self, "ClearingEdge", _rounded_rect(edge.size * 0.5, CLEARING_RADIUS + 5.0 + PATCH_FEATHER),
+		_at(edge.get_center(), 0.03), _patch_material("grass_pine_a.png", Color("5f8a3a"), 5.0, edge.size * 0.5,
+		CLEARING_RADIUS + 5.0 + PATCH_FEATHER, 0))
+	var inner := _clearing.grow(PATCH_FEATHER * 0.5)
+	_add_mesh(self, "Clearing", _rounded_rect(inner.size * 0.5, CLEARING_RADIUS + PATCH_FEATHER * 0.5),
+		_at(inner.get_center(), 0.05), _patch_material("grass01_a.png", Color("7fb84a"), 4.0, inner.size * 0.5,
+		CLEARING_RADIUS + PATCH_FEATHER * 0.5, 1))
 	var mud := _terrain_material("mud_a.png", Color("9a4e33"), 3.0)
 	for i in _trails.size():
 		_add_mesh(self, "Trail%d" % i, _strip(_trails[i], TRAIL_HALF_WIDTH), Vector3(0, 0.07, 0), mud)
@@ -328,7 +358,7 @@ func _ground() -> void:
 		grass.name = "Cleared_%s" % id
 		add_child(grass)
 		_add_mesh(grass, "Grass", _rounded_rect(rect.size * 0.5, 4.0), _at(rect.get_center(), 0.05),
-			_terrain_material("grass01_a.png", Color("7fb84a"), 4.0))
+			_patch_material("grass01_a.png", Color("7fb84a"), 4.0, rect.size * 0.5, 4.0, 1))
 		_groups[id] = {"forest": forest, "grass": grass}
 
 

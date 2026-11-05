@@ -37,7 +37,7 @@ func _build_body(b: Control) -> void:
 	var lp := MenuScreen.panel("입을 사람", "", Vector2(440, 0))
 	(lp[0] as Control).size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_owners = HBoxContainer.new()
-	_owners.add_theme_constant_override(&"separation", 4)
+	_owners.add_theme_constant_override(&"separation", 8)
 	var osc := ScrollContainer.new()
 	osc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	osc.custom_minimum_size = Vector2(0, 48)
@@ -55,7 +55,7 @@ func _build_body(b: Control) -> void:
 	(mp[0] as Control).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	(mp[0] as Control).size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_tabs = HBoxContainer.new()
-	_tabs.add_theme_constant_override(&"separation", 4)
+	_tabs.add_theme_constant_override(&"separation", 8)
 	(mp[1] as VBoxContainer).add_child(_tabs)
 	var sc := ScrollContainer.new()
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -179,7 +179,7 @@ func _fill_store() -> void:
 	var sc := ScrollContainer.new()
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override(&"separation", 4)
+	v.add_theme_constant_override(&"separation", 8)
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var ids: Array = Economy.amounts.keys() if &"amounts" in Economy else []
 	ids.sort()
@@ -231,7 +231,7 @@ func _cell(uid: StringName, s: int, caption: String) -> Control:
 		b.add_theme_stylebox_override(st, sb)
 	b.add_theme_stylebox_override(&"hover", hb)
 	b.add_theme_stylebox_override(&"pressed", hb)
-	b.add_theme_font_size_override(&"font_size", 13)
+	b.add_theme_font_size_override(&"font_size", 15)
 	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(b)
 	if caption != "":

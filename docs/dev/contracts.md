@@ -28,6 +28,7 @@
 | `ResidentPool` | `systems/resident_pool.gd` | A | 손으로 쓴 생존자 풀(`data/resident_pool/`), 검수된 프로필만 꺼냄 |
 | `Quests` | `systems/quests/quests.gd` | A | 퀘스트·개인 요청·무전 소문 진행과 보상 (스토리 플래그는 `GameState`) |
 | `Journal` | `ai/journal.gd` | A | 생존 일지·엔딩 에필로그 (템플릿) |
+| `Look` | `core/look/look.gd` | A | 화면 전체 스타일 후처리(붓터치·외곽선·색 보정) 시안과 주인공 밝은 외곽선. 값은 `data/look/look_tuning.tres`, 화면 스타일은 기본 꺼짐, 주인공 외곽선은 기본 켜짐. 전역 셰이더 값 `toon_amount`(툰 셰이딩 0~1)도 여기서 넣는다. 디버그: `\` 패널(스타일·툰·맵 조명 슬라이더, 맵 조명은 그 맵 dressing.tscn에 저장), `]` 켜기/끄기, 콘솔 `look` |
 
 `_mcp_game_helper`는 Godot AI 플러그인 것이라 건드리지 않는다.
 
@@ -86,6 +87,9 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   `morning_broadcast()`. 트리거 id는 `data/radio/`: B가 부르는 것 `low_ammo`, `low_health`, `noise_high`, `rescuee_low_health`,
   `no_progress {direction}`, `dusk {minutes}`. 아침 방송·습격 징후·60초 경보·낮 습격 예상(`Colony.predict_raid`)·같은 지역 3번 쓰러짐은
   Radio가 신호(`day_started`, `raid_warning`, `sortie_started`, `player_downed`)를 듣고 알아서 말한다. LLM 없음.
+  목소리는 `RadioVoice`(`UI.radio_voice`)가 낸다. 완성된 문장마다 녹음 클립 `RadioVoice.clip_path(speaker_id, text)`
+  (`res://assets/audio/voice/<speaker_id>/<문장 MD5 앞 12자>.mp3`)이 있으면 그것을, 없으면 OS TTS를 쓴다.
+  **무전 문장을 고치면 그 문장의 클립이 안 맞게 되니 다시 녹음한다.** 방송실 지기 목소리: Higgsfield ElevenLabs v4, 프리셋 Gideon.
 - **Settings**: `get_value(key)`, `set_value(key, value) -> bool`(모르는 키·틀린 타입 거부), `apply_preset(id, new_game)`, `matching_preset()`,
   `reset_to_defaults(include_difficulty)`. 키 목록은 `Settings.DEFAULTS`. 난이도 프리셋은 `story`·`normal`·`hard`·`hardcore`
   (`Settings.PRESETS`), 항목을 따로 바꾸면 `difficulty`가 `custom`이 된다. 하드코어는 새 게임에서만 고른다.

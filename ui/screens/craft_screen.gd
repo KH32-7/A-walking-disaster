@@ -126,7 +126,7 @@ func _build_body(b: Control) -> void:
 	_fac_tabs.add_theme_constant_override(&"separation", 8)
 	tabs.add_child(_fac_tabs)
 	_mode_tabs = HBoxContainer.new()
-	_mode_tabs.add_theme_constant_override(&"separation", 4)
+	_mode_tabs.add_theme_constant_override(&"separation", 8)
 	tabs.add_child(_mode_tabs)
 	# Dark chip so the tabs read over any base scene.
 	var tab_chip := PanelContainer.new()
@@ -451,11 +451,11 @@ func _strip_cell(id: StringName) -> Control:
 				if element == 0:
 					element = -1
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(108, 92)
+	b.custom_minimum_size = Vector2(124, 100)
 	b.focus_mode = Control.FOCUS_NONE
 	b.text = text
 	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	b.add_theme_font_size_override(&"font_size", 13)
+	b.add_theme_font_size_override(&"font_size", 15)
 	var sb := StyleBoxFlat.new()
 	sb.set_corner_radius_all(UiTokens.SLOT_RADIUS)
 	sb.border_color = Color(1, 1, 1, 0.18)
@@ -513,7 +513,7 @@ func _strip_cell(id: StringName) -> Control:
 	v.add_child(b)
 	var cap := MenuScreen.label(caption, &"LabelHud", 12)
 	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	cap.custom_minimum_size = Vector2(108, 0)
+	cap.custom_minimum_size = Vector2(124, 0)
 	cap.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	v.add_child(cap)
 	return v
@@ -608,7 +608,7 @@ func _detail_upgrade() -> void:
 	if options.size() > 1:
 		_card.add_child(_on_cream("계열 재료", &"LabelOnCreamDim", 13))
 		var h := HBoxContainer.new()
-		h.add_theme_constant_override(&"separation", 6)
+		h.add_theme_constant_override(&"separation", 10)
 		for id: StringName in options:
 			var bt := MenuScreen.button(MenuScreen.resource_name(id), &"ButtonSoft" if id != p.family_mat else &"ButtonPrimary")
 			bt.add_theme_font_size_override(&"font_size", 14)

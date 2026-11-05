@@ -103,7 +103,12 @@ func _refresh() -> void:
 		_card.add_child(_text("필드에서 구한 사람이 기지에 오면 여기서 맞이해요."))
 		_buttons([], "닫기", close)
 		return
-	_portrait.set_look(_info.get("appearance", {}), int(_info.get("age_stage", 3)))
+	# The resident's own model (ResidentModel, the one the base shows); only the 외형 step previews the
+	# customisable body.
+	if current_step() == &"appearance":
+		_portrait.set_look(_info.get("appearance", {}), int(_info.get("age_stage", 3)))
+	else:
+		_portrait.set_resident(resident_id)
 	var r := Colony.get_resident(resident_id)
 	_who.text = ResidentText.full_name(r)
 	match current_step():
@@ -248,7 +253,7 @@ func _step_bed() -> void:
 	var cur := StringName(_info.get("bed_id", &""))
 	var beds: Array = _info.get("beds", [])
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override(&"separation", 6)
+	v.add_theme_constant_override(&"separation", 10)
 	if cur != &"":
 		v.add_child(_bed_row(cur, "지금 침상  ·  %s" % _bed_name(cur, ""), true))
 	for bed: Dictionary in beds:

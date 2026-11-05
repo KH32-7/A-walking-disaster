@@ -103,7 +103,7 @@ func _build_body(b: Control) -> void:
 	col.add_theme_constant_override(&"separation", 12)
 	b.add_child(col)
 	_modes = HBoxContainer.new()
-	_modes.add_theme_constant_override(&"separation", 6)
+	_modes.add_theme_constant_override(&"separation", 10)
 	col.add_child(_modes)
 	var row := HBoxContainer.new()
 	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -118,13 +118,13 @@ func _build_body(b: Control) -> void:
 	_list_title = (left[2] as HBoxContainer).get_child(0)
 	_count = (left[2] as HBoxContainer).get_child(1)
 	_tabs = HBoxContainer.new()
-	_tabs.add_theme_constant_override(&"separation", 4)
+	_tabs.add_theme_constant_override(&"separation", 8)
 	(left[1] as VBoxContainer).add_child(_tabs)
 	var sc := ScrollContainer.new()
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_list = VBoxContainer.new()
-	_list.add_theme_constant_override(&"separation", 6)
+	_list.add_theme_constant_override(&"separation", 10)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(_list)
 	(left[1] as VBoxContainer).add_child(sc)
@@ -220,7 +220,7 @@ func _show_site() -> void:
 		_action("닫기", true, close)
 		return
 	var tags := HBoxContainer.new()
-	tags.add_theme_constant_override(&"separation", 6)
+	tags.add_theme_constant_override(&"separation", 10)
 	tags.add_child(_cream_tag("건설 현장", &"hammer"))
 	tags.add_child(_cream_tag("%s · %d×%d칸" % [_zone_name(b["zone_id"]), maxi(def.size.x, 1), maxi(def.size.y, 1)]))
 	_detail.add_child(tags)
@@ -545,7 +545,7 @@ func _card(def: BuildingDef, check: Dictionary, goal: bool) -> Control:
 		b.add_theme_stylebox_override(s, box)
 	var v := VBoxContainer.new()
 	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	v.add_theme_constant_override(&"separation", 4)
+	v.add_theme_constant_override(&"separation", 8)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(v)
 	# picture
@@ -589,7 +589,7 @@ func _card(def: BuildingDef, check: Dictionary, goal: bool) -> Control:
 	pad.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(pad)
 	var inner := VBoxContainer.new()
-	inner.add_theme_constant_override(&"separation", 6)
+	inner.add_theme_constant_override(&"separation", 10)
 	inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pad.add_child(inner)
 	var nm := MenuScreen.label(def.display_name, &"LabelSection", 18)
@@ -599,7 +599,7 @@ func _card(def: BuildingDef, check: Dictionary, goal: bool) -> Control:
 	inner.add_child(nm)
 	var cost := HFlowContainer.new()
 	cost.add_theme_constant_override(&"h_separation", 5)
-	cost.add_theme_constant_override(&"v_separation", 4)
+	cost.add_theme_constant_override(&"v_separation", 8)
 	cost.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var c1 := def.cost_for_level(1)
 	for id: StringName in c1:
@@ -711,7 +711,7 @@ func _cost_chip(id: StringName, need: int, short: bool, on_cream: bool) -> Contr
 	p.mouse_filter = Control.MOUSE_FILTER_PASS
 	p.tooltip_text = MenuScreen.resource_name(id)
 	var h := HBoxContainer.new()
-	h.add_theme_constant_override(&"separation", 4)
+	h.add_theme_constant_override(&"separation", 8)
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var ink := UiTokens.TEXT_ON_CREAM if on_cream else UiTokens.TEXT
 	var red := Color("b3261e") if on_cream else Color("ff9d93")
@@ -762,7 +762,7 @@ func _show_detail() -> void:
 	_detail.add_child(pic)
 	# tags
 	var tags := HBoxContainer.new()
-	tags.add_theme_constant_override(&"separation", 6)
+	tags.add_theme_constant_override(&"separation", 10)
 	tags.add_child(_cream_tag(group_name(int(def.category)), group_icon(int(def.category))))
 	if def.capacity > 0:
 		tags.add_child(_cream_tag("일손 %d명" % def.capacity, &"people"))
@@ -788,7 +788,7 @@ func _show_detail() -> void:
 	grid.add_child(_fact_key("필요한 것"))
 	var costs := HFlowContainer.new()
 	costs.add_theme_constant_override(&"h_separation", 6)
-	costs.add_theme_constant_override(&"v_separation", 4)
+	costs.add_theme_constant_override(&"v_separation", 8)
 	costs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var c1 := def.cost_for_level(1)
 	for id: StringName in c1:
@@ -1178,7 +1178,7 @@ func _worker_section(target: StringName) -> void:
 	sc.custom_minimum_size = Vector2(0, minf(WORKER_LIST_H, maxf(44.0, rows.size() * 44.0)))
 	var v := VBoxContainer.new()
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	v.add_theme_constant_override(&"separation", 4)
+	v.add_theme_constant_override(&"separation", 8)
 	sc.add_child(v)
 	if rows.is_empty():
 		v.add_child(MenuScreen.label("기지에 주민이 없습니다.", &"LabelOnCreamDim", 14))
@@ -1288,13 +1288,13 @@ func _access_row(zone_id: StringName, acc: Dictionary, facilities: Array) -> Con
 	var box := _row_box(false)
 	p.add_theme_stylebox_override(&"panel", box)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override(&"separation", 4)
+	v.add_theme_constant_override(&"separation", 8)
 	p.add_child(v)
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override(&"separation", 16)
 	v.add_child(h)
 	var nv := VBoxContainer.new()
-	nv.add_theme_constant_override(&"separation", -2)
+	nv.add_theme_constant_override(&"separation", 2)
 	nv.custom_minimum_size = Vector2(300, 0)
 	var cleared := Colony.is_zone_cleared(zone_id)
 	var nm := MenuScreen.label(z.display_name if z else String(zone_id), &"LabelSection", 18)
@@ -1411,7 +1411,7 @@ func _list_row(sel: bool, title: String, sub: String, status: String, status_col
 	if lead != null:
 		h.add_child(lead)
 	var nv := VBoxContainer.new()
-	nv.add_theme_constant_override(&"separation", -2)
+	nv.add_theme_constant_override(&"separation", 2)
 	nv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	nv.alignment = BoxContainer.ALIGNMENT_CENTER
 	nv.mouse_filter = Control.MOUSE_FILTER_IGNORE

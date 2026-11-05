@@ -67,7 +67,7 @@ func open_with(args: Dictionary) -> void:
 func _build_body(b: Control) -> void:
 	set_subtitle("%d일차" % GameState.day)
 	_tab_bar = HBoxContainer.new()
-	_tab_bar.add_theme_constant_override(&"separation", 6)
+	_tab_bar.add_theme_constant_override(&"separation", 10)
 	b.add_child(_tab_bar)
 	_tab_bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE)
 	_tab_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -85,7 +85,7 @@ func _build_body(b: Control) -> void:
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_list = VBoxContainer.new()
-	_list.add_theme_constant_override(&"separation", 4)
+	_list.add_theme_constant_override(&"separation", 8)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(_list)
 	(lp[1] as VBoxContainer).add_child(sc)

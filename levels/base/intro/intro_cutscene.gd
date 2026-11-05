@@ -31,6 +31,7 @@ const PATIENT := {
 	"name": "한도윤",
 	"age_stage": Enums.AgeStage.ADULT,
 	"former_job": &"police",
+	"gender": &"male",  # fixed: the field, the bed and every portrait show the same man
 	"traits": [&"brave"],
 	"health": Enums.HealthState.INJURED,
 	"recover_days": 5,
@@ -146,8 +147,13 @@ func _find_door() -> void:
 
 
 func _run() -> void:
+	# Deferred from _ready: the base may already be gone (tests that load and free it in a frame).
+	if not is_inside_tree():
+		return
 	await get_tree().process_frame
 	await get_tree().process_frame  # BuildingViews refresh is deferred
+	if not is_inside_tree():
+		return
 	_find_door()
 	if GameState.has_flag(FLAG_TALKED):
 		_enter_house(false)  # loaded mid-intro after the talk: straight to walking out

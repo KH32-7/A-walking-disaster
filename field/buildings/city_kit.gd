@@ -41,6 +41,11 @@ const WALL_T := 0.2
 const DOOR_GAP := 1.6
 const FLOOR_Y := 0.06
 const FLAT_ROOF_T := 0.25
+## Gable end pieces: siding (with the vent) on their +Z face at local z = 0, plain dark attic side
+## facing -Z; the rake trim sticks 0.3 m further out. They hang 0.19 m below the wall top, so the
+## siding sits this far outside the wall's outside face: in the same plane that band flickered
+## (z-fighting), further in the wall's wooden top showed (user report 2026-11-06).
+const GABLE_END_OUT := 0.02
 const FLAT_ROOF_EAVE := 0.3
 ## Props lower than this get no collision (carpets, pictures).
 const PROP_MIN_COLLIDE_H := 0.2
@@ -698,8 +703,11 @@ static func _gable(roof: Node3D, rect: Rect2, style: String) -> void:
 		place(roof, MODULES, "%sx%dm" % [names[0], length], Transform3D(Basis.IDENTITY,
 			Vector3(rect.end.x, WALL_H, z + length)))
 		z += length
-	place(roof, MODULES, names[1], Transform3D(Basis.IDENTITY, Vector3(rect.end.x, WALL_H, rect.position.y)))
-	place(roof, MODULES, names[1], Transform3D(Basis(Vector3.UP, PI), Vector3(rect.position.x, WALL_H, rect.end.y)))
+	# Siding outward on both ends (it was the dark attic side before, 2026-11-06).
+	place(roof, MODULES, names[1], Transform3D(Basis(Vector3.UP, PI),
+			Vector3(rect.position.x, WALL_H, rect.position.y - GABLE_END_OUT)))
+	place(roof, MODULES, names[1], Transform3D(Basis.IDENTITY,
+			Vector3(rect.end.x, WALL_H, rect.end.y + GABLE_END_OUT)))
 
 
 ## Gravel slab with a 1 m parapet and a few machines (air conditioners, vents, a dish), seeded by salt.

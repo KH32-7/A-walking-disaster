@@ -47,7 +47,7 @@ func _build_body(b: Control) -> void:
 	row.add_child(left[0])
 	_count = (left[2] as HBoxContainer).get_child(1)
 	var sorts := HBoxContainer.new()
-	sorts.add_theme_constant_override(&"separation", 4)
+	sorts.add_theme_constant_override(&"separation", 8)
 	(left[2] as HBoxContainer).add_child(sorts)
 	if UI.has_screen(&"relations"):
 		var rel := MenuScreen.button("관계도", &"ButtonSoft")
@@ -71,7 +71,7 @@ func _build_body(b: Control) -> void:
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_list = VBoxContainer.new()
-	_list.add_theme_constant_override(&"separation", 6)
+	_list.add_theme_constant_override(&"separation", 10)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(_list)
 	(left[1] as VBoxContainer).add_child(sc)
@@ -136,7 +136,7 @@ func _add_absent_rows() -> void:
 		h.add_theme_constant_override(&"separation", 14)
 		h.add_child(FaceDot.new(String(a.name), 44, true, LossText.face_mark(StringName(a.resident_id))))
 		var v := VBoxContainer.new()
-		v.add_theme_constant_override(&"separation", -2)
+		v.add_theme_constant_override(&"separation", 2)
 		v.add_child(MenuScreen.label(String(a.name), &"LabelSection", 18))
 		var t := MenuScreen.label(String(a.text), &"LabelHud", 13)
 		t.add_theme_color_override(&"font_color", UiTokens.WARN if a.kind == &"stranded" else UiTokens.TEXT_DIM)
@@ -158,25 +158,27 @@ func _row(id: StringName) -> Control:
 	box.set_corner_radius_all(UiTokens.SLOT_RADIUS)
 	for s in [&"normal", &"hover", &"pressed", &"focus"]:
 		b.add_theme_stylebox_override(s, box)
-	b.custom_minimum_size = Vector2(0, 68)
+	b.custom_minimum_size = Vector2(0, 92)
 	b.focus_mode = Control.FOCUS_NONE
 	var h := HBoxContainer.new()
 	h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	h.offset_left = 14
-	h.offset_right = -14
-	h.add_theme_constant_override(&"separation", 14)
+	h.offset_left = 20
+	h.offset_right = -20
+	h.add_theme_constant_override(&"separation", 20)
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	h.add_child(_avatar(String(r.get("name", "?")), 44))
 	var nv := VBoxContainer.new()
 	nv.alignment = BoxContainer.ALIGNMENT_CENTER
-	nv.add_theme_constant_override(&"separation", -2)
+	nv.add_theme_constant_override(&"separation", 8)
 	nv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	nv.add_child(MenuScreen.label(String(r.get("name", "")), &"LabelSection", 18))
 	nv.add_child(MenuScreen.label(_job_line(r), &"LabelDim", 13))
 	h.add_child(nv)
 	var needs := GridContainer.new()
 	needs.columns = 2
-	needs.add_theme_constant_override(&"v_separation", 2)
+	needs.add_theme_constant_override(&"v_separation", 6)
+	needs.add_theme_constant_override(&"h_separation", 10)
+	needs.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	for pair in [["배고픔", 100 - int(r.get("hunger", 50)), true], ["피로", int(r.get("fatigue", 0)), true],
 			["사기", int(r.get("morale", 50)), false]]:
 		needs.add_child(MenuScreen.label(String(pair[0]), &"LabelDim", 12))
@@ -187,7 +189,7 @@ func _row(id: StringName) -> Control:
 	h.add_child(needs)
 	var hs := int(r.get("health", 0))
 	var hl := MenuScreen.label(HEALTH_NAMES[clampi(hs, 0, 2)], &"LabelHud", 14)
-	hl.custom_minimum_size = Vector2(44, 0)
+	hl.custom_minimum_size = Vector2(52, 0)
 	if hs != 0:
 		hl.add_theme_color_override(&"font_color", UiTokens.DANGER)
 	h.add_child(hl)
@@ -215,14 +217,18 @@ func _show_detail() -> void:
 	var r := Colony.get_resident(_sel)
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override(&"separation", 16)
-	head.add_child(_avatar(String(r.get("name", "?")), 76))
+	# The resident's own model (사용자 요청 2026-11-06), not a letter.
+	var face := ResidentPortrait.new(Vector2(110, 130))
+	face.set_resident(_sel)
+	head.add_child(face)
 	var hv := VBoxContainer.new()
+	hv.alignment = BoxContainer.ALIGNMENT_CENTER
 	var nick := String(r.get("nickname", ""))
 	hv.add_child(MenuScreen.label(String(r.get("name", "")) + ("  “%s”" % nick if nick != "" else ""), &"LabelTitle", 26))
 	hv.add_child(MenuScreen.label("%s · 전직 %s · %d일차에 합류" % [AGE_NAMES[clampi(int(r.get("age_stage", 3)), 0, 4)],
 		String(FORMER_JOBS.get(StringName(r.get("former_job", &"")), r.get("former_job", ""))), int(r.get("joined_day", 1))], &"LabelDim", 14))
 	var trust := HBoxContainer.new()
-	trust.add_theme_constant_override(&"separation", 4)
+	trust.add_theme_constant_override(&"separation", 8)
 	trust.add_child(MenuScreen.label("신뢰", &"LabelDim", 13))
 	var t := int(r.get("trust", 0))
 	for i in 5:

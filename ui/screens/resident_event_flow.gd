@@ -270,7 +270,7 @@ static func lack_box(title: String, missing: Array, on_cream := true) -> Control
 	var ink := UiTokens.TEXT_ON_CREAM if on_cream else UiTokens.TEXT
 	var link_ink := Color("1f6f74") if on_cream else UiTokens.INFO
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override(&"separation", 6)
+	v.add_theme_constant_override(&"separation", 10)
 	p.add_child(v)
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override(&"separation", 10)

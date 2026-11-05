@@ -308,6 +308,9 @@ var out_kit := ""
 var out_splat := ""
 var kit_cover := {}
 var shop_fill := []
+## Pack holder for dressing on upper floors (floor > 0), e.g. "roof:shop_in": it hides with that
+## building's roof while the player is inside below, instead of floating overhead (2026-11-06).
+var upper_floor_holder := ""
 ## Roads whose zone id starts with this get lane lines and power poles ("" = every road).
 var kit_street_prefix := ""
 ## Path texture instead of the street asphalt (park paths), "" = KIT_TERRAIN.road.
@@ -2264,11 +2267,12 @@ func _build_shop_fill() -> void:
 				blockers.add_child(_box("Shelves_%s_%d" % [zone.id, taken.size()], c, foot - Vector2(0.1, 0.1), y,
 					1.85, 0.0, "blocked"))
 			else:
-				_kit_add("table_02", c, 0.0, y)
+				var holder := "" if zone.floor == 0 else upper_floor_holder
+				_kit_add("table_02", c, 0.0, y, 1.0, holder)
 				for k in 4:
 					var dir := Vector2(1.0, 0.0).rotated(k * PI * 0.5)
 					# Chairs face the table: front (-X) toward the center.
-					_kit_add("chair_01", c + dir * 0.85, atan2(-dir.y, dir.x), y)
+					_kit_add("chair_01", c + dir * 0.85, atan2(-dir.y, dir.x), y, 1.0, holder)
 				cover.add_child(_box("Cafe_%s_%d" % [zone.id, taken.size()], c, Vector2(2.2, 2.2), y, 0.9, 0.0, "cover"))
 		total += taken.size()
 		if taken.size() < want:
