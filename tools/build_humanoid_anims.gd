@@ -18,6 +18,7 @@ const FPS := 30.0
 const CLIPS := {
 	"idle": {"loop": true},
 	"walk": {"loop": true, "native_speed": 1.3},  # Mixamo "Crouched Walking", in place
+	"run": {"loop": true},  # Mixamo "Running": cutscenes only, sprint in play plays the walks faster
 	"aim_rifle": {"loop": true},
 	"aim_walk_forward": {"loop": true},
 	"aim_walk_back": {"loop": true},
