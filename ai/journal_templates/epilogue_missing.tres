@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="JournalTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/journal_template.gd" id="1_jtpl"]
+
+[resource]
+script = ExtResource("1_jtpl")
+id = &"epilogue_missing"
+lines = Array[String](["{name|을} 아직 찾고 있다. 무전기는 오늘도 켜져 있다.", "{name}의 자리는 비워 두었다. 아무도 두고 가지 않는다."])
+priority = 0

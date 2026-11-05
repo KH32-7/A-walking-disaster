@@ -35,6 +35,9 @@ var active_raid: Dictionary = {}
 ## Zones cleared during play (C-10 adds clearing progress). Zones marked starts_cleared on the map
 ## need no entry. zone_id -> true.
 var cleared_zones: Dictionary = {}
+## Clearing progress (zone_id -> int) and zones whose one-time start cost is paid (C-10).
+var clear_progress: Dictionary = {}
+var clear_started: Dictionary = {}
 
 var _next_resident_num := 1
 var _next_building_num := 1
@@ -329,7 +332,159 @@ func move_building(uid: StringName, cell: Vector2i, rotation: int, zone_id: Stri
 ## Zone clearing state (09 "구역과 개간"). C-10 adds progress, yields and the buried-box event;
 ## for now clear_zone() marks a zone usable (debug `zone clear <id>`, story).
 func is_zone_cleared(zone_id: StringName) -> bool:
-	return cleared_zones.has(zone_id)
+	var zone := BaseDB.get_zone(zone_id)
+	return cleared_zones.has(zone_id) or (zone != null and zone.starts_cleared)
+
+
+## Can clearing of `zone_id` be worked on now? {"ok", "reasons"} (09 "구역과 개간", 해금 단계·비용).
+func can_clear(zone_id: StringName) -> Dictionary:
+	var zone := BaseDB.get_zone(zone_id)
+	if zone == null:
+		return {"ok": false, "reasons": ["알 수 없는 구역"]}
+	var reasons: Array[String] = []
+	if is_zone_cleared(zone_id):
+		reasons.append("이미 개간됨")
+	if tier < zone.unlock_tier:
+		reasons.append("기지 단계 %s 필요" % Enums.BaseTier.keys()[zone.unlock_tier])
+	if not clear_started.has(zone_id) and not zone.clear_cost.is_empty() and not Economy.can_afford(zone.clear_cost):
+		reasons.append("시작 비용 부족: %s" % zone.clear_cost)
+	return {"ok": reasons.is_empty(), "reasons": reasons}
+
+
+## Pays the zone's one-time start cost (옥상: 계단 수리) the first time someone is put on it.
+func start_clearing(zone_id: StringName) -> bool:
+	if not can_clear(zone_id)["ok"]:
+		return false
+	if not clear_started.has(zone_id):
+		var zone := BaseDB.get_zone(zone_id)
+		if not zone.clear_cost.is_empty() and not Economy.apply(_negated(zone.clear_cost)):
+			return false
+		clear_started[zone_id] = true
+	return true
+
+
+func clear_progress_of(zone_id: StringName) -> int:
+	return int(clear_progress.get(zone_id, 0))
+
+
+## One worker's clearing day: progress, 묻힌 상자 roll, and the yield when the zone is done.
+func _clear_work(resident_id: StringName, zone_id: StringName, amount: int, produced: Dictionary, events: Array) -> void:
+	var zone := BaseDB.get_zone(zone_id)
+	if is_zone_cleared(zone_id):
+		unassign_job(resident_id)
+		return
+	clear_progress[zone_id] = clear_progress_of(zone_id) + maxi(amount, 0)
+	if _rng.randf() < TierRules.BURIED_BOX_CHANCE:
+		var box := _buried_box()
+		for res in box["resources"]:
+			produced[res] = produced.get(res, 0.0) + box["resources"][res]
+		if box["blueprint"] != &"":
+			GameState.set_flag(box["blueprint"])
+		events.append(_event(&"buried_box", resident_id, "%s에서 묻힌 상자를 찾았다: %s" % [zone.display_name, box["text"]]))
+	if clear_progress_of(zone_id) >= zone.clear_work:
+		cleared_zones[zone_id] = true
+		for res: StringName in zone.clear_yield:
+			produced[res] = produced.get(res, 0.0) + zone.clear_yield[res]
+		events.append(_event(&"zone_cleared", resident_id, "%s 개간 완료" % zone.display_name))
+		for id: StringName in residents:
+			if residents[id]["assignment"]["building_id"] == zone_id:
+				unassign_job(id)
+		buildings_changed.emit()
+
+
+func _buried_box() -> Dictionary:
+	if _rng.randf() < TierRules.BURIED_BOX_BLUEPRINT_CHANCE:
+		var pool: Array[StringName] = []
+		for flag in TierRules.BURIED_BOX_BLUEPRINTS:
+			if not GameState.has_flag(flag):
+				pool.append(flag)
+		if not pool.is_empty():
+			var flag: StringName = pool[_rng.randi_range(0, pool.size() - 1)]
+			return {"resources": {}, "blueprint": flag, "text": "설계도 (%s)" % flag}
+	var n := _rng.randi_range(TierRules.BURIED_BOX_PARTS.x, TierRules.BURIED_BOX_PARTS.y)
+	return {"resources": {&"parts": n}, "blueprint": &"", "text": "부품 %d" % n}
+
+
+# --- Base tier and facility levels (C-10) -------------------------------------
+
+## What the next tier still needs: {"tier": next or -1, "ok": bool, "missing": Array[String]}.
+func next_tier_status() -> Dictionary:
+	if tier >= Enums.BaseTier.FORTRESS:
+		return {"tier": -1, "ok": false, "missing": []}
+	var next := tier + 1
+	var req: Dictionary = TierRules.REQUIREMENTS[next]
+	var missing: Array[String] = []
+	if population() < int(req["population"]):
+		missing.append("인구 %d/%d" % [population(), req["population"]])
+	for def_id: StringName in req["buildings"]:
+		var have := working_building_ids(def_id).size()
+		if have < int(req["buildings"][def_id]):
+			missing.append("%s %d/%d" % [_def_name(def_id), have, req["buildings"][def_id]])
+	for zone_id: StringName in req["zones"]:
+		if not is_zone_cleared(zone_id):
+			var zone := BaseDB.get_zone(zone_id)
+			missing.append("%s 개간" % (zone.display_name if zone else String(zone_id)))
+	if req["powered_generator"] and not _generator_running():
+		missing.append("발전기 가동")
+	return {"tier": next, "ok": missing.is_empty(), "missing": missing}
+
+
+## Highest facility level allowed now (캐프 1, 정착지 2, 요새 3). A-09 caps upgrades with it.
+func facility_level_cap() -> int:
+	return TierRules.level_cap(tier)
+
+
+## Can `uid` go up one level? {"ok", "reasons", "cost"} (09: Lv2 = ×2 + 부품 5, Lv3 = ×3 + 희귀 부품 3).
+func can_upgrade(uid: StringName) -> Dictionary:
+	var b := get_building(uid)
+	if b.is_empty():
+		return {"ok": false, "reasons": ["건물 없음"], "cost": {}}
+	var def := BaseDB.get_building(b["def_id"])
+	var next := int(b["level"]) + 1
+	var cost := def.cost_for_level(next) if next <= BuildingDef.MAX_LEVEL else {}
+	var reasons: Array[String] = []
+	if not b["completed"] or b["damaged"]:
+		reasons.append("완성되고 멀쩡한 건물만")
+	if next > BuildingDef.MAX_LEVEL:
+		reasons.append("최고 레벨")
+	elif next > facility_level_cap():
+		reasons.append("기지 단계가 오르면 Lv%d 가능" % next)
+	elif not Economy.can_afford(cost):
+		reasons.append("자원 부족")
+	return {"ok": reasons.is_empty(), "reasons": reasons, "cost": cost}
+
+
+func upgrade_building(uid: StringName) -> bool:
+	var check := can_upgrade(uid)
+	if not check["ok"] or not Economy.apply(_negated(check["cost"])):
+		return false
+	buildings[uid]["level"] = int(buildings[uid]["level"]) + 1
+	var paid: Dictionary = buildings[uid]["paid"]
+	for res in check["cost"]:
+		paid[res] = int(paid.get(res, 0)) + int(check["cost"][res])
+	_refresh_effects()
+	buildings_changed.emit()
+	return true
+
+
+func _generator_running() -> bool:
+	for uid in working_building_ids(&"generator"):
+		if buildings[uid]["fueled"]:
+			return true
+	return false
+
+
+## Raises the tier when the next one's conditions hold (checked every evening).
+func _check_tier(events: Array) -> void:
+	var status := next_tier_status()
+	if not status["ok"]:
+		return
+	tier = int(status["tier"]) as Enums.BaseTier
+	var names := ["캐프", "정착지", "요새"]
+	events.append(_event(&"tier_up", &"", "기지가 %s(으)로 성장했다" % names[tier]))
+	EventBus.notification_posted.emit("기지가 %s(으)로 성장했다" % names[tier], &"info")
+	_refresh_effects()
+	buildings_changed.emit()
 
 
 func clear_zone(zone_id: StringName) -> void:
@@ -514,8 +669,11 @@ func job_block_reason(resident_id: StringName, job_id: StringName, building_uid:
 	if reason != "":
 		return reason
 	if job_id == WorkRules.CONSTRUCTION_JOB:
+		if BaseDB.get_zone(building_uid) != null:  # 개간 (C-10)
+			var clear := can_clear(building_uid)
+			return "" if clear["ok"] else ", ".join(PackedStringArray(clear["reasons"]))
 		var site: Dictionary = buildings.get(building_uid, {})
-		return "" if not site.is_empty() and not site["completed"] else "건설 현장을 골라야 함"
+		return "" if not site.is_empty() and not site["completed"] else "건설 현장이나 개간할 구역을 골라야 함"
 	if job.workplace == &"":
 		return ""
 	if building_uid == &"":
@@ -537,6 +695,9 @@ func assign_job(resident_id: StringName, job_id: StringName, building_uid: Strin
 	var job := BaseDB.get_job(job_id)
 	if building_uid == &"" and job.workplace != &"":
 		building_uid = _free_workplace(job.workplace, resident_id)
+	if job_id == WorkRules.CONSTRUCTION_JOB and BaseDB.get_zone(building_uid) != null:
+		if not start_clearing(building_uid):
+			return false
 	unassign_job(resident_id)
 	residents[resident_id]["assignment"] = {"job": job_id, "building_id": building_uid}
 	if buildings.has(building_uid):
@@ -604,7 +765,9 @@ func settle_day() -> Dictionary:
 		var out := {}
 		if job.workplace != &"" and not Armory.list_recipes(job.workplace, 1).is_empty():
 			crafters.append([id, f, job.workplace])
-		if job.id == WorkRules.CONSTRUCTION_JOB:
+		if job.id == WorkRules.CONSTRUCTION_JOB and BaseDB.get_zone(uid) != null:
+			_clear_work(id, uid, roundi(TierRules.CLEAR_PROGRESS_BASE * f), produced, events)
+		elif job.id == WorkRules.CONSTRUCTION_JOB:
 			if add_build_progress(uid, roundi(WorkRules.BUILD_PROGRESS_BASE * f)) and buildings.has(uid):
 				events.append(_event(&"building_completed", id, "%s 완성" % _def_name(buildings[uid]["def_id"])))
 			if buildings.has(uid) and buildings[uid]["completed"]:
@@ -633,6 +796,7 @@ func settle_day() -> Dictionary:
 
 	# 3. Food: cooked meals if a cook worked today (식량 효율 ×1.5, 배고픔 +70).
 	var cooked := false
+	var ate_cooked := {}
 	for id in work:
 		if work[id]["job"] == &"cooking":
 			cooked = true
@@ -643,6 +807,8 @@ func settle_day() -> Dictionary:
 		var r: Dictionary = residents[id]
 		var need: float = WorkRules.food_need(r) / eat_mult
 		var ate: bool = food_left >= need
+		if ate and cooked:
+			ate_cooked[id] = true
 		if ate:
 			food_left -= need
 			consumed[&"food"] = consumed.get(&"food", 0.0) + need
@@ -654,6 +820,10 @@ func settle_day() -> Dictionary:
 		r["fatigue"] = clampi(int(r["fatigue"]) + WorkRules.fatigue_change(worked.has(id), rested, _sleep_recovery(id), r), 0, 100)
 	if not hungry.is_empty():
 		events.append(_event(&"food_short", &"", "식량이 모자라 %d명이 굶었다" % hungry.size()))
+
+	# 3b. Health and morale (C-06): 07 "상태와 필요", 사기 요인 표, 떠날 위기.
+	_settle_health(consumed, events)
+	var morale := _settle_morale(ids, ate_cooked, events)
 
 	# 4. Generator fuel (2/일, 겨울 3). No fuel → no power tomorrow.
 	var fuel_left: float = float(Economy.get_amount(&"fuel")) + produced.get(&"fuel", 0.0)
@@ -667,6 +837,9 @@ func settle_day() -> Dictionary:
 		else:
 			events.append(_event(&"no_fuel", &"", "연료가 없어 발전기가 멈췄다"))
 	_refresh_power()
+
+	# 4b. Base tier (09 "기지 단계").
+	_check_tier(events)
 
 	# 5. Raid threat (10 "위협도"): T + 3 + 소음도 + 계절 − 2 × 전초기지 − 정찰.
 	var before_threat := threat
@@ -693,7 +866,7 @@ func settle_day() -> Dictionary:
 		"changes": changes,
 		"produced": p,
 		"consumed": c,
-		"morale": {},
+		"morale": morale,
 		"events": events,
 		"work": work,
 		"threat": {"before": before_threat, "after": threat},
@@ -1091,7 +1264,150 @@ static func _direction_text(directions: Array) -> String:
 	return "·".join(parts) if not parts.is_empty() else "어딘가"
 
 
+# --- Health, morale, leaving (Lane C, C-06) -----------------------------------------
+
+## Residents who want to leave (떠나려 한다). They leave at the next evening unless persuaded.
+func residents_in_crisis() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for id in active_resident_ids():
+		if residents[id]["leave_crisis"]:
+			out.append(id)
+	return out
+
+
+## 대화로 붙잡기 (07: 신뢰도 40 이상이면 성공). Returns {"ok": bool, "reason": String}.
+## TODO(C-12/C-13): "원하는 것을 들어주기" (personal request) as the other way to keep them.
+func persuade_to_stay(resident_id: StringName) -> Dictionary:
+	var r: Dictionary = residents.get(resident_id, {})
+	if r.is_empty() or not r["leave_crisis"]:
+		return {"ok": false, "reason": "떠나려는 사람이 아님"}
+	if int(r["trust"]) < NeedsRules.PERSUADE_TRUST:
+		return {"ok": false, "reason": "신뢰도 %d 필요 (지금 %d)" % [NeedsRules.PERSUADE_TRUST, r["trust"]]}
+	r["leave_crisis"] = false
+	r["low_morale_days"] = 0
+	r["morale"] = maxi(int(r["morale"]), NeedsRules.PERSUADE_MORALE)
+	return {"ok": true, "reason": ""}
+
+
+## Injury countdown (의무실이 있으면 1일), sickness (겨울·배고픔), contagion, medicine cures.
+func _settle_health(consumed: Dictionary, events: Array) -> void:
+	var heal_slots := 0
+	for medic in facility_workers(&"infirmary"):
+		if WorkRules.can_work(residents[medic]):
+			heal_slots += int(BaseDB.get_job(&"medical").effects.get(&"heal_per_day", 2.0))
+	var medicine_left: float = Economy.get_amount(&"medicine") - float(consumed.get(&"medicine", 0.0))
+	var winter := GameState.season() == Enums.Season.WINTER
+	var sick_now := 0
+	for id in active_resident_ids():
+		if int(residents[id]["health"]) == Enums.HealthState.SICK:
+			sick_now += 1
+	for id in active_resident_ids():
+		var r: Dictionary = residents[id]
+		match int(r["health"]):
+			Enums.HealthState.INJURED:
+				if heal_slots > 0:
+					heal_slots -= 1
+					r["recover_days"] = mini(int(r["recover_days"]), NeedsRules.INFIRMARY_RECOVER_DAYS)
+				r["recover_days"] = int(r["recover_days"]) - 1
+				if r["recover_days"] <= 0:
+					_recover(id, events)
+			Enums.HealthState.SICK:
+				if heal_slots > 0 and medicine_left >= NeedsRules.MEDICINE_PER_CURE:
+					heal_slots -= 1
+					medicine_left -= NeedsRules.MEDICINE_PER_CURE
+					consumed[&"medicine"] = consumed.get(&"medicine", 0.0) + NeedsRules.MEDICINE_PER_CURE
+					_recover(id, events)
+				else:
+					r["recover_days"] = int(r["recover_days"]) - 1
+					if r["recover_days"] <= 0:
+						_recover(id, events)
+			_:
+				var chance := 0.0
+				if winter or int(r["hunger"]) < WorkRules.HUNGRY_BELOW:
+					chance = NeedsRules.SICK_CHANCE
+				chance = 1.0 - (1.0 - chance) * pow(1.0 - NeedsRules.CONTAGION_CHANCE, sick_now)
+				if chance > 0.0 and _rng.randf() < chance:
+					r["health"] = Enums.HealthState.SICK
+					r["recover_days"] = NeedsRules.SICK_DAYS
+					events.append(_event(&"fell_sick", id, "%s이(가) 앓아누웠다" % r["name"]))
+
+
+func _recover(id: StringName, events: Array) -> void:
+	residents[id]["health"] = Enums.HealthState.OK
+	residents[id]["recover_days"] = 0
+	events.append(_event(&"recovered", id, "%s이(가) 회복했다" % residents[id]["name"]))
+
+
+## Applies today's morale factors and handles 떠날 위기. Returns {resident_id: morale delta}.
+func _settle_morale(ids: Array[StringName], ate_cooked: Dictionary, events: Array) -> Dictionary:
+	var stranded := 0
+	for id: StringName in residents:
+		if int(residents[id]["status"]) == Enums.ResidentStatus.STRANDED:
+			stranded += 1
+	# 모닥불·식당: the best building of each kind counts once for everyone.
+	var shared := {}
+	for uid in working_building_ids():
+		var def := BaseDB.get_building(buildings[uid]["def_id"])
+		if def.category != BuildingDef.Category.HOUSING and def.effects.has(&"morale_daily"):
+			shared[def.id] = maxf(shared.get(def.id, 0.0), building_effect(uid, &"morale_daily"))
+	var shared_bonus := 0
+	for v in shared.values():
+		shared_bonus += roundi(v)
+	var deltas := {}
+	for id in ids:
+		if not residents.has(id) or int(residents[id]["status"]) != Enums.ResidentStatus.ACTIVE:
+			continue
+		var r: Dictionary = residents[id]
+		var uid: StringName = r["assignment"]["building_id"]
+		var coworkers: Array = []
+		if buildings.has(uid):
+			for w: StringName in buildings[uid]["workers"]:
+				if w != id and residents.has(w):
+					coworkers.append(residents[w])
+		var bed := String(r["bed_id"])
+		var home_bonus := 0
+		if bed != "" and not bed.begins_with(START_BED_PREFIX):
+			home_bonus = roundi(building_effect(StringName(bed.get_slice("_bed_", 0)), &"morale_daily"))
+		var ctx := {
+			"job_id": job_of(id), "coworkers": coworkers, "ate_cooked": ate_cooked.has(id),
+			"has_bed": bed != "", "living_bonus": shared_bonus + home_bonus, "stranded_count": stranded,
+		}
+		var before := int(r["morale"])
+		r["morale"] = NeedsRules.apply_morale(r, NeedsRules.daily_morale(r, ctx))
+		deltas[id] = int(r["morale"]) - before
+		# 떠날 위기: yesterday's crisis not resolved → leaves; 3 low days in a row → crisis.
+		if int(r["morale"]) >= NeedsRules.CRISIS_MORALE:
+			r["low_morale_days"] = 0
+			r["leave_crisis"] = false
+			continue
+		r["low_morale_days"] = int(r["low_morale_days"]) + 1
+		if r["leave_crisis"]:
+			events.append(_event(&"resident_left", id, "%s이(가) 기지를 떠났다" % r["name"]))
+			_leave(id, &"low_morale")
+		elif r["low_morale_days"] >= NeedsRules.CRISIS_DAYS:
+			r["leave_crisis"] = true
+			events.append(_event(&"leave_crisis", id, "%s이(가) 떠나려 한다 (신뢰 %d)" % [r["name"], r["trust"]]))
+	return deltas
+
+
+func _leave(id: StringName, reason: StringName) -> void:
+	unassign_job(id)
+	release_bed(id)
+	residents.erase(id)
+	EventBus.resident_left.emit(id, reason)
+
+
+## A rescued profile that is already a stranded/missing resident comes home instead of becoming a
+## second copy (B-10 sends the resident's own dictionary when rescuing a stranded companion).
 func _on_rescue_completed(rescued: Dictionary) -> void:
+	var id := StringName(rescued.get("id", &""))
+	if residents.has(id) and int(residents[id]["status"]) in [Enums.ResidentStatus.STRANDED, Enums.ResidentStatus.MISSING]:
+		residents[id]["status"] = Enums.ResidentStatus.ACTIVE
+		var free := free_beds()
+		if residents[id]["bed_id"] == &"" and not free.is_empty():
+			assign_bed(id, free[0])
+		EventBus.resident_joined.emit(id)
+		return
 	add_resident(rescued)
 
 
@@ -1107,6 +1423,8 @@ func _new_resident_id() -> StringName:
 func _reset() -> void:
 	residents = {}
 	cleared_zones = {}
+	clear_progress = {}
+	clear_started = {}
 	beds = {}
 	var start: Array[StringName] = []
 	for i in START_BED_COUNT:
@@ -1145,6 +1463,8 @@ func save_data() -> Dictionary:
 		"next_building_num": _next_building_num,
 		"last_raid_day": last_raid_day,
 		"cleared_zones": cleared_zones,
+		"clear_progress": clear_progress,
+		"clear_started": clear_started,
 		"threat": threat,
 		"tier": tier,
 	}
@@ -1182,6 +1502,13 @@ func load_data(data: Dictionary) -> void:
 	cleared_zones = {}
 	for zone_id in data.get("cleared_zones", {}):
 		cleared_zones[StringName(zone_id)] = true
+	clear_progress = {}
+	var saved_progress: Dictionary = data.get("clear_progress", {})
+	for zone_id in saved_progress:
+		clear_progress[StringName(zone_id)] = int(saved_progress[zone_id])
+	clear_started = {}
+	for zone_id in data.get("clear_started", {}):
+		clear_started[StringName(zone_id)] = true
 	threat = int(data.get("threat", 0))
 	tier = int(data.get("tier", Enums.BaseTier.CAMP)) as Enums.BaseTier
 	_refresh_effects()
@@ -1192,21 +1519,45 @@ func load_data(data: Dictionary) -> void:
 
 func _register_debug_commands() -> void:
 	DebugConsole.register(&"resident", _cmd_resident,
-		"resident add [demo 1~3] | resident list - 주민 추가(무작위 또는 데모 구조자)·목록")
+		"resident add [demo 1~3] | list | persuade <id> | set <id> <morale|trust|hunger|fatigue> <n> - 주민 추가·목록·붙잡기·값 설정")
 	DebugConsole.register(&"job", _cmd_job,
 		"job <resident_id> <job_id> [building_uid] - 작업 배정 (job list: 직업 목록)")
 	DebugConsole.register(&"settle", _cmd_settle,
 		"settle - 하루 정산을 돌리고 Economy에 반영 (A-05 전 테스트용)")
-	DebugConsole.register(&"zone", func(args: PackedStringArray) -> String:
-		if args.size() >= 2 and args[0] == "clear":
-			clear_zone(StringName(args[1]))
-			return "개간 완료로 표시: %s" % args[1]
-		return "zone clear <zone_id> - 구역을 개간된 것으로 (C-10 전 테스트용). 개간됨: %s" % [cleared_zones.keys()],
-		"zone clear <zone_id> - 구역 개간 완료로 표시")
+	DebugConsole.register(&"zone", _cmd_zone,
+		"zone list | zone clear <id> (즉시 개간) | job <주민> construction <zone_id> 로 개간 배정")
+	DebugConsole.register(&"tier", func(_args: PackedStringArray) -> String:
+		var s := next_tier_status()
+		return "기지 단계 %s, 시설 상한 Lv%d. 다음: %s" % [Enums.BaseTier.keys()[tier], facility_level_cap(),
+			"없음" if s["tier"] < 0 else ("조건 충족" if s["ok"] else ", ".join(PackedStringArray(s["missing"])))],
+		"tier - 기지 단계와 다음 단계 조건")
+	DebugConsole.register(&"upgrade", func(args: PackedStringArray) -> String:
+		if args.is_empty():
+			return "사용법: upgrade <building_uid>"
+		var check := can_upgrade(StringName(args[0]))
+		if not check["ok"]:
+			return "레벨업 불가: " + ", ".join(PackedStringArray(check["reasons"]))
+		upgrade_building(StringName(args[0]))
+		return "%s → Lv%d (비용 %s)" % [args[0], get_building(StringName(args[0]))["level"], check["cost"]],
+		"upgrade <building_uid> - 시설 레벨업")
 	DebugConsole.register(&"raid", _cmd_raid,
 		"raid now [day|night] | raid threat <0~100> | raid info - 습격 강제·위협도 설정·방어력/예상")
 	DebugConsole.register(&"build", _cmd_build,
 		"build <building_id> | build list - 비용 없이 건물을 바로 완성 / 건물·전력·소음 목록")
+
+
+func _cmd_zone(args: PackedStringArray) -> String:
+	if args.size() >= 2 and args[0] == "clear":
+		clear_zone(StringName(args[1]))
+		return "개간 완료로 표시: %s" % args[1]
+	var lines := PackedStringArray()
+	for zone_id: StringName in BaseDB.zones():
+		var z := BaseDB.get_zone(zone_id)
+		var state := "개간됨" if is_zone_cleared(zone_id) else "%d/%d" % [clear_progress_of(zone_id), z.clear_work]
+		var can := can_clear(zone_id)
+		lines.append("  %s %s: %s%s" % [zone_id, z.display_name, state,
+			"" if can["ok"] or is_zone_cleared(zone_id) else " (" + ", ".join(PackedStringArray(can["reasons"])) + ")"])
+	return "\n".join(lines)
 
 
 func _cmd_job(args: PackedStringArray) -> String:
@@ -1290,6 +1641,19 @@ func _cmd_resident(args: PackedStringArray) -> String:
 			var lines := PackedStringArray(["주민 %d명, 침상 %d/%d" % [population(), bed_count() - free_beds().size(), bed_count()]])
 			for id: StringName in residents:
 				var r: Dictionary = residents[id]
-				lines.append("  %s %s 특성 %s 능력치 %s" % [id, r["name"], r["traits"], r["stats"]])
+				lines.append("  %s %s 특성 %s 능력치 %s · 사기 %d 신뢰 %d 배고픔 %d 피로 %d %s%s" % [id, r["name"],
+					r["traits"], r["stats"], r["morale"], r["trust"], r["hunger"], r["fatigue"],
+					Enums.HealthState.keys()[r["health"]], " · 떠나려 함" if r["leave_crisis"] else ""])
 			return "\n".join(lines)
-	return "사용법: resident add [demo 1~3] | resident list"
+		"persuade":
+			if args.size() < 2:
+				return "사용법: resident persuade <id>"
+			var res := persuade_to_stay(StringName(args[1]))
+			return "붙잡았다" if res["ok"] else "실패: " + res["reason"]
+		"set":
+			# resident set <id> <morale|trust|hunger|fatigue> <n>
+			if args.size() < 4 or not residents.has(StringName(args[1])) or not args[2] in ["morale", "trust", "hunger", "fatigue"]:
+				return "사용법: resident set <id> <morale|trust|hunger|fatigue> <0~100>"
+			residents[StringName(args[1])][args[2]] = clampi(int(args[3]), 0, 100)
+			return "%s %s = %s" % [args[1], args[2], args[3]]
+	return "사용법: resident add [demo 1~3] | resident list | resident persuade <id> | resident set <id> <morale|trust|hunger|fatigue> <n>"

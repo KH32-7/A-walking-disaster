@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AppearancePreset" format=3]
+
+[ext_resource type="Script" path="res://ui/defs/appearance_preset.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"bob_teal"
+display_name = "단발 · 청록 재킷"
+hair = "bob"
+hair_color = Color(0.1216, 0.1059, 0.1020, 1)
+skin = Color(0.9529, 0.8627, 0.7765, 1)
+outfit_color = Color(0.1843, 0.4510, 0.4706, 1)
+outfit_accent = Color(0.9373, 0.9176, 0.8745, 1)

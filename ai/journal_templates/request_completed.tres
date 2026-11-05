@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="JournalTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/journal_template.gd" id="1_jtpl"]
+
+[resource]
+script = ExtResource("1_jtpl")
+id = &"request_completed"
+lines = Array[String](["{name}의 부탁을 들어주었다. {name|이} 처음으로 활짝 웃었다.", "{name|이} 오래 찾던 것을 돌려받았다. 고맙다는 말을 세 번이나 했다.", "{name}의 부탁을 끝냈다. {name|이} 저녁 내내 그 이야기를 했다.", "{name|과} 한 약속을 지켰다."])
+priority = 70

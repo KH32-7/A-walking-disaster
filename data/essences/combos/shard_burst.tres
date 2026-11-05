@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ComboDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/combo_def.gd" id="1_combo"]
+
+[resource]
+script = ExtResource("1_combo")
+id = &"shard_burst"
+element_a = 2
+element_b = 4
+name = "파편 폭발"
+description = "처치 시 반경 2m 범위 피해 (무기 피해의 50%)"
+trigger = &"kill"
+effect_params = {
+"radius": 2.0,
+"damage_ratio": 0.5
+}

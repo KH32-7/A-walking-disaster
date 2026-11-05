@@ -35,6 +35,7 @@ UI="*res://ui/ui.gd"
 SceneRouter="*res://core/scene_router.gd"
 DebugConsole="*res://core/debug/debug_console.gd"
 Progression="*res://systems/progression.gd"
+Journal="*res://ai/journal.gd"
 ResidentPool="*res://systems/resident_pool.gd"
 
 [editor_plugins]

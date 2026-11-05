@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="JournalTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/journal_template.gd" id="1_jtpl"]
+
+[resource]
+script = ExtResource("1_jtpl")
+id = &"epilogue_leave"
+lines = Array[String](["{name|은} 대피선 너머에서 새 일을 찾았다.", "{name|은} 안전지대에 닿았다. 가끔 학교 쪽 하늘을 본다.", "{joined}일차에 만난 {name|은} 모두와 함께 대피선을 넘었다."])
+priority = 0

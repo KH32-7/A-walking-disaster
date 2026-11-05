@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="JournalTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/journal_template.gd" id="1_jtpl"]
+
+[resource]
+script = ExtResource("1_jtpl")
+id = &"epilogue_bond"
+lines = Array[String](["{name|과} {other|은} 지금도 서로의 일을 돕는다.", "{other|은} 지금도 {name}의 가장 가까운 친구다."])
+priority = 0

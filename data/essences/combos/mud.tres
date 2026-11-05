@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ComboDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/combo_def.gd" id="1_combo"]
+
+[resource]
+script = ExtResource("1_combo")
+id = &"mud"
+element_a = 2
+element_b = 3
+name = "진흙"
+description = "방어 파괴 + 둔화를 동시에 3초"
+effect_params = {
+"duration_sec": 3.0,
+"guard_break": true,
+"slow_ratio": 0.3
+}

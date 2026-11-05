@@ -136,6 +136,11 @@ func set_aim_point(point: Vector3) -> void:
 	_aim_point = point
 
 
+## Last aim point from the camera (Vector3), or null before the first one.
+func aim_point() -> Variant:
+	return _aim_point
+
+
 func facing() -> Vector3:
 	return _facing
 

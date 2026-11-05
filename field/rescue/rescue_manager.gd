@@ -21,7 +21,7 @@ const TARGET_SCENE := preload("res://field/rescue/rescue_target.tscn")
 @export var spawns: Array[RescueSpawn] = []
 ## 02: 출격당 0~2명, 구조자 최대 2명.
 @export var max_per_sortie := 2
-## -1 = random. TODO(A-05): pass the sortie seed from the loadout.
+## -1 = the sortie's loadout seed (FieldState.sortie_seed), or random without SceneRouter.
 @export var sortie_seed := -1
 ## Tests turn this off and call spawn() themselves.
 @export var spawn_on_ready := true
@@ -37,6 +37,9 @@ func _ready() -> void:
 		var rng := RandomNumberGenerator.new()
 		if sortie_seed >= 0:
 			rng.seed = sortie_seed
+		elif FieldState.sortie_seed >= 0:
+			# Same loadout seed as ExtractionManager: a reload gets the same people in the same spots.
+			rng.seed = FieldState.sortie_seed
 		else:
 			rng.randomize()
 		spawn.call_deferred(rng)

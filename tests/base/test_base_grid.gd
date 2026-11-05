@@ -32,7 +32,7 @@ func _place(def_id: StringName, zone: StringName, cell: Vector2i, rot: int = 0) 
 
 
 func _test_rules(grid: BaseGrid) -> bool:
-	var ok := _check(grid.areas.has(&"front_yard") and grid.areas.has(&"playground"), "건설 부지 2곳")
+	var ok := _check(grid.areas.has(&"front_yard") and grid.areas.has(&"playground") and grid.areas.size() == 7, "건설 부지 7곳")
 	ok = _check(grid.check(&"bed", &"front_yard", Vector2i(0, 0))["ok"], "앞마당 0,0에 침상") and ok
 	var r := grid.check(&"bed", &"front_yard", Vector2i(0, 2))
 	ok = _check(not r["ok"] and "부지 밖으로 나감" in r["reasons"], "침상(1×2)이 3칸 높이 부지 아래로 넘침") and ok

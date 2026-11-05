@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://field/camera/field_camera.tscn" id="4_camera"]
 [ext_resource type="Script" path="res://base/building/build_mode.gd" id="5_build_mode"]
 [ext_resource type="Script" path="res://base/building/building_views.gd" id="6_views"]
+[ext_resource type="Script" path="res://base/residents/resident_crowd.gd" id="7_crowd"]
 
 [node name="BaseSchool" type="Node3D"]
 script = ExtResource("1_base")
@@ -22,3 +23,6 @@ script = ExtResource("6_views")
 
 [node name="BuildMode" type="Node3D" parent="."]
 script = ExtResource("5_build_mode")
+
+[node name="Residents" type="Node3D" parent="."]
+script = ExtResource("7_crowd")

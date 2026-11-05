@@ -12,8 +12,11 @@ var upgrade_level := 0
 var durability := 100.0
 ## [{"id": StringName, "value": int}]
 var affixes: Array = []
-## Essence engravings (A-10).
+## Essence engravings (A-10): [{"slot_index": int, "essence_def_id": StringName}], one per filled slot.
+## Change them through Armory.engrave() / remove_engraving(); read them with Armory.get_engravings().
 var engravings: Array = []
+## A-10 "슬롯 열기": a Common weapon got one essence slot (design 06 "각인 규칙").
+var opened_slot := false
 var attachment_id: StringName
 ## Armory.PLAYER_ID, a resident id, Armory.STORAGE_ID or Armory.LOST_ID.
 var owner: StringName
@@ -24,7 +27,7 @@ var slot := -1
 func to_dict() -> Dictionary:
 	return {
 		"uid": uid, "def_id": def_id, "rarity": rarity, "upgrade_level": upgrade_level,
-		"durability": durability, "affixes": affixes, "engravings": engravings,
+		"durability": durability, "affixes": affixes, "engravings": engravings, "opened_slot": opened_slot,
 		"attachment_id": attachment_id, "owner": owner, "slot": slot,
 	}
 
@@ -37,7 +40,12 @@ static func from_dict(data: Dictionary) -> ItemInstance:
 	item.upgrade_level = int(data.get("upgrade_level", 0))
 	item.durability = float(data.get("durability", 100.0))
 	item.affixes = data.get("affixes", [])
-	item.engravings = data.get("engravings", [])
+	item.engravings = []
+	for entry in data.get("engravings", []):
+		if entry is Dictionary:  # JSON turns ints into floats and StringNames into Strings
+			item.engravings.append({"slot_index": int(entry.get("slot_index", 0)),
+				"essence_def_id": StringName(entry.get("essence_def_id", ""))})
+	item.opened_slot = bool(data.get("opened_slot", false))
 	item.attachment_id = StringName(data.get("attachment_id", ""))
 	item.owner = StringName(data.get("owner", ""))
 	item.slot = int(data.get("slot", -1))

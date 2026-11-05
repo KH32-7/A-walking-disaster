@@ -1,7 +1,9 @@
 extends Node
-## Autoload `Armory`. Owner: Lane A (tasks A-07 .. A-09).
+## Autoload `Armory`. Owner: Lane A (tasks A-07 .. A-10).
 ## A-09: upgrade (preview_upgrade / upgrade), upgrade transfer, repair, auto repair, crafting.
 ## Formulas live in UpgradeRules (systems/upgrade_rules.gd), recipes in data/recipes/.
+## A-10: essence engraving / overwrite / removal, slot opening, refining, disassembly, combos.
+## Numbers and effect math live in EssenceRules (systems/essence_rules.gd), defs in data/essences/.
 ## Owns every equipment ItemInstance (player's and residents') and who wears what.
 ## Lane B reads the player's equipped stats; Lane C reads residents' equipped stats.
 ## Player and residents use the same API: owner_id is PLAYER_ID or a resident id.
@@ -54,6 +56,7 @@ var _next_id := 1
 func _ready() -> void:
 	_load_defs()
 	SaveSystem.register_provider(&"armory", self)
+	_register_debug.call_deferred()
 
 
 # --- Definitions ---
@@ -233,8 +236,13 @@ func get_combat_class(owner_id: StringName) -> int:
 ## Armor: defense, noise_mod, weight. Bags: grid_w, grid_h. Affix stats are added under their own
 ## key (attack_pct, crit_pctp, reload_pct, stamina_pct, max_hp, rescuer_guard_pct ...).
 ## `damage` already includes rarity, upgrade and attack_pct: do not apply the upgrade factor again.
-## Also: def_id, slot, combat_class, light, rarity, upgrade_level, durability, broken,
-## essence_slots, element, essence_effects, combo (the last three are filled by A-10).
+## Also: def_id, slot, combat_class, light, rarity, upgrade_level, durability, broken, essence_slots.
+## A-10 (essences, see EssenceRules.weapon_effects for the shapes):
+##   element (Enums.Element: attack element of a weapon = first filled slot; NONE otherwise),
+##   essence_effects (Array of {element, essence_ids, grade, mult, params}; accessories: params
+##   {resist_ratio}), combo (Dictionary or null; weapons only), element_resist ({Element: ratio},
+##   accessories), engravable, opened_slot, engravings (essence id per usable slot, &"" = empty),
+##   magic (any engraving), name_prefix ("덩굴 감긴" ...), display_name (prefix + def name).
 func get_item_stats(item_uid: StringName) -> Dictionary:
 	var item := get_item(item_uid)
 	if item == null:
@@ -273,19 +281,19 @@ func get_item_stats(item_uid: StringName) -> Dictionary:
 	stats["upgrade_level"] = item.upgrade_level
 	stats["durability"] = item.durability
 	stats["broken"] = broken
-	stats["essence_slots"] = RARITY_ESSENCE_SLOTS[item.rarity]
-	stats["element"] = Enums.Element.NONE  # TODO(A-10)
-	stats["essence_effects"] = []  # TODO(A-10)
-	stats["combo"] = null  # TODO(A-10)
+	stats["essence_slots"] = RARITY_ESSENCE_SLOTS[item.rarity] + (EssenceRules.OPEN_SLOT_COUNT if item.opened_slot else 0)
+	_add_essence_stats(item, def, stats)
 	return stats
 
 
 ## Totals over everything `owner_id` wears, for movement / health / bag (Lane B, Lane C):
 ## defense (armor only), armor_noise (sum of armor noise_mod, capped at ARMOR_NOISE_CAP),
-## max_hp, stamina_pct, crit_pctp, rescuer_guard_pct, move_speed_mult, bag_grid (Vector2i).
+## max_hp, stamina_pct, crit_pctp, rescuer_guard_pct, move_speed_mult, bag_grid (Vector2i),
+## element_resist ({Enums.Element: ratio} from engraved accessories, A-10).
 func get_owner_summary(owner_id: StringName) -> Dictionary:
 	var summary := {"defense": 0.0, "armor_noise": 0.0, "max_hp": 0, "stamina_pct": 0,
-		"crit_pctp": 0, "rescuer_guard_pct": 0, "move_speed_mult": 1.0, "bag_grid": DEFAULT_BAG_GRID}
+		"crit_pctp": 0, "rescuer_guard_pct": 0, "move_speed_mult": 1.0, "bag_grid": DEFAULT_BAG_GRID,
+		"element_resist": {}}
 	var equipped := list_equipped(owner_id)
 	var bag_bonus := 0
 	for slot: int in equipped:
@@ -297,6 +305,9 @@ func get_owner_summary(owner_id: StringName) -> Dictionary:
 			summary["armor_noise"] += stats.get("noise_mod", 0.0)
 			summary["move_speed_mult"] *= stats.get("move_speed_mult", 1.0)
 			bag_bonus += int(stats.get("bag_bonus_cells", 0))
+			var resist: Dictionary = summary["element_resist"]
+			for element: int in stats.get("element_resist", {}):
+				resist[element] = resist.get(element, 0.0) + stats["element_resist"][element]
 		elif slot == Enums.EquipSlot.BAG:
 			summary["bag_grid"] = Vector2i(int(stats["grid_w"]), int(stats["grid_h"]))
 	summary["armor_noise"] = minf(summary["armor_noise"], ARMOR_NOISE_CAP)
@@ -668,6 +679,277 @@ func craft_by_worker(recipe_id: StringName, count: int, stock: Dictionary = {}) 
 	return out
 
 
+# --- Essences (A-10) ---
+# Design 06 "각인 규칙": at the essence workshop with a worker assigned. Weapons and accessories only.
+# Every function that takes `ctx` accepts overrides {"facility_level": int, "worker": bool,
+# "mark": bool} (previews, tests, debug); otherwise they are read from Colony.
+# Blocked reasons are StringNames; the Economy is changed only when the preview says ok.
+
+## Essence workshop state: {"level" (0 = not built), "worker" (someone assigned),
+## "mark" (a worker with the 마물 흔적 trait: refining needs one fewer essence)}.
+func essence_context(ctx: Dictionary = {}) -> Dictionary:
+	var workers := Colony.facility_workers(EssenceRules.FACILITY)
+	var mark := false
+	for resident_id in workers:
+		for trait_id in Colony.get_resident(resident_id).get("traits", []):
+			var trait_def := BaseDB.get_trait(StringName(trait_id))
+			if trait_def != null and trait_def.effect(EssenceRules.MARK_EFFECT) > 0.0:
+				mark = true
+	return {"level": int(ctx.get("facility_level", Colony.facility_level(EssenceRules.FACILITY))),
+		"worker": bool(ctx.get("worker", not workers.is_empty())), "mark": bool(ctx.get("mark", mark))}
+
+
+## Weapons and accessories take essences (design 06 "대상").
+func is_engravable(item_uid: StringName) -> bool:
+	var item := get_item(item_uid)
+	if item == null:
+		return false
+	var def := get_def(item.def_id)
+	return def != null and (def.is_weapon() or def.slot == Enums.EquipSlot.ACCESSORY)
+
+
+## Usable essence slots: by rarity (RARITY_ESSENCE_SLOTS) + the opened slot; 0 if not engravable.
+func essence_slot_count(item_uid: StringName) -> int:
+	if not is_engravable(item_uid):
+		return 0
+	var item := get_item(item_uid)
+	return RARITY_ESSENCE_SLOTS[item.rarity] + (EssenceRules.OPEN_SLOT_COUNT if item.opened_slot else 0)
+
+
+## Essence id per usable slot (&"" = empty), length = essence_slot_count().
+func get_engravings(item_uid: StringName) -> Array[StringName]:
+	var out: Array[StringName] = []
+	var item := get_item(item_uid)
+	if item == null:
+		return out
+	out.resize(essence_slot_count(item_uid))
+	out.fill(&"")
+	for entry: Dictionary in item.engravings:
+		var index := int(entry.get("slot_index", -1))
+		if index >= 0 and index < out.size():
+			out[index] = StringName(entry.get("essence_def_id", ""))
+	return out
+
+
+## For the engraving screen (D-12). Engraving a filled slot overwrites it (the old essence is lost).
+## Always returns ok, reason (&"" when ok; else no_item, unknown_essence, lost, not_engravable,
+## no_slots, bad_slot, same_essence, no_facility, no_worker, cost), uid, essence_id, slot, slot_count,
+## replaces (essence id being overwritten or &""), facility, facility_level, worker, cost {id: n},
+## missing {id: shortfall}, stats (now), stats_after (with the engraving; empty for a bad slot).
+func preview_engrave(item_uid: StringName, essence_id: StringName, slot: int = 0, ctx: Dictionary = {}) -> Dictionary:
+	var out := _essence_preview_base(item_uid, ctx)
+	out.merge({"essence_id": essence_id, "slot": slot, "replaces": &""})
+	var item := get_item(item_uid)
+	if item == null:
+		out["reason"] = &"no_item"
+		return out
+	var essence := EssenceRules.get_essence(essence_id)
+	var current := get_engravings(item_uid)
+	if essence != null:
+		out["cost"] = EssenceRules.engrave_cost(essence_id)
+		out["missing"] = _missing(out["cost"])
+	if slot >= 0 and slot < current.size():
+		out["replaces"] = current[slot]
+		if essence != null:
+			current[slot] = essence_id
+			out["stats_after"] = _stats_with_engravings(item, current)
+	if essence == null:
+		out["reason"] = &"unknown_essence"
+	elif item.owner == LOST_ID:
+		out["reason"] = &"lost"
+	elif not is_engravable(item_uid):
+		out["reason"] = &"not_engravable"
+	elif out["slot_count"] == 0:
+		out["reason"] = &"no_slots"
+	elif slot < 0 or slot >= out["slot_count"]:
+		out["reason"] = &"bad_slot"
+	elif out["replaces"] == essence_id:
+		out["reason"] = &"same_essence"
+	else:
+		out["reason"] = _workshop_reason(out, 1)
+	out["ok"] = out["reason"] == &""
+	return out
+
+
+## Engraves (or overwrites) and pays through Economy. False (nothing changes) when not possible.
+func engrave(item_uid: StringName, essence_id: StringName, slot: int = 0, ctx: Dictionary = {}) -> bool:
+	var preview := preview_engrave(item_uid, essence_id, slot, ctx)
+	if not preview["ok"] or not Economy.apply(_negated(preview["cost"])):
+		return false
+	var item := get_item(item_uid)
+	_set_engraving(item, slot, essence_id)
+	_emit_changed(item)
+	return true
+
+
+## Removing an engraving: the essence is lost (design 06 "덮어쓰기·제거"). Returns ok, reason (&"" or
+## no_item, lost, bad_slot, empty_slot, no_facility, no_worker, cost), uid, slot, slot_count, removed,
+## facility, facility_level, worker, cost, missing, stats, stats_after.
+func preview_remove_engraving(item_uid: StringName, slot: int, ctx: Dictionary = {}) -> Dictionary:
+	var out := _essence_preview_base(item_uid, ctx)
+	out.merge({"slot": slot, "removed": &""})
+	var item := get_item(item_uid)
+	if item == null:
+		out["reason"] = &"no_item"
+		return out
+	var current := get_engravings(item_uid)
+	out["cost"] = EssenceRules.REMOVE_COST.duplicate()
+	out["missing"] = _missing(out["cost"])
+	if slot >= 0 and slot < current.size():
+		out["removed"] = current[slot]
+		current[slot] = &""
+		out["stats_after"] = _stats_with_engravings(item, current)
+	if item.owner == LOST_ID:
+		out["reason"] = &"lost"
+	elif slot < 0 or slot >= out["slot_count"]:
+		out["reason"] = &"bad_slot"
+	elif out["removed"] == &"":
+		out["reason"] = &"empty_slot"
+	else:
+		out["reason"] = _workshop_reason(out, 1)
+	out["ok"] = out["reason"] == &""
+	return out
+
+
+func remove_engraving(item_uid: StringName, slot: int, ctx: Dictionary = {}) -> bool:
+	var preview := preview_remove_engraving(item_uid, slot, ctx)
+	if not preview["ok"] or not Economy.apply(_negated(preview["cost"])):
+		return false
+	var item := get_item(item_uid)
+	_set_engraving(item, slot, &"")
+	_emit_changed(item)
+	return true
+
+
+## "슬롯 열기": a Common weapon gets 1 essence slot for parts 3 + scrap 10. Returns ok, reason (&"" or
+## no_item, lost, not_weapon, has_slots, already_open, no_facility, no_worker, cost), uid, slot_count,
+## facility, facility_level, worker, cost, missing, stats, stats_after.
+func preview_open_slot(item_uid: StringName, ctx: Dictionary = {}) -> Dictionary:
+	var out := _essence_preview_base(item_uid, ctx)
+	var item := get_item(item_uid)
+	if item == null:
+		out["reason"] = &"no_item"
+		return out
+	out["cost"] = EssenceRules.OPEN_SLOT_COST.duplicate()
+	out["missing"] = _missing(out["cost"])
+	if not item.opened_slot:
+		item.opened_slot = true
+		out["stats_after"] = get_item_stats(item_uid)
+		item.opened_slot = false
+	if item.owner == LOST_ID:
+		out["reason"] = &"lost"
+	elif not get_def(item.def_id).is_weapon():
+		out["reason"] = &"not_weapon"
+	elif item.opened_slot:
+		out["reason"] = &"already_open"
+	elif RARITY_ESSENCE_SLOTS[item.rarity] > 0:
+		out["reason"] = &"has_slots"
+	else:
+		out["reason"] = _workshop_reason(out, 1)
+	out["ok"] = out["reason"] == &""
+	return out
+
+
+func open_slot(item_uid: StringName, ctx: Dictionary = {}) -> bool:
+	var preview := preview_open_slot(item_uid, ctx)
+	if not preview["ok"] or not Economy.apply(_negated(preview["cost"])):
+		return false
+	var item := get_item(item_uid)
+	item.opened_slot = true
+	_emit_changed(item)
+	return true
+
+
+## Refining (workshop Lv2): 3 of one essence -> 1 of the next grade, same element; the 마물 흔적
+## worker needs 2. Returns ok, reason (&"" or unknown_essence, max_grade, bad_times, no_facility,
+## facility_level, no_worker, cost), essence_id, output_id, times, input_qty (per refine), mark,
+## facility, facility_level, worker, cost {essence: n}, gain {output: times}, missing.
+func preview_refine(essence_id: StringName, times: int = 1, ctx: Dictionary = {}) -> Dictionary:
+	var out := _essence_preview_base(&"", ctx)
+	for key in ["uid", "slot_count", "stats", "stats_after"]:
+		out.erase(key)
+	var fac := essence_context(ctx)
+	out.merge({"essence_id": essence_id, "output_id": EssenceRules.refine_output(essence_id), "times": times,
+		"input_qty": EssenceRules.refine_input(fac["mark"]), "mark": fac["mark"], "gain": {}})
+	if EssenceRules.is_essence(essence_id) and times > 0:
+		out["cost"] = {essence_id: out["input_qty"] * times}
+		out["missing"] = _missing(out["cost"])
+		if out["output_id"] != &"":
+			out["gain"] = {out["output_id"]: times}
+	if not EssenceRules.is_essence(essence_id):
+		out["reason"] = &"unknown_essence"
+	elif out["output_id"] == &"":
+		out["reason"] = &"max_grade"
+	elif times < 1:
+		out["reason"] = &"bad_times"
+	else:
+		out["reason"] = _workshop_reason(out, EssenceRules.REFINE_FACILITY_LEVEL)
+	out["ok"] = out["reason"] == &""
+	return out
+
+
+func refine(essence_id: StringName, times: int = 1, ctx: Dictionary = {}) -> bool:
+	var preview := preview_refine(essence_id, times, ctx)
+	if not preview["ok"]:
+		return false
+	var changes := _negated(preview["cost"])
+	changes.merge(preview["gain"])
+	return Economy.apply(changes)
+
+
+## Disassembling a magic weapon (or engraved accessory) in storage: the item is destroyed and each
+## engraved essence comes back with a 50% chance. Returns ok, reason (&"" or no_item, lost,
+## not_in_storage, no_engraving, no_facility), uid, essences (engraved ids), return_chance,
+## facility, facility_level, worker.
+func preview_disassemble(item_uid: StringName, ctx: Dictionary = {}) -> Dictionary:
+	var out := _essence_preview_base(item_uid, ctx)
+	out.merge({"essences": [], "return_chance": EssenceRules.DISASSEMBLE_RETURN_CHANCE})
+	out.erase("stats_after")
+	var item := get_item(item_uid)
+	if item == null:
+		out["reason"] = &"no_item"
+		return out
+	var essences: Array = out["essences"]
+	for id in get_engravings(item_uid):
+		if id != &"":
+			essences.append(id)
+	if item.owner == LOST_ID:
+		out["reason"] = &"lost"
+	elif item.owner != STORAGE_ID:
+		out["reason"] = &"not_in_storage"
+	elif essences.is_empty():
+		out["reason"] = &"no_engraving"
+	elif out["facility_level"] <= 0:
+		out["reason"] = &"no_facility"
+	out["ok"] = out["reason"] == &""
+	return out
+
+
+## Destroys the item and adds the essences that came back. Returns {"ok", "reason",
+## "returned" {id: n}, "lost" {id: n}} (pass an rng for repeatable rolls).
+func disassemble(item_uid: StringName, ctx: Dictionary = {}, rng: RandomNumberGenerator = null) -> Dictionary:
+	var preview := preview_disassemble(item_uid, ctx)
+	var out := {"ok": false, "reason": preview["reason"], "returned": {}, "lost": {}}
+	if not preview["ok"]:
+		return out
+	if rng == null:
+		rng = RandomNumberGenerator.new()
+	var returned := EssenceRules.roll_disassemble(preview["essences"], rng)
+	var lost := {}
+	for id: StringName in preview["essences"]:
+		lost[id] = lost.get(id, 0) + 1
+	for id: StringName in returned:
+		lost[id] -= returned[id]
+		if lost[id] <= 0:
+			lost.erase(id)
+	remove_item(item_uid)
+	Economy.apply(returned)
+	out["ok"] = true
+	out["returned"] = returned
+	out["lost"] = lost
+	return out
+
+
 # --- Save provider ---
 
 func save_data() -> Dictionary:
@@ -745,6 +1027,104 @@ func _family_options(item: ItemInstance) -> Array:
 	options.sort_custom(func(a: Array, b: Array) -> bool:
 		return a[1] > b[1] if a[1] != b[1] else a[2] < b[2])
 	return options.map(func(entry: Array) -> StringName: return entry[0])
+
+
+## Fills the A-10 keys of get_item_stats().
+func _add_essence_stats(item: ItemInstance, def: ItemDef, stats: Dictionary) -> void:
+	var engravings := get_engravings(item.uid)
+	var prefix := EssenceRules.name_prefix(engravings) if def.is_weapon() else ""
+	stats["engravable"] = is_engravable(item.uid)
+	stats["opened_slot"] = item.opened_slot
+	stats["engravings"] = engravings
+	stats["magic"] = engravings.any(func(id: StringName) -> bool: return id != &"")
+	stats["name_prefix"] = prefix
+	stats["display_name"] = ("%s %s" % [prefix, def.name]) if prefix != "" else def.name
+	stats["element"] = Enums.Element.NONE
+	stats["essence_effects"] = []
+	stats["combo"] = null
+	if def.is_weapon():
+		var magic := EssenceRules.weapon_effects(engravings)
+		stats["element"] = magic["element"]
+		stats["essence_effects"] = magic["effects"]
+		stats["combo"] = magic["combo"]
+	elif def.slot == Enums.EquipSlot.ACCESSORY:
+		stats["essence_effects"] = EssenceRules.accessory_effects(engravings)
+		stats["element_resist"] = EssenceRules.accessory_resist(engravings)
+
+
+## get_item_stats() with these engravings (essence id per slot) instead of the item's own.
+func _stats_with_engravings(item: ItemInstance, by_slot: Array) -> Dictionary:
+	var saved := item.engravings
+	item.engravings = []
+	for i in by_slot.size():
+		if by_slot[i] != &"":
+			item.engravings.append({"slot_index": i, "essence_def_id": StringName(by_slot[i])})
+	var stats := get_item_stats(item.uid)
+	item.engravings = saved
+	return stats
+
+
+## Puts `essence_id` in `slot` (&"" clears it). Keeps the list sorted by slot.
+func _set_engraving(item: ItemInstance, slot: int, essence_id: StringName) -> void:
+	var kept: Array = []
+	for entry: Dictionary in item.engravings:
+		if int(entry.get("slot_index", -1)) != slot:
+			kept.append(entry)
+	if essence_id != &"":
+		kept.append({"slot_index": slot, "essence_def_id": essence_id})
+	kept.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["slot_index"] < b["slot_index"])
+	item.engravings = kept
+
+
+## Common fields of the A-10 previews.
+func _essence_preview_base(item_uid: StringName, ctx: Dictionary) -> Dictionary:
+	var fac := essence_context(ctx)
+	var out := {"ok": false, "reason": &"", "uid": item_uid, "slot_count": essence_slot_count(item_uid),
+		"facility": EssenceRules.FACILITY, "facility_level": fac["level"], "worker": fac["worker"],
+		"cost": {}, "missing": {}, "stats": get_item_stats(item_uid), "stats_after": {}}
+	return out
+
+
+## Workshop checks shared by the A-10 previews: built, level, worker, then cost.
+func _workshop_reason(out: Dictionary, min_level: int) -> StringName:
+	if out["facility_level"] <= 0:
+		return &"no_facility"
+	if out["facility_level"] < min_level:
+		return &"facility_level"
+	if not out["worker"]:
+		return &"no_worker"
+	if not out["missing"].is_empty():
+		return &"cost"
+	return &""
+
+
+## Debug console (debug builds only): engrave the player's weapon for free.
+func _register_debug() -> void:
+	DebugConsole.register(&"engrave", _cmd_engrave,
+		"engrave <essence_id|none> [slot 0-1] [main|sub] - 플레이어 무기에 무료 각인 (일반 무기는 슬롯을 연다)")
+
+
+func _cmd_engrave(args: PackedStringArray) -> String:
+	if args.is_empty():
+		return "usage: engrave <essence_id|none> [slot] [main|sub]. ids: %s" % [EssenceRules.list_essences()]
+	var slot := int(args[1]) if args.size() > 1 and args[1].is_valid_int() else 0
+	var equip_slot := Enums.EquipSlot.SUB if args.size() > 2 and args[2] == "sub" else Enums.EquipSlot.MAIN
+	var uid := get_equipped(PLAYER_ID, equip_slot)
+	if uid == &"":
+		return "no weapon equipped"
+	var essence_id := &"" if args[0] == "none" else StringName(args[0])
+	if essence_id != &"" and not EssenceRules.is_essence(essence_id):
+		return "unknown essence %s" % essence_id
+	var item := get_item(uid)
+	if essence_slot_count(uid) == 0:
+		item.opened_slot = true
+	if slot < 0 or slot >= essence_slot_count(uid):
+		return "slot %d out of range (%d slots)" % [slot, essence_slot_count(uid)]
+	_set_engraving(item, slot, essence_id)
+	_emit_changed(item)
+	var stats := get_item_stats(uid)
+	return "%s: element %d, effects %d, combo %s" % [stats["display_name"], stats["element"],
+		stats["essence_effects"].size(), stats["combo"]["name"] if stats["combo"] != null else "-"]
 
 
 func _to_storage(item_uid: StringName) -> void:
