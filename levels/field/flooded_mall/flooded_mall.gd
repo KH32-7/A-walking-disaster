@@ -6,6 +6,11 @@ extends Node3D
 ## TODO(A-05): SceneRouter.go_to_field(loadout) picks spawn_id from the loadout.
 
 const DRESSING_PATH := "res://levels/field/flooded_mall/dressing.tscn"
+## B-26 pack meshes of the kit buildings (built by build/build_layout.gd). They need the private
+## assets/ submodule; without it (CI) the layout's greybox stays.
+const BUILDINGS_PATH := "res://levels/field/flooded_mall/buildings.tscn"
+const KIT_GREYBOX_GROUP := &"kit_greybox"
+const CityKit := preload("res://field/buildings/city_kit.gd")
 const PLAYER_SCENE := preload("res://field/player/player.tscn")
 
 ## PlayerSpawn marker to start at: &"main" (sortie 1, north gate) or &"east" (sortie 2, coast road).
@@ -19,11 +24,30 @@ var player: Node3D
 
 
 func _ready() -> void:
+	_add_buildings()
 	if ResourceLoader.exists(DRESSING_PATH):
 		add_child((load(DRESSING_PATH) as PackedScene).instantiate())
 		$GreyboxLighting.queue_free()
 	if spawn_player:
 		player = _spawn_player()
+
+
+## Swaps the kit buildings' greybox for the pack meshes. The greybox roofs leave the IndoorZone
+## roof group so entering a building does not show them again.
+func _add_buildings() -> void:
+	if not CityKit.available() or not ResourceLoader.exists(BUILDINGS_PATH):
+		return
+	var kit := (load(BUILDINGS_PATH) as PackedScene).instantiate()
+	add_child(kit)
+	# Layout CSG that stays (stairs, ramp) gets pack textures; Lane D's toon skin leaves ShaderMaterials.
+	var skins: Dictionary = kit.get_meta(&"layout_skins", {})
+	for path: NodePath in skins:
+		var shape := _layout.get_node_or_null(path)
+		if shape != null:
+			shape.set(&"material", skins[path])
+	for node in get_tree().get_nodes_in_group(KIT_GREYBOX_GROUP):
+		node.remove_from_group(CityKit.ROOF_GROUP)
+		(node as Node3D).visible = false
 
 
 func _spawn_player() -> Node3D:

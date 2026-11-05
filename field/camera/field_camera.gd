@@ -16,7 +16,8 @@ const PITCH_DEG := 55.0 ## look-down angle (design 16)
 const START_YAW_DEG := 45.0 ## diagonal quarter view
 const YAW_STEP_DEG := 90.0
 const ROTATE_SEC := 0.25 ## instant when Settings `reduce_shake` is on
-const ZOOM_DISTANCES := [14.0, 18.0, 24.0] ## near, middle, far (design 16: 3 steps)
+## near, middle, far (design 16: 3 steps). User feedback 2026-11-06 (B-26): start closer, 14/18/24 -> 10/13.5/18.
+const ZOOM_DISTANCES := [10.0, 13.5, 18.0]
 const START_ZOOM := 1
 const FOV_DEG := 60.0
 const FOCUS_HEIGHT := 1.0 ## look at the player's chest, not the feet
