@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ConsumableDef" format=3]
+
+[ext_resource type="Script" path="res://field/defs/consumable_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"grenade"
+name = "투척 폭탄"
+effect = 3
+use_sec = 0.0
+noise = &"grenade_blast"
+slot_priority = 5
+radius = 3.0
+damage = 60.0

@@ -16,6 +16,9 @@ extends Node3D
 
 const REGION_ID := &"flooded_mall"
 const LOADOUT := {Enums.EquipSlot.MAIN: &"pistol", Enums.EquipSlot.SUB: &"dagger"}
+## B-16: consumables handed out at the start (test only), id -> count.
+const TEST_CONSUMABLES := {&"first_aid_kit": 2, &"bandage": 2, &"noise_lure": 3, &"painkiller": 1,
+		&"flashbang": 2, &"grenade": 2}
 const KILL_RADIUS := 4.0
 const KILL_DAMAGE := 9999.0
 const TELEPORT_OFFSET := Vector3(0.0, 0.2, 2.0)
@@ -49,6 +52,8 @@ func _ready() -> void:
 	for slot: Enums.EquipSlot in LOADOUT:
 		if Armory.get_equipped(Armory.PLAYER_ID, slot) == &"":
 			Armory.equip(Armory.PLAYER_ID, slot, Armory.create_item(LOADOUT[slot], Enums.Rarity.COMMON))
+	for id: StringName in TEST_CONSUMABLES:
+		Bag.try_add(id, TEST_CONSUMABLES[id])
 	UI.show_field_hud(true)
 	# Deferred: spawners may place their nodes during their own deferred calls.
 	_watch_containers.call_deferred()

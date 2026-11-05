@@ -29,6 +29,7 @@ static func build(player: Player) -> Dictionary:
 	if FieldState.night_enabled():
 		state["dusk_left_sec"] = FieldState.dusk_left_sec()
 	state["companions"] = FieldCompanion.hud_list(player.get_tree())
+	state["consumables"] = player.consumables.hud_slots()
 	return state
 
 
@@ -82,6 +83,9 @@ static func _add_compass(player: Player, extraction: ExtractionManager, state: D
 
 
 static func _hold(player: Player, extraction: ExtractionManager) -> Dictionary:
+	var item_hold := player.consumables.hold_state()
+	if not item_hold.is_empty():
+		return item_hold
 	var using := player.interacting()
 	if using and using.has_method(&"hold_state"):
 		var hold: Dictionary = using.hold_state()

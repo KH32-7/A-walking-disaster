@@ -206,11 +206,27 @@ func damage_taken_mult(element: Enums.Element) -> float:
 	return mult
 
 
-## Hit damage after status factors (wet). Tick damage is returned as is.
+## Product of every active damage_mult (painkiller 0.8). Applies to hits and ticks alike.
+func damage_mult() -> float:
+	var mult := 1.0
+	for e: Dictionary in _active.values():
+		mult *= (e["def"] as StatusEffect).damage_mult
+	return mult
+
+
+## Product of every active sight_mult. 0 while blinded (flash).
+func sight_mult() -> float:
+	var mult := 1.0
+	for e: Dictionary in _active.values():
+		mult *= (e["def"] as StatusEffect).sight_mult
+	return mult
+
+
+## Hit damage after status factors (wet, painkiller). Tick damage only gets damage_mult().
 func scale_damage(amount: float, info: Dictionary) -> float:
 	if is_tick(info):
-		return amount
-	return amount * damage_taken_mult(info.get("element", Enums.Element.NONE))
+		return amount * damage_mult()
+	return amount * damage_mult() * damage_taken_mult(info.get("element", Enums.Element.NONE))
 
 
 ## Flat push velocity while knocked back, else Vector3.ZERO.

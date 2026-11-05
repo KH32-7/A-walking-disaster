@@ -291,9 +291,9 @@ func is_dead() -> bool:
 	return _dead
 
 
-## Sight distance after sight_mult (B-21 night).
+## Sight distance after sight_mult (B-21 night) and status (B-16 flash blind = 0).
 func sight_range() -> float:
-	return def.sight_range * sight_mult
+	return def.sight_range * sight_mult * (status.sight_mult() if status else 1.0)
 
 
 ## One hit's damage: def.attack x attack_mult (elite x1.5).
@@ -445,7 +445,10 @@ func _add_behavior(id: StringName) -> void:
 
 ## Sight without the cone, or touch. Blind monsters (statue) still notice a target
 ## right next to them, so they can attack. Ranged attackers do not sense through walls.
+## Flash-blinded ones (B-16 blind status) sense nothing until it wears off.
 func _senses(who: Node3D) -> bool:
+	if status.sight_mult() <= 0.0:
+		return false
 	return can_see(who, false) 			or _distance_to(who) <= minf(def.attack_range, MonsterRules.TOUCH_SENSE_RANGE)
 
 

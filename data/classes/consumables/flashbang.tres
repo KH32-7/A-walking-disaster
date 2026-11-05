@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ConsumableDef" format=3]
+
+[ext_resource type="Script" path="res://field/defs/consumable_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"flashbang"
+name = "섬광탄"
+effect = 2
+use_sec = 0.0
+slot_priority = 4
+radius = 8.0
+target_status = &"blind"
+light_heal_ratio = 0.2
