@@ -9,6 +9,13 @@ extends SceneTree
 ## wall heights, doors, stair direction, the ramp shape, greybox props (DOORS, PROPS below).
 ## Re-run after the map file changes. Hand edits to layout.tscn are lost on a re-run.
 ##
+## MAP_SCALE stretches the map file's floor plan (x, z) without editing the confirmed file:
+## zones, buildings, roads, water, marker and prop positions, door positions, the floor-link
+## positions and the hidden route ends. Heights, door widths, prop sizes and gameplay radii in
+## marker props (zone_radius, noise_radius, wander_radius) are design values and stay as they are.
+## Stairs, the elevator shaft and the loading ramp move with the plan but keep their shape
+## (size, rise, slope), so the ramp ends short of the scaled route end and the rest is ground.
+##
 ## Navigation layers (agreed with B-10): 1 = everyone on foot, 2 = wheelchair.
 ## The region has both layers. Stairs are cut out of the navmesh and joined by a layer-1-only
 ## NavigationLink3D, so a wheelchair path from the mall's 2F can only use the hidden ramp.
@@ -31,7 +38,9 @@ const LAYER_TRIGGER_BIT := 1 << 7
 const NAV_LAYER_WALK := 1
 const NAV_LAYER_WHEELCHAIR := 2
 
-const MAP_HALF := 75.0
+## Floor plan scale over the map file (user feedback 2026-11-05: the map felt cramped, x2).
+const MAP_SCALE := 2.0
+const MAP_HALF := 75.0 * MAP_SCALE
 const GROUND_DEPTH := 1.0
 const SLAB := 0.3
 const WALL_T := 0.3
@@ -48,7 +57,8 @@ const DEFAULT_BLOCKED_H := 3.0
 const RAMP_WIDTH := 3.5
 const BOUNDS_H := 4.0
 
-## Doors: zone id -> [[x, z, width], ...]. The point snaps to the nearest wall edge.
+## Doors: zone id -> [[x, z, width], ...] in map file coordinates (scaled on use, width is not).
+## The point snaps to the nearest wall edge.
 ## Placed from the demo routes and the roads/bridges each building faces.
 const DOORS := {
 	"mart_in": [[-33.0, -58.0, 3.0], [-56.0, -43.0, 3.0]],
@@ -66,10 +76,12 @@ const DOORS := {
 	# Mall 2F wall between the food court and the roof deck.
 	"shop2_in": [[41.0, 33.6, 3.0]],
 }
-## Elevator door (2F, the car is stuck there): side of the shaft rect.
-const ELEVATOR_DOOR := [38.0, 27.0, 2.0]
+## Elevator door (2F, the car is stuck there): middle of the shaft's south side.
+const ELEVATOR_DOOR_W := 2.0
 
 ## Greybox props not in the map file. [name, x, z, size_x, size_z, height, rot_y_deg]
+## x, z in map file coordinates (scaled on use). Sizes are real object sizes and do not scale,
+## except the gate barricade, which spans the road and widens with it.
 ## Low cover (1.2m, B-06 sandbox size): cars on the bridge, gas pumps, gate barricade.
 const LOW_COVER := [
 	["Car1", 23.0, -22.0, 2.0, 4.2, 1.2, 0.0],
@@ -77,8 +89,8 @@ const LOW_COVER := [
 	["Car3", 23.5, -2.0, 2.0, 4.2, 1.2, -8.0],
 	["Pump1", -26.0, 10.0, 1.0, 3.0, 1.2, 0.0],
 	["Pump2", -26.0, 16.0, 1.0, 3.0, 1.2, 0.0],
-	["GateBarricadeW", -17.75, -68.0, 2.5, 1.0, 1.2, 0.0],
-	["GateBarricadeE", -12.25, -68.0, 2.5, 1.0, 1.2, 0.0],
+	["GateBarricadeW", -17.75, -68.0, 2.5 * MAP_SCALE, 1.0, 1.2, 0.0],
+	["GateBarricadeE", -12.25, -68.0, 2.5 * MAP_SCALE, 1.0, 1.2, 0.0],
 ]
 ## Trees in vegetation zones, rocks on open ground. Seeded, so a re-run plants the same map.
 ## Rocks are low cover. Nothing grows on roads, water, near buildings, markers, props or demo routes.
@@ -87,6 +99,7 @@ const TREE_SPACING := 5.0
 const TREE_TRUNK_RADIUS := 0.3
 const TREE_TRUNK_H := 2.4
 const TREE_CROWN_R := 1.6
+## Rocks on the unscaled map; the count grows with the area so the density stays.
 const ROCK_COUNT := 40
 const ROCK_SPACING := 6.0
 const CLEAR_MARKER := 3.0
@@ -262,7 +275,7 @@ func _build_buildings() -> void:
 		var walls := _combiner("Walls")
 		_nav(walls)
 		building.add_child(walls)
-		_add_walls(walls, poly, 0.0, h, DOORS.get(zone.id, []), [])
+		_add_walls(walls, poly, 0.0, h, _doors(zone.id), [])
 		building.add_child(_roof("Roof", poly, h, zone.id))
 		zones_node.add_child(_indoor_zone(zone.id, [poly], 0.0, h))
 
@@ -286,7 +299,7 @@ func _build_mall() -> void:
 	var walls1 := _combiner("Walls1F")
 	_nav(walls1)
 	mall.add_child(walls1)
-	_add_walls(walls1, shop_in, 0.0, y2 - SLAB, DOORS.shop_in, [])
+	_add_walls(walls1, shop_in, 0.0, y2 - SLAB, _doors("shop_in"), [])
 	walls1.add_child(_box("ElevatorShaft1F", el_rect.get_center(), el_rect.size, 0.0, y2 - SLAB, 0.0, "wall"))
 
 	# Stairs: one flight, foot on the south side of the stair rect, top on the north side.
@@ -334,9 +347,10 @@ func _build_mall() -> void:
 	_nav(walls2)
 	upper.add_child(walls2)
 	# Food court walls. The edge it shares with the deck gets the door to the deck.
-	_add_walls(walls2, shop2_in, y2, UPPER_WALL_H, DOORS.shop2_in, [])
+	_add_walls(walls2, shop2_in, y2, UPPER_WALL_H, _doors("shop2_in"), [])
 	# Elevator shaft on 2F: open door on one side, the trapped person is inside.
-	_add_walls(walls2, _rect_poly(el_rect), y2, UPPER_WALL_H, [ELEVATOR_DOOR], [])
+	_add_walls(walls2, _rect_poly(el_rect), y2, UPPER_WALL_H,
+		[[el_rect.get_center().x, el_rect.end.y, ELEVATOR_DOOR_W]], [])
 	# Stairwell railings on the three open sides (north side is the top of the flight).
 	var well := _rect_poly(stair_rect)
 	_add_walls(walls2, well, y2, LOW_WALL_H, [], [0])
@@ -346,13 +360,15 @@ func _build_mall() -> void:
 
 	upper.add_child(_roof("Roof2F", shop2_in, y2 + UPPER_WALL_H, &"shop2_in"))
 
-	# Hidden loading ramp: from the deck edge down to the dock (map hidden_routes[0].to).
+	# Hidden loading ramp: from the deck edge down toward the dock (map hidden_routes[0].to).
+	# Its length (so its slope) is the unscaled one; the scaled rest of the route is ground.
 	var route: Dictionary = _map.hidden_routes[0]
-	var to := Vector2(route.to.position[0], route.to.position[2])
+	var to := _xz(route.to.position)
 	var dir := (to - ramp_top).normalized()
+	var foot := ramp_top + dir * ramp_top.distance_to(to) / MAP_SCALE
 	var side := Vector2(-dir.y, dir.x) * RAMP_WIDTH * 0.5
-	_ramp_poly = PackedVector2Array([ramp_top + side, to + side, to - side, ramp_top - side])
-	var ramp := _ramp("LoadingRamp", ramp_top - dir * 0.15, to, RAMP_WIDTH, 0.0, y2, "road")
+	_ramp_poly = PackedVector2Array([ramp_top + side, foot + side, foot - side, ramp_top - side])
+	var ramp := _ramp("LoadingRamp", ramp_top - dir * 0.15, foot, RAMP_WIDTH, 0.0, y2, "road")
 	_nav(ramp)
 	mall.add_child(ramp)
 
@@ -364,8 +380,8 @@ func _build_mall() -> void:
 ## Where the ramp line (map hidden route) leaves the deck polygon.
 func _ramp_top(deck: PackedVector2Array) -> Vector2:
 	var route: Dictionary = _map.hidden_routes[0]
-	var from := Vector2(route.from.position[0], route.from.position[2])
-	var to := Vector2(route.to.position[0], route.to.position[2])
+	var from := _xz(route.from.position)
+	var to := _xz(route.to.position)
 	for i in deck.size():
 		var hit = Geometry2D.segment_intersects_segment(from, to, deck[i], deck[(i + 1) % deck.size()])
 		if hit != null:
@@ -451,8 +467,8 @@ func _build_nature() -> void:
 	# Rocks on any open ground, as low cover (shots pass over, close targets behind take x0.5).
 	var cover := _root.get_node("LowCover")
 	var rocks := PackedVector2Array()
-	var left := ROCK_COUNT
-	for attempt in ROCK_COUNT * 60:
+	var left := roundi(ROCK_COUNT * MAP_SCALE * MAP_SCALE)
+	for attempt in left * 60:
 		if left <= 0:
 			break
 		var p := Vector2(rng.randf_range(-MAP_HALF, MAP_HALF), rng.randf_range(-MAP_HALF, MAP_HALF))
@@ -500,9 +516,11 @@ func _keep_out_points() -> Array[Vector3]:
 	var out: Array[Vector3] = []
 	for m: Dictionary in _map.markers:
 		if m.floor == 0:
-			out.append(Vector3(m.position[0], m.position[2], CLEAR_MARKER))
+			var at := _xz(m.position)
+			out.append(Vector3(at.x, at.y, CLEAR_MARKER))
 	for p: Array in LOW_COVER + BLOCKERS:
-		out.append(Vector3(p[1], p[2], CLEAR_PROP + maxf(p[3], p[4]) * 0.5))
+		var at := Vector2(p[1], p[2]) * MAP_SCALE
+		out.append(Vector3(at.x, at.y, CLEAR_PROP + maxf(p[3], p[4]) * 0.5))
 	return out
 
 
@@ -513,7 +531,7 @@ func _route_segments() -> Array:
 		var pts: Array = route.points
 		for i in range(1, pts.size()):
 			if pts[i - 1][1] == 0.0 and pts[i][1] == 0.0:
-				out.append([Vector2(pts[i - 1][0], pts[i - 1][2]), Vector2(pts[i][0], pts[i][2])])
+				out.append([_xz(pts[i - 1]), _xz(pts[i])])
 	return out
 
 
@@ -546,12 +564,12 @@ func _build_props() -> void:
 	_nav(cover)
 	_root.add_child(cover)
 	for p: Array in LOW_COVER:
-		cover.add_child(_box(p[0], Vector2(p[1], p[2]), Vector2(p[3], p[4]), 0.0, p[5], p[6], "cover"))
+		cover.add_child(_box(p[0], Vector2(p[1], p[2]) * MAP_SCALE, Vector2(p[3], p[4]), 0.0, p[5], p[6], "cover"))
 	var blockers := _combiner("Props")
 	_nav(blockers)
 	_root.add_child(blockers)
 	for p: Array in BLOCKERS:
-		blockers.add_child(_box(p[0], Vector2(p[1], p[2]), Vector2(p[3], p[4]), 0.0, p[5], p[6], "blocked"))
+		blockers.add_child(_box(p[0], Vector2(p[1], p[2]) * MAP_SCALE, Vector2(p[3], p[4]), 0.0, p[5], p[6], "blocked"))
 
 
 func _build_bounds() -> void:
@@ -852,12 +870,22 @@ func _nav(node: Node) -> void:
 func _poly(zone: Dictionary) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	for p: Array in zone.polygon:
-		out.append(Vector2(p[0], p[1]))
+		out.append(Vector2(p[0], p[1]) * MAP_SCALE)
 	return out
 
 
+## Floor link rect: the center moves with the plan, the size (shaft, stair flight) stays.
 func _rect(r: Dictionary) -> Rect2:
-	return Rect2(r.x, r.z, r.w, r.d)
+	var size := Vector2(r.w, r.d)
+	return Rect2((Vector2(r.x, r.z) + size * 0.5) * MAP_SCALE - size * 0.5, size)
+
+
+## Map file doors of a zone, scaled. Widths stay.
+func _doors(id: String) -> Array:
+	var out := []
+	for door: Array in DOORS.get(id, []):
+		out.append([door[0] * MAP_SCALE, door[1] * MAP_SCALE, door[2]])
+	return out
 
 
 func _rect_poly(r: Rect2) -> PackedVector2Array:
@@ -871,8 +899,14 @@ func _rect_xz(r: Rect2) -> PackedVector3Array:
 	return out
 
 
+## Map file [x, y, z] -> scaled plan position, height unchanged.
 func _v3(a: Array) -> Vector3:
-	return Vector3(a[0], a[1], a[2])
+	return Vector3(a[0] * MAP_SCALE, a[1], a[2] * MAP_SCALE)
+
+
+## Map file [x, y, z] -> scaled plan point (x, z).
+func _xz(a: Array) -> Vector2:
+	return Vector2(a[0], a[2]) * MAP_SCALE
 
 
 func _link(kind: String) -> Dictionary:

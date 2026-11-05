@@ -14,9 +14,11 @@ const MARKER_COUNTS := {
 	RescueSpot.GROUP: 4, HiddenRoute.GROUP: 1, Recording.GROUP: 2, BossArena.GROUP: 0,
 }
 const EXTRACT_IDS := [&"mall_dock", &"mall_gas_station", &"mall_north_gate"]
-## 1F foot of the mall stairs (map floor_links stairs rect: x 25..30, z 23..29).
-const STAIR_FOOT := Vector3(27.5, 0.0, 30.5)
 const NAV_SYNC_MAX_FRAMES := 300
+## Floor plan scale of the generated layout. Path length limits below are for the unscaled map.
+const MAP_SCALE: float = preload("res://levels/field/flooded_mall/build/build_layout.gd").MAP_SCALE
+const WALK_TO_STAIRS_MAX := 30.0
+const RAMP_DETOUR_MIN := 30.0
 
 var _tree: SceneTree
 var _ok := true
@@ -32,17 +34,19 @@ func run() -> bool:
 	var region := layout.get_node_or_null(^"Navigation") as NavigationRegion3D
 	_expect(region != null and region.navigation_mesh != null
 			and region.navigation_mesh.get_polygon_count() > 0, "layout has a baked navmesh")
-	if region:
+	var link := layout.get_node_or_null(^"Mall/StairsLink") as NavigationLink3D
+	_expect(link != null and link.navigation_layers == NAV_WALK, "stairs link is on nav layer 1 only")
+	if region and link:
 		_expect(region.navigation_layers == NAV_WALK | NAV_WHEELCHAIR, "region is on nav layers 1 and 2")
-		var link := layout.get_node_or_null(^"Mall/StairsLink") as NavigationLink3D
-		_expect(link != null and link.navigation_layers == NAV_WALK, "stairs link is on nav layer 1 only")
+		# 1F foot of the mall stairs.
+		var stair_foot := link.get_global_start_position()
 		# Regions sync asynchronously; wait until the map has the baked polygons.
 		var map := region.get_navigation_map()
 		for i in NAV_SYNC_MAX_FRAMES:
-			if NavigationServer3D.map_get_iteration_id(map) > 0 					and NavigationServer3D.map_get_closest_point(map, STAIR_FOOT) != Vector3.ZERO:
+			if NavigationServer3D.map_get_iteration_id(map) > 0 					and NavigationServer3D.map_get_closest_point(map, stair_foot) != Vector3.ZERO:
 				break
 			await _tree.physics_frame
-		_check_paths(map)
+		_check_paths(map, stair_foot)
 	layout.queue_free()
 	await _tree.process_frame
 	await _check_assembly()
@@ -63,7 +67,7 @@ func _check_markers() -> void:
 		"extract ids %s" % [ids])
 
 
-func _check_paths(map: RID) -> void:
+func _check_paths(map: RID, stair_foot: Vector3) -> void:
 	var main := _marker_pos(PlayerSpawn.GROUP, &"spawn_id", &"main")
 	var east := _marker_pos(PlayerSpawn.GROUP, &"spawn_id", &"east")
 	for node in _tree.get_nodes_in_group(ExtractPoint.GROUP):
@@ -82,10 +86,10 @@ func _check_paths(map: RID) -> void:
 	var wheel := _marker_pos(RescueSpot.GROUP, &"name", &"RescueSpot_rs_wheel")
 	var dock := _marker_pos(ExtractPoint.GROUP, &"id", &"mall_dock")
 	_expect(_reaches(map, wheel, dock, NAV_WHEELCHAIR), "wheelchair reaches the dock extract from the elevator")
-	var walk_len := _path_length(NavigationServer3D.map_get_path(map, wheel, STAIR_FOOT, true, NAV_WALK))
-	var chair_len := _path_length(NavigationServer3D.map_get_path(map, wheel, STAIR_FOOT, true, NAV_WHEELCHAIR))
-	_expect(walk_len < 30.0, "walkers take the stairs (%.1fm)" % walk_len)
-	_expect(chair_len > walk_len + 30.0, "wheelchair goes around by the ramp (%.1fm)" % chair_len)
+	var walk_len := _path_length(NavigationServer3D.map_get_path(map, wheel, stair_foot, true, NAV_WALK))
+	var chair_len := _path_length(NavigationServer3D.map_get_path(map, wheel, stair_foot, true, NAV_WHEELCHAIR))
+	_expect(walk_len < WALK_TO_STAIRS_MAX * MAP_SCALE, "walkers take the stairs (%.1fm)" % walk_len)
+	_expect(chair_len > walk_len + RAMP_DETOUR_MIN * MAP_SCALE, "wheelchair goes around by the ramp (%.1fm)" % chair_len)
 
 
 func _check_assembly() -> void:
