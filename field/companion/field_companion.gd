@@ -127,6 +127,8 @@ func _ready() -> void:
 	rng.randomize()
 	EventBus.companion_stranded.connect(_on_companion_stranded)
 	_apply_layers()
+	# Pack character model (Lane D, ResidentModel). Missing assets: the greybox stays.
+	($Model as ResidentModel).show_resident(resident)
 
 
 func _physics_process(delta: float) -> void:

@@ -117,7 +117,10 @@ static func profile_for(s: RescueSpawn) -> Dictionary:
 		return Colony.get_resident(s.resident_id)
 	for p: Dictionary in DemoProfiles.PROFILES:
 		if p.get("id", &"") == s.template_id:
-			return p.duplicate(true)
+			var profile := p.duplicate(true)
+			# Fixed here (not rolled by Colony later) so the model seen in the field is the one at the base.
+			profile["gender"] = ResidentModel.gender_of(profile)
+			return profile
 	push_warning("RescueManager: no rescue profile '%s'" % s.template_id)
 	return {}
 

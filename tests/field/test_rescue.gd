@@ -40,6 +40,7 @@ func run() -> bool:
 	_test_trapped()
 	_test_injured()
 	_test_communication()
+	_test_callout()
 	await _bake_test_navmesh(false)
 	_test_speeds()
 	_test_noise()
@@ -322,6 +323,10 @@ func _test_spawn_and_complete() -> void:
 			{"extracted": true, "rescued": [elder.party_id, child.party_id, placed[1].party_id]})
 	_check(completed == [&"demo_carpenter", &"demo_child"], "rescue_completed for the rescued only (%s)" % [completed])
 	_check(not Colony.get_resident(&"demo_carpenter").is_empty(), "Colony took the rescued person in")
+	_check(Colony.get_resident(&"demo_carpenter")["gender"] == elder.profile["gender"],
+			"gender fixed in the field is kept at the base")
+	_check(ResidentModel.pick(Colony.get_resident(&"demo_carpenter")) == ResidentModel.pick(elder.profile, elder.spawn.move_type),
+			"same character model in the field and at the base")
 	manager.complete_rescues([elder.party_id])
 	_check(completed.size() == 2, "rescue_completed once per person")
 	EventBus.rescue_completed.disconnect(listener)
@@ -334,6 +339,44 @@ func _test_spawn_and_complete() -> void:
 	manager.free()
 	for spot in spots:
 		spot.free()
+
+
+# --- Call out ------------------------------------------------------------------
+
+func _test_callout() -> void:
+	for table: Dictionary in [TUNING.callout_far_lines, TUNING.callout_near_lines]:
+		for type in [Type.TRAPPED, Type.INJURED, Type.COMMUNICATION]:
+			var lines: PackedStringArray = table.get(type, PackedStringArray())
+			_check(lines.size() >= 2, "call out lines for type %d" % type)
+			for line in lines:
+				_check(not ("—" in line or "·" in line or "…" in line), "no banned glyph in '%s'" % line)
+	Bag.load_data({})
+	var t := _target(_spawn(Type.INJURED, Move.SUPPORTED, &"first_aid_kit"))
+	# Another test may leave a Player in the tree: hear this one.
+	t._player = _player
+	var said: Array = []
+	t.called_out.connect(func(text: String, near: bool) -> void: said.append([text, near]))
+	t.global_position = Vector3(TUNING.callout_far_m + 2.0, 0.0, 0.0)
+	_ticks(t, 1.0)
+	_check(said.is_empty(), "player out of range: silent")
+	t.global_position.x = TUNING.callout_far_m - 1.0
+	t.tick(DT)
+	_check(said.size() == 1 and not said[0][1] and said[0][0] == TUNING.callout_far_lines[Type.INJURED][0],
+			"player heard: first far line (%s)" % [said])
+	_ticks(t, TUNING.callout_interval_sec - 0.5)
+	_check(said.size() == 1, "quiet between call outs")
+	t.global_position.x = TUNING.callout_near_m - 1.0
+	t.tick(DT)
+	_check(said.size() == 2 and said[1][1] and said[1][0] == TUNING.callout_near_lines[Type.INJURED][0],
+			"player comes near: begs at once")
+	_ticks(t, TUNING.callout_interval_sec + 0.1)
+	_check(said.size() == 3 and said[2][1] and said[2][0] != said[1][0], "again after the interval, the next line")
+	Bag.try_add(&"first_aid_kit", 1)
+	t.begin_open(_player)
+	var count := said.size()
+	_ticks(t, TUNING.callout_interval_sec * 2.0)
+	_check(t.state != State.WAITING and said.size() == count, "rescued: no more call outs")
+	t.free()
 
 
 # --- Helpers -------------------------------------------------------------------

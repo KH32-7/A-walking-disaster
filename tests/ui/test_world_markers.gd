@@ -24,6 +24,24 @@ func run() -> bool:
 	EventBus.noise_emitted.emit(Vector3.ZERO, 8.0, null)
 	ok = _expect(wm.ring_count() == 0, "noise_rings off hides rings") and ok
 	Settings.values[&"noise_rings"] = was
+
+	# Speech bubbles from rescue targets (B-10 called_out).
+	var person := Node3D.new()
+	person.add_user_signal(&"called_out", [{"name": "text", "type": TYPE_STRING}, {"name": "near", "type": TYPE_BOOL}])
+	person.add_to_group(WorldMarkers.RESCUE_GROUP)
+	add_child(person)
+	wm._process(0.02)
+	person.emit_signal(&"called_out", "어어... 사람 소리다...", false)
+	ok = _expect(wm.bubble_texts() == ["어어... 사람 소리다..."], "called_out shows a bubble") and ok
+	person.emit_signal(&"called_out", "으... 제발 살려주세요", true)
+	ok = _expect(wm.bubble_texts() == ["으... 제발 살려주세요"], "one bubble per person, the newest") and ok
+	for i in 200:
+		wm._process(0.02)
+	ok = _expect(wm.bubble_texts().is_empty(), "bubble gone after 3.5 s") and ok
+	wm.add_bubble(person, "여기요")
+	person.free()
+	wm._process(0.02)
+	ok = _expect(wm.bubble_texts().is_empty(), "bubble of a removed person goes too") and ok
 	wm.queue_free()
 	return ok
 
