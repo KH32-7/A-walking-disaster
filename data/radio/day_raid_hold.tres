@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="RadioTrigger" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/radio_trigger.gd" id="1_pcw24"]
+
+[resource]
+script = ExtResource("1_pcw24")
+id = &"day_raid_hold"
+lines = Array[String](["기지에 낮 습격이 왔습니다. 계산해 보니 {range}. 지킬 수 있을 것 같으니 하던 일 마치세요.", "낮 습격입니다. 예상은 {range}. 기지는 버틸 겁니다. 서두르지 마세요.", "기지가 공격받고 있지만 {range}로 보입니다. 거기 일에 집중하세요.", "습격이 왔는데 수비가 괜찮습니다. {range}. 무리하지 말고 돌아오세요.", "기지 걱정은 잠시 접어 두세요. {range}입니다."])
+cooldown_sec = 0.0
+priority = 3
+once_per = &"sortie"

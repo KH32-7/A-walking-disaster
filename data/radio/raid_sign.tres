@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="RadioTrigger" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/radio_trigger.gd" id="1_tqfev"]
+
+[resource]
+script = ExtResource("1_tqfev")
+id = &"raid_sign"
+lines = Array[String](["경비 초소 보고입니다. 오늘 밤 {direction} 쪽이 수상합니다. 대비해 두세요.", "{direction} 방향에서 무리 흔적이 보였답니다. 오늘 밤 습격 가능성이 있어요.", "오늘 밤은 {direction} 쪽 담장을 단단히 해 두는 게 좋겠습니다.", "초소에서 연락 왔습니다. {direction} 쪽이 조용하지 않대요.", "습격 징후가 있습니다. 방향은 {direction}. 저녁 전에 준비해 두세요."])
+cooldown_sec = 0.0
+priority = 2
+guidance = false
+once_per = &"day"

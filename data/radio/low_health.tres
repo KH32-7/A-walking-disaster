@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="RadioTrigger" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/radio_trigger.gd" id="1_j460j"]
+
+[resource]
+script = ExtResource("1_j460j")
+id = &"low_health"
+lines = Array[String](["많이 다쳤어요. 구급상자 쓰고, 안 되면 돌아오세요.", "몸이 먼저입니다. 숨을 곳부터 찾으세요.", "상태가 안 좋습니다. 탈출 지점이 어디였는지 확인하세요.", "무리하지 마세요. 살아서 돌아와야 다음이 있습니다.", "피가 많이 나요. 붕대부터 감으세요."])
+priority = 2

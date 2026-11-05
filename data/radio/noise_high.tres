@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="RadioTrigger" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/radio_trigger.gd" id="1_baxua"]
+
+[resource]
+script = ExtResource("1_baxua")
+id = &"noise_high"
+lines = Array[String](["소리가 너무 큽니다. 조금만 조용히 움직이세요.", "발소리가 여기까지 들릴 것 같아요. 천천히 걸어 보세요.", "시끄러우면 놈들이 몰려옵니다. 숨 고르고 가세요.", "조용히, 조용히. 칼이나 둔기로 바꾸는 것도 방법입니다.", "소음이 계속 크네요. 잠깐 멈춰서 주변을 살피세요."])

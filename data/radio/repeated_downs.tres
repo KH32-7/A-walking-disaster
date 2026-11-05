@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="RadioTrigger" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/radio_trigger.gd" id="1_owjuu"]
+
+[resource]
+script = ExtResource("1_owjuu")
+id = &"repeated_downs"
+lines = Array[String](["{region}에서 여러 번 고생하셨죠. 다른 길로 들어가 보는 건 어때요?", "{region}은 만만치 않네요. 방어구를 바꾸거나 동행자를 데려가 보세요.", "{region}이 계속 발목을 잡네요. 설정의 보호 모드 항목도 있다는 것만 알려 드릴게요.", "{region}에 또 가시는군요. 이번엔 조용히, 숨은 길로 가 봅시다.", "{region}에서는 무리하지 마세요. 오늘은 짧게 다녀와도 괜찮아요."])
+cooldown_sec = 0.0
+priority = 2

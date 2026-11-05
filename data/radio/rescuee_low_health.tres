@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="RadioTrigger" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/radio_trigger.gd" id="1_av3sd"]
+
+[resource]
+script = ExtResource("1_av3sd")
+id = &"rescuee_low_health"
+lines = Array[String](["함께 오는 분이 위험합니다. 숨으라고 말해 주세요.", "동행하시는 분이 많이 다쳤어요. 잠깐 숨게 하세요.", "뒤를 봐 주세요. 같이 오는 분이 버거워합니다.", "동행자가 위험해요. 숨기 명령을 쓰고 길을 먼저 치우세요.", "함께 가는 분부터 챙기세요. 한 사람도 두고 오지 않기로 했잖아요."])
+priority = 2

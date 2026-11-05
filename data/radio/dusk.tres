@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="RadioTrigger" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/radio_trigger.gd" id="1_8bwvj"]
+
+[resource]
+script = ExtResource("1_8bwvj")
+id = &"dusk"
+lines = Array[String](["해가 지고 있습니다. 밤까지 {minutes}분. 가까운 탈출 지점을 확인하세요.", "곧 어두워집니다. {minutes}분 남았어요. 밤에는 놈들이 더 많아집니다.", "해질녘입니다. 욕심은 여기까지. {minutes}분 안에 나오시는 게 좋겠어요.", "하늘이 붉어졌습니다. 밤까지 {minutes}분입니다.", "{minutes}분 뒤면 밤입니다. 오늘 수확은 충분해요."])
+cooldown_sec = 0.0
+priority = 2
+once_per = &"sortie"

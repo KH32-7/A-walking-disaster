@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="RadioTrigger" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/radio_trigger.gd" id="1_xjtqe"]
+
+[resource]
+script = ExtResource("1_xjtqe")
+id = &"morning_weather_rain"
+lines = Array[String](["오늘은 비가 옵니다. 빗소리가 발소리를 덮어 줄 거예요.", "비 소식입니다. 소리가 덜 퍼지니 움직이기엔 좋은 날이에요.", "하루 종일 비가 오겠습니다. 미끄러운 길 조심하시고요.", "빗줄기가 굵습니다. 마물도 귀가 어두워지는 날이죠.", "비가 옵니다. 우산은 없어도 빗소리는 우리 편입니다."])
+cooldown_sec = 0.0
+guidance = false
+once_per = &"day"

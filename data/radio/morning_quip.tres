@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="RadioTrigger" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/radio_trigger.gd" id="1_1ppxj"]
+
+[resource]
+script = ExtResource("1_1ppxj")
+id = &"morning_quip"
+lines = Array[String](["오늘도 누구 하나 두고 오지 않기로 해요.", "제 무릎은 오늘 비 안 온다고 하는데, 무릎이 틀린 적이 많아서요.", "라디오 일 사십 년에 청취자가 이렇게 소중한 건 처음입니다.", "아침 먹고 나가세요. 빈속으로 뛰면 금방 지칩니다.", "어제 들어온 분들, 학교가 좀 시끄러워도 금방 익숙해지실 거예요."])
+cooldown_sec = 0.0
+priority = 0
+guidance = false
+once_per = &"day"
