@@ -64,6 +64,7 @@ var _tree: AnimationTree
 var _player: Player
 var _weapons: WeaponHolder
 var _native := {}  # clip name -> native_speed (m/s)
+var _cycle := {}  # clip name -> length (s), one walk cycle for the looping walks
 var _free_blend := 0.0
 var _aim_blend := Vector2.ZERO
 var _stance := 0.0
@@ -108,6 +109,7 @@ func _setup_animation() -> void:
 	anim_player.add_animation_library(LIB, lib)
 	for clip in lib.get_animation_list():
 		_native[String(clip)] = float(lib.get_animation(clip).get_meta(&"native_speed", 0.0))
+		_cycle[String(clip)] = lib.get_animation(clip).length
 	_tree = AnimationTree.new()
 	_tree.name = &"AnimationTree"
 	_model.add_child(_tree)
@@ -181,26 +183,32 @@ func _step_turn(delta: float, override_dir: Vector3) -> void:
 	_model.rotation.y = _model_yaw - _player.global_rotation.y + PI
 
 
-## Playback scale so the feet roughly match the ground speed. dir: unit move direction in body
-## space (x right, y forward).
+## Playback scale before the tuning multiplier. dir: unit move direction in body space (x right,
+## y forward).
+## Bare hands and gun share one rule (user decision 2026-11-06): ground speed / the bare-hand walk's
+## own speed, clamped to min..max_playback. The gun walks are then rescaled by their cycle length so
+## they take steps at the same rate as the bare-hand walk (the rifle walk's cycle is ~1.37 s against
+## the crouched walk's ~1.03 s, so the same playback rate alone looked slower with a gun).
 func _walk_scale(speed: float, dir: Vector2) -> float:
 	if speed < MOVE_EPSILON:
 		return 1.0
-	var native: float
-	if _stance > 0.5:
-		var fb: float = _native.get("aim_walk_forward" if dir.y >= 0.0 else "aim_walk_back", 1.0)
-		var lr: float = _native.get("aim_strafe_right" if dir.x >= 0.0 else "aim_strafe_left", 1.0)
-		var wf := absf(dir.y)
-		var wr := absf(dir.x)
-		native = (fb * wf + lr * wr) / maxf(wf + wr, 0.001)
-	else:
-		native = _native.get("walk", 1.0)
+	var native: float = _native.get("walk", 0.0)
 	if native <= 0.0:
 		return 1.0
 	var top := anim_tuning.max_playback
 	if _player.move_state == Player.MoveState.SPRINT:
 		top = anim_tuning.sprint_max_playback
-	return clampf(speed / native, anim_tuning.min_playback, top)
+	var rate := clampf(speed / native, anim_tuning.min_playback, top)
+	if _stance > 0.5:
+		var fb: float = _cycle.get("aim_walk_forward" if dir.y >= 0.0 else "aim_walk_back", 0.0)
+		var lr: float = _cycle.get("aim_strafe_right" if dir.x >= 0.0 else "aim_strafe_left", 0.0)
+		var wf := absf(dir.y)
+		var wr := absf(dir.x)
+		var cycle := (fb * wf + lr * wr) / maxf(wf + wr, 0.001)
+		var walk_cycle: float = _cycle.get("walk", 0.0)
+		if cycle > 0.0 and walk_cycle > 0.0:
+			rate *= cycle / walk_cycle
+	return rate
 
 
 ## The tuning multiplier for the current move: sprint or walk, the same with or without a gun
