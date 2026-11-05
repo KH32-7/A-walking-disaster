@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="LootContainerDef" format=3]
+
+[ext_resource type="Script" path="res://field/defs/loot_container_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+type = 2
+open_sec = 2.0
+locked = false
+noise_on_force = 0.0
+key_item_id = &""
