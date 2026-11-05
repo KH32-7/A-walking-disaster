@@ -1,6 +1,6 @@
 extends Node3D
 ## B-03 sandbox: field sandbox + player. Run alone (F6).
-## Uses the B-04 FieldCamera: Z/C rotate, wheel zoom (sandbox-registered actions).
+## Uses the B-04 FieldCamera: Z/C rotate, +/- zoom (sandbox-registered actions).
 
 const SandboxCameraInput := preload("res://field/_sandbox/sandbox_camera_input.gd")
 

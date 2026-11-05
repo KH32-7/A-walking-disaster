@@ -4,7 +4,7 @@ extends Node3D
 ## container. Sandbox-only debug keys (raw keycodes, not project actions):
 ##   T: take every identified slot of the container you opened (stand-in for the D-08 screen)
 ##   K: kill monsters within KILL_RADIUS (stand-in until B-06 weapons)
-## Camera (B-04): Z/C rotate, wheel zoom, hold right click to aim at the cursor. Walk into the
+## Camera (B-04): Z/C rotate, +/- zoom, hold right click to aim at the cursor. Walk into the
 ## DemoHouse corner (northwest) to see its roof hide.
 
 const KILL_RADIUS := 4.0
@@ -42,7 +42,7 @@ func _process(_delta: float) -> void:
 		"Bag: %s" % _bag_text(),
 		"Event: %s" % _last_event,
 		"Camera: view %d  zoom %d  Aiming: %s" % [_camera.yaw_index(), _camera.zoom_level(), _player.is_aiming],
-		"F open, T take all, K kill near, Z/C rotate, wheel zoom, ` console",
+		"F open, T take all, K kill near, Z/C rotate, +/- zoom, ` console",
 	])
 
 
