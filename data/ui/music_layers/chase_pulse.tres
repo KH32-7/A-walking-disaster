@@ -6,6 +6,7 @@
 script = ExtResource("1_def")
 state = &"chase"
 id = &"chase_pulse"
+stream = "res://assets/audio/music/cc0/oga_dark_scifi/pulse.mp3"
 unlock_population = 0
 synth = &"mus_chase_pulse"
 volume_db = -7.0

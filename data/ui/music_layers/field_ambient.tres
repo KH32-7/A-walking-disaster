@@ -6,6 +6,7 @@
 script = ExtResource("1_def")
 state = &"field"
 id = &"field_ambient"
+stream = "res://assets/audio/music/cc0/oga_cathedral_in_the_forest/forest_2.ogg"
 unlock_population = 0
 synth = &"mus_field_ambient"
 volume_db = -5.0

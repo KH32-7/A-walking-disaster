@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 id = &"ui_close"
+stream = "res://assets/audio/sfx/action_rpg_sfx_v2/ui/ui_tap_hard_deep_short_02_01.wav"
 synth = &"ui_close"
 bus = 3
 priority = 0
