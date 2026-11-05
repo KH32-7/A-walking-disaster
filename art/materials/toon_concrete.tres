@@ -1,0 +1,21 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Material" path="res://art/materials/outline.tres" id="1_7k3ub"]
+[ext_resource type="Shader" path="res://art/shaders/toon.gdshader" id="2_h2yf8"]
+
+[resource]
+render_priority = 0
+next_pass = ExtResource("1_7k3ub")
+shader = ExtResource("2_h2yf8")
+shader_parameter/albedo = Color(0.7882353, 0.8, 0.7764706, 1)
+shader_parameter/shade_color = Color(0.42745098, 0.49803922, 0.54901963, 1)
+shader_parameter/bands = null
+shader_parameter/band_softness = null
+shader_parameter/shadow_threshold = null
+shader_parameter/mid_threshold = null
+shader_parameter/rim_color = null
+shader_parameter/rim_amount = null
+shader_parameter/rim_width = null
+shader_parameter/specular_amount = null
+shader_parameter/emission_color = null
+shader_parameter/emission_energy = null
