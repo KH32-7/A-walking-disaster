@@ -88,6 +88,9 @@ var funerals: Array = []
 ## 전초기지 (C-19): node_id -> outpost (see outpost_nodes()).
 var outposts: Dictionary = {}
 var _outpost_nodes_cache: Dictionary = {}
+## 출격 중 낮 습격 (C-21): see field_day_raid().
+var _field_raid: Dictionary = {}
+var _emergency_requested := false
 
 var _next_resident_num := 1
 var _next_building_num := 1
@@ -102,9 +105,16 @@ func _ready() -> void:
 	EventBus.flow_state_changed.connect(_on_flow_state_changed)
 	EventBus.sortie_ended.connect(_on_sortie_ended)
 	EventBus.companion_stranded.connect(_on_companion_stranded)
+	EventBus.emergency_return_requested.connect(_on_emergency_return)
 	_reset()
 	# DebugConsole loads after Colony and registers its placeholders in _ready; replace them after.
 	_register_debug_commands.call_deferred()
+
+
+## Field time for the day raid of this sortie (C-21). Pauses with the game.
+func _process(delta: float) -> void:
+	if GameState.flow_state == Enums.FlowState.FIELD:
+		_advance_field_raid(delta)
 
 
 # --- Read API (any lane) -------------------------------------------------------
@@ -1496,7 +1506,12 @@ func _on_flow_state_changed(state: Enums.FlowState) -> void:
 	elif state == Enums.FlowState.NIGHT:
 		# Deferred: the router rolls the night raid right after entering NIGHT.
 		_roll_tonight.call_deferred()
+	elif state == Enums.FlowState.FIELD:
+		_roll_field_day_raid.call_deferred()  # C-21
+	elif state == Enums.FlowState.BASE_DAY_RAID:
+		_play_field_day_raid.call_deferred()  # C-21: back by the emergency return
 	elif state == Enums.FlowState.BASE_MORNING:
+		_field_raid = {}
 		_finish_night()
 		if not funerals.is_empty():
 			funeral_ready.emit(pending_funeral())
@@ -1504,7 +1519,7 @@ func _on_flow_state_changed(state: Enums.FlowState) -> void:
 
 ## Stay day raid (10 "발생 규칙": 낮, 기지에 머무는 중, 위협도 70 이상 20%), issue #45.
 ## No direct defense yet (C-17), so the player-present automatic judgment (+20%) decides it.
-## TODO(C-21): day raids during a sortie (60 s warning, emergency return, B-22).
+## Day raids during a sortie are C-21 (_roll_field_day_raid, _advance_field_raid).
 func _roll_stay_day_raid() -> void:
 	if SceneRouter.state() != Enums.FlowState.BASE_STAY:
 		return
@@ -1516,6 +1531,101 @@ func _roll_stay_day_raid() -> void:
 	start_raid(raid)
 	resolve_raid(raid, Enums.RaidMode.PLAYED)
 	SceneRouter.end_day_raid()
+
+
+# --- 출격 중 낮 습격 (C-21, 10 "출격 중 습격과 긴급 귀환") -------------------------------------
+## When a sortie starts (FIELD) the day raid is decided (낮, 위협도 70 이상 20%, 5일차부터, 하루 1번).
+## Some time into the sortie the warning comes (raid_warning: 60 s with a guard post or an outpost
+## facing it, otherwise at once with raid_started). B-22 asks the player:
+##   keep exploring → the raid is judged automatically when it hits;
+##   emergency return → it waits for the player; after extraction the router enters BASE_DAY_RAID
+##   and the defence is played (C-17: the player joins from wave 2, wave 1 is automatic).
+## If the player goes down instead, the raid is judged automatically at the sortie's end.
+
+## The day raid of this sortie: {} = none, else {"phase", "due_in", "hit_in", "raid", "result"}.
+## phase: &"waiting" (경보 전), &"warned" (경보, 습격 전), &"hold" (긴급 귀환, 플레이어 기다림), &"done".
+func field_day_raid() -> Dictionary:
+	return _field_raid.duplicate(true)
+
+
+func _roll_field_day_raid() -> void:
+	_field_raid = {}
+	_emergency_requested = false
+	var day := GameState.day
+	if day < RaidRules.FIRST_RAID_DAY or last_raid_day == day:
+		return
+	if _rng.randf() >= float(RaidRules.raid_chance(Enums.RaidTime.DAY, threat)["chance"]):
+		return
+	_field_raid = {"phase": &"waiting", "due_in": _rng.randf_range(RaidRules.FIELD_RAID_AFTER_SEC.x, RaidRules.FIELD_RAID_AFTER_SEC.y),
+		"hit_in": 0.0, "raid": {}, "result": {}}
+
+
+## Sortie clock (seconds of field time). Called from _process while in FIELD; tests call it directly.
+func _advance_field_raid(delta: float) -> void:
+	if _field_raid.is_empty():
+		return
+	match _field_raid["phase"]:
+		&"waiting":
+			_field_raid["due_in"] = float(_field_raid["due_in"]) - delta
+			if float(_field_raid["due_in"]) <= 0.0:
+				var raid := roll_raid(Enums.RaidTime.DAY, true)  # emits raid_warning (B-22, Radio A-14)
+				SceneRouter.start_day_raid(raid)
+				_field_raid["raid"] = raid
+				_field_raid["hit_in"] = float(raid["warning_sec"])
+				_field_raid["phase"] = &"warned"
+				if float(raid["warning_sec"]) <= 0.0:
+					_field_raid_hits()
+		&"warned":
+			_field_raid["hit_in"] = float(_field_raid["hit_in"]) - delta
+			if float(_field_raid["hit_in"]) <= 0.0:
+				_field_raid_hits()
+
+
+## The raid reaches the base: auto judgment, unless the player is on the way back.
+func _field_raid_hits() -> void:
+	start_raid(_field_raid["raid"])
+	if _emergency_requested:
+		_field_raid["phase"] = &"hold"
+	else:
+		_field_raid["result"] = resolve_raid(_field_raid["raid"], Enums.RaidMode.AUTO)
+		_field_raid["phase"] = &"done"
+
+
+## B-22: the player chose to go back. A raid that hits after this waits for them (phase hold).
+func _on_emergency_return() -> void:
+	_emergency_requested = true
+
+
+## Sortie over. Downed, or extracted without the emergency return: judge it now if it is still open.
+func _finish_field_raid(result: Dictionary) -> void:
+	if _field_raid.is_empty() or _field_raid["phase"] == &"done":
+		return
+	if _field_raid["phase"] == &"waiting":
+		_field_raid = {}  # back before it came: no day raid today
+		return
+	if bool(result.get("extracted", false)) and _emergency_requested:
+		return  # the router goes to BASE_DAY_RAID; the defence is played there
+	if _field_raid["phase"] == &"warned":
+		start_raid(_field_raid["raid"])
+	_field_raid["result"] = resolve_raid(_field_raid["raid"], Enums.RaidMode.AUTO)
+	_field_raid["phase"] = &"done"
+
+
+## Back at the base after the emergency return (BASE_DAY_RAID). Until C-17 the player-present
+## judgment (+20%) decides it; then the router shows the sortie result.
+func _play_field_day_raid() -> void:
+	if SceneRouter.state() != Enums.FlowState.BASE_DAY_RAID or _field_raid.is_empty() or _field_raid["phase"] == &"done":
+		return
+	_resolve_returned_field_raid()
+	SceneRouter.end_day_raid()
+
+
+func _resolve_returned_field_raid() -> Dictionary:
+	if _field_raid["phase"] == &"warned":
+		start_raid(_field_raid["raid"])
+	_field_raid["result"] = resolve_raid(_field_raid["raid"], Enums.RaidMode.PLAYED)
+	_field_raid["phase"] = &"done"
+	return _field_raid["result"]
 
 
 ## Death: coworkers' morale, grief, the memorial, guardianship and tomorrow's funeral (C-20).
@@ -3218,6 +3328,7 @@ func _on_sortie_ended(result: Dictionary) -> void:
 			add_trust(id, TrustRules.SORTIE_RETURN, &"sortie_return")
 			back.append(id)
 	_sortie_relations(back)
+	_finish_field_raid(result)  # 출격 중 낮 습격 (C-21)
 
 
 ## Injury countdown (의무실이 있으면 1일), sickness (겨울·배고픔), contagion, medicine cures.
