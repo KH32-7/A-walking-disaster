@@ -9,6 +9,9 @@ extends Node
 
 signal screen_opened(screen_id: StringName)
 signal screen_closed(screen_id: StringName)
+## The build panel asked to place a building (D-06). Lane C starts the grid placement preview
+## (C-03) and calls Colony.place_building() when the player confirms.
+signal build_requested(def_id: StringName)
 ## The theme was rebuilt (text size / high contrast changed). Screens normally just inherit it.
 signal theme_changed(theme: Theme)
 
@@ -67,8 +70,27 @@ func show_field_hud(on: bool) -> void:
 			n.process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
 
 
+## Base HUD (D-06): top bar, notifications, bottom menu. Shown in the base flow states.
+var base_hud: BaseHud
+const BASE_STATES := [Enums.FlowState.BASE_MORNING, Enums.FlowState.BASE_STAY, Enums.FlowState.EVENING,
+	Enums.FlowState.NIGHT]
+
+
+func show_base_hud(on: bool) -> void:
+	if on and base_hud == null:
+		base_hud = BaseHud.new()
+		base_hud.name = &"BaseHud"
+		hud.add_child(base_hud)
+	if base_hud != null:
+		base_hud.visible = on
+		base_hud.process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
+		if on:
+			base_hud.refresh()
+
+
 func _on_flow_state_changed(state: Enums.FlowState) -> void:
 	show_field_hud(state == Enums.FlowState.FIELD)
+	show_base_hud(state in BASE_STATES)
 
 
 # --- public API (contracts.md) ---
