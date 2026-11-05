@@ -153,6 +153,20 @@ const TOUCH_SENSE_RANGE := 2.0
 const BOSS_WANDER_RADIUS := 6.0
 ## Player.hud_state()["boss"] is filled while the player is within the arena radius plus this.
 const BOSS_HUD_MARGIN := 10.0
+## Intro (user feedback 2026-11-06, not in the design yet): a boss spawned asleep lies buried with only
+## this share of its height showing, and climbs out when it first wakes.
+const BOSS_BURY_SHOW := 0.2
+## Whole intro: no AI, no patterns, hits ignored.
+const BOSS_INTRO_SEC := 2.0
+## Climbing out of the ground, inside BOSS_INTRO_SEC.
+const BOSS_RISE_SEC := 1.4
+## Camera shake trauma: the ground breaking, then the landing roar.
+const BOSS_INTRO_SHAKE_START := 0.3
+const BOSS_INTRO_SHAKE_LAND := 0.9
+## Hit-stop on the landing roar.
+const BOSS_INTRO_STOP_SEC := 0.12
+## monster_slam radius of the ground breaking.
+const BOSS_INTRO_FX_RADIUS := 3.0
 
 # --- Essence glow (elites and bosses, user feedback 2026-11-06). Not in the design yet. ---
 ## Rim glow strength in the family colour (element_glow energy). The body centre stays unlit.
