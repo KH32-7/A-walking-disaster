@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="JournalTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/journal_template.gd" id="1_jtpl"]
+
+[resource]
+script = ExtResource("1_jtpl")
+id = &"rescued"
+lines = Array[String](["{name|을} 데리고 돌아왔다. 오늘 밤은 침상 하나가 더 따뜻하다.", "{name|이} 학교 정문을 넘었다. 첫마디는 ‘여기 밥은 나와요?’였다.", "{name|과} 함께 돌아왔다. 아무도 두고 오지 않았다.", "{name|이} 우리와 함께 지내게 됐다. 이름표를 새로 하나 붙였다.", "{name|을} 찾았다. 돌아오는 길은 {name|이} 더 잘 알았다."])
+priority = 75

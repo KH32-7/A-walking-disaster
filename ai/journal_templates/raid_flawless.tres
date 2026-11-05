@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="JournalTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/journal_template.gd" id="1_jtpl"]
+
+[resource]
+script = ExtResource("1_jtpl")
+id = &"raid_flawless"
+lines = Array[String](["마물이 몰려왔지만 다친 사람 없이 막아냈다.", "밤 습격을 깔끔하게 막았다. 아침에 다들 늦잠을 잤다.", "벽 앞에서 마물을 돌려보냈다. 피해는 없었다."])
+priority = 30

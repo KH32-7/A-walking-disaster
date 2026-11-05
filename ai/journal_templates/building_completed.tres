@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="JournalTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/journal_template.gd" id="1_jtpl"]
+
+[resource]
+script = ExtResource("1_jtpl")
+id = &"building_completed"
+lines = Array[String](["{building|이} 완성됐다. 다들 한 번씩 만져 보고 갔다.", "{building|을} 다 지었다. 학교가 조금 더 집 같아졌다.", "오늘 {building|이} 문을 열었다.", "{building} 공사가 끝났다. 망치 소리가 그치니 조용하다."])
+priority = 20

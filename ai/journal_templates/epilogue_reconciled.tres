@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="JournalTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/journal_template.gd" id="1_jtpl"]
+
+[resource]
+script = ExtResource("1_jtpl")
+id = &"epilogue_reconciled"
+lines = Array[String](["{name|과} {other|은} 오해를 풀고 서로 의지하는 사이가 됐다.", "{name|은} {other}에게 배운 것이 많다고 말한다."])
+priority = 0

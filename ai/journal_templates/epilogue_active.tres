@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="JournalTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/journal_template.gd" id="1_jtpl"]
+
+[resource]
+script = ExtResource("1_jtpl")
+id = &"epilogue_active"
+lines = Array[String](["{name|은} {joined}일차부터 학교에서 함께 지내고 있다.", "{name|은} 오늘도 학교 어딘가에서 제 몫을 한다."])
+priority = 0
