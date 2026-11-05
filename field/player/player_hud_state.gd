@@ -26,7 +26,8 @@ static func build(player: Player) -> Dictionary:
 	_add_compass(player, extraction, state)
 	state["hold"] = _hold(player, extraction)
 	state["prompt"] = _prompt(player, state["hold"])
-	if FieldState.night_enabled():
+	# No sortie clock outside the field (B-23 base defense).
+	if player.field_rules and FieldState.night_enabled():
 		state["dusk_left_sec"] = FieldState.dusk_left_sec()
 	state["companions"] = FieldCompanion.hud_list(player.get_tree())
 	state["consumables"] = player.consumables.hud_slots()

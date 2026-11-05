@@ -1,0 +1,44 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://field/_sandbox/b23_defense_test.gd" id="1_test"]
+[ext_resource type="PackedScene" path="res://levels/base/base_school/layout.tscn" id="2_layout"]
+[ext_resource type="PackedScene" path="res://field/player/player.tscn" id="3_player"]
+[ext_resource type="PackedScene" path="res://field/camera/field_camera.tscn" id="4_camera"]
+
+[sub_resource type="ProceduralSkyMaterial" id="Sky_mat"]
+
+[sub_resource type="Sky" id="Sky"]
+sky_material = SubResource("Sky_mat")
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 2
+sky = SubResource("Sky")
+ambient_light_source = 3
+
+[node name="B23DefenseTest" type="Node3D"]
+script = ExtResource("1_test")
+
+[node name="Layout" parent="." instance=ExtResource("2_layout")]
+
+[node name="Player" parent="." instance=ExtResource("3_player")]
+field_rules = false
+
+[node name="FieldCamera" parent="." node_paths=PackedStringArray("target") instance=ExtResource("4_camera")]
+target = NodePath("../Player")
+
+[node name="Raiders" type="Node3D" parent="."]
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866, -0.383, 0.321, 0, 0.643, 0.766, -0.5, -0.663, 0.557, 0, 10, 0)
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="DebugLayer" type="CanvasLayer" parent="."]
+
+[node name="InfoLabel" type="Label" parent="DebugLayer"]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 900.0
+offset_bottom = 300.0

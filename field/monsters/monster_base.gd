@@ -56,6 +56,10 @@ var drop_mult: float = 1.0
 var sight_mult: float = 1.0
 ## Damage multiplier on def.attack (elite x1.5).
 var attack_mult: float = 1.0
+## Base defense (B-23, Lane C sets it): a finite point makes this a raider. Raiders never leash
+## home, march here when idle (charges_gates: nearest gate first), follow the navmesh and hit
+## raid structures in the way (RaidMarch). Vector3.INF = field monster.
+var raid_goal: Vector3 = Vector3.INF
 
 var _behaviors: Array[MonsterBehavior] = []
 var _dead := false
@@ -73,6 +77,7 @@ var _wait_time := 0.0
 var _arrived := false
 var _attack_cooldown := 0.0
 var _sight_timer := 0.0
+var _raid: RaidMarch
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)
 
 ## Status effects (B-14). Lane D listens to its signals for icons over the head.
@@ -136,13 +141,16 @@ func tick(delta: float) -> void:
 		# A behavior holds it still (B-18), or staggered / knocked back (B-14).
 		_stop()
 		return
-	if _is_leash_state() and _flat_distance(home) > MonsterRules.RETURN_DISTANCE:
+	if not is_raider() and _is_leash_state() and _flat_distance(home) > MonsterRules.RETURN_DISTANCE:
 		_set_state(Enums.AIState.RETURN)
 	match state:
 		Enums.AIState.SLEEP:
 			_stop()
 		Enums.AIState.WANDER:
-			_tick_wander(delta)
+			if is_raider():
+				_tick_raid(delta)
+			else:
+				_tick_wander(delta)
 		Enums.AIState.SUSPICIOUS:
 			_tick_suspicious(delta)
 		Enums.AIState.INVESTIGATE:
@@ -251,10 +259,11 @@ func can_see(node: Node3D, use_cone: bool = true) -> bool:
 	return get_world_3d().direct_space_state.intersect_ray(query).is_empty()
 
 
-## Priority: player (group) > allies (layer 3: companions, rescuees).
+## Priority: player (group) > allies (layer 3: companions, rescuees, base residents).
+## A downed player is skipped (base defense goes on after the player falls, B-23).
 func find_visible_target() -> Node3D:
 	for node in get_tree().get_nodes_in_group(PLAYER_GROUP):
-		if node is Node3D and can_see(node):
+		if node is Node3D and node.get(&"is_downed") != true and can_see(node):
 			return node
 	for ally in _allies_in_range():
 		if can_see(ally):
@@ -289,6 +298,11 @@ func can_move() -> bool:
 
 func is_dead() -> bool:
 	return _dead
+
+
+## Spawned for a base defense battle (raid_goal set).
+func is_raider() -> bool:
+	return raid_goal.is_finite()
 
 
 ## Sight distance after sight_mult (B-21 night) and status (B-16 flash blind = 0).
@@ -358,6 +372,15 @@ func _tick_wander(delta: float) -> void:
 	if _move_to(_move_point, def.move_speed * MonsterRules.WANDER_SPEED_MULT, delta):
 		_has_move_point = false
 		_wait_time = randf_range(MonsterRules.WANDER_PAUSE_MIN_SEC, MonsterRules.WANDER_PAUSE_MAX_SEC)
+
+
+## Raider idle (B-23): march to the raid goal, chasing whatever it sees on the way.
+func _tick_raid(delta: float) -> void:
+	var seen := _look_for_target()
+	if seen:
+		chase(seen)
+		return
+	_move_to(_march().goal(), def.move_speed, delta)
 
 
 func _tick_suspicious(delta: float) -> void:
@@ -585,6 +608,8 @@ func _move_to(point: Vector3, speed: float, delta: float) -> bool:
 	if speed <= 0.0:
 		_stop()
 		return true
+	if is_raider():
+		return _raid_move_to(point, speed, delta)
 	var to := point - global_position
 	to.y = 0.0
 	if to.length() <= MonsterRules.ARRIVE_DISTANCE:
@@ -595,6 +620,37 @@ func _move_to(point: Vector3, speed: float, delta: float) -> bool:
 	velocity.z = dir.z * speed
 	_face(global_position + dir, delta)
 	return false
+
+
+## Raiders (B-23): navmesh corners instead of a straight line, and a raid structure in the way
+## is hit instead of walked into.
+func _raid_move_to(point: Vector3, speed: float, delta: float) -> bool:
+	if _flat_distance(point) <= MonsterRules.ARRIVE_DISTANCE:
+		_stop()
+		return true
+	var raid := _march()
+	var dir := raid.next_corner(point, delta) - global_position
+	dir.y = 0.0
+	if dir.length_squared() < 0.0001:
+		dir = Vector3(point.x - global_position.x, 0.0, point.z - global_position.z)
+	dir = dir.normalized()
+	var blocker := raid.blocking_structure(dir)
+	if blocker != null:
+		_stop()
+		_face(global_position + dir, delta)
+		raid.hit(blocker, delta)
+		return false
+	raid.reset_hit()
+	velocity.x = dir.x * speed
+	velocity.z = dir.z * speed
+	_face(global_position + dir, delta)
+	return false
+
+
+func _march() -> RaidMarch:
+	if _raid == null:
+		_raid = RaidMarch.new(self)
+	return _raid
 
 
 func _stop() -> void:
@@ -617,7 +673,7 @@ func _is_leash_state() -> bool:
 
 
 func _target_valid() -> bool:
-	return is_instance_valid(target) and target.is_inside_tree()
+	return is_instance_valid(target) and target.is_inside_tree() and target.get(&"is_downed") != true
 
 
 func _distance_to(node: Node3D) -> float:

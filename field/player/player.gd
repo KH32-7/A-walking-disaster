@@ -27,6 +27,9 @@ const INTERACT_HEIGHT := 0.9
 const INTERACT_MAX_HITS := 8
 
 @export var stats: PlayerStats = preload("res://data/classes/player_base.tres")
+## False on maps that are not a field sortie (B-23 base defense). Going down then only emits
+## `downed`, not EventBus.player_downed: no bag loss, lost gear, stranded companions or sortie end.
+@export var field_rules := true
 
 var health: float
 var stamina: float
@@ -187,7 +190,8 @@ func take_damage(amount: float, info: Dictionary = {}) -> void:
 		status.clear()
 		velocity = Vector3.ZERO
 		downed.emit()
-		EventBus.player_downed.emit()
+		if field_rules:
+			EventBus.player_downed.emit()
 
 
 ## One simulation step. Split from input reading so tests can drive it.

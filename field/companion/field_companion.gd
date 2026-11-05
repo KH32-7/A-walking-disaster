@@ -75,6 +75,11 @@ var health := 0.0
 var max_health := 0.0
 ## Monster being fought, or null.
 var target: Node3D
+## False for base defense guards (B-23): the help-up wait never runs out, so a downed guard stays
+## downed (Lane C decides the injury) and is never stranded.
+var field_rules := true
+## Base defense guard (B-23): stays near this node (post, gate, shelter) instead of the player.
+var guard_post: Node3D
 var rng := RandomNumberGenerator.new()
 
 var _player: Node3D
@@ -362,8 +367,10 @@ func attack(stats: Dictionary) -> bool:
 	return true
 
 
-## Who it stays near: the guarded rescued person in 엄호, else the player.
+## Who it stays near: the guard post (B-23), the guarded rescued person in 엄호, else the player.
 func anchor() -> Node3D:
+	if is_instance_valid(guard_post):
+		return guard_post
 	var guarded := guarded_person()
 	return guarded if guarded != null else _player
 
@@ -672,6 +679,8 @@ func _tick_downed(delta: float) -> void:
 			if _revive_left <= 0.0:
 				_finish_revive()
 			return
+	if not field_rules:
+		return
 	_down_left -= delta
 	if _down_left <= 0.0:
 		strand()

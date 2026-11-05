@@ -48,6 +48,16 @@ const ARRIVE_DISTANCE := 0.6
 const TURN_SPEED_DEG := 360.0
 const LOOK_AROUND_SPEED_DEG := 90.0
 
+# --- Raiders (B-23, base defense; RaidMarch) ---
+## Seconds between navigation path requests.
+const RAID_REPATH_SEC := 0.5
+## Ask for a new path at once when the point moved this far (m).
+const RAID_REPATH_GOAL_MOVE := 1.0
+## A path corner closer than this (m) counts as reached.
+const RAID_WAYPOINT_REACHED := 0.4
+## Height of the "is a structure in the way" ray (low enough for a palisade).
+const RAID_BLOCK_RAY_HEIGHT := 0.5
+
 # --- Damage (03 "피해 공식": P and R are applied on the monster side) ---
 ## Glowing core (발광 핵) part multiplier.
 const WEAK_POINT_MULT := 2.0

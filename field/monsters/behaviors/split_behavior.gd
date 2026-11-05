@@ -34,6 +34,7 @@ func make_children() -> Array[Monster]:
 		child.sight_mult = monster.sight_mult
 		child.home = monster.home
 		child.wander_radius = monster.wander_radius
+		child.raid_goal = monster.raid_goal  # B-23: children of a raider keep raiding
 		child.transform = monster.transform
 		child.scale = monster.scale * MonsterRules.SPLIT_SIZE_RATIO
 		var angle := TAU * i / MonsterRules.SPLIT_COUNT
