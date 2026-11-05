@@ -19,7 +19,8 @@ extends Control
 ##   heading_deg: float (minimap arrow when minimap.heading is missing)
 ##   minimap: {points: [{pos: Vector2, kind}], heading: float}
 ##   dusk_left_sec: float  (else counted down locally from sortie_started)
-##   hold: {label: String, progress: 0..1} or {} ; prompt: {key, label} or {}
+##   hold: {label: String, progress: 0..1, at_target: bool (opening / helping: WorldPrompts draws it,
+##     not the head bar)} or {} ; prompt: {key, label} or {}
 ## Events it listens to on its own: sortie_started (region card), monster_killed / rescue_completed /
 ## extraction_completed / notification_posted (reward feed, hint card).
 
@@ -242,7 +243,9 @@ func _apply_boss(b: Dictionary) -> void:
 
 
 func _apply_hold(h: Dictionary) -> void:
-	_hold.visible = not h.is_empty()
+	# Opening a lock / door, helping someone up: WorldPrompts draws it around the [F] chip instead
+	# (user request 2026-11-06: the bar was hard to see).
+	_hold.visible = not h.is_empty() and not h.get("at_target", false)
 	if _hold.visible:
 		_hold_label.text = String(h.get("label", ""))
 		_hold_bar.value = float(h.get("progress", 0.0))

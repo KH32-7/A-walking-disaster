@@ -108,6 +108,9 @@ static func _hold(player: Player, extraction: ExtractionManager) -> Dictionary:
 	if using and using.has_method(&"hold_state"):
 		var hold: Dictionary = using.hold_state()
 		if not hold.is_empty():
+			# Shown as a ring around the [F] chip on the thing itself (WorldPrompts), not the head bar.
+			hold = hold.duplicate()
+			hold["at_target"] = true
 			return hold
 	if extraction and extraction.current_point_id() != &"":
 		return {"label": EXTRACT_HOLD_LABEL, "progress": extraction.progress()}
