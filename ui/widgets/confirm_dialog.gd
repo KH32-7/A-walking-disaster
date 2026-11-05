@@ -33,6 +33,7 @@ func _build(title: String, body: String, action: String) -> void:
 	v.add_child(t)
 	var b := MenuScreen.label(body, &"LabelOnCreamDim", 15)
 	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	b.custom_minimum_size.x = 520 - 28  # known wrap width, or a long line makes the card tall
 	v.add_child(b)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override(&"separation", 12)

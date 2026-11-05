@@ -24,6 +24,9 @@ var hud: Control
 var screens: Control
 var overlay: Control
 var subtitle: SubtitleBox
+## D-15: full-screen colour-blind filter (Settings.color_filter) and menu TTS (Settings.tts_menu).
+var color_filter: ColorFilterLayer
+var menu_reader: MenuReader
 
 var _defs: Dictionary = {}  # StringName -> ScreenDef
 var _scenes: Dictionary = {}  # StringName -> PackedScene (registered in code)
@@ -43,6 +46,13 @@ func _ready() -> void:
 	subtitle.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	subtitle.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	subtitle.offset_bottom = -200
+	# D-15: colour-blind filter above every layer, menu TTS on focus changes.
+	color_filter = ColorFilterLayer.new()
+	color_filter.name = &"ColorFilterLayer"
+	add_child(color_filter)
+	menu_reader = MenuReader.new()
+	menu_reader.name = &"MenuReader"
+	add_child(menu_reader)
 	_add_d16_nodes()
 	_rebuild_theme()
 	_load_defs()

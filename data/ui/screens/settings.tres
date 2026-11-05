@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="ScreenDef" format=3]
+
+[ext_resource type="Script" path="res://ui/defs/screen_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"settings"
+scene_path = "res://ui/screens/settings_screen.tscn"
+pauses_game = true
