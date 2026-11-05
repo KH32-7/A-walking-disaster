@@ -1,20 +1,35 @@
 class_name RadioVoice
 extends Node
-## Reads radio_message lines aloud with Godot's built-in TTS (D-16). Owner: Lane D.
+## Reads radio_message lines aloud (D-16). Owner: Lane D.
 ## Design 14 "AI 무전병: 음성 켜기", 15 (template radio, no LLM). The subtitle (UI.subtitle) always
 ## shows the line; this only adds the voice when Settings.radio_voice is on.
-## Needs the project setting audio/general/text_to_speech = true (Lane A, project.godot) and an OS
-## voice; without either it stays silent. Prefers a Korean voice. Volume = master × voice.
+## A recorded clip for the exact line (clip_path, private assets/) plays first. Without one it
+## falls back to Godot's built-in TTS, which needs the project setting
+## audio/general/text_to_speech = true (Lane A, project.godot) and an OS voice; without either it
+## stays silent. Prefers a Korean voice. Volume = master × voice.
 
 const SETTING := "audio/general/text_to_speech"
+const CLIP_DIR := "res://assets/audio/voice"
 
-## Last line handed to the TTS engine (tests read this even when TTS is unavailable).
+## Last line handed to the voice (tests read this even when TTS is unavailable).
 var last_spoken := ""
 var _voice := ""
+var _player: AudioStreamPlayer
+var _queue: Array[AudioStream] = []
 
 
 func _ready() -> void:
+	_player = AudioStreamPlayer.new()
+	_player.bus = &"Voice"  # Audio already scales this bus by master x voice volume
+	_player.finished.connect(_play_next)
+	add_child(_player)
 	EventBus.radio_message.connect(_on_radio_message)
+
+
+## Recorded clip for this exact line. Name = first 12 hex chars of the line's MD5, so a clip
+## always matches its subtitle. Editing a line's text drops its clip until it is re-recorded.
+static func clip_path(speaker_id: StringName, text: String) -> String:
+	return "%s/%s/%s.mp3" % [CLIP_DIR, speaker_id, text.md5_text().left(12)]
 
 
 func available() -> bool:
@@ -43,10 +58,14 @@ func voice_id() -> String:
 	return _voice
 
 
-func _on_radio_message(_speaker_id: StringName, text: String, priority: int) -> void:
+func _on_radio_message(speaker_id: StringName, text: String, priority: int) -> void:
 	if not wants_voice():
 		return
 	last_spoken = text
+	var path := clip_path(speaker_id, text)
+	if ResourceLoader.exists(path):
+		_play_clip(load(path), priority > 0)
+		return
 	if not available():
 		return
 	var id := voice_id()
@@ -54,3 +73,21 @@ func _on_radio_message(_speaker_id: StringName, text: String, priority: int) -> 
 		return
 	# A more urgent line cuts the current one off (same rule as the subtitle queue).
 	DisplayServer.tts_speak(text, id, volume(), 1.0, 1.0, 0, priority > 0)
+
+
+## A more urgent line cuts the current one off; others wait their turn.
+func _play_clip(stream: AudioStream, interrupt: bool) -> void:
+	if interrupt:
+		_queue.clear()
+		_player.stop()
+	if _player.playing:
+		_queue.append(stream)
+		return
+	_player.stream = stream
+	_player.play()
+
+
+func _play_next() -> void:
+	if not _queue.is_empty():
+		_player.stream = _queue.pop_front()
+		_player.play()
