@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 id = &"dry_fire"
-stream = "res://assets/audio/sfx/gun_sounds_vol1/foley/dry_fire_3_1.wav"
+stream = "res://assets/audio/sfx/free/snake_gun_sounds/9mm_pistol_dry_fire.wav"
 synth = &"click"
 bus = 0
 priority = 1

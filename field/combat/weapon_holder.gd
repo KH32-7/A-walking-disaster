@@ -366,9 +366,15 @@ func start_reload() -> bool:
 			* (1.0 - float(stats.get("reload_pct", 0)) / 100.0) * reload_mult
 	is_reloading = true
 	_reload_done_at = _clock + duration
-	Audio.play(&"reload", global_position)
+	Audio.play(reload_event(StringName(stats.get("def_id", &""))), global_position)
 	reload_started.emit(duration)
 	return true
+
+
+## Reload sound for a gun: `reload_<def_id>` (pump, bolt ...) when that event exists, else the shared `reload`.
+static func reload_event(def_id: StringName) -> StringName:
+	var id := StringName("reload_%s" % def_id)
+	return id if Audio.events.has(id) else &"reload"
 
 
 ## One melee swing at the active weapon. Hits every monster body in reach inside the arc.
