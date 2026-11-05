@@ -24,6 +24,7 @@
 | `SceneRouter` | `core/scene_router.gd` | A | 기지↔필드 씬 전환, 하루 흐름 진행 |
 | `DebugConsole` | `core/debug/debug_console.gd` | A | 개발용 치트 콘솔(백틱 키). 디버그 빌드에서만 동작 |
 | `Progression` | `systems/progression.gd` | A | 플레이어 레벨·경험치·특기, 클래스 숙련 저장 |
+| `ResidentPool` | `systems/resident_pool.gd` | A | 손으로 쓴 생존자 풀(`data/resident_pool/`), 검수된 프로필만 꺼냄 |
 
 `_mcp_game_helper`는 Godot AI 플러그인 것이라 건드리지 않는다.
 
@@ -99,6 +100,11 @@
   `add_mastery(combat_class, xp) -> 새 숙련`(B: 숙련 경험치 계산 후 호출, 보조무기 50%도 B가 적용), `mastery_level(combat_class)`(1~10), `mastery_xp(combat_class)`.
   처치 경험치는 `monster_killed`의 monster_id로 `data/monsters/<id>.tres`의 `tier`를, 탈출 경험치는 `data/regions/<id>.tres`의 `danger`를 읽는다(없으면 일반·위험도 1).
   구조·탈출 경험치는 SceneRouter가 `finish_sortie()`로 주고, `sortie_ended` 결과의 `xp`는 그 출격에서 얻은 전부다.
+- **ResidentPool**: `draw(filter) -> profile`(검수 완료·미사용 중 무작위, 없으면 `{}`), `get_profile(id)`(사용 여부 무관, 이야기에 고정된 구조자),
+  `available_ids(filter)`, `reviewed_ids()`, `mark_used(id)`, `is_used(id)`. 프로필은 `Colony.add_resident(profile)`에 그대로 넣는 형식이고,
+  주민이 들어오면(`resident_joined`, 주민 id = 풀 id) 자동으로 사용 표시된다. filter 키: `demo`, `age_stage`, `access_need`, `former_job`,
+  `region_id`, `exclude`. 프로필의 추가 키 `contribution`, `first_line`, `rescue_lines`(호위 대사 3줄), `situation`은 Colony가 무시하고
+  구조 연출·UI가 읽는다. `reviewed = true`이고 검증(`ResidentTemplate.validate`, 금지어 `tools/resident_banned_words.txt`)을 통과한 항목만 나온다.
 
 새 공개 함수가 필요하면 그 오토로드의 소유 레인이 추가하고 여기에 한 줄 적는다.
 
@@ -183,6 +189,7 @@ loadout의 `"seed": int`는 라우터가 없으면 만들어 넣고 저장한다
 - 필드 중 종료는 `save_suspend()`. `load_suspend()`는 불러온 뒤 파일을 지운다.
 - 저장 형식이 호환되지 않게 바뀌면 A가 `SaveSystem.SAVE_VERSION`을 올린다. 버전이 다른 파일은 불러오지 않는다.
 - `progression`(A) provider: 레벨·경험치·특기·클래스 숙련.
+- `resident_pool`(A): 생존자 풀에서 이미 구조한 항목 id 목록(`{"used": [...]}`).
 
 ## 아이템 id 규칙
 

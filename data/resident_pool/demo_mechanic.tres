@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ResidentTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/resident_template.gd" id="1_rtpl"]
+
+[resource]
+script = ExtResource("1_rtpl")
+id = &"demo_mechanic"
+name = "서하은"
+age_stage = 3
+former_job = &"mechanic"
+traits = Array[StringName]([&"quick_hands", &"brave"])
+likes = Array[StringName]([&"coffee", &"engine_parts"])
+dislikes = Array[StringName]([&"stairs", &"waiting"])
+access_needs = Array[int]([0])
+stats = {
+&"dex": 7
+}
+background = "자동차 정비소를 운영하던 30대 휠체어 사용자. 정전으로 멈춘 고층 승강기 안에서 사흘을 버텼다. 승강기 문 패널을 반쯤 뜯어 둔 것도 직접 한 일이다."
+fragments = Array[String](["대피 안내 방송은 '계단으로 내려가십시오'뿐이었다. 그 방송을 들은 뒤로 건물마다 승강기 비상 전원 위치부터 확인한다.", "자기 휠체어 바퀴도 손님 차 바퀴도 같은 렌치로 조였다. 공구함 정리만큼은 아무에게도 맡기지 않는다."])
+contribution = "정비소를 맡아 장비와 차량을 고친다."
+first_line = "늦었네요. 문은 제가 반쯤 열어 놨어요."
+rescue_lines = Array[String](["턱 있는 데선 뒤로 내려갈게요. 잡아만 줘요.", "저 차 배터리, 아직 쓸 만해 보이는데.", "길이 좁으면 먼저 말해 줘요. 돌아가게."])
+situation = "멈춘 고층 승강기 안"
+demo = true
+reviewed = true

@@ -1,0 +1,103 @@
+# Banned words for the survivor pool (data/resident_pool/). Owner: Lane A (task A-16).
+# Checked by ResidentTemplate.validate(), tools/check_resident_pool.gd and the runtime pool.
+# One word or phrase per line. Matching ignores case (not spaces) and is a substring match,
+# so keep entries specific enough not to hit ordinary words.
+# Review rules: docs/design/15-ai-features.md "검수 규칙". The list catches the obvious cases only;
+# a person still reads every entry before setting reviewed = true.
+
+# 동정 위주 묘사
+불쌍
+가엾
+가여운
+딱한
+딱해
+측은
+안쓰러운
+비참한
+
+# 영웅화
+극복한
+극복하고
+극복해
+이겨낸
+이겨 낸
+불구하고
+장애를 딛고
+장애에도
+인간 승리
+희망의 아이콘
+
+# 장애 비하
+불구자
+병신
+벙어리
+귀머거리
+장님
+소경
+절름발이
+앉은뱅이
+정신박약
+정신지체
+저능
+장애자
+휠체어 신세
+휠체어에 갇힌
+
+# 나이 비하
+늙은이
+노인네
+틀딱
+할망구
+노망
+꼰대
+애새끼
+잼민이
+
+# 출신·민족 비하, 고정관념
+외노자
+불체자
+불법체류
+짱깨
+짱개
+쪽바리
+튀기
+깜둥이
+흑형
+동남아 애
+다문화 애
+조선족 아줌마
+코시안
+
+# 성별 비하
+계집
+여편네
+김여사
+된장녀
+맘충
+한남충
+김치녀
+
+# 마물 흔적 = 위험 암시 금지
+감염
+전염
+옮을
+옮는다
+오염된 아이
+오염된 사람
+괴물이 될
+마물이 될
+마물이 되
+마물로 변
+변이체
+시한폭탄
+위험한 아이
+
+# 잔혹한 묘사
+피투성이
+내장이
+토막 난
+토막낸
+참혹
+처참
+살점
+머리가 터
