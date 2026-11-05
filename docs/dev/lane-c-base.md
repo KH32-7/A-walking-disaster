@@ -3,7 +3,7 @@
 건설, 주민 시뮬레이션, 관계·인구, 습격·방어, 기지 맵 레이아웃을 맡는다.
 UI는 D, 자원 저장은 A(`Economy`), 장비는 A(`Armory`), 전투 동작은 B의 컴포넌트를 쓴다.
 
-- 소유: `base/`, `data/{buildings,traits,jobs,events,raids}/`, `levels/base/**`(`dressing.tscn` 제외), `tests/base/`
+- 주로 다룬 폴더(기록, M2 이후 소유권 없음): `base/`, `data/{buildings,traits,jobs,events,raids}/`, `levels/base/**`(`dressing.tscn` 제외), `tests/base/`
 - 이미 있는 뼈대: `Colony` 오토로드
 - 개발 장소: `base/_sandbox/`
 

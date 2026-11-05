@@ -3,9 +3,9 @@
 출격해서 싸우고, 줍고, 구하고, 탈출하는 모든 것. 필드 맵의 레이아웃(충돌·내비·마커)도 맡는다.
 아트 배치(dressing)와 UI는 D, 아이템 스탯 계산은 A(`Armory`)가 한다.
 
-- 소유: `field/`, `data/{classes,monsters,regions,loot}/`, `levels/field/**`(`dressing.tscn` 제외), `tests/field/`
+- 주로 다룬 폴더(기록, M2 이후 소유권 없음): `field/`, `data/{classes,monsters,regions,loot}/`, `levels/field/**`(`dressing.tscn` 제외), `tests/field/`
 - 이미 있는 뼈대: `FieldState` 오토로드
-- 개발 장소: `field/_sandbox/` 씬. `main.tscn`·다른 레인 씬은 열어서 저장하지 않는다.
+- 개발 장소: `field/_sandbox/` 씬. 다른 사람이 지금 고치는 씬은 열어 둔 채 실행하지 않는다(F5 때 저장됨).
 
 ## 체크리스트
 

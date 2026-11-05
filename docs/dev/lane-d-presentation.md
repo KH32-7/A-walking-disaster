@@ -3,7 +3,7 @@
 모든 UI 화면과 HUD, 아트 에셋 임포트·셰이더·머티리얼, 맵 꾸미기(dressing), VFX, 사운드·음악,
 `assets/` 서브모듈 관리를 맡는다. 게임 규칙은 계산하지 않고, A·B·C의 신호와 getter만 화면에 그린다.
 
-- 소유: `ui/`, `art/`, `audio/`, `vfx/`, `levels/**/dressing.tscn`, `data/ui/`, `tests/ui/`, `assets/` 포인터(메인 저장소에서 서브모듈을 올리는 커밋은 D만)
+- 주로 다룬 폴더(기록, M2 이후 소유권 없음): `ui/`, `art/`, `audio/`, `vfx/`, `levels/**/dressing.tscn`, `data/ui/`, `tests/ui/`, `assets/` 포인터(M2까지는 D만 올렸다)
 - 이미 있는 뼈대: `UI`, `Audio`, `Fx` 오토로드
 - 개발 장소: `ui/_preview/`(가짜 데이터로 화면 미리보기), 각 레벨의 `dressing.tscn`
 
