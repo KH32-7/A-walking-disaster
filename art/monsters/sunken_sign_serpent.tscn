@@ -7,5 +7,10 @@
 script = ExtResource("1_vis")
 model = ExtResource("2_model")
 model_scale = 1.0
-model_offset = Vector3(0, 0, 0)
+model_offset = Vector3(0, 0, 4.5)
 attack_clip = &"TailSwing"
+pattern_clips = {
+&"dive": &"Dive",
+&"splash": &"Splash",
+&"tail_swing": &"TailSwing"
+}

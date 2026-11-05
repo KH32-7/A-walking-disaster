@@ -76,6 +76,23 @@ func current_clip() -> StringName:
 	return anim.current_animation if anim else &""
 
 
+## Plays a clip once, like an attack clip (boss mechanics: charge). Ignored after death.
+func play_once(clip: StringName) -> void:
+	if not _dead:
+		_one_shot(clip)
+
+
+## Sinks the model below the ground (serpent underwater) or brings it back up, `rise` playing Rise.
+func sink(on: bool, sec: float = 0.4, rise: bool = true) -> void:
+	var model_node := get_node_or_null(^"Model") as Node3D
+	if model_node == null:
+		return
+	var y := model_offset.y - (_size.y * 1.05 if on else 0.0)
+	create_tween().tween_property(model_node, ^"position:y", y, sec)
+	if not on and rise:
+		play_once(&"Rise")
+
+
 func _process(_delta: float) -> void:
 	if anim == null or _dead or _locked or _monster == null:
 		return
