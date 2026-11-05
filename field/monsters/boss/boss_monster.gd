@@ -219,6 +219,9 @@ func _hit_area(pattern: BossPattern, area: Dictionary) -> void:
 	if not pattern.status.is_empty():
 		info["status"] = pattern.status.duplicate(true)
 	var amount := attack_damage() * pattern.damage_mult
+	var fx := area.duplicate()
+	fx["element"] = def.family
+	Fx.spawn(StringName("boss_%s" % pattern.id), area["position"], fx)
 	for body in _area_targets(area):
 		body.take_damage(amount, info.duplicate(true))
 		attack_landed.emit(body, info)
@@ -267,6 +270,7 @@ func _summon(pattern: BossPattern) -> void:
 		m.name = String(summon_def.id)
 		parent.add_child(m, true)
 		_summons.append(m)
+		Fx.spawn(StringName("boss_%s" % pattern.id), at, {"radius": 1.2, "element": def.family})
 
 
 ## Spread evenly around the target, pulled back inside the arena.

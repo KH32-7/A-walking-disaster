@@ -39,6 +39,7 @@ func run() -> bool:
 		_test_bind,
 		_test_alarm,
 		_test_split,
+		_test_visual,
 	]
 	for test in tests:
 		test.call()
@@ -154,11 +155,14 @@ func _test_attack() -> void:
 	var m := _spawn(_def(), Vector3.ZERO)
 	var player := _player(Vector3(0, 0, -1))
 	var landed: Array = []
+	var started: Array = []
 	m.attack_landed.connect(func(t: Node3D, info: Dictionary) -> void: landed.append(info))
+	m.attack_started.connect(func(info: Dictionary) -> void: started.append(landed.size()))
 	m.chase(player)
 	_ticks(m, DT)
 	_check(m.state == Enums.AIState.ATTACK, "target in attack range starts the attack")
 	_ticks(m, MonsterRules.ATTACK_WINDUP_SEC + DT)
+	_check(started == [0], "attack_started fires once, before the attack lands")
 	_check(player.hits.size() == 1 and is_equal_approx(player.hits[0].amount, m.def.attack),
 			"attack calls take_damage(attack, info) on the target")
 	_check(landed.size() == 1 and landed[0].source == m and landed[0].element == m.def.family,
@@ -330,6 +334,21 @@ func _test_split() -> void:
 	for g in grandchildren:
 		if not g.is_inside_tree():
 			g.free()
+
+
+## B-28: Lane D's model (art/monsters/<id>.tscn) replaces the grey box; no model -> grey box stays.
+func _test_visual() -> void:
+	var m := _spawn(VINE, Vector3.ZERO)
+	var body := m.get_node(^"Body") as Node3D
+	var core := m.get_node(^"WeakPoint/Core") as Node3D
+	if m.has_node(^"Visual"):
+		_check(not body.visible, "the model hides the grey-box body")
+		_check(core.visible, "the weak point core stays visible")
+	else:
+		_check(body.visible, "without assets the grey box stays")
+	var plain := _spawn(_def(), Vector3(5, 0, 0))
+	_check(not plain.has_node(^"Visual") and (plain.get_node(^"Body") as Node3D).visible,
+			"a monster id with no art keeps its grey box")
 
 
 # --- Helpers --------------------------------------------------------------

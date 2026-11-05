@@ -39,7 +39,9 @@ func _apply(show: bool) -> void:
 	if show == revealed:
 		return
 	revealed = show
-	for path in [^"Body", ^"WeakPoint/Core"]:
+	# D-17: with a model the grey-box Body stays hidden and the model shows and hides instead.
+	var body := ^"Visual" if monster.has_node(^"Visual") else ^"Body"
+	for path in [body, ^"WeakPoint/Core"]:
 		var mesh := monster.get_node_or_null(path) as Node3D
 		if mesh:
 			mesh.visible = show
