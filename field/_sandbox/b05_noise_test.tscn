@@ -1,0 +1,40 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://field/_sandbox/b05_noise_test.gd" id="1_test"]
+[ext_resource type="PackedScene" path="res://field/_sandbox/field_sandbox.tscn" id="2_sandbox"]
+[ext_resource type="Script" path="res://field/noise/noise_emitter.gd" id="3_emitter"]
+[ext_resource type="Script" path="res://field/_sandbox/noise_debug_ring.gd" id="4_ring"]
+
+[sub_resource type="StandardMaterial3D" id="Mat_source"]
+albedo_color = Color(0.85, 0.85, 0.85, 1)
+roughness = 1.0
+
+[node name="B05NoiseTest" type="Node3D"]
+script = ExtResource("1_test")
+
+[node name="FieldSandbox" parent="." instance=ExtResource("2_sandbox")]
+
+[node name="NoiseSource" type="CSGCylinder3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+radius = 0.4
+height = 1.8
+material = SubResource("Mat_source")
+
+[node name="NoiseEmitter" type="Node3D" parent="NoiseSource"]
+script = ExtResource("3_emitter")
+armory_owner_id = &"player"
+
+[node name="NoiseDebugRing" type="Node3D" parent="."]
+script = ExtResource("4_ring")
+
+[node name="DebugLayer" type="CanvasLayer" parent="."]
+
+[node name="HelpLabel" type="Label" parent="DebugLayer"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -440.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = 180.0
+grow_horizontal = 0
