@@ -1,0 +1,190 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://field/_sandbox/field_sandbox.gd" id="1_sandbox"]
+
+[sub_resource type="StandardMaterial3D" id="Mat_floor"]
+albedo_color = Color(0.32, 0.33, 0.34, 1)
+roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="Mat_wall"]
+albedo_color = Color(0.62, 0.62, 0.6, 1)
+roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="Mat_cover"]
+albedo_color = Color(0.58, 0.5, 0.38, 1)
+roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="Mat_access"]
+albedo_color = Color(0.4, 0.5, 0.62, 1)
+roughness = 1.0
+
+[sub_resource type="Environment" id="Env_sandbox"]
+background_mode = 1
+background_color = Color(0.5, 0.56, 0.62, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.75, 0.78, 0.82, 1)
+ambient_light_energy = 0.5
+
+[node name="FieldSandbox" type="Node3D"]
+script = ExtResource("1_sandbox")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_sandbox")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.383022, 0.321394, 0, 0.642788, 0.766044, -0.5, -0.663414, 0.556670, 0, 20, 0)
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.573576, 0.819152, 0, -0.819152, 0.573576, 0, 18.0213, 12.6187)
+current = true
+
+[node name="Geometry" type="Node3D" parent="."]
+
+[node name="Floor" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+use_collision = true
+size = Vector3(60, 1, 60)
+material = SubResource("Mat_floor")
+
+[node name="Walls" type="Node3D" parent="Geometry"]
+
+[node name="WallNorth" type="CSGBox3D" parent="Geometry/Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -30.25)
+use_collision = true
+size = Vector3(61, 3, 0.5)
+material = SubResource("Mat_wall")
+
+[node name="WallSouth" type="CSGBox3D" parent="Geometry/Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 30.25)
+use_collision = true
+size = Vector3(61, 3, 0.5)
+material = SubResource("Mat_wall")
+
+[node name="WallEast" type="CSGBox3D" parent="Geometry/Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30.25, 1.5, 0)
+use_collision = true
+size = Vector3(0.5, 3, 60)
+material = SubResource("Mat_wall")
+
+[node name="WallWest" type="CSGBox3D" parent="Geometry/Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30.25, 1.5, 0)
+use_collision = true
+size = Vector3(0.5, 3, 60)
+material = SubResource("Mat_wall")
+
+[node name="InnerWallA" type="CSGBox3D" parent="Geometry/Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 1.5, -8)
+use_collision = true
+size = Vector3(10, 3, 0.4)
+material = SubResource("Mat_wall")
+
+[node name="InnerWallB" type="CSGBox3D" parent="Geometry/Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 1.5, -14)
+use_collision = true
+size = Vector3(0.4, 3, 8)
+material = SubResource("Mat_wall")
+
+[node name="InnerWallC" type="CSGBox3D" parent="Geometry/Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 1.5, 10)
+use_collision = true
+size = Vector3(8, 3, 0.4)
+material = SubResource("Mat_wall")
+
+[node name="Cover" type="Node3D" parent="Geometry"]
+
+[node name="LowCover1" type="CSGBox3D" parent="Geometry/Cover"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0.6, 4)
+use_collision = true
+size = Vector3(2, 1.2, 1)
+material = SubResource("Mat_cover")
+
+[node name="LowCover2" type="CSGBox3D" parent="Geometry/Cover"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0.6, 6)
+use_collision = true
+size = Vector3(2, 1.2, 1)
+material = SubResource("Mat_cover")
+
+[node name="LowCover3" type="CSGBox3D" parent="Geometry/Cover"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.6, 12)
+use_collision = true
+size = Vector3(1, 1.2, 2)
+material = SubResource("Mat_cover")
+
+[node name="LowCover4" type="CSGBox3D" parent="Geometry/Cover"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0.6, -4)
+use_collision = true
+size = Vector3(2, 1.2, 1)
+material = SubResource("Mat_cover")
+
+[node name="LowCover5" type="CSGBox3D" parent="Geometry/Cover"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 0.6, -2)
+use_collision = true
+size = Vector3(1, 1.2, 2)
+material = SubResource("Mat_cover")
+
+[node name="TallCrate" type="CSGBox3D" parent="Geometry/Cover"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, -6)
+use_collision = true
+size = Vector3(1.5, 2.2, 1.5)
+material = SubResource("Mat_cover")
+
+[node name="Access" type="Node3D" parent="Geometry"]
+
+[node name="Deck" type="CSGBox3D" parent="Geometry/Access"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0.6, 18)
+use_collision = true
+size = Vector3(8, 1.2, 8)
+material = SubResource("Mat_access")
+
+[node name="Stairs" type="Node3D" parent="Geometry/Access"]
+
+[node name="Step1" type="CSGBox3D" parent="Geometry/Access/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.95, 0.1, 18)
+use_collision = true
+size = Vector3(2.1, 0.2, 2)
+material = SubResource("Mat_access")
+
+[node name="Step2" type="CSGBox3D" parent="Geometry/Access/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13.125, 0.3, 18)
+use_collision = true
+size = Vector3(1.75, 0.2, 2)
+material = SubResource("Mat_access")
+
+[node name="Step3" type="CSGBox3D" parent="Geometry/Access/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13.3, 0.5, 18)
+use_collision = true
+size = Vector3(1.4, 0.2, 2)
+material = SubResource("Mat_access")
+
+[node name="Step4" type="CSGBox3D" parent="Geometry/Access/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13.475, 0.7, 18)
+use_collision = true
+size = Vector3(1.05, 0.2, 2)
+material = SubResource("Mat_access")
+
+[node name="Step5" type="CSGBox3D" parent="Geometry/Access/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13.65, 0.9, 18)
+use_collision = true
+size = Vector3(0.7, 0.2, 2)
+material = SubResource("Mat_access")
+
+[node name="Step6" type="CSGBox3D" parent="Geometry/Access/Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13.825, 1.1, 18)
+use_collision = true
+size = Vector3(0.35, 0.2, 2)
+material = SubResource("Mat_access")
+
+[node name="Ramp" type="CSGBox3D" parent="Geometry/Access"]
+transform = Transform3D(1, 0, 0, 0, 0.995037, 0.0995037, 0, -0.0995037, 0.995037, -18, 0.450746, 8.014926)
+use_collision = true
+size = Vector3(2.5, 0.3, 12.0598)
+material = SubResource("Mat_access")
+
+[node name="DebugLayer" type="CanvasLayer" parent="."]
+
+[node name="DebugLabel" type="Label" parent="DebugLayer"]
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 260.0
+offset_bottom = 120.0
