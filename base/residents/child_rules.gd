@@ -55,3 +55,8 @@ static func stage_for_days(days: int) -> Enums.AgeStage:
 
 static func is_minor(r: Dictionary) -> bool:
 	return int(r["age_stage"]) < Enums.AgeStage.ADULT
+
+
+## 출산은 여성 주민만 (연애·결혼은 성별과 상관없음).
+static func can_give_birth(r: Dictionary) -> bool:
+	return not r.is_empty() and r.get("gender", &"") == ResidentData.GENDER_FEMALE and not is_minor(r)

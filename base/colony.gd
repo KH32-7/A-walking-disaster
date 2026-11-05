@@ -2144,10 +2144,11 @@ func child_arrival_status(a: StringName, b: StringName) -> Dictionary:
 	return {"ok": missing.is_empty(), "missing": missing}
 
 
-## Ways this family can welcome a child (가족 구성에 따라 출산, 입양은 언제나).
+## Ways this family can welcome a child: 출산 when one of them is a woman (ChildRules.can_give_birth),
+## 입양 for every family.
 func child_methods(a: StringName, b: StringName) -> Array:
 	var methods: Array = [Enums.ArrivalMethod.ADOPTION]
-	if residents.has(a) and residents.has(b) and (residents[a]["can_give_birth"] or residents[b]["can_give_birth"]):
+	if residents.has(a) and residents.has(b) and (ChildRules.can_give_birth(residents[a]) or ChildRules.can_give_birth(residents[b])):
 		methods.push_front(Enums.ArrivalMethod.BIRTH)
 	return methods
 
@@ -2180,7 +2181,7 @@ func answer_child_wish(a: StringName, b: StringName, choice: StringName, method:
 	m["last_child_day"] = GameState.day
 	out["ok"] = true
 	if method == Enums.ArrivalMethod.BIRTH:
-		m["carrier"] = a if residents[a]["can_give_birth"] else b
+		m["carrier"] = a if ChildRules.can_give_birth(residents[a]) else b
 		m["due_day"] = GameState.day + ChildRules.BIRTH_DAYS
 		out["due_day"] = m["due_day"]
 		EventBus.notification_posted.emit("%s 가족에게 %d일 뒤 아기가 온다" % [_display_name(residents[a]), ChildRules.BIRTH_DAYS], &"info")
@@ -3183,7 +3184,8 @@ func _cmd_resident(args: PackedStringArray) -> String:
 			var lines := PackedStringArray(["주민 %d명, 침상 %d/%d" % [population(), bed_count() - free_beds().size(), bed_count()]])
 			for id: StringName in residents:
 				var r: Dictionary = residents[id]
-				lines.append("  %s %s 특성 %s 능력치 %s · 사기 %d 신뢰 %d 배고픔 %d 피로 %d %s%s" % [id, r["name"],
+				lines.append("  %s %s (%s) 특성 %s 능력치 %s · 사기 %d 신뢰 %d 배고픔 %d 피로 %d %s%s" % [id, r["name"],
+					"여성" if r["gender"] == ResidentData.GENDER_FEMALE else "남성",
 					r["traits"], r["stats"], r["morale"], r["trust"], r["hunger"], r["fatigue"],
 					Enums.HealthState.keys()[r["health"]], " · 떠나려 함" if r["leave_crisis"] else ""])
 			return "\n".join(lines)
