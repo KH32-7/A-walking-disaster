@@ -10,6 +10,12 @@ Godot 4.7 (Forward+) project - "Walking disaster's project".
    - In the **Godot AI** dock, press **Configure** next to your MCP client (Claude Code, Codex, Cursor, ...).
    - Update the plugin with the dock's **Update** button, never by extracting over `addons/godot_ai/`.
 
+## Team workflow
+
+4 lanes (A core/systems, B field, C base, D presentation), each person with their own Claude Code session.
+Start with [docs/dev/README.md](docs/dev/README.md); rules for agents are in [CLAUDE.md](CLAUDE.md).
+Game design (Korean) is in [docs/design/](docs/design/).
+
 ## Paid assets (private submodule)
 
 `assets/` is a git submodule pointing at the **private** repo `KH32-7/A-walking-disaster-assets`

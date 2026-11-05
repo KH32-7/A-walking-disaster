@@ -10,3 +10,6 @@
 # OS
 .DS_Store
 Thumbs.db
+
+# Per-person Claude Code notes (your lane, local paths)
+CLAUDE.local.md

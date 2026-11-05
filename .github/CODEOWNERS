@@ -1,0 +1,17 @@
+# 담당자가 정해지면 각 줄의 주석을 풀고 GitHub 아이디를 넣는다 (레인 A 담당).
+# /core/            @lane-a-owner
+# /systems/         @lane-a-owner
+# /ai/              @lane-a-owner
+# /tools/           @lane-a-owner
+# /project.godot    @lane-a-owner
+# /main.tscn        @lane-a-owner
+# /docs/            @lane-a-owner
+# /field/           @lane-b-owner
+# /levels/field/    @lane-b-owner
+# /base/            @lane-c-owner
+# /levels/base/     @lane-c-owner
+# /ui/              @lane-d-owner
+# /art/             @lane-d-owner
+# /audio/           @lane-d-owner
+# /vfx/             @lane-d-owner
+# **/dressing.tscn  @lane-d-owner

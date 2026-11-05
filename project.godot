@@ -18,10 +18,35 @@ config/icon="res://icon.svg"
 [autoload]
 
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
+EventBus="*res://core/event_bus.gd"
+Settings="*res://core/settings.gd"
+GameState="*res://core/game_state.gd"
+InputSetup="*res://core/input_setup.gd"
+SaveSystem="*res://core/save_system.gd"
+Economy="*res://systems/economy.gd"
+Armory="*res://systems/armory.gd"
+Radio="*res://ai/radio.gd"
+FieldState="*res://field/field_state.gd"
+Colony="*res://base/colony.gd"
+Audio="*res://audio/audio.gd"
+Fx="*res://vfx/fx.gd"
+UI="*res://ui/ui.gd"
+SceneRouter="*res://core/scene_router.gd"
 
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/godot_ai/plugin.cfg")
+
+[layer_names]
+
+3d_physics/layer_1="world"
+3d_physics/layer_2="player"
+3d_physics/layer_3="ally"
+3d_physics/layer_4="monster"
+3d_physics/layer_5="player_projectile"
+3d_physics/layer_6="monster_projectile"
+3d_physics/layer_7="interactable"
+3d_physics/layer_8="trigger"
 
 [rendering]
 
