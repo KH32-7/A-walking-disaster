@@ -59,13 +59,13 @@ const POWER_PRIORITY_OTHER := 3
 @export var zone_only: StringName = &""
 ## Attached to another building instead of the grid (통역 무전기 → radio_room).
 @export var attach_to: StringName = &""
-## Exists from the start (무전실 = 본관 방송실). Cannot be built or demolished.
+## Exists from the start (방송실, 공터 남쪽 야영지). Cannot be built or demolished.
 @export var prebuilt := false
 ## Defense structures (10 탭): max durability and contribution to the automatic raid judgment.
 @export var durability := 0
 @export var defense_value := 0.0
 ## Explicit cost per level [Lv1, Lv2, Lv3] when the ×2/×3 rule does not apply ({} = use the rule).
-## 무전실: 처음부터 Lv1, Lv2는 고철 30 + 무전 부품 5.
+## 방송실: 처음부터 Lv1, Lv2는 고철 30 + 무전 부품 5.
 @export var level_cost_override: Array[Dictionary] = []
 @export var note: String = ""
 

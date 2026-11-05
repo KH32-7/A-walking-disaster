@@ -17,7 +17,7 @@ UI는 D, 자원 저장은 A(`Economy`), 장비는 A(`Armory`), 전투 동작은 
 - [ ] **C-06** 필요·사기 · M1
 - [ ] **C-07** 기지 안 주민 행동 · M1
 - [ ] **C-08** 습격 위협도 + 발생 + 자동 판정 · M1
-- [ ] **C-09** 기지 학교 레이아웃 · M1
+- [ ] **C-09** 기지 숲 공터 레이아웃 · M1
 - [ ] **C-10** 개간 구역 + 기지 단계 + 시설 레벨 · M2
 - [ ] **C-11** 참여 조건 + 포용 시설 · M2
 - [ ] **C-12** 신뢰도·대화·선물 · M2
@@ -67,8 +67,8 @@ UI는 D, 자원 저장은 A(`Economy`), 장비는 A(`Armory`), 전투 동작은 
 - 만들 것: 위협도 공식(T + 3 + 소음 + 계절 − 2P − G), 발생 표, 5일차 유예, 하루 1회, `Colony.roll_raid(time) -> Dictionary`, 자동 판정 R = 방어력 / 강도 → 결과 4단계와 피해 적용, `raid_warning/started/resolved`. 예상 결과 구간 함수(A-14 무전이 씀).
 - 참고: `docs/design/10-raids-defense.md` "위협도", "발생 규칙", "자동 판정"
 
-### C-09 기지 학교 레이아웃 · M1
-- `levels/base/base_school/` 의 `base_school.tscn`(조립), `layout.tscn`(본관·운동장 그레이박스, 충돌, 내비, 마커). 이후 구역은 C-10에서 추가.
+### C-09 기지 숲 공터 레이아웃 · M1
+- `levels/base/base_school/`(경로 이름은 그대로 둠) 의 `base_school.tscn`(조립), `layout.tscn`(공터·방송실 야영지·개간 숲 3곳, 숲 가장자리 벽, 호수·연못 충돌, 내비, 마커). 꾸미기는 `dressing.tscn`(`art/dressing/forest_dressing.gd`), 건물 모델 조합표는 `base/building/building_models.gd`, 미리보기 `base/_sandbox/forest_clearing/`.
 
 ### C-10 개간 + 기지 단계 · M2
 - 구역 7곳, 개간 진행도·획득 자원·묻힌 상자 이벤트, 기지 단계 조건, 시설 레벨(Lv2 ×2 + 부품 5, Lv3 ×3 + 희귀 부품 3)과 단계별 상한(A-09가 읽음).
@@ -111,4 +111,4 @@ UI는 D, 자원 저장은 A(`Economy`), 장비는 A(`Armory`), 전투 동작은 
 - 출격 중 판정, `raid_warning`(60초 전, 초소 없으면 즉시), B-22 긴급 귀환 연결, 계속 탐색 시 자동 판정.
 
 ### C-22 이주 · M3 / C-23 계절 효과 · M3
-- 무전실 Lv2 이주 무리, 계절별 생산·연료·사기 보정.
+- 방송실 Lv2 이주 무리, 계절별 생산·연료·사기 보정.

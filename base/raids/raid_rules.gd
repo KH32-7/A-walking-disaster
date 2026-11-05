@@ -86,7 +86,7 @@ const LOSS_CIVILIAN_DEATH := 0.05
 const LOSS_MORALE := -10
 const INJURY_DAYS := 3
 const SERIOUS_INJURY_DAYS := 7      # 보호 모드에서 사망 대신 중상 7일
-## Never damaged by raids (10: 침상, 무전실, 대피소).
+## Never damaged by raids (10: 침상, 방송실, 대피소).
 const INDESTRUCTIBLE: Array[StringName] = [&"bed", &"dormitory", &"family_house", &"radio_room", &"shelter"]
 ## Alarm + shelter → non-combatants take no damage.
 const ALARMS: Array[StringName] = [&"warning_bell", &"warning_light"]

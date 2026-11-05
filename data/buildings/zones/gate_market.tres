@@ -5,12 +5,12 @@
 [resource]
 script = ExtResource("1_slwok")
 id = &"gate_market"
-display_name = "교문 밖 상가"
-size = Vector2i(12, 10)
+display_name = "동쪽 연못가"
+size = Vector2i(12, 19)
 clear_work = 100
 clear_yield = Dictionary[StringName, int]({
-&"scrap": 40,
-&"stone": 40
+&"stone": 40,
+&"wood": 40
 })
 unlock_tier = 2
-note = "교역소 부지, 성벽 둘레 증가"
+note = "연못 쪽으로 넓힘. 교역소 부지, 둘레가 늘어 방어 비용 증가"

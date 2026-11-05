@@ -5,10 +5,10 @@
 [resource]
 script = ExtResource("1_pm682")
 id = &"park_a"
-display_name = "공원 숲 A"
-size = Vector2i(15, 15)
-clear_work = 60
+display_name = "서쪽 숲"
+size = Vector2i(12, 19)
+clear_work = 40
 clear_yield = Dictionary[StringName, int]({
-&"wood": 80
+&"wood": 60
 })
-note = "벌목 노드 다수"
+note = "공원 숲 A. 공터 서쪽으로 넓힘, 벌목 노드 다수"

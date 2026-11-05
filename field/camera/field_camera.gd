@@ -16,12 +16,19 @@ const PITCH_DEG := 55.0 ## look-down angle (design 16)
 const START_YAW_DEG := 45.0 ## diagonal quarter view
 const YAW_STEP_DEG := 90.0
 const ROTATE_SEC := 0.25 ## instant when Settings `reduce_shake` is on
-const ZOOM_DISTANCES := [14.0, 18.0, 24.0] ## near, middle, far (design 16: 3 steps)
+## near, middle, far (design 16: 3 steps). User feedback 2026-11-06 (B-26): start closer, 14/18/24 -> 10/13.5/18.
+const ZOOM_DISTANCES := [10.0, 13.5, 18.0]
 const START_ZOOM := 1
 const FOV_DEG := 60.0
 const FOCUS_HEIGHT := 1.0 ## look at the player's chest, not the feet
 const FOLLOW_SHARPNESS := 10.0 ## exponential follow, higher is tighter
 const ZOOM_SHARPNESS := 8.0
+## Tilt-shift depth of field, as ratios of the current zoom distance.
+const DOF_FAR_START := 1.2 ## far blur starts at distance x 1.2
+const DOF_FAR_TRANSITION := 0.5 ## full far blur at distance x 1.7 (top screen edge)
+const DOF_NEAR_END := 0.8 ## near blur ends at distance x 0.8
+const DOF_NEAR_TRANSITION := 0.25
+const DOF_AMOUNT := 0.08 ## Godot default 0.1, keep it soft
 ## Aiming numbers.
 const STICK_DEADZONE := 0.25
 const STICK_AIM_DISTANCE := 8.0 ## stick aim point this far in front of the player
@@ -56,6 +63,11 @@ var _shake_time := 0.0
 
 func _ready() -> void:
 	fov = FOV_DEG
+	var dof := CameraAttributesPractical.new()
+	dof.dof_blur_far_enabled = true
+	dof.dof_blur_near_enabled = true
+	dof.dof_blur_amount = DOF_AMOUNT
+	attributes = dof
 	make_current()
 	if target != null:
 		snap()
@@ -204,6 +216,12 @@ func _place() -> void:
 	if shake > 0.0:
 		rotate_object_local(Vector3.FORWARD,
 				deg_to_rad(CombatFeel.SHAKE_MAX_ROLL_DEG) * shake * sin(_shake_time * CombatFeel.SHAKE_FREQ * 0.83))
+	var dof := attributes as CameraAttributesPractical
+	if dof != null:
+		dof.dof_blur_far_distance = _distance * DOF_FAR_START
+		dof.dof_blur_far_transition = _distance * DOF_FAR_TRANSITION
+		dof.dof_blur_near_distance = _distance * DOF_NEAR_END
+		dof.dof_blur_near_transition = _distance * DOF_NEAR_TRANSITION
 
 
 ## B-27: pushes the view by `v` (m); it springs back on its own.

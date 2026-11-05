@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_01mfx")
 id = &"radio"
-display_name = "무전"
+display_name = "방송"
 workplace = &"radio_room"
 main_stat = "heart"
-note = "구조 대상 소문, 교역 연결"
+note = "방송실에서 방송: 구조 대상 소문, 교역 연결"

@@ -1,7 +1,7 @@
 @tool
 class_name WorkSpot
 extends ColonyMarker
-## A fixed place on the map where residents stand to work (무전실, 벌목터 ...).
+## A fixed place on the map where residents stand to work (방송실, 벌목터 ...).
 ## Spots that belong to a building are placed inside the building scene instead (C-04).
 ## job_id uses data/jobs ids (docs/design/07-residents.md "직업").
 

@@ -65,9 +65,13 @@ func _ready() -> void:
 	EventBus.sortie_started.connect(_on_sortie_started)
 	_last_flow = GameState.flow_state
 	Colony.night_events_ready.connect(_on_night_events_ready)
+	_connect_loss()
 	raid_flow = RaidFlow.new()
 	raid_flow.name = &"RaidFlow"
 	add_child(raid_flow)
+	resident_events = ResidentEventFlow.new()  # #125: 아이 맞이·이름 짓기·편견 소문
+	resident_events.name = &"ResidentEventFlow"
+	add_child(resident_events)
 	_on_flow_state_changed(GameState.flow_state)
 
 
@@ -154,6 +158,7 @@ func show_build_place(build_mode: Node) -> void:
 
 
 var raid_flow: RaidFlow
+var resident_events: ResidentEventFlow
 var raid_hud: RaidDefenseHud
 const RAID_STATES := [Enums.FlowState.BASE_DAY_RAID, Enums.FlowState.NIGHT_RAID]
 
@@ -226,7 +231,7 @@ func _on_flow_state_changed(state: Enums.FlowState) -> void:
 			close(id)
 	# D-13: 입주 의식 for survivors brought home, on top of the evening screen.
 	if state == Enums.FlowState.EVENING and _in_game() and has_screen(&"welcome") and not is_open(&"welcome") \
-			and not Colony.pending_arrivals().is_empty():
+			and not ResidentEventFlow.welcome_queue().is_empty():
 		open(&"welcome")
 	# D-19: transition card (출격 / 귀환 / 쓰러짐 / 불러오기) above the screen just opened.
 	var t := LoadingScreen.transition_for(_last_flow, state)
@@ -245,6 +250,33 @@ func _on_sortie_started(loadout: Dictionary) -> void:
 func _on_night_events_ready(_events: Array) -> void:
 	if _in_game() and has_screen(&"night_event") and not is_open(&"night_event"):
 		open(&"night_event")
+
+
+## #125 part 3 (C-20): the morning funeral scene, a notice when someone goes missing, and a nudge
+## to the memorial at night while someone grieves.
+func _connect_loss() -> void:
+	Colony.funeral_ready.connect(_on_funeral_ready)
+	Colony.resident_missing.connect(_on_resident_missing)
+	EventBus.flow_state_changed.connect(_on_loss_flow)
+
+
+func _on_funeral_ready(resident_ids: Array) -> void:
+	if _in_game() and has_screen(&"funeral") and not resident_ids.is_empty():
+		open(&"funeral", {"resident_ids": resident_ids})
+
+
+func _on_resident_missing(resident_id: StringName) -> void:
+	LossText.note_missing(resident_id)
+	EventBus.notification_posted.emit("@residents ◆ %s을(를) 끝내 찾지 못했어요 · 실종" % LossText.display_name(resident_id), &"danger")
+
+
+func _on_loss_flow(state: Enums.FlowState) -> void:
+	if state != Enums.FlowState.NIGHT or not MemorialScreen.has_stone():
+		return
+	for id in Colony.active_resident_ids():
+		if int(Colony.get_resident(id).get("grief_days", 0)) > 0:
+			EventBus.notification_posted.emit("@memorial 추모비에 다녀올 수 있어요 (슬픔 −1일)", &"info")
+			return
 
 
 ## Auto-opened scenes (welcome, night events) only inside a running scene, not in --script test runs.

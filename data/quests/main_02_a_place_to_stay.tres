@@ -22,7 +22,7 @@ script = ExtResource("1_qdef")
 id = &"main_02_a_place_to_stay"
 type = 0
 title = "머물 곳"
-description = "사람이 늘었다. 잠잘 자리를 마련하고, 소리를 듣고 몰려올 마물에게서 학교를 지켜야 한다."
+description = "사람이 늘었다. 잠잘 자리를 마련하고, 소리를 듣고 몰려올 마물에게서 공터를 지켜야 한다."
 trigger = &"quest"
 trigger_params = {
 "quest": &"main_01_left_behind"

@@ -51,7 +51,7 @@ func _test_rescue() -> bool:
 	var info := Colony.arrival_info(id)
 	ok = _check(info["steps"] == ArrivalRules.STEPS and info["nickname_max"] == 6 and info["beds"].size() == 5,
 		"의식 정보: 단계 5개, 별명 6자, 나머지 빈 침상 5개 (%d)" % info["beds"].size()) and ok
-	ok = _check(info["beds"][0]["building_name"] == "본관 1층" and info["appearance"].has("preset"), "본관 침상 이름, 기본 외형 프리셋") and ok
+	ok = _check(info["beds"][0]["building_name"] == "방송실 야영지" and info["appearance"].has("preset"), "야영지 침낭 이름, 기본 외형 프리셋") and ok
 	var home := Colony.add_resident({"traits": []})
 	Colony.residents[home]["status"] = Enums.ResidentStatus.STRANDED
 	Colony._on_rescue_completed(Colony.get_resident(home))

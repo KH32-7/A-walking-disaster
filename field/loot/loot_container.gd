@@ -19,6 +19,27 @@ const LABELS := {
 }
 const FORCED_LABELS := ["자물쇠 따기", "자물쇠 따는 중"]
 
+## B-26 look per container kind from the private packs: [folder, piece, scale], one picked by
+## position. Without the packs (CI) the greybox box stays.
+const LOOKS := {
+	LootSpot.ContainerType.DRAWER: [["furniture", "nightstand_01", 1.4], ["outdoor_environment", "tool_cabinet", 1.25],
+		["furniture", "dresser_01", 1.1]],
+	LootSpot.ContainerType.MEDICINE: [["gameplay_props", "medical_supplies_crate", 1.8],
+		["gameplay_props", "medical_duffel_bag", 1.4]],
+	LootSpot.ContainerType.TOOLBOX: [["gameplay_props", "tool_box_green", 1.8], ["gameplay_props", "tool_box", 1.9],
+		["outdoor_environment", "tool_cabinet", 1.25]],
+	LootSpot.ContainerType.SUPPLY_CRATE: [["gameplay_props", "long_hard_case", 1.4],
+		["gameplay_props", "small_security_safe", 1.9], ["gameplay_props", "food_supplies_crat", 1.8]],
+	LootSpot.ContainerType.MONSTER_NEST: [["nature/plants", "fungi_polyp_2", 2.4]],
+}
+## Outline by state, one colour per meaning: not opened yet, opened with items left. Emptied: none.
+## User feedback 2026-11-05: easier to spot, so thick and bright.
+const OUTLINE_FRESH := Color("ffcc33")
+const OUTLINE_SEEN := Color("a8c4e0")
+const OUTLINE_PX := 6.0
+const OUTLINE_MATERIAL := preload("res://art/materials/outline.tres")
+const CityKit := preload("res://field/buildings/city_kit.gd")
+
 ## Seconds to identify one slot (design: 칸마다 0.5초).
 const REVEAL_SEC := 0.5
 ## Interactor moving farther than this (m) from where it started ends the session.
@@ -47,6 +68,10 @@ var _use_key := false
 var _interactor: Node3D
 var _start_pos := Vector3.ZERO
 var _timer := 0.0
+## Contents were shown at least once.
+var _seen := false
+var _look: Array[GeometryInstance3D] = []
+var _outlines := {}
 
 
 func _ready() -> void:
@@ -54,6 +79,46 @@ func _ready() -> void:
 	collision_mask = 0
 	if def:
 		_locked = def.locked
+	opened.connect(func(_count: int) -> void: _refresh_outline())
+	slot_taken.connect(func(_i: int, _id: StringName, _n: int) -> void: _refresh_outline())
+	# The spawner sets the transform after add_child; pick the look from the final position.
+	_dress.call_deferred()
+
+
+## Swaps the greybox for a pack piece (when the packs are here) and draws the state outline.
+func _dress() -> void:
+	var greybox := get_node_or_null(^"Greybox") as GeometryInstance3D
+	var looks: Array = LOOKS.get(def.type if def else LootSpot.ContainerType.DRAWER, [])
+	if not looks.is_empty() and CityKit.available():
+		var pick: Array = looks[absi(hash(Vector3i(global_position.round()))) % looks.size()]
+		var part := CityKit.prop_part(pick[1], Vector2.ZERO, 0.0, 0.0, pick[2])
+		if not part.is_empty():
+			var node := CityKit.place(self, pick[0], pick[1], part.xf)
+			if node != null:
+				for mi in node.find_children("*", "GeometryInstance3D", true, false):
+					_look.append(mi)
+				if greybox != null:
+					greybox.visible = false
+	if _look.is_empty() and greybox != null:
+		_look.append(greybox)
+	_refresh_outline()
+
+
+func _refresh_outline() -> void:
+	var color := OUTLINE_FRESH
+	if _seen:
+		color = OUTLINE_SEEN if _slots.any(func(s: Dictionary) -> bool: return s.count > 0) else Color.TRANSPARENT
+	var mat: Material = null
+	if color.a > 0.0:
+		if not _outlines.has(color):
+			var m := OUTLINE_MATERIAL.duplicate() as ShaderMaterial
+			m.set_shader_parameter(&"outline_color", color)
+			m.set_shader_parameter(&"outline_px", OUTLINE_PX)
+			_outlines[color] = m
+		mat = _outlines[color]
+	for g in _look:
+		if is_instance_valid(g):
+			g.material_overlay = mat
 
 
 func _physics_process(delta: float) -> void:
@@ -197,6 +262,7 @@ func _finish_open() -> void:
 
 func _show_contents() -> void:
 	_timer = REVEAL_SEC
+	_seen = true
 	opened.emit(_slots.size())
 	if _next_unidentified() < 0:
 		reveal_finished.emit()

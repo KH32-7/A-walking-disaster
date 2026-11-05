@@ -1,7 +1,7 @@
 @tool
 class_name ZoneMarker
 extends ColonyMarker
-## One base zone (본관 1층, 운동장, 체육관 ...). Center of the zone's rectangle, like BuildArea.
+## One base zone (방송실, 공터, 서쪽 숲 ...). Center of the zone's rectangle, like BuildArea.
 ## Clearing (C-10) and access checks (C-11) work per zone.
 ## Values are placeholders from docs/design/09-base-building.md "구역과 개간" (가안).
 
@@ -22,7 +22,7 @@ const MARKER_GROUP := &"base_zones"
 ## 0 = ground floor. Upper floors need stairs/elevator for access (C-11).
 @export var floor_index := 0
 @export var unlock_tier: Enums.BaseTier = Enums.BaseTier.CAMP
-## Already usable at game start (본관 1층).
+## Already usable at game start (공터, 방송실).
 @export var starts_cleared := false
 ## Clearing work needed (진행도). 0 when starts_cleared.
 @export var clear_work := 0

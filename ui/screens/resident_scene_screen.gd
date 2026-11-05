@@ -10,6 +10,8 @@ const RIGHT := 0.6
 
 var resident_id: StringName = &""
 var dialog: DialogBox
+## DialogBox layout; the #125 event screens use Layout.CENTER (UI redesign 대화).
+var dialog_layout: DialogBox.Layout = DialogBox.Layout.STRIP
 ## Right column (above the strip). Subclasses fill it.
 var column: VBoxContainer
 
@@ -48,7 +50,7 @@ func _build_body(_b: Control) -> void:
 	column.offset_bottom = -330
 	column.add_theme_constant_override(&"separation", 14)
 	add_child(column)
-	dialog = DialogBox.new()
+	dialog = DialogBox.new(dialog_layout)
 	dialog.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	dialog.offset_top = -330
 	dialog.offset_bottom = 0

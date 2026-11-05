@@ -39,7 +39,7 @@ signal defense_requested(raid: Dictionary, first_wave: int)
 ## Design reference: docs/design/07-residents.md .. 10-raids-defense.md
 
 const SAVE_VERSION := 1
-## 본관 1층 침상 6자리 (docs/design/09-base-building.md "구역과 개간"). Buildings add more (C-04).
+## 방송실 야영지 침낭 6자리 (docs/design/09-base-building.md "구역과 개간"). Buildings add more (C-04).
 const START_BED_COUNT := 6
 const START_BED_PREFIX := "main_hall_bed_"
 ## 기지 소음도 = 시설 소음 합 + 인구 × 0.3 (docs/design/09-base-building.md "기지 소음도").
@@ -164,7 +164,7 @@ func base_noise() -> float:
 	return total
 
 
-## 인구 상한 = beds (본관 6 + 침상·숙소 건물).
+## 인구 상한 = beds (야영지 6 + 침상·숙소 건물).
 func population_cap() -> int:
 	return bed_count()
 
@@ -418,7 +418,7 @@ func can_clear(zone_id: StringName) -> Dictionary:
 	return {"ok": reasons.is_empty(), "reasons": reasons}
 
 
-## Pays the zone's one-time start cost (옥상: 계단 수리) the first time someone is put on it.
+## Pays the zone's one-time start cost (북쪽 숲: 비탈 계단) the first time someone is put on it.
 func start_clearing(zone_id: StringName) -> bool:
 	if not can_clear(zone_id)["ok"]:
 		return false
@@ -1465,7 +1465,7 @@ func _use_defense_consumables() -> Dictionary:
 
 
 ## Marks `count` random facilities as damaged (작동 정지). Beds, radio room, shelter are never hit.
-## Buildings in an indoor zone with raid_damage_mult < 1 (체육관 −50%) are skipped that often.
+## Buildings in an indoor zone with raid_damage_mult < 1 (실내 구역 −50%, 지금 지도에는 없음) are skipped that often.
 func _damage_buildings(count: Vector2i, damage: Dictionary) -> void:
 	var pool: Array[StringName] = []
 	for uid in working_building_ids():
@@ -2509,7 +2509,7 @@ func answer_child_wish(a: StringName, b: StringName, choice: StringName, method:
 	out["waiting"] = true
 	if Quests.get_def(ChildRules.LOST_CHILD_QUEST) != null:
 		Quests.start(ChildRules.LOST_CHILD_QUEST, a)
-	EventBus.notification_posted.emit("무전실: 보호자를 잊은 아이가 있다는 소문을 기다린다", &"info")
+	EventBus.notification_posted.emit("방송실: 보호자를 잊은 아이가 있다는 소문을 기다린다", &"info")
 	return out
 
 
@@ -3258,7 +3258,7 @@ func arrival_info(resident_id: StringName) -> Dictionary:
 	for bed_id in free_beds():
 		var uid := _bed_building(bed_id)
 		choices.append({"bed_id": bed_id, "building_uid": uid,
-			"building_name": _def_name(buildings[uid]["def_id"]) if buildings.has(uid) else "본관 1층"})
+			"building_name": _def_name(buildings[uid]["def_id"]) if buildings.has(uid) else "방송실 야영지"})
 	return {
 		"resident_id": resident_id, "name": r["name"], "nickname": r["nickname"], "age_stage": r["age_stage"],
 		"appearance": appearance_for_look(resident_id), "steps": ArrivalRules.STEPS.duplicate(),
@@ -3628,7 +3628,7 @@ func _reset() -> void:
 	buildings = {}
 	power_priority_override = {}
 	_next_building_num = 1
-	# Rooms that exist from the start (무전실 = 본관 방송실). uid = def id.
+	# Rooms that exist from the start (방송실, 공터 남쪽 야영지). uid = def id.
 	for def_id: StringName in BaseDB.buildings():
 		var def := BaseDB.get_building(def_id)
 		if def.prebuilt:

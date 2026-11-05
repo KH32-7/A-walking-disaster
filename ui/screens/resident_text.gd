@@ -24,10 +24,11 @@ const NIGHT_INTRO := {
 	&"bonfire": "%s이(가) 모닥불가에 둘러앉았다.",
 	&"quarrel": "%s 사이에 목소리가 높아졌다.",
 	&"confession": "%s이(가) 조용한 복도 끝에서 마주 섰다.",
-	&"date": "%s이(가) 옥상에서 별을 보고 있다.",
+	&"date": "%s이(가) 공터 가장자리에서 별을 보고 있다.",
 	&"proposal": "%s이(가) 할 말이 있다며 모두를 불렀다.",
 	&"wedding": "%s의 결혼식. 모두가 강당에 모였다.",
 	&"breakup": "%s이(가) 서로 눈을 피한다.",
+	&"prejudice_talk": "%s이(가) 늦은 밤 마주 앉았다. 미뤄 둔 이야기를 꺼낼 때다.",
 }
 
 ## Gift reactions (Colony.give_gift "reaction") → [mark, words]. The mark is a shape glyph so the

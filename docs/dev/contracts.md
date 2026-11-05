@@ -38,6 +38,9 @@
 |---|---|---|
 | `day_started`, `phase_changed`, `flow_state_changed`, `weather_changed`, `sortie_started`, `sortie_ended`, `evening_settled` | A | 전부 |
 | `noise_emitted`, `monster_killed`, `player_downed`, `rescue_completed`, `companion_stranded`, `extraction_completed`, `emergency_return_requested` | B | A·C·D |
+
+`player_downed`는 필드 출격에서만 나간다. 기지 맵(방어전)의 플레이어는 `field_rules = false`라 `Player.downed`만 보낸다(B-23, 이슈 #110).
+C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지·방어전)는 EventBus가 아니라 `Colony` 오토로드에 있다. 아래 "공개 함수"의 Colony 항목.
 | `resident_joined/left/died`, `building_completed/damaged`, `relationship_changed`, `night_event_started`, `raid_warning/started/resolved` | C | A·B·D |
 | `resources_changed`, `item_added/removed`, `equipment_changed`, `bag_changed` | A | D |
 | `notification_posted` | 누구나 | D |
@@ -75,6 +78,8 @@
   `move(entry_id, pos, rotated, area)`, `remove(entry_id, amount)`, `consume(id, n)`, `count(id)`, `entries(area)`, `entry_at(cell, area)`,
   `can_place(size, pos, rotated, area)`, `is_cell(cell, area)`, `unload_to_base()`(탈출: 자원→Economy, 장비→무기고),
   `lose_contents()`(쓰러짐: 안전 주머니 제외 소실. 보호 모드 `keep_bag_on_down`이면 B가 호출하지 않음).
+  방어전(이슈 #110 #121): C의 `DefenseBattle.start()`가 `load_for_defense()`를 불러 창고에서 가방으로 장착 총의 탄약(종류당 `Bag.DEFENSE_AMMO_MAX`)과
+  `Bag.DEFENSE_CONSUMABLES`(각 한 묶음)를 들어가는 만큼 옮기고, 끝날 때(`_finish`) `unload_to_base()`로 남은 것을 창고에 돌려놓는다. 쓴 만큼만 줄어든다.
   영역은 `Bag.AREA_BAG` / `Bag.AREA_POCKET`(2칸). 가방 속 장비의 Armory 소유자는 `Armory.BAG_ID`.
 - **Radio**: `say(trigger_id, context, priority) -> bool`(쿨다운·빈도·1회 제한에 막히면 false), `set_combat(active)`(B: 전투 중 한 줄),
   `morning_broadcast()`. 트리거 id는 `data/radio/`: B가 부르는 것 `low_ammo`, `low_health`, `noise_high`, `rescuee_low_health`,
@@ -101,10 +106,41 @@
   - main.tscn의 `World` 아래에 기지/필드 씬을 바꿔 넣는다. 씬 파일이 아직 없으면 비워 둔다.
 - **Colony**: `get_resident(id)`, `active_resident_ids()`, `base_noise()`, `threat`, `tier`,
   `population()`, `bed_count()`, `free_beds()`, `add_resident(profile) -> id`(구조자 입주도 이것), `assign_bed(resident_id, bed_id)`,
-  `settle_day()`, `roll_raid(time)`, `resolve_raid(raid, mode)`, `predict_raid(raid)` (형식은 아래 "하루 정산과 습격")
+  `settle_day()`, `roll_raid(time)`, `resolve_raid(raid, mode)`, `predict_raid(raid)` (형식은 아래 "하루 정산과 습격").
+  레인 C M2 (이슈 #121). 신호는 모두 `Colony`에 있다.
+  - C-12 신뢰도: `add_trust`, `trust_stage`, `unlocked_story`, `trust_actions`, `talk`, `deep_talk`, `give_gift`, `gift_reaction`. 신호 `trust_changed(id, trust, stage, reason)`.
+  - C-13 입주 의식: `pending_arrivals`, `arrival_info`, `set_nickname`, `set_appearance`, `appearance_for_look`, `choose_bed`, `complete_arrival`, `known_likes`.
+    신호 `arrival_ready`, `arrival_completed`, `resident_profile_changed`.
+  - C-14 관계·밤 이벤트: `relation`, `relation_stage`, `relation_flags`, `relations_of`, `partner_of`, `couples`, `add_relation`, `pending_night_events`,
+    `next_night_event`, `resolve_night_event`, `wedding_status`, `prepare_wedding`, `is_festival_today`. 신호 `night_events_ready`
+    (EventBus `relationship_changed`의 stage는 `friend`·`lover`·`married`·`separated`).
+  - C-15 아이 맞이: `child_arrival_status`, `child_methods`, `child_wishes`, `answer_child_wish`, `orphans`, `guardians_of`, `children_of`, `is_pregnant`,
+    `sortie_block_reason`, `name_child`. 신호 `child_wish`, `child_arrived`. 퀘스트 `rumor_lost_child`가 `data/quests/`에 있으면 입양 소문으로 자동 시작한다.
+  - C-16 편견: `prejudice_chains`, `prejudice_chain`, `choose_prejudice_response`. 신호 `prejudice_rumor`, `prejudice_incident`, `prejudice_resolved`.
+  - C-20 고립·추모: `stranded_residents`, `stranded_in`, `memorial_names`, `pending_funeral`, `end_funeral`, `visit_memorial`. 신호 `resident_missing`, `funeral_ready`, `guardian_changed`.
+  - C-19 전초기지: `outpost_nodes`, `active_outposts`, `is_outpost_active`, `garrison_of`, `can_build_outpost`, `build_outpost`, `assign_garrison`,
+    `outpost_repair_cost`, `repair_outpost`, `outpost_directions`. 신호 `outposts_changed`.
+  - C-21 낮 습격: `field_day_raid`. `raid_warning` info에 `outpost_warned`, `target`이 더해진다.
+  - C-17 직접 방어전: `start_raid(raid)`(`raid_started`), `begin_direct_defense(raid, first_wave, on_done)`, `direct_defense`, `finish_direct_defense`,
+    `skip_direct_defense`, `damage_building`, `reinstall_trap`. 신호 `defense_requested(raid, first_wave)`. 밤 습격의 흐름은 아래 "하루 정산과 습격".
+  - 주민 Dictionary의 필드(`gender`, `origin_tags`, `talked_day`, `gift_day`, `arrival_pending`, `known_likes`, `study_days`, `story_revealed`,
+    `stranded_region`, `strand_days_left`, `grief_days`, `memorial_day` 등)는 [base/residents/resident_data.gd](../../base/residents/resident_data.gd) 맨 위 주석이 기준이다.
+- **B 필드 컴포넌트 (B-23, 기지 방어전, 이슈 #110)**: `Player.field_rules`(false면 `player_downed`를 보내지 않고 `Player.downed`만), `FieldCompanion.setup()`,
+  `field_rules`, `guard_post`, `Monster.raid_goal`, `is_raider()`, `drop_mult`, `died`, `attack_landed`. 구조물 그룹 `raid_structures`, `raid_gates`
+  (`RaidMarch` 상수), 구조물과 주민의 `take_damage(amount, info)`, 구조물 info 키 `structure_damage_mult`, `charges_gates`, `monster_id`, `source`, `element`.
+  자세한 사용법은 [field/README.md](../../field/README.md).
 - **FieldState**: `in_sortie()`, `lost_gear`
 - **Audio**: `play(event_id, position)`, `set_music_state(state)`
-- **Fx**: `spawn(effect_id, position, params)`
+- **Fx**: `spawn(effect_id, position, params)`. 이펙트 id 표는 [vfx/README.md](../../vfx/README.md)(D).
+- **마물 모델과 이펙트 (D-17, 이슈 #148)**:
+  - 신호 `Monster.attack_started(info)`(B): 공격이 맞기 `MonsterRules.ATTACK_WINDUP_SEC`(0.4초) 전마다 한 번. info 키 `monster_id`, `target`.
+    D의 `MonsterVisual`이 여기서 공격 클립을 시작한다.
+  - 모델 `art/monsters/<def.id>.tscn`(D 소유): 있으면 Monster가 `_ready`에서 `Visual` 자식으로 붙이고, 회색 상자 메시(직접 자식 MeshInstance3D)를 숨긴다.
+    `WeakPoint/Core`는 그대로 둔다. `Visual`은 부모 몬스터의 공개 신호(`state_changed`, `attack_started`, `damaged`, `died`, 보스 `pattern_started`)와
+    `velocity`, `state`, `hp`, `def`만 읽는다. 처치되면 `Visual`이 몬스터를 떠나 시체로 남았다가 스스로 사라진다.
+  - 이펙트 id: `MonsterDef.attack_fx`(B 데이터)는 공격이 맞을 때 B가 `Fx.spawn`한다. 값은 `monster_claw`, `monster_slam`, `monster_bite`,
+    `monster_splash`, `monster_cast`. 경보 비명은 `monster_scream`, 처치는 `monster_death`(D가 시체와 함께). 보스 패턴이 맞을 때 `boss_<pattern.id>`
+    (`boss_slam`, `boss_root_burst`, `boss_summon_pods`).
 - **UI**: `open(screen_id, args)`, `close(screen_id)`
 - **DebugConsole**: `register(name, callable, help)`, `execute(line)`, `is_open()`, `godmode`(B가 읽음).
   각 레인은 자기 스크립트에서 `register`로 명령을 추가한다(콘솔 파일은 고치지 않음). 같은 이름으로 다시 등록하면 교체된다.
@@ -119,7 +155,8 @@
 - **ResidentPool**: `draw(filter) -> profile`(검수 완료·미사용 중 무작위, 없으면 `{}`), `get_profile(id)`(사용 여부 무관, 이야기에 고정된 구조자),
   `available_ids(filter)`, `reviewed_ids()`, `mark_used(id)`, `is_used(id)`. 프로필은 `Colony.add_resident(profile)`에 그대로 넣는 형식이고,
   주민이 들어오면(`resident_joined`, 주민 id = 풀 id) 자동으로 사용 표시된다. filter 키: `demo`, `age_stage`, `access_need`, `former_job`,
-  `region_id`, `exclude`. 프로필의 추가 키 `contribution`, `first_line`, `rescue_lines`(호위 대사 3줄), `situation`은 Colony가 무시하고
+  `region_id`, `exclude`. 프로필의 `gender`(`female`/`male`, 비면 입주 때 반반)와 `origin_tags`(출신 태그, 예: `migrant`. B-20 숨은 경로가 소문자로 비교)는
+  Colony가 그대로 보관한다. 추가 키 `contribution`, `first_line`, `rescue_lines`(호위 대사 3줄), `situation`은 Colony가 무시하고
   구조 연출·UI가 읽는다. `reviewed = true`이고 검증(`ResidentTemplate.validate`, 금지어 `tools/resident_banned_words.txt`)을 통과한 항목만 나온다.
 - **Journal** (A-17): `record(kind, context) -> bool`(신호 없는 사건: C-16 `prejudice_resolved {resident_id, other_id}`. 개인 요청 완료는
   `quest_completed`를 듣고 스스로 기록), `days()`, `entries_for_day(day)`, `entries_for_resident(id)`, `all_entries()`, `people()`,
@@ -186,6 +223,10 @@ loadout의 `"seed": int`는 라우터가 없으면 만들어 넣고 저장한다
 `{"occurs": bool, "raid_id": StringName, "time": Enums.RaidTime, "type": StringName, "directions": Array[StringName],
 "strength": float, "target": StringName (&"base" 또는 전초기지 node_id), "warning_sec": float}`. `raid_warning`/`raid_started`의 info도 이 Dictionary.
 
+밤 습격(이슈 #121): 라우터가 `roll_raid(NIGHT)`가 나면 `NIGHT_RAID`로 가서 `Colony.start_raid(raid)`, `Colony.begin_direct_defense(raid, 1, on_done)`을 부르고,
+`on_done`에서 `NIGHT`로 돌아간다. 기지 씬이 떠 있으면 `DefenseBattle`이 3파를 진행한 뒤 `on_done`을 부르고, 없으면(헤드리스) 바로 플레이어 판정(+20%)으로 끝난다.
+`NIGHT_RAID` 동안 `finish_night()`는 거부된다. 낮 습격(머무르기 날, 출격 중 긴급 귀환)은 C가 같은 함수로 처리한다.
+
 `Colony.resolve_raid(raid, mode: Enums.RaidMode) -> Dictionary`:
 `{"outcome": Enums.RaidOutcome, "damage": Dictionary, "casualties": Array, "summary": Array[String]}`, `raid_resolved`를 보낸다.
 직접 방어전(C-17)도 끝나면 같은 형식.
@@ -223,7 +264,7 @@ loadout의 `"seed": int`는 라우터가 없으면 만들어 넣고 저장한다
 ## 아이템 id 규칙
 
 - 자원·소모품은 `data/resources/`의 id(`Economy.get_def`). 탄약은 `ammo_pistol`(권총·기관단총), `ammo_rifle`(소총·저격총),
-  `ammo_shell`(산탄총). 총의 `get_item_stats()["ammo_id"]`가 어느 탄약을 쓰는지 알려준다. 소모품: `first_aid_kit`, `bandage`, `noise_lure`.
+  `ammo_shell`(산탄총). 총의 `get_item_stats()["ammo_id"]`가 어느 탄약을 쓰는지 알려준다. 소모품: `first_aid_kit`, `bandage`, `noise_lure`, `painkiller`, `flashbang`, `grenade`.
 - 통조림은 따로 없다. 필드에서 나오는 식량은 `food`.
 - 정수는 `essence_<element>_<grade>`(예: `essence_green_low`). 정의는 `data/essences/`(EssenceDef, `EssenceRules.make_id(element, grade)`).
   개수는 Economy에 같은 id로, 창고 한도 없음.
@@ -251,12 +292,17 @@ levels/field/<region_id>/
   <region_id>.tscn   B  (layout + dressing을 인스턴스하는 조립 씬)
   layout.tscn        B  (충돌, 내비메시, 마커)
   dressing.tscn      D  (메시, 조명, 장식, 파티클)
+  buildings.tscn     B  (팩 꾸미기: 건물, 땅, 소품, 나무. 에셋이 있을 때만 <region_id>.gd가 붙임)
+  ground_splat.res   B  (buildings.tscn 땅 셰이더가 읽는 혼합 지도, 생성기가 구움)
 levels/base/base_school/
   base_school.tscn   C
   layout.tscn        C
   dressing.tscn      D
 ```
 
+- `buildings.tscn`, `ground_splat.res`는 `field/build/layout_builder.gd`가 layout.tscn과 같이 생성한다(B-26, 이슈 #144). 손으로 고치지 않는다.
+  `buildings.tscn`은 `assets/` 팩 파일을 경로로만 참조하고 메시 데이터는 넣지 않는다. 에셋이 없는 클론(CI)에서는 붙지 않고 회색 맵으로 돈다.
+  팩 꾸미기가 켜지면 지역 씬이 layout의 회색 박스(그룹 `kit_greybox`)를 숨긴다. 숨긴 CSG도 충돌은 남고, D의 dressing은 그대로 동작한다.
 - **필드 마커**(B-02, `field/markers/`): `PlayerSpawn`, `ExtractPoint`, `LootSpot`, `MonsterNest`, `RescueSpot`,
   `HiddenRoute`, `BossArena`, `Recording`.
 - **기지 마커**(C-01, `base/markers/`): `BuildArea`, `ZoneMarker`, `ResourceNode`(나무·잔해), `RaidSpawnPoint`, `WorkSpot`, `OutpostNode`.

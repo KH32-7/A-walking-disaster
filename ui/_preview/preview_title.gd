@@ -53,7 +53,7 @@ func _ready() -> void:
 			var cards := _fake_journal()
 			# Hand-written preview cards so every status shape shows (실종 · 떠남 · 잃음).
 			cards.append({"resident_id": &"pv_min", "name": "민서", "status": &"missing",
-				"lines": ["민서는 침수 상가에서 돌아오지 못했다.", "학교 게시판에는 아직 민서의 이름이 붙어 있다."]})
+				"lines": ["민서는 침수 상가에서 돌아오지 못했다.", "공터 게시판에는 아직 민서의 이름이 붙어 있다."]})
 			cards.append({"resident_id": &"pv_tae", "name": "태오", "status": &"left",
 				"lines": ["태오는 가족을 찾아 대피선 쪽으로 떠났다."]})
 			cards.append({"resident_id": &"pv_gu", "name": "구 씨", "status": &"dead",

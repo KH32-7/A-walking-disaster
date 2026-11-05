@@ -5,10 +5,9 @@
 [resource]
 script = ExtResource("1_hvoay")
 id = &"main_hall"
-display_name = "본관 1층"
-size = Vector2i(22, 7)
+display_name = "방송실"
+size = Vector2i(8, 3)
 starts_cleared = true
 mobility_access = "ramp"
 ramp_zone = &"front_yard"
-indoor = true
-note = "시작 구역: 방송실(무전실), 침상 6자리"
+note = "시작 구역: 처음부터 있는 방송실(높은 나무 데크 위라 공터에 경사로 필요)과 침낭 6자리 야영지"
