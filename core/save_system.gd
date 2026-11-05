@@ -29,6 +29,7 @@ var _providers: Dictionary = {}
 
 func _ready() -> void:
 	register_provider(&"game", GameState)
+	register_provider(&"difficulty", Settings)
 	EventBus.day_started.connect(func(_day: int): autosave())
 	EventBus.sortie_started.connect(func(_loadout: Dictionary): autosave())
 	EventBus.extraction_completed.connect(func(_point_id: StringName): autosave())
