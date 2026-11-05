@@ -71,7 +71,7 @@ func _to_title() -> void:
 func _check_starter_loadout() -> bool:
 	# New game equips the starter pistol on the player (issue #81).
 	_to_title()
-	var ok := _expect(SceneRouter.start_new_game(0), "start_new_game refused")
+	var ok := _expect(SceneRouter.start_new_game(0, &"normal", false), "start_new_game refused")
 	var uid := Armory.get_equipped(Armory.PLAYER_ID, Enums.EquipSlot.MAIN)
 	ok = ok and _expect(uid != &"" and Armory.get_item(uid).def_id == &"pistol", "no starter pistol in MAIN")
 	return ok

@@ -41,6 +41,8 @@ const MODELS := {
 	# 주거
 	&"bed": [["military_folding_cot", 0, -0.1, 0.9, 0.8, 0], ["rolled_sleeping_bag", 0.2, 0.35, 0.4, 0.2, 90]],
 	&"dormitory": [["concrete_patio_4x4m", 0, 0, 1, 1, 0, "fill"], ["exterior_only_house_01", 0, 0, 0.95, 0.95, 0]],
+	# Story house (intro): a big footprint so the suburb house stays near its real size (1:1 at 6×7).
+	&"old_house": [["concrete_patio_4x4m", 0, 0, 1, 1, 0, "fill"], ["exterior_only_house_01", 0, -0.02, 0.95, 0.95, 0], ["rural_mailbox_01", 0.44, 0.47, 0.06, 0.05, 0]],
 	&"family_house": [["concrete_patio_4x4m", 0, 0, 1, 1, 0, "fill"], ["exterior_only_house_04", 0, -0.05, 0.95, 0.85, 0], ["rural_mailbox_01", 0.42, 0.45, 0.1, 0.1, 0]],
 	# 생산
 	&"lumber_yard": [["firewood_rack", -0.15, -0.25, 0.7, 0.4, 0], ["redwood_hollow_log_0", 0.1, 0.25, 0.8, 0.35, 90], ["wheelbarrow", 0.38, -0.3, 0.25, 0.25, 0]],
@@ -194,6 +196,31 @@ static func fit_transform(model: String, at: Vector3, rot_deg: float, local_w: f
 	var basis := Basis(Vector3.UP, deg_to_rad(rot_deg)) * Basis.from_scale(sc)
 	var anchor := Vector3(box.get_center().x, box.position.y, box.get_center().z)
 	return Transform3D(basis, at - basis * anchor)
+
+
+## One model as a node: centred on `at` (its footprint centre, base on `at.y`), turned `rot_deg`.
+## w / d > 0 fit it into that footprint (as build() does); 0 keeps the model's own metres.
+## null when the model is missing (no assets/ submodule). Used by the intro house interior.
+static func prop(model: String, at: Vector3, rot_deg := 0.0, w := 0.0, d := 0.0, fill := false) -> Node3D:
+	var parts := mesh_parts(model)
+	if parts.is_empty():
+		return null
+	var xf: Transform3D
+	if w > 0.0 and d > 0.0:
+		xf = fit_transform(model, at, rot_deg, w, d, fill)
+	else:
+		var box := model_aabb(model)
+		var basis := Basis(Vector3.UP, deg_to_rad(rot_deg))
+		xf = Transform3D(basis, at - basis * Vector3(box.get_center().x, box.position.y, box.get_center().z))
+	var holder := Node3D.new()
+	holder.name = model
+	holder.transform = xf
+	for p: Dictionary in parts:
+		var mi := MeshInstance3D.new()
+		mi.mesh = p["mesh"]
+		mi.transform = p["xform"]
+		holder.add_child(mi)
+	return holder
 
 
 ## A node with every part of one building, centred on its footprint. Grey box if nothing loads.

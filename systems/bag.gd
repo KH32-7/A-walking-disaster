@@ -244,6 +244,26 @@ func move(entry_id: int, pos: Vector2i, rotated: bool, area: int = AREA_BAG) -> 
 ## Takes `amount` (all if < 0) out of an entry and returns what was removed:
 ## {"kind", "ref", "amount"}. Removed items go back to Armory storage; the caller decides what
 ## happens next (Lane B drops it on the ground, Lane D's "버리기" deletes it with Armory.remove_item).
+## Puts the gear of bag entry `entry_id` on `owner_id` (its ItemDef slot). What was in that slot goes
+## into the bag where the new one was, or back to storage if the bag has no room. False = not gear.
+func equip_entry(entry_id: int, owner_id: StringName = Armory.PLAYER_ID) -> bool:
+	var e: Dictionary = _entries.get(entry_id, {})
+	if e.is_empty() or e["kind"] != KIND_ITEM:
+		return false
+	var uid: StringName = e["ref"]
+	var def := Armory.get_def(Armory.get_item(uid).def_id)
+	if def == null or int(def.slot) < 0 or not Armory.can_go_in_slot(def.id, def.slot):
+		return false
+	var old := Armory.get_equipped(owner_id, def.slot)
+	remove(entry_id)
+	if not Armory.equip(owner_id, def.slot, uid):
+		add_item(uid)
+		return false
+	if old != &"":
+		add_item(old)  # -1 = no room: it stays in storage
+	return true
+
+
 func remove(entry_id: int, amount: int = -1) -> Dictionary:
 	if not _entries.has(entry_id):
 		return {}

@@ -237,7 +237,13 @@ func _draw_mark(at: Vector2, kind: StringName) -> void:
 			draw_colored_polygon(PackedVector2Array([at + Vector2(0, -7), at + Vector2(7, 0),
 				at + Vector2(0, 7), at + Vector2(-7, 0)]), UiTokens.GOOD)
 		&"objective":
-			draw_rect(Rect2(at - Vector2(5, 5), Vector2(10, 10)), UiTokens.ACCENT)
+			# Double yellow diamond, same as the M map (MapView.draw_symbol).
+			var o := PackedVector2Array([at + Vector2(0, -9), at + Vector2(9, 0), at + Vector2(0, 9), at + Vector2(-9, 0)])
+			draw_colored_polygon(o, UiTokens.ACCENT)
+			var mid := PackedVector2Array([at + Vector2(0, -6.5), at + Vector2(6.5, 0), at + Vector2(0, 6.5), at + Vector2(-6.5, 0)])
+			draw_colored_polygon(mid, UiTokens.INK)
+			var core := PackedVector2Array([at + Vector2(0, -4.5), at + Vector2(4.5, 0), at + Vector2(0, 4.5), at + Vector2(-4.5, 0)])
+			draw_colored_polygon(core, UiTokens.ACCENT)
 		&"companion":
 			draw_circle(at, 5.0, UiTokens.INFO)
 		&"monster_heard":

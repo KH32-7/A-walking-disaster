@@ -70,6 +70,22 @@ func _run() -> void:
 		await _quick_base()
 		_finish()
 		return
+	if "--quick=cinema" in OS.get_cmdline_user_args():
+		# Only the cutscene, for --write-movie (look at it as a video, then delete it).
+		await _until(func() -> bool: return UI.is_open(&"title"), "타이틀", 60.0)
+		UI.get_screen(&"title").list.focus_row(&"new")
+		await _frames(3)
+		(UI.get_screen(&"title").find_child("start", true, false) as Button).pressed.emit()
+		await _until(func() -> bool: return get_tree().get_first_node_in_group(IntroCutscene.GROUP) != null, "인트로", 60.0)
+		var intro := get_tree().get_first_node_in_group(IntroCutscene.GROUP) as IntroCutscene
+		await _until(func() -> bool: return intro.phase() == &"house" and intro.player.script_input.is_empty(), "컷신 끝", 300.0)
+		await get_tree().create_timer(1.5).timeout
+		_finish()
+		return
+	if "--quick=intro" in OS.get_cmdline_user_args():
+		await _quick_intro()
+		_finish()
+		return
 	if "--quick=prompts" in OS.get_cmdline_user_args():
 		await _quick_prompts()
 		_finish()
@@ -101,6 +117,9 @@ func _day1() -> bool:
 		return false
 	await _loading_done()
 	_check(GameState.day == 1, "1일차로 시작 (지금 %d)" % GameState.day)
+	if not await _intro(false):
+		return false
+	UI.tutorial.skip()  # the full run checks the rest of the game; --quick=intro checks the tutorial
 	_check(UI.base_hud != null and UI.base_hud.visible, "기지 HUD가 보임")
 	_check(Armory.get_equipped(Armory.PLAYER_ID, Enums.EquipSlot.MAIN) != &"", "시작 무기를 들고 있음")
 	_start_state = {"population": Colony.population(), "residents": Colony.active_resident_ids().size(),
@@ -109,7 +128,6 @@ func _day1() -> bool:
 	print("[bot] start state ", _start_state)
 	await _frames(20)
 	await _shot("base_morning_d1")
-	_check(UI.tutorial != null and UI.tutorial.current_step() == &"hello", "첫날 안내가 첫 단계로 뜸")
 	await _build_something()
 	await _visit(&"residents", "주민")
 	await _visit(&"craft", "제작")
@@ -304,6 +322,162 @@ func _quick_prompts() -> void:
 		await _shot("exit_marker")
 
 
+## New-game intro with shots of each beat: cutscene, the house steps, then the park quest up to the
+## doctor following. Shots go to --out; they show paid assets, so delete them after looking.
+func _quick_intro() -> void:
+	_step("quick_intro")
+	await _until(func() -> bool: return UI.is_open(&"title"), "타이틀")
+	UI.get_screen(&"title").list.focus_row(&"new")
+	await _frames(3)
+	(UI.get_screen(&"title").find_child("start", true, false) as Button).pressed.emit()
+	await _until(func() -> bool: return GameState.flow_state == Enums.FlowState.BASE_MORNING, "새 게임 → 기지")
+	await _loading_done()
+	if not await _intro(true):
+		return
+	await get_tree().create_timer(1.2).timeout
+	await _shot("i_base_after_house")
+	_check(UI.tutorial.current_step() == &"sortie", "집을 나오면 '출격' 안내 (지금 %s)" % UI.tutorial.current_step())
+	var base_cam := get_viewport().get_camera_3d()
+	_check(base_cam is BaseCamera, "집을 나오면 기지 클릭 카메라로 돌아옴")
+	_check(get_tree().get_first_node_in_group(&"player") == null, "기지에 걷는 플레이어가 다시 없음")
+	_check(not UI.cinematic.skippable and UI.hud.visible and UI.base_hud.visible, "HUD가 원래대로")
+	UI.open(&"build")
+	await _until(func() -> bool: return UI.is_open(&"build"), "집을 나온 뒤 건설 화면이 열림")
+	UI.close(&"build")
+	await _frames(5)
+	var base: Node = _world_scene()
+	_check(base.build_mode.start(&"bonfire"), "건설 놓기 모드가 정상으로 시작됨")
+	await _frames(10)
+	await _shot("i_build_after_intro")
+	base.build_mode.cancel()
+	await _frames(5)
+	if not await _sortie(&"city_park"):
+		return
+	await get_tree().create_timer(1.5).timeout
+	_check(Quests.is_active(&"tutorial_doctor"), "공원에 오면 '의사를 찾아서' 의뢰가 시작됨")
+	var doctor: RescueTarget = UI.tutorial._doctor()
+	_check(doctor != null, "관리사무소에 의사가 있음")
+	await _shot("i_park_quest")
+	UI.open(&"map")
+	await _frames(20)
+	await _shot("i_park_map")
+	UI.close(&"map")
+	await _frames(5)
+	var player: Player = get_tree().get_first_node_in_group(&"player")
+	var office: Vector3 = UI.tutorial._office_pos()
+	player.global_position = office + Vector3(6, 0, 12)
+	await get_tree().create_timer(1.0).timeout
+	_check(UI.tutorial.current_step() == &"fight", "관리사무소 근처: 마물 처치 안내 (지금 %s)" % UI.tutorial.current_step())
+	await _shot("i_fight")
+	for m in UI.tutorial._guards:
+		if is_instance_valid(m):
+			m.take_damage(99999.0, {"source": player})
+	await get_tree().create_timer(1.5).timeout
+	if doctor != null:
+		player.global_position = doctor.global_position + Vector3(1.2, 0, 1.2)
+		await get_tree().create_timer(0.8).timeout
+		_check(UI.tutorial.current_step() == &"rescue", "의사 옆: 일으켜 세우기 안내 (지금 %s)" % UI.tutorial.current_step())
+		await _shot("i_rescue")
+		doctor.begin_open(player)
+		await get_tree().create_timer(1.0).timeout
+		_check(doctor.is_rescued(), "의사가 따라옴")
+		_check(UI.tutorial.current_step() == &"extract", "탈출 안내 (지금 %s)" % UI.tutorial.current_step())
+		await _shot("i_extract")
+
+
+## The intro: cutscene (shots, or skipped), then the house steps done by hand.
+func _intro(shots: bool) -> bool:
+	_step("intro")
+	var intro := get_tree().get_first_node_in_group(IntroCutscene.GROUP) as IntroCutscene
+	if not _check(intro != null, "새 게임이면 인트로가 시작됨"):
+		return false
+	_check(Armory.get_equipped(Armory.PLAYER_ID, Enums.EquipSlot.MAIN) == &"", "처음엔 총이 없음")
+	var player: Player = intro.player
+	if shots:
+		var t0 := Time.get_ticks_msec()
+		for at: Array in [[2.2, "i_radio"], [8.4, "i_dawn"], [10.4, "i_chase_wide"], [12.2, "i_chase_front"]]:
+			while Time.get_ticks_msec() - t0 < int(float(at[0]) * 1000.0):
+				await get_tree().process_frame
+			await _shot(String(at[1]))
+		await _until(func() -> bool: return not player.visible, "주인공이 집으로 뛰어듦", 20.0)
+		await get_tree().create_timer(0.35).timeout
+		await _shot("i_door_slam")
+		await get_tree().create_timer(1.1).timeout
+		await _shot("i_splat")
+		await _until(func() -> bool: return UI.cinematic._title.modulate.a > 0.95, "타이틀 카드", 10.0)
+		await _shot("i_title")
+	else:
+		await _frames(5)
+		UI.cinematic.skip_requested.emit()
+	await _until(func() -> bool: return intro.phase() == &"house", "집 안", 25.0)
+	if shots:
+		await get_tree().create_timer(1.4).timeout
+		await _shot("i_inside_close")
+	await _until(func() -> bool: return player.script_input.is_empty(), "조작할 수 있음", 10.0)
+	await get_tree().create_timer(0.8).timeout
+	_check(UI.tutorial.current_step() == &"chest", "상자 안내 (지금 %s)" % UI.tutorial.current_step())
+	if shots:
+		await _shot("i_chest_spot")
+	var chest := intro.interior.chest
+	player.global_position = chest.global_position + Vector3(0, 0, 1.1)
+	await _frames(5)
+	player.interact()
+	if not await _until(func() -> bool: return UI.is_open(&"bag"), "상자를 열면 가방이 열림", 10.0):
+		return false
+	await _until(func() -> bool: return bool(chest.get_slots()[0].identified), "권총 확인", 5.0)
+	await _frames(10)
+	_check(UI.tutorial.current_step() == &"take_gun", "권총 챙기기 안내 (지금 %s)" % UI.tutorial.current_step())
+	if shots:
+		await get_tree().create_timer(0.7).timeout
+		await _shot("i_take_gun")
+	(UI.get_screen(&"bag").call(&"loot_cell", 0) as Button).pressed.emit()
+	await _frames(10)
+	var uid: StringName = UI.tutorial._bag_pistol()
+	_check(uid != &"", "권총이 가방에 들어감")
+	_check(UI.tutorial.current_step() == &"equip", "장착 안내 (지금 %s)" % UI.tutorial.current_step())
+	if shots:
+		await get_tree().create_timer(0.7).timeout
+		await _shot("i_equip")
+	for e: Dictionary in Bag.entries():
+		if StringName(e.get("ref", &"")) == uid:
+			Bag.equip_entry(int(e.id))
+	await _frames(10)
+	_check(Armory.get_equipped(Armory.PLAYER_ID, Enums.EquipSlot.MAIN) == uid, "권총을 장착함")
+	if shots:
+		await get_tree().create_timer(0.7).timeout
+		await _shot("i_equipped")
+	UI.close(&"bag")
+	await _frames(10)
+	_check(UI.tutorial.current_step() == &"talk", "대화 안내 (지금 %s)" % UI.tutorial.current_step())
+	if shots:
+		await get_tree().create_timer(0.7).timeout
+		await _shot("i_talk_spot")
+	player.global_position = intro.interior.patient_point() + Vector3(1.4, 0, 0.6)
+	await _frames(5)
+	player.interact()
+	await _until(func() -> bool: return UI.cinematic.is_talking(), "대화가 시작됨", 5.0)
+	var n := 0
+	while UI.cinematic.is_talking() and n < 40:
+		await get_tree().create_timer(0.5).timeout
+		if n == 2 and shots:
+			await _shot("i_talk")
+		var ev := InputEventKey.new()
+		ev.keycode = KEY_F
+		ev.pressed = true
+		UI.cinematic._input(ev)
+		n += 1
+	_check(GameState.has_flag(IntroCutscene.FLAG_TALKED), "한도윤이 의사를 부탁함")
+	_check(not Colony.get_resident(&"intro_doyun").is_empty(), "한도윤이 주민이 됨 (부상)")
+	await get_tree().create_timer(0.8).timeout
+	_check(UI.tutorial.current_step() == &"exit", "나가기 안내 (지금 %s)" % UI.tutorial.current_step())
+	if shots:
+		await _shot("i_exit_spot")
+	player.global_position = intro.interior.door_point() + Vector3(0, 0, -0.9)
+	await _frames(5)
+	player.interact()
+	return await _until(func() -> bool: return get_tree().get_first_node_in_group(IntroCutscene.GROUP) == null, "집을 나와 기지로", 10.0)
+
+
 ## Short look at the base: 45° camera, no player, grid while placing, [클릭] chip on hover.
 func _quick_base() -> void:
 	_step("quick_base")
@@ -413,10 +587,6 @@ func _build_something() -> void:
 	await _until(func() -> bool: return not UI.is_open(&"build"), "현장 카드가 닫힘")
 	print("[bot] after close ids=", Colony.buildings.keys(), " uid still=", Colony.buildings.has(uid))
 	await _frames(10)
-	if GameState.day == 1 and _builds == 1:
-		_check(bool(Colony.get_building(uid).get("completed", false)), "첫날 안내: 방송실 지기가 첫 건물을 같이 지어 줌")
-		_check(UI.tutorial.current_step() == &"sortie", "첫날 안내가 '출격' 단계로 넘어감 (지금 %s)" % UI.tutorial.current_step())
-		await _shot("tutorial_after_build")
 
 
 func _visit(id: StringName, label: String) -> void:

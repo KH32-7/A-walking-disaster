@@ -65,6 +65,8 @@ func spawn(rng: RandomNumberGenerator) -> Array[RescueTarget]:
 	for s in spawns:
 		if placed.size() >= max_per_sortie:
 			break
+		if s.required_flag != &"" and not GameState.has_flag(s.required_flag):
+			continue
 		var profile := profile_for(s)
 		if profile.is_empty() or (s.template_id != &"" and not Colony.get_resident(s.template_id).is_empty()):
 			continue

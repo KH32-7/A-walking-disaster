@@ -14,6 +14,8 @@ var _bag: BagGrid
 var _pocket: BagGrid
 var _bag_count: Label
 var _shimmer_t := 0.0
+var _equip_grid: GridContainer
+var _equip_cells := {}
 
 
 func _init() -> void:
@@ -76,8 +78,9 @@ func _build_body(b: Control) -> void:
 	eg.columns = 3
 	eg.add_theme_constant_override(&"h_separation", 8)
 	eg.add_theme_constant_override(&"v_separation", 8)
-	for s in ItemInfo.SLOT_NAMES.size():
-		eg.add_child(_equip_cell(s))
+	_equip_grid = eg
+	_fill_equip()
+	EventBus.equipment_changed.connect(_on_equipment_changed)
 	(ep[1] as VBoxContainer).add_child(eg)
 	var sum: Dictionary = Armory.get_owner_summary(Armory.PLAYER_ID)
 	(ep[1] as VBoxContainer).add_child(MenuScreen.label("방어 %d · 방어구 소음 %+.1fm" % [int(sum.get("defense", 0)),
@@ -163,16 +166,20 @@ func _loot_cell(i: int, s: Dictionary) -> Control:
 		b.modulate.a = 0.35
 		b.disabled = true
 	else:
-		var info := ItemInfo.for_resource(StringName(s.item_id))
+		var gear := bool(s.get("gear", false))
+		var info := _gear_info(StringName(s.item_id)) if gear else ItemInfo.for_resource(StringName(s.item_id))
 		var tex := ItemInfo.icon(StringName(s.item_id))
 		if tex != null:
 			b.icon = tex
 			b.expand_icon = true
 			b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-			b.text = "%s ×%d" % [info.name, int(s.count)]
+			b.text = String(info.name) if gear else "%s ×%d" % [info.name, int(s.count)]
 		else:
-			b.text = "%s\n×%d" % [info.name, int(s.count)]
+			b.text = String(info.name) if gear else "%s\n×%d" % [info.name, int(s.count)]
+		if gear:  # gear stands out from resources: accent fill and rim
+			sb.bg_color = Color(UiTokens.ACCENT, 0.28)
+			sb.border_color = UiTokens.ACCENT
 		b.add_theme_font_size_override(&"font_size", 13)
 		b.add_theme_color_override(&"font_color", UiTokens.TEXT)
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -184,6 +191,51 @@ func _loot_cell(i: int, s: Dictionary) -> Control:
 			_tip.show_info(info.tooltip, b.global_position + Vector2(b.size.x + 10, 0)))
 		b.mouse_exited.connect(func() -> void: _tip.visible = false)
 	return b
+
+
+func _on_equipment_changed(_owner_id: StringName, _slot: int) -> void:
+	_fill_equip()
+
+
+func _fill_equip() -> void:
+	if _equip_grid == null:
+		return
+	MenuScreen.clear(_equip_grid)
+	_equip_cells.clear()
+	for s in ItemInfo.SLOT_NAMES.size():
+		var cell := _equip_cell(s)
+		_equip_cells[s] = cell
+		_equip_grid.add_child(cell)
+
+
+## Name and tooltip of a gear slot in a container (an ItemDef id, not an item yet).
+static func _gear_info(def_id: StringName) -> Dictionary:
+	var def := Armory.get_def(def_id)
+	var name := def.name if def != null else String(def_id)
+	var tag: String = ItemInfo.SLOT_NAMES[clampi(int(def.slot), 0, 6)] if def != null else "장비"
+	return {"name": name, "tooltip": {"title": name, "rarity": 0, "tags": [tag],
+		"desc": "누르면 가방에 들어가요. 가방에서 우클릭 → 장착", "stats": []}}
+
+
+## Loot cell of slot `index` (tutorial spotlight). null when not built.
+func loot_cell(index: int) -> Control:
+	if _loot_box == null or index < 0 or index >= _loot_box.get_child_count():
+		return null
+	return _loot_box.get_child(index) as Control
+
+
+## Screen rect of the bag entry holding item `uid` (tutorial spotlight), or an empty Rect2.
+func bag_entry_rect(uid: StringName) -> Rect2:
+	for e: Dictionary in Bag.entries(Bag.AREA_BAG):
+		if StringName(e.get("ref", &"")) == uid:
+			var r := _bag.cell_rect(e.pos, e.size)
+			return Rect2(_bag.global_position + r.position, r.size)
+	return Rect2()
+
+
+## The equipment panel of `slot` (tutorial spotlight).
+func equip_cell(slot: int) -> Control:
+	return _equip_cells.get(slot, null)
 
 
 func take_all() -> void:
@@ -284,6 +336,10 @@ func _on_context(e: Dictionary, at: Vector2) -> void:
 	var info := ItemInfo.for_entry(e)
 	var head := MenuScreen.label("   " + String(info.name), &"LabelOnCreamDim", 12)
 	v.add_child(head)
+	if StringName(e.kind) == &"item" and int(info.get("slot", -1)) >= 0:
+		v.add_child(_ctx_row("장착", func() -> void:
+			if not Bag.equip_entry(int(e.id)):
+				EventBus.notification_posted.emit("지금은 장착할 수 없어요", &"warn")))
 	var to_pocket := int(e.area) == Bag.AREA_BAG
 	v.add_child(_ctx_row("안전 주머니로" if to_pocket else "가방으로", func() -> void:
 		_move_area(e, Bag.AREA_POCKET if to_pocket else Bag.AREA_BAG)))

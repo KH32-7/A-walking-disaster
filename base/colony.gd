@@ -293,6 +293,9 @@ func remove_beds(bed_ids: Array[StringName]) -> void:
 
 # --- Buildings (Lane C) --------------------------------------------------------
 
+## Former job names for the "전직 … 주민 필요" reason (residents_screen has the full list).
+const _JOB_REASON_NAMES := {&"doctor": "의사", &"nurse": "간호사", &"electrician": "전기기사", &"carpenter": "목수"}
+
 ## Can `def_id` be built now? Checks tier, required buildings, flags (blueprints, first death),
 ## a resident with the required former job, and the Lv1 cost. Placement (cells, zone, paths)
 ## is checked by the grid (C-03). Returns {"ok": bool, "reasons": Array[String]} for the UI.
@@ -303,6 +306,8 @@ func can_build(def_id: StringName) -> Dictionary:
 		return {"ok": false, "reasons": ["알 수 없는 건물: %s" % def_id]}
 	if def.prebuilt:
 		reasons.append("처음부터 있는 시설")
+	if def.story_only:
+		reasons.append("이야기로만 생기는 건물")
 	if tier < def.tier_min:
 		reasons.append("기지 단계 %s 필요" % Enums.BaseTier.keys()[def.tier_min])
 	for req in def.requires:
@@ -313,7 +318,7 @@ func can_build(def_id: StringName) -> Dictionary:
 		if not GameState.has_flag(flag):
 			reasons.append("조건 필요: %s" % flag)
 	if def.requires_former_job != &"" and not _has_former_job(def.requires_former_job):
-		reasons.append("전직 %s 주민 필요" % def.requires_former_job)
+		reasons.append("전직 %s 주민 필요" % _JOB_REASON_NAMES.get(def.requires_former_job, String(def.requires_former_job)))
 	if not Economy.can_afford(def.cost_for_level(1)):
 		reasons.append("자원 부족")
 	return {"ok": reasons.is_empty(), "reasons": reasons}

@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="QuestDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://systems/defs/quest_def.gd" id="1_qdef"]
+[ext_resource type="Script" path="res://systems/defs/quest_objective.gd" id="2_qobj"]
+
+[sub_resource type="Resource" id="Resource_rescue"]
+script = ExtResource("2_qobj")
+id = &"rescue_doctor"
+kind = 2
+text = "관리사무소의 의사 데려오기"
+region_id = &"city_park"
+target_id = &"demo_doctor"
+marker = &"RescueSpot_rs_office"
+marker_label = "의사는 이 건물 안에 있다"
+
+[resource]
+script = ExtResource("1_qdef")
+id = &"tutorial_doctor"
+type = 0
+title = "의사를 찾아서"
+description = "낡은 집에서 만난 한도윤이 다리를 다쳤다. 공원 관리사무소에 숨은 의사가 있으면 기지에 의무실을 차릴 수 있다."
+trigger = &"manual"
+giver_id = &"intro_doyun"
+objectives = Array[ExtResource("2_qobj")]([SubResource("Resource_rescue")])
+rewards = {
+"flags": [&"doctor_rescued"]
+}

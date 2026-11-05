@@ -50,6 +50,16 @@ func _ready() -> void:
 	add_child(base_camera)
 	base_camera.setup(grid, build_mode, player.global_position)
 	_set_player_mode(false)
+	# New game: the intro cutscene and the house (IntroCutscene) until the hero walks out again.
+	if IntroCutscene.pending():
+		var intro := IntroCutscene.new()
+		intro.name = "IntroCutscene"
+		add_child(intro)
+
+
+## Walking player (intro house, 직접 방어전) or the click camera. For IntroCutscene.
+func set_player_mode(on: bool) -> void:
+	_set_player_mode(on)
 
 
 ## The battle node runs the waves and reports to Colony; D-14 finds it with get_battle().

@@ -191,7 +191,9 @@ func _draw_ink() -> void:
 func _draw_mark(at: Vector2, kind: StringName, label: String, font: Font) -> void:
 	draw_symbol(_ink, at, kind)
 	if label != "":
-		if kind == &"extract":
+		if kind == &"objective":
+			_place_label(at, label, UiThemeBuilder.font_kr(700), UiTokens.ACCENT, 17)
+		elif kind == &"extract":
 			# Exits are what the player looks for first: bigger, bolder, in the exit colour.
 			_place_label(at, label, UiThemeBuilder.font_kr(700), UiTokens.GOOD.lightened(0.35), 17)
 		else:
@@ -262,8 +264,13 @@ static func draw_symbol(ci: CanvasItem, at: Vector2, kind: StringName) -> void:
 			ci.draw_colored_polygon(d, UiTokens.GOOD)
 			ci.draw_colored_polygon(_grow(d, at, -6.0), UiTokens.INK)
 		&"objective":
-			ci.draw_rect(Rect2(at - Vector2(11, 11), Vector2(22, 22)), out)
-			ci.draw_rect(Rect2(at - Vector2(9, 9), Vector2(18, 18)), UiTokens.ACCENT)
+			# Double yellow diamond (사용자 요청 2026-11-06): an outer ring and a solid core, so it never
+			# reads as the green exit diamond even without colour.
+			var o := PackedVector2Array([at + Vector2(0, -17), at + Vector2(17, 0), at + Vector2(0, 17), at + Vector2(-17, 0)])
+			ci.draw_colored_polygon(_grow(o, at, 3.0), out)
+			ci.draw_colored_polygon(o, UiTokens.ACCENT)
+			ci.draw_colored_polygon(_grow(o, at, -4.0), out)
+			ci.draw_colored_polygon(_grow(o, at, -7.0), UiTokens.ACCENT)
 		&"recording":
 			ci.draw_rect(Rect2(at - Vector2(11, 8), Vector2(22, 16)), out)
 			ci.draw_rect(Rect2(at - Vector2(9, 6), Vector2(18, 12)), UiTokens.TEXT)

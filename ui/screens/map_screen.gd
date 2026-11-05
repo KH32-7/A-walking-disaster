@@ -284,7 +284,8 @@ func _collect() -> void:
 		entry["found"] = node != null
 		if node != null:
 			entry["pos"] = node.global_position
-			marks.append({"pos": node.global_position, "kind": &"objective", "label": _short(String(o.text))})
+			var where := String(o.get("marker_label", ""))
+			marks.append({"pos": node.global_position, "kind": &"objective", "label": where if where != "" else _short(String(o.text))})
 		objectives.append(entry)
 	for r: Node3D in _markers(Recording.GROUP):
 		if _explore != null and _explore.is_seen(r.global_position):

@@ -59,6 +59,8 @@ func _on_flow_state_changed(state: Enums.FlowState) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed(&"pause"):
 		return
+	if UI.cinematic != null and (UI.cinematic.skippable or UI.cinematic.is_talking()):
+		return  # Esc is "hold to skip" in a cutscene
 	if _pause_open:
 		_close_pause()
 		get_viewport().set_input_as_handled()
