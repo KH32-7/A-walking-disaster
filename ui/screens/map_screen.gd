@@ -152,8 +152,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if not visible or UI.top() != StringName(name) or not event.is_pressed() or event.is_echo():
 		return
 	if event.is_action(&"map"):
-		close()
+		# Mark handled first: close() removes this node, so get_viewport() is null afterwards (#86).
 		get_viewport().set_input_as_handled()
+		close()
 	elif (event as InputEventKey).keycode == KEY_J:
 		UI.open(&"journal")
 		get_viewport().set_input_as_handled()

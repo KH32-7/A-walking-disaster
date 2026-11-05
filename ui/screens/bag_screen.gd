@@ -310,8 +310,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			take_all()
 			get_viewport().set_input_as_handled()
 		elif k == KEY_TAB:
-			close()
+			# Mark handled first: close() removes this node, so get_viewport() is null afterwards (#86).
 			get_viewport().set_input_as_handled()
+			close()
 	if event is InputEventMouseButton and event.pressed and _ctx != null and not _ctx.get_global_rect().has_point(get_global_mouse_position()):
 		_ctx.queue_free()
 		_ctx = null
