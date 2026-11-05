@@ -13,6 +13,8 @@ extends Node3D
 ##   F11 fake day raid warning (B-22 emergency return), then Y go back / N stay
 ##   F12 spawn the next roster monster in front of you, Shift+F12 as an elite
 ## Console (`): `card <0-2>` answers the nearest rescue target's picture card round.
+##   B-15: `engrave <essence_id> [slot] [main|sub]` (A's free engraving), `mana [0-100]` fills the
+##   weapon in hand's gauge (default 100), then X releases.
 
 const REGION_ID := &"flooded_mall"
 const LOADOUT := {Enums.EquipSlot.MAIN: &"pistol", Enums.EquipSlot.SUB: &"dagger"}
@@ -63,6 +65,7 @@ func _ready() -> void:
 	EventBus.rescue_completed.connect(func(r: Dictionary) -> void: _log("rescued %s" % r.get("name", "?")))
 	EventBus.extraction_completed.connect(func(id: StringName) -> void: _log("extracted at %s" % id))
 	DebugConsole.register(&"card", _cmd_card, "card <0-2> - answer the nearest rescue card round")
+	DebugConsole.register(&"mana", _cmd_mana, "mana [0-100] - set the weapon in hand's mana (B-15)")
 	FieldState.dusk_started.connect(func() -> void: _log("dusk"))
 	FieldState.night_started.connect(func() -> void: _log("night"))
 	_roster = _load_roster()
@@ -89,12 +92,14 @@ func _process(_delta: float) -> void:
 		"Clock: %s  %s" % [_clock_text(), _night_text()],
 		"Player status: %s" % _status_text(_player.status),
 		"Class: %s" % _class_text(),
+		"Magic: %s" % _magic_text(),
 		"Nearest monster: %s" % _nearest_monster_text(),
 		"Emergency: %s" % _emergency_text(),
 		"Container: %s" % _container_text(),
 		"Result: %s" % (_result_text(result) if not result.is_empty() else "-"),
 		"Events: %s" % " / ".join(_events),
 		"T take all, K kill near, F8 rescue, F9 extract, F1-F7 weapons/ammo, ` card <n>",
+		"` engrave <essence_id>, ` mana [n], X release",
 		"F10 +3 min, F11 raid warning (Y/N), F12 spawn monster (Shift elite)",
 	])
 	_draw_route()
@@ -320,6 +325,21 @@ func _night_text() -> String:
 	if FieldState.is_dusk():
 		return "DUSK"
 	return "dusk in %ds" % int(FieldState.dusk_left_sec())
+
+
+## B-15: magic weapon in hand, its mana, combo and charged shots.
+func _magic_text() -> String:
+	var stats := (_player.get_node(^"Weapons") as WeaponHolder).current_stats()
+	if not MagicRules.is_magic(stats):
+		return "normal weapon"
+	var combo: Variant = stats.get("combo")
+	return "%s, mana %.0f, combo %s, charged %d" % [stats.get("display_name", ""), _player.magic.mana(),
+		combo["name"] if combo != null else "-", _player.magic.charged_shots()]
+
+
+func _cmd_mana(args: PackedStringArray) -> String:
+	_player.magic.set_mana(float(args[0]) if not args.is_empty() and args[0].is_valid_float() else MagicRules.MANA_MAX)
+	return "mana %.0f" % _player.magic.mana()
 
 
 ## B-13: class, mastery, Q / E cooldowns and lasting skill effects.
