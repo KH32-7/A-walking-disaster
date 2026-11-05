@@ -1,0 +1,42 @@
+[gd_resource type="Resource" script_class="FxDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/fx_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://vfx/defs/fx_layer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/magic_arsenal/textures/ground_water.png"
+grow = Vector2(2.0, 2.0)
+lifetime = 0.4
+color = Color(0.55, 0.7, 0.45, 0.85)
+fade_out = 0.7
+loop = true
+fade_in = 0.5
+blend = 1
+follow_radius = true
+spin = true
+uv_scroll = Vector2(0.02, 0.01)
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/water_bubble.png"
+loop = true
+explosiveness = 0.0
+amount = 8
+emit_radius = 0.8
+direction = Vector3(0.0, 1.0, 0.0)
+spread_deg = 5.0
+speed = Vector2(0.1, 0.3)
+size = Vector2(0.08, 0.16)
+lifetime = 1.2
+color = Color(0.7, 0.85, 0.6, 0.8)
+follow_radius = true
+
+[resource]
+script = ExtResource("1_def")
+id = &"essence_combo_swamp"
+lifetime_param = &"duration"
+max_alive = 8
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1")])

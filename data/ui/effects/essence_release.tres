@@ -1,0 +1,70 @@
+[gd_resource type="Resource" script_class="FxDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/fx_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://vfx/defs/fx_layer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+kind = 2
+texture = ""
+element_textures = PackedStringArray("", "res://assets/vfx/magic_arsenal/textures/ground_life.png", "res://assets/vfx/magic_arsenal/textures/ground_earth01.png", "res://assets/vfx/magic_arsenal/textures/ground_water.png", "res://assets/vfx/magic_arsenal/textures/ground_lightning.png")
+grow = Vector2(0.5, 6.0)
+lifetime = 0.7
+fade_out = 0.6
+follow_radius = true
+spin = true
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+kind = 0
+texture = ""
+element_textures = PackedStringArray("", "res://assets/vfx/magic_arsenal/textures/life_drop.png", "res://assets/vfx/magic_arsenal/textures/earth_dust.png", "res://assets/vfx/magic_arsenal/textures/water_bubble.png", "res://assets/vfx/magic_arsenal/textures/light_particle.png")
+tint_element = true
+amount = 18
+emit_radius = 1.0
+speed = Vector2(1.0, 2.5)
+direction = Vector3(0.0, 1.0, 0.0)
+spread_deg = 15.0
+lifetime = 0.9
+size = Vector2(0.15, 0.3)
+end_scale = 0.3
+follow_radius = true
+
+[sub_resource type="Resource" id="layer_2"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/glow01.png"
+amount = 1
+size = Vector2(1.5, 1.5)
+speed = Vector2(0.0, 0.0)
+lifetime = 0.2
+end_scale = 1.6
+spin = false
+color = Color(1.0, 1.0, 1.0, 0.8)
+flash = true
+fade_out = 0.8
+tint_element = true
+offset = Vector3(0.0, 1.0, 0.0)
+
+[sub_resource type="Resource" id="layer_3"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/verticalglow.png"
+tint_element = true
+amount = 1
+size = Vector2(2.5, 2.5)
+stretch = 1.5
+speed = Vector2(0.0, 0.0)
+spin = false
+lifetime = 0.45
+fade_in = 0.15
+color = Color(1.0, 1.0, 1.0, 0.6)
+flash = true
+offset = Vector3(0.0, 1.2, 0.0)
+
+[resource]
+script = ExtResource("1_def")
+id = &"essence_release"
+base_radius = 3.0
+max_alive = 3
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1"), SubResource("layer_2"), SubResource("layer_3")])

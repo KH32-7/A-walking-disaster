@@ -1,0 +1,112 @@
+[gd_resource type="Resource" script_class="FxDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/fx_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://vfx/defs/fx_layer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/glow01.png"
+amount = 1
+size = Vector2(2.5, 2.5)
+speed = Vector2(0.0, 0.0)
+lifetime = 0.12
+end_scale = 1.5
+spin = false
+color = Color(1.0, 0.8, 0.5, 1.0)
+flash = true
+fade_out = 0.8
+follow_radius = true
+offset = Vector3(0.0, 0.6, 0.0)
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/fire_flame.png"
+amount = 12
+size = Vector2(0.6, 1.0)
+end_scale = 1.8
+speed = Vector2(1.0, 3.0)
+emit_radius = 0.4
+lifetime = 0.5
+color = Color(1.0, 0.7, 0.4, 1.0)
+fade_out = 0.7
+follow_radius = true
+offset = Vector3(0.0, 0.5, 0.0)
+
+[sub_resource type="Resource" id="layer_2"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/smoke02.png"
+blend = 1
+delay = 0.05
+amount = 10
+size = Vector2(0.8, 1.4)
+end_scale = 2.0
+speed = Vector2(0.5, 1.5)
+gravity = -0.5
+emit_radius = 0.5
+lifetime = 1.6
+color = Color(0.32, 0.3, 0.28, 0.55)
+fade_in = 0.1
+follow_radius = true
+offset = Vector3(0.0, 0.6, 0.0)
+
+[sub_resource type="Resource" id="layer_3"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/earth_spray.png"
+blend = 1
+amount = 10
+size = Vector2(0.1, 0.2)
+speed = Vector2(4.0, 8.0)
+gravity = 12.0
+direction = Vector3(0.0, 1.0, 0.0)
+spread_deg = 70.0
+lifetime = 0.7
+color = Color(0.45, 0.4, 0.35, 1.0)
+follow_radius = true
+offset = Vector3(0.0, 0.3, 0.0)
+
+[sub_resource type="Resource" id="layer_4"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/elemental_spells/textures/shockwave_1.png"
+grow = Vector2(0.5, 6.0)
+lifetime = 0.35
+color = Color(1.0, 0.85, 0.6, 0.7)
+fade_out = 0.8
+channel = 1
+follow_radius = true
+
+[sub_resource type="Resource" id="layer_5"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/elemental_spells/textures/crack_tex.png"
+grow = Vector2(5.0, 5.5)
+lifetime = 3.0
+color = Color(0.05, 0.04, 0.03, 0.6)
+fade_out = 0.4
+channel = 1
+blend = 1
+follow_radius = true
+fade_in = 0.02
+
+[sub_resource type="Resource" id="layer_6"]
+script = ExtResource("2_layer")
+kind = 4
+light_energy = 4.0
+light_range = 8.0
+lifetime = 0.25
+color = Color(1.0, 0.75, 0.45, 1.0)
+flash = true
+follow_radius = true
+offset = Vector3(0.0, 1.5, 0.0)
+
+[resource]
+script = ExtResource("1_def")
+id = &"consumable_grenade"
+base_radius = 3.0
+max_alive = 6
+sound = &"explosion"
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1"), SubResource("layer_2"), SubResource("layer_3"), SubResource("layer_4"), SubResource("layer_5"), SubResource("layer_6")])

@@ -1,6 +1,0 @@
-[gd_scene format=3]
-
-[ext_resource type="Script" path="res://vfx/effects/release_fx.gd" id="1_fx"]
-
-[node name="release_fx" type="Node3D"]
-script = ExtResource("1_fx")
