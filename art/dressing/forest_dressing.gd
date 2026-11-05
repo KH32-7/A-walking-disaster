@@ -10,9 +10,9 @@ extends Node3D
 
 const Models := preload("res://base/building/building_models.gd")
 const TERRAIN := "res://assets/environment/nature/pure_nature_redwood/textures/terrain/"
-const WATER_SHADER := "res://art/shaders/realistic_water.gdshader"
 ## Water depth in the middle of a lake (m), from its smaller radius. The lakes sit on flat ground,
-## so realistic_water.gdshader reads this "fake depth" instead of the depth buffer.
+## so the water (RealisticWater, shared with the field) reads this "fake depth" instead of the
+## depth buffer.
 const WATER_DEPTH_PER_RADIUS := 0.3
 const WATER_RINGS := 12
 const WATER_SEGMENTS := 72
@@ -270,52 +270,12 @@ func _ground() -> void:
 
 func _water() -> void:
 	var shore := _terrain_material("mud_darker_a.png", Color("6b4630"), 3.0)
-	var noise_uv := _noise_texture(11, 0.006, false)
-	var normal_a := _noise_texture(23, 0.02, true)
-	var normal_b := _noise_texture(37, 0.045, true)
-	var foam := _noise_texture(51, 0.03, false, true)
 	for i in _waters.size():
 		var w: Dictionary = _waters[i]
 		var radii: Vector2 = w["radii"]
-		var water: Material
-		if ResourceLoader.exists(WATER_SHADER):
-			var sm := ShaderMaterial.new()
-			sm.shader = load(WATER_SHADER)
-			sm.set_shader_parameter(&"uv_sampler", noise_uv)
-			sm.set_shader_parameter(&"normalmap_a_sampler", normal_a)
-			sm.set_shader_parameter(&"normalmap_b_sampler", normal_b)
-			sm.set_shader_parameter(&"foam_sampler", foam)
-			sm.set_shader_parameter(&"fake_depth", minf(radii.x, radii.y) * WATER_DEPTH_PER_RADIUS)
-			sm.set_shader_parameter(&"beers_law", 0.9)
-			sm.set_shader_parameter(&"depth_offset", -0.5)
-			sm.set_shader_parameter(&"refraction", 0.03)
-			sm.set_shader_parameter(&"color_shallow", Color(0.45, 0.62, 0.55))
-			sm.set_shader_parameter(&"color_deep", Color(0.04, 0.12, 0.26))
-			water = sm
-		else:
-			var std := StandardMaterial3D.new()
-			std.albedo_color = Color("2f5f7a")
-			water = std
+		var water := RealisticWater.material(minf(radii.x, radii.y) * WATER_DEPTH_PER_RADIUS)
 		_add_mesh(self, "Shore%d" % i, _ellipse(radii + Vector2(3.0, 3.0)), _at(w["centre"], 0.04), shore)
 		_add_mesh(self, "Water%d" % i, _water_mesh(radii), _at(w["centre"], 0.12), water)
-
-
-## Seamless noise for the water shader (made here, so no texture files are needed).
-func _noise_texture(seed: int, frequency: float, normal_map: bool, cellular := false) -> NoiseTexture2D:
-	var noise := FastNoiseLite.new()
-	noise.seed = seed
-	noise.frequency = frequency
-	if cellular:
-		noise.noise_type = FastNoiseLite.TYPE_CELLULAR
-	var tex := NoiseTexture2D.new()
-	tex.width = 512
-	tex.height = 512
-	tex.seamless = true
-	tex.generate_mipmaps = true
-	tex.as_normal_map = normal_map
-	tex.bump_strength = 6.0
-	tex.noise = noise
-	return tex
 
 
 ## Elliptic disc in rings; UV2.x = how deep (0 at the shore, 1 in the middle) for the fake depth.
