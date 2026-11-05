@@ -36,6 +36,7 @@ fade_out = 0.8
 [sub_resource type="Resource" id="layer_2"]
 script = ExtResource("2_layer")
 kind = 4
+night_only = true
 light_energy = 9.0
 light_range = 6.0
 lifetime = 0.12

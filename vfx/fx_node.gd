@@ -48,6 +48,8 @@ func build(def: FxDef, p: Dictionary, reduced_flash: bool) -> bool:
 	for layer in def.layers:
 		if layer == null or not _matches(layer.when, p):
 			continue
+		if layer.night_only and not Fx.night_lights:
+			continue
 		var lk := k if layer.follow_radius else 1.0
 		var node := _make(layer, element, lk)
 		if node == null:

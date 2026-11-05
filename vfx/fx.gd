@@ -12,6 +12,9 @@ const EFFECTS_DIR := "res://data/ui/effects"
 
 ## Previews: -1 follow Settings.reduce_flash, 0 off, 1 on (never writes the settings file).
 var reduced_flash_override := -1
+## Night in the field (RegionDressing turns it on at FieldState.night_started and off when the map goes):
+## layers marked FxLayer.night_only (the muzzle flash light) are built only then.
+var night_lights := false
 var effects: Dictionary = {}  # StringName -> FxDef
 var feedback: FxFeedback
 
