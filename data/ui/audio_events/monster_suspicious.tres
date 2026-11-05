@@ -9,4 +9,5 @@ synth = &"monster_sus"
 bus = 0
 priority = 3
 positional = true
+visual_cue_id = &"monster_suspicious"
 caption = "의심하는 소리"

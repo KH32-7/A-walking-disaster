@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="MusicLayerDef" format=3]
+
+[ext_resource type="Script" path="res://audio/defs/music_layer_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+state = &"festival"
+id = &"festival_percussion"
+unlock_population = 0
+synth = &"mus_festival_percussion"
+volume_db = -7.0
+caption = "♪ 축제 박수와 탬버린"
+visual_cue_id = &"music_festival"

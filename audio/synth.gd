@@ -44,7 +44,14 @@ static func make(recipe: StringName) -> AudioStreamWAV:
 		&"music_chase": s = _music_chase()
 		&"music_night": s = _music_pad([110.0, 130.81, 164.81], 8.0, 0.18)
 		&"music_raid": s = _music_raid()
-		_: s = _tone(0.1, 440.0, 0.0, 0.3, 0.0, 0.0)
+		_:
+			# D-20: monster family sounds (mon_*) and music stems (mus_*) live in their own files.
+			if MonsterSynth.has_recipe(recipe):
+				s = MonsterSynth.make(recipe)
+			elif MusicSynth.has_recipe(recipe):
+				s = MusicSynth.make(recipe)
+			else:
+				s = _tone(0.1, 440.0, 0.0, 0.3, 0.0, 0.0)
 	_cache[recipe] = s
 	return s
 

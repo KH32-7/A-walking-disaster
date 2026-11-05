@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="MusicLayerDef" format=3]
+
+[ext_resource type="Script" path="res://audio/defs/music_layer_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+state = &"night"
+id = &"night_strings"
+unlock_population = 0
+synth = &"mus_night_strings"
+volume_db = -1.0
+caption = "♪ 낮은 현악"
+visual_cue_id = &"music_night"
