@@ -4,11 +4,26 @@
 [ext_resource type="Script" path="res://field/noise/noise_emitter.gd" id="2_noise"]
 [ext_resource type="Script" path="res://field/combat/weapon_holder.gd" id="3_weapons"]
 [ext_resource type="Script" path="res://field/combat/combat_debug_view.gd" id="4_debug_view"]
-[ext_resource type="PackedScene" uid="uid://dywkk7nu170uy" path="res://assets/characters/hero/hero.fbx" id="5_hero"]
+[ext_resource type="Script" path="res://field/player/player_model.gd" id="5_model"]
 
 [sub_resource type="CapsuleShape3D" id="Shape_body"]
 radius = 0.35
 height = 1.8
+
+[sub_resource type="StandardMaterial3D" id="Mat_body"]
+albedo_color = Color(0.85, 0.85, 0.8, 1)
+
+[sub_resource type="CapsuleMesh" id="Mesh_body"]
+material = SubResource("Mat_body")
+radius = 0.35
+height = 1.8
+
+[sub_resource type="StandardMaterial3D" id="Mat_nose"]
+albedo_color = Color(0.2, 0.2, 0.22, 1)
+
+[sub_resource type="BoxMesh" id="Mesh_nose"]
+material = SubResource("Mat_nose")
+size = Vector3(0.2, 0.15, 0.3)
 
 [node name="Player" type="CharacterBody3D"]
 script = ExtResource("1_player")
@@ -17,8 +32,18 @@ script = ExtResource("1_player")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 shape = SubResource("Shape_body")
 
-[node name="Model" parent="." instance=ExtResource("5_hero")]
-transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 0)
+[node name="Greybox" type="Node3D" parent="."]
+
+[node name="Body" type="MeshInstance3D" parent="Greybox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+mesh = SubResource("Mesh_body")
+
+[node name="Nose" type="MeshInstance3D" parent="Greybox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, -0.4)
+mesh = SubResource("Mesh_nose")
+
+[node name="Model" type="Node3D" parent="."]
+script = ExtResource("5_model")
 
 [node name="Noise" type="Node3D" parent="."]
 script = ExtResource("2_noise")
