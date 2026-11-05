@@ -6,6 +6,7 @@
 script = ExtResource("1_obw8j")
 id = &"iron_gate"
 display_name = "철문"
+description = "주민만 지나갈 수 있는 튼튼한 문이에요."
 category = 10
 size = Vector2i(2, 1)
 cost = Dictionary[StringName, int]({

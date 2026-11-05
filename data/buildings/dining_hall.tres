@@ -6,6 +6,7 @@
 script = ExtResource("1_wy35i")
 id = &"dining_hall"
 display_name = "식당"
+description = "다 같이 밥을 먹는 곳이에요. 사기가 매일 오르고 밤 대화가 자주 생겨요."
 size = Vector2i(4, 4)
 cost = Dictionary[StringName, int]({
 &"plank": 20,

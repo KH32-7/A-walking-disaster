@@ -68,7 +68,11 @@ func _fake_state() -> void:
 		for p: Dictionary in DemoProfiles.PROFILES:
 			Colony.add_resident(p)
 	Economy.set_cap_bonus(300)
-	Economy.apply({&"wood": 128, &"stone": 64, &"scrap": 41, &"food": 22, &"parts": 9, &"cloth": 14})
+	if "--lean" in OS.get_cmdline_user_args():
+		# Early camp (재설계 시안과 같은 양): some cards short, some locked.
+		Economy.apply({&"wood": 34, &"stone": 12, &"scrap": 8, &"food": 21, &"parts": 3, &"cloth": 5, &"seeds": 2})
+	else:
+		Economy.apply({&"wood": 128, &"stone": 64, &"scrap": 41, &"food": 22, &"parts": 9, &"cloth": 14})
 	Colony.threat = 46
 	GameState.day = 12
 

@@ -24,6 +24,9 @@ const POWER_PRIORITY_OTHER := 3
 
 @export var id: StringName = &""
 @export var display_name: String = ""
+## One or two plain sentences on what the building does, shown on the build screen (D-06 재설계).
+## Keep numbers out: the screen shows them from the fields below.
+@export_multiline var description: String = ""
 @export var category: Category = Category.LIVING
 ## Footprint in cells (1 cell = 2 m). (0, 0) = not placed on the grid (attached / fixed in the main hall).
 @export var size: Vector2i = Vector2i.ONE

@@ -6,6 +6,7 @@
 script = ExtResource("1_rgw1v")
 id = &"palisade"
 display_name = "목책"
+description = "나무로 세운 울타리예요. 마물을 잠시 막아 줘요."
 category = 10
 cost = Dictionary[StringName, int]({
 &"wood": 5

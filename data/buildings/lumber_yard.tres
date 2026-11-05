@@ -6,6 +6,7 @@
 script = ExtResource("1_wwc00")
 id = &"lumber_yard"
 display_name = "벌목장"
+description = "주민이 근처 나무를 베어 매일 나무를 모아 와요."
 category = 1
 size = Vector2i(2, 2)
 cost = Dictionary[StringName, int]({

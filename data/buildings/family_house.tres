@@ -6,6 +6,7 @@
 script = ExtResource("1_v47su")
 id = &"family_house"
 display_name = "가족 숙소"
+description = "부부와 아이들이 함께 사는 집이에요."
 category = 0
 size = Vector2i(3, 3)
 cost = Dictionary[StringName, int]({
