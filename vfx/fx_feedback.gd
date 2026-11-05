@@ -3,11 +3,13 @@ extends Node
 ## Hit feel that gameplay does not call (D-18). Owner: Lane D. Child of the Fx autoload.
 ## - Monster.damaged(amount, info): damage number at info.position (else above the monster) and a short
 ##   white flash on its meshes. Status ticks (info.status_tick): small number in the element colour, no flash.
-## - Player.health_changed(current, maximum): a drop shows a red "-N", a red flash and the player_hurt
+## - Player.health_changed(current, maximum): a drop shows a red "-N", a red flash, the player_hit burst and the player_hurt
 ##   sound; a rise shows a green "+N".
 ## Amounts are Lane B's final numbers; nothing is computed here.
 
 const NUMBER_SEC := 0.7
+## The player_hit burst sits at chest height (m above the feet).
+const PLAYER_HIT_HEIGHT := 1.3
 const NUMBER_RISE := 0.8
 const NUMBER_HEIGHT := 1.6
 const NUMBER_SIZE := 64
@@ -91,6 +93,7 @@ func _on_player_health(current: float, _maximum: float, player: Node3D) -> void:
 		show_number(at, "-%d" % roundi(-diff), UiTokens.DANGER, 1.0)
 		flash(player, PLAYER_FLASH)
 		Audio.play(&"player_hurt", player.global_position)
+		Fx.spawn(&"player_hit", player.global_position + Vector3.UP * PLAYER_HIT_HEIGHT, {"silent": true})
 	else:
 		show_number(at, "+%d" % roundi(diff), UiTokens.GOOD, 1.0)
 
