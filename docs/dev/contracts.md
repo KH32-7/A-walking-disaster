@@ -130,7 +130,13 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   `field_rules`, `guard_post`, `Monster.raid_goal`, `is_raider()`, `drop_mult`, `died`, `attack_landed`. 구조물 그룹 `raid_structures`, `raid_gates`
   (`RaidMarch` 상수), 구조물과 주민의 `take_damage(amount, info)`, 구조물 info 키 `structure_damage_mult`, `charges_gates`, `monster_id`, `source`, `element`.
   자세한 사용법은 [field/README.md](../../field/README.md).
-- **FieldState**: `in_sortie()`, `lost_gear`
+- **FieldState**: `in_sortie()`, `lost_gear`, `boss_ready(boss_id)`, `boss_kill_count(boss_id)`.
+  보스 부활 날짜 `boss_respawn_day`는 **보스 id별**이다(한 지역에 보스가 여럿일 수 있다). 지역 id로 저장된 옛 세이브는 불러올 때 그 지역의 `boss_id`로 옮긴다.
+- **보스 (B-19)**: `BossSpawner`가 `BossArena`마다 그 보스의 부활 날짜를 따로 본다. 보스마다의 공략 규칙은 `BossDef.mechanic`(`BossMechanic` 스크립트)에 둔다.
+  훅: `on_added`, `on_tick`, `can_use(pattern)`, `on_pattern_started(pattern, area)`, `land_pattern(pattern, area)`(true면 공통 범위 타격·소환 생략),
+  `filter_damage(amount, info)`(0이면 무시), `on_phase_changed`, `on_reset`, `on_died`. `BossPattern.action`이 있는 패턴은 mechanic이 직접 처리하고
+  숫자는 `BossPattern.params`에 둔다. mechanic이 쓰는 BossMonster 공개 함수: `hold(sec)`(AI와 패턴 정지, mechanic이 몸을 움직임), `is_held()`,
+  `area_for(pattern, target_pos)`, `hit_area(pattern, area)`, `summon(pattern)`.
 - **Audio**: `play(event_id, position)`, `set_music_state(state)`
 - **Fx**: `spawn(effect_id, position, params)`. 이펙트 id 표는 [vfx/README.md](../../vfx/README.md)(D).
 - **마물 모델과 이펙트 (D-17, 이슈 #148)**:

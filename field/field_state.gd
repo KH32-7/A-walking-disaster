@@ -19,7 +19,8 @@ var night: NightTuning = preload("res://field/night_tuning.tres")
 ## [{"item_uid": StringName, "region_id": StringName, "position": Vector3, "offered": bool}]
 ## One entry per item. "offered" = its one recovery sortie has started (set by sortie_started).
 var lost_gear: Array = []
-## region_id -> day the boss respawns
+## boss monster id -> day it respawns. One region can hold several bosses (the flooded mall holds four),
+## so each boss keeps its own day. Old saves keyed by region are moved to that region's boss on load.
 var boss_respawn_day: Dictionary = {}
 ## boss monster id -> times killed (B-19). The first kill gives the BossDef first-kill reward.
 var boss_kills: Dictionary = {}
@@ -142,9 +143,9 @@ func set_sortie_result(result: Dictionary) -> void:
 	_sortie_result = result.duplicate(true)
 
 
-## The region's boss is up: never killed, or GameState.day reached its respawn day (B-19).
-func boss_ready(region: StringName) -> bool:
-	return GameState.day >= int(boss_respawn_day.get(region, 0))
+## The boss is up: never killed, or GameState.day reached its respawn day (B-19).
+func boss_ready(boss_id: StringName) -> bool:
+	return GameState.day >= int(boss_respawn_day.get(boss_id, 0))
 
 
 func boss_kill_count(boss_id: StringName) -> int:
@@ -155,7 +156,20 @@ func boss_kill_count(boss_id: StringName) -> int:
 func record_boss_kill(region: StringName, boss_id: StringName, respawn_day: int) -> void:
 	boss_kills[boss_id] = boss_kill_count(boss_id) + 1
 	if region != &"":
-		boss_respawn_day[region] = respawn_day
+		boss_respawn_day[boss_id] = respawn_day
+
+
+## Saves before the flooded mall bosses kept one day per region: move it to the region's boss.
+static func _respawn_by_boss(days: Dictionary) -> Dictionary:
+	var out := {}
+	for key in days:
+		var id := StringName(key)
+		var path := RegionDef.DIR + String(id) + ".tres"
+		var region := load(path) as RegionDef if ResourceLoader.exists(path) else null
+		if region and region.boss_id != &"":
+			id = region.boss_id
+		out[id] = maxi(int(days[key]), int(out.get(id, 0)))
+	return out
 
 
 func down_count(region: StringName) -> int:
@@ -262,7 +276,7 @@ func save_data() -> Dictionary:
 
 func load_data(data: Dictionary) -> void:
 	lost_gear = data.get("lost_gear", [])
-	boss_respawn_day = data.get("boss_respawn_day", {})
+	boss_respawn_day = _respawn_by_boss(data.get("boss_respawn_day", {}))
 	boss_kills = data.get("boss_kills", {})
 	downs_by_region = data.get("downs_by_region", {})
 	region_id = data.get("region_id", &"")

@@ -1,7 +1,8 @@
 class_name BossSpawner
 extends Node3D
 ## Spawns each BossArena's boss (B-19). Put one in a region scene next to the layout.
-## A killed boss stays away until FieldState.boss_respawn_day[region_id] (design 04: 3 days).
+## A killed boss stays away until FieldState.boss_respawn_day[boss_id] (design 04: 3 days). Each arena
+## is checked on its own, so one region can hold several bosses (flooded mall).
 ## Bosses start asleep at the arena center. Debug console: `boss` spawns them again at once.
 ## Design: docs/design/04-monsters.md "보스"
 
@@ -9,7 +10,7 @@ signal boss_spawned(boss: BossMonster, arena: BossArena)
 
 const MONSTER_DIR := "res://data/monsters/"
 
-## Key for FieldState.boss_respawn_day.
+## Region the bosses belong to (passed to BossMonster; an empty region keeps no respawn day).
 @export var region_id: StringName = &""
 @export var start_asleep := true
 
@@ -29,14 +30,14 @@ func _process(_delta: float) -> void:
 		spawn_all()
 
 
-## Spawns every arena's boss unless the region's boss is still waiting to respawn.
+## Spawns every arena's boss unless that boss is still waiting to respawn.
 func spawn_all() -> void:
 	_spawned = true
-	if not FieldState.boss_ready(region_id):
-		return
 	for node in get_tree().get_nodes_in_group(BossArena.GROUP):
 		var arena := node as BossArena
-		if arena and arena.boss_id != &"" and not is_instance_valid(_bosses.get(arena)):
+		if arena == null or arena.boss_id == &"" or not FieldState.boss_ready(arena.boss_id):
+			continue
+		if not is_instance_valid(_bosses.get(arena)):
 			spawn_at(arena, start_asleep)
 
 
