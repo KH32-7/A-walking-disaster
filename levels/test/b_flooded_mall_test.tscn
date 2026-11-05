@@ -1,0 +1,27 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://levels/test/b_flooded_mall_test.gd" id="1_test"]
+[ext_resource type="PackedScene" path="res://levels/field/flooded_mall/flooded_mall.tscn" id="2_mall"]
+[ext_resource type="Script" path="res://field/_sandbox/weapon_debug.gd" id="3_weapon_debug"]
+
+[node name="BFloodedMallTest" type="Node3D"]
+script = ExtResource("1_test")
+
+[node name="FloodedMall" parent="." instance=ExtResource("2_mall")]
+
+[node name="WeaponDebug" type="Node" parent="."]
+script = ExtResource("3_weapon_debug")
+
+[node name="DebugLayer" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="InfoLabel" type="Label" parent="DebugLayer"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -720.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 220.0
+grow_horizontal = 0
+horizontal_alignment = 2
