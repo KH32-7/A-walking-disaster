@@ -33,7 +33,7 @@ func run() -> bool:
 	EventBus.phase_changed.connect(on_phase)
 	EventBus.flow_state_changed.connect(on_flow)
 
-	var ok := _check_three_days() and _check_refused() and _check_stay_branch()
+	var ok := _check_starter_loadout() and _check_three_days() and _check_refused() and _check_stay_branch()
 	ok = ok and await _check_load_to_prep()
 	ok = ok and _check_merge_loot()
 
@@ -65,6 +65,15 @@ func _to_title() -> void:
 	_phases.clear()
 	_flows.clear()
 	_counts.clear()
+
+
+func _check_starter_loadout() -> bool:
+	# New game equips the starter pistol on the player (issue #81).
+	_to_title()
+	var ok := _expect(SceneRouter.start_new_game(0), "start_new_game refused")
+	var uid := Armory.get_equipped(Armory.PLAYER_ID, Enums.EquipSlot.MAIN)
+	ok = ok and _expect(uid != &"" and Armory.get_item(uid).def_id == &"pistol", "no starter pistol in MAIN")
+	return ok
 
 
 func _check_three_days() -> bool:

@@ -26,6 +26,9 @@ const WORLD_PATH := ^"/root/Main/World"
 ## default_region(), the first region that has a map.
 const DEBUG_REGION := &"debug_region"
 const FIELD_LEVELS_DIR := "res://levels/field"
+## Starting loadout of a new game: slot -> item def id, equipped on Armory.PLAYER_ID
+## (design 03 "기본 권총(초반 지급)"; Lane B gives it infinite reserve ammo).
+const STARTER_LOADOUT := {Enums.EquipSlot.MAIN: &"pistol"}
 
 const S := Enums.FlowState
 ## Allowed moves. Anything else is refused with an error.
@@ -87,8 +90,16 @@ func start_new_game(slot: int = 0, difficulty: StringName = &"normal") -> bool:
 	Settings.apply_preset(difficulty, true)
 	GameState.day = 1
 	GameState.roll_weather()
+	_give_starter_loadout()
 	_begin_morning()
 	return true
+
+
+func _give_starter_loadout() -> void:
+	for slot: Enums.EquipSlot in STARTER_LOADOUT:
+		var uid := Armory.create_item(STARTER_LOADOUT[slot])
+		if uid == &"" or not Armory.equip(Armory.PLAYER_ID, slot, uid):
+			push_error("SceneRouter: could not equip starter item '%s'" % STARTER_LOADOUT[slot])
 
 
 func load_game(slot: int) -> bool:
