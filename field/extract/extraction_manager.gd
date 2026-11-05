@@ -208,7 +208,6 @@ func _try_start(point: ExtractPoint) -> void:
 func _start_generator(point: ExtractPoint) -> void:
 	_noise = NoiseEmitter.new()
 	_noise.name = "GeneratorNoise"
-	_noise.raining = GameState.is_raining()
 	# Child of the marker: the noise comes from the generator, not the player.
 	point.add_child(_noise)
 	_noise.start_continuous(GENERATOR_NOISE)
