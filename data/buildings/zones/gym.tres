@@ -12,5 +12,6 @@ clear_yield = Dictionary[StringName, int]({
 &"scrap": 20
 })
 indoor = true
+mobility_access = "ramp"
 raid_damage_mult = 0.5
 note = "실내라 습격 피해 −50%, 대피소 후보 (2층은 C-11)"

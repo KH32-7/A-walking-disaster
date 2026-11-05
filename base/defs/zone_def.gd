@@ -20,6 +20,11 @@ extends Resource
 @export var indoor := false
 ## 0 = ground. Upper floors need an elevator for everyone to reach (C-11).
 @export var floor_index := 0
+## 이동 조건 (07 "참여 조건", C-11): what lets a wheelchair user reach work in this zone.
+##   &"open" = flat ground, always reachable; &"ramp" = needs a working 경사로 in `ramp_zone`
+##   (empty = this zone); &"elevator" = an upper floor, needs a working 승강기 somewhere in the base.
+@export_enum("open", "ramp", "elevator") var mobility_access: String = "open"
+@export var ramp_zone: StringName = &""
 ## Raid damage on buildings here is halved (체육관 실내 −50%).
 @export var raid_damage_mult := 1.0
 @export var note: String = ""
