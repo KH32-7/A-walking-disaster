@@ -1,0 +1,28 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://field/_sandbox/vision_tuning.gd" id="1_tuning"]
+[ext_resource type="PackedScene" path="res://field/_sandbox/field_sandbox.tscn" id="2_sandbox"]
+[ext_resource type="PackedScene" path="res://field/player/player.tscn" id="3_player"]
+[ext_resource type="PackedScene" path="res://field/camera/field_camera.tscn" id="4_camera"]
+
+[node name="VisionTuning" type="Node3D"]
+script = ExtResource("1_tuning")
+
+[node name="FieldSandbox" parent="." instance=ExtResource("2_sandbox")]
+
+[node name="Player" parent="." instance=ExtResource("3_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
+
+[node name="FieldCamera" parent="." node_paths=PackedStringArray("target") instance=ExtResource("4_camera")]
+target = NodePath("../Player")
+
+[node name="DebugLayer" type="CanvasLayer" parent="."]
+
+[node name="Panel" type="PanelContainer" parent="DebugLayer"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 436.0
+offset_bottom = 56.0
+
+[node name="Box" type="VBoxContainer" parent="DebugLayer/Panel"]
+layout_mode = 2

@@ -77,6 +77,7 @@ func _ready() -> void:
 	# Walls between the camera and the player / nearby boxes turn semi-transparent (2026-11-06).
 	add_child(preload("res://field/camera/wall_see_through.gd").new())
 	make_current()
+	add_child(VisionShade.new())
 	if target != null:
 		snap()
 
