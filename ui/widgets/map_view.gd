@@ -5,6 +5,7 @@ extends Control
 ##   extract   diamond (GOOD)          objective  square (ACCENT)      recording  tape (TEXT)
 ##   lost_gear ring (WARN)             companion  circle (INFO)        player     arrow (TEXT)
 ##   route     dashed line + arrow (INFO) "숨은 경로"
+##   ping      pin (PING), FieldState.ping set by right click on the map
 ## The MapScreen feeds everything; this only converts world x/z to map pixels and draws.
 ## North (-Z) is up.
 
@@ -122,6 +123,12 @@ func to_map(world: Vector3) -> Vector2:
 	return Vector2(u * size.x, v * size.y)
 
 
+## Pixel inside this control -> world x/z (y = 0). Inverse of to_map().
+func from_map(px: Vector2) -> Vector3:
+	return Vector3(bounds.position.x + px.x / maxf(size.x, 1.0) * bounds.size.x, 0.0,
+		bounds.position.y + px.y / maxf(size.y, 1.0) * bounds.size.y)
+
+
 func metres_per_px() -> float:
 	return bounds.size.x / maxf(size.x, 1.0)
 
@@ -214,6 +221,15 @@ static func draw_symbol(ci: CanvasItem, at: Vector2, kind: StringName) -> void:
 			var arrow := PackedVector2Array([at + Vector2(0, -14), at + Vector2(10, 9), at + Vector2(0, 4), at + Vector2(-10, 9)])
 			ci.draw_colored_polygon(_grow(arrow, at, 3.0), out)
 			ci.draw_colored_polygon(arrow, UiTokens.TEXT)
+		&"ping":
+			# Map pin, its point on `at`.
+			var head := at + Vector2(0, -16)
+			var pin := PackedVector2Array([at, head + Vector2(8, 3), head + Vector2(-8, 3)])
+			ci.draw_colored_polygon(_grow(pin, head, 3.0), out)
+			ci.draw_circle(head, 11.0, out)
+			ci.draw_colored_polygon(pin, UiTokens.PING)
+			ci.draw_circle(head, 9.0, UiTokens.PING)
+			ci.draw_circle(head, 3.5, UiTokens.INK)
 		&"route":
 			for i in 3:
 				var x := at.x - 14 + i * 11
