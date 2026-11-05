@@ -13,7 +13,7 @@
 - [ ] **A-02** 헤드리스 검사 + GitHub Actions + CODEOWNERS · M0
 - [ ] **A-03** 디버그 콘솔 (치트) · M0
 - [x] **A-04** 저장 시스템 · M1
-- [ ] **A-05** main.tscn + SceneRouter + 하루 흐름 상태 머신 · M1
+- [x] **A-05** main.tscn + SceneRouter + 하루 흐름 상태 머신 · M1
 - [x] **A-06** Economy (자원 정의·창고 한도·소비) · M1
 - [x] **A-07** 아이템·장비 체계 (Armory) · M1
 - [x] **A-08** 가방 격자 인벤토리 백엔드 · M1

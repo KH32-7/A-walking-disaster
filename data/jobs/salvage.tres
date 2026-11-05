@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="JobDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/job_def.gd" id="1_y6xsx"]
+
+[resource]
+script = ExtResource("1_y6xsx")
+id = &"salvage"
+display_name = "해체"
+workplace = &"salvage_yard"
+base_output = Dictionary[StringName, float]({
+&"scrap": 4.0
+})
+note = "잔해 필요"

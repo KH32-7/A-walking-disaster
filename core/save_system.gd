@@ -21,7 +21,8 @@ const SUSPEND_SLOT := -1
 var save_dir := "user://saves"
 ## The slot autosaves go to. Set by save_slot / load_slot (new game: set it before the first save).
 var current_slot := 0
-## Autosave at morning start, right before a sortie and right after extraction.
+## SceneRouter autosaves at morning start, right before a sortie and right after extraction.
+## Tests turn this off.
 var autosave_enabled := true
 
 var _providers: Dictionary = {}
@@ -30,9 +31,6 @@ var _providers: Dictionary = {}
 func _ready() -> void:
 	register_provider(&"game", GameState)
 	register_provider(&"difficulty", Settings)
-	EventBus.day_started.connect(func(_day: int): autosave())
-	EventBus.sortie_started.connect(func(_loadout: Dictionary): autosave())
-	EventBus.extraction_completed.connect(func(_point_id: StringName): autosave())
 
 
 func register_provider(key: StringName, provider: Object) -> void:
@@ -92,6 +90,12 @@ func slot_info(slot: int) -> Dictionary:
 	info["season"] = int(data.get("season", 0))
 	info["saved_at"] = int(data.get("saved_at", 0))
 	return info
+
+
+## New game: every provider back to its defaults (load_data({})).
+func reset_all() -> void:
+	for key: StringName in _providers:
+		_providers[key].load_data({})
 
 
 func autosave() -> bool:

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_mu4wj"]
+
+[resource]
+script = ExtResource("1_mu4wj")
+id = &"generator"
+display_name = "발전기"
+category = 9
+size = Vector2i(2, 2)
+cost = Dictionary[StringName, int]({
+&"generator_core": 1,
+&"motor": 2,
+&"scrap": 40
+})
+effects = Dictionary[StringName, float]({
+&"fuel_per_day": 2.0,
+&"power_supply": 10.0
+})
+noise = 5.0
+requires_former_job = &"electrician"

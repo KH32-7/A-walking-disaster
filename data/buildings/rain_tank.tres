@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_xu7m0"]
+
+[resource]
+script = ExtResource("1_xu7m0")
+id = &"rain_tank"
+display_name = "빗물 저장고"
+category = 1
+size = Vector2i(2, 2)
+cost = Dictionary[StringName, int]({
+&"scrap": 10,
+&"stone": 30
+})
+effects = Dictionary[StringName, float]({
+&"adjacent_farm_bonus": 0.2,
+&"effect_radius": 10.0
+})
+note = "반경 10m 텃밭 +20%"

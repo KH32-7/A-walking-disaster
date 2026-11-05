@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="JobDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/job_def.gd" id="1_h856k"]
+
+[resource]
+script = ExtResource("1_h856k")
+id = &"construction"
+display_name = "건설·개간"
+effects = Dictionary[StringName, float]({
+&"build_progress": 10.0
+})
+note = "건설 현장·개간 구역"

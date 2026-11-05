@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="JobDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/job_def.gd" id="1_la8ty"]
+
+[resource]
+script = ExtResource("1_la8ty")
+id = &"guard"
+display_name = "경비"
+workplace = &"guard_post"
+main_stat = "sense"
+effects = Dictionary[StringName, float]({
+&"guard_power": 1.0
+})
+combat_role = true
+note = "기지 방어력 (C-08)"

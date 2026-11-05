@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="JobDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/job_def.gd" id="1_tvs0m"]
+
+[resource]
+script = ExtResource("1_tvs0m")
+id = &"essence_research"
+display_name = "정수 연구"
+workplace = &"essence_workshop"
+main_stat = "dex"
+note = "정제, 정수 전지 (A-10)"

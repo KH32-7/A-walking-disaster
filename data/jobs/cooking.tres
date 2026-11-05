@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="JobDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/job_def.gd" id="1_40apt"]
+
+[resource]
+script = ExtResource("1_40apt")
+id = &"cooking"
+display_name = "요리"
+workplace = &"kitchen"
+main_stat = "heart"
+effects = Dictionary[StringName, float]({
+&"food_efficiency": 1.5,
+&"morale_bonus": 2.0
+})
+teen_allowed = true
+elder_efficiency = 1.2

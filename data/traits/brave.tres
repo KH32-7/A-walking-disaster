@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="TraitDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/trait_def.gd" id="1_e3sto"]
+
+[resource]
+script = ExtResource("1_e3sto")
+id = &"brave"
+display_name = "용감함"
+description = "전투 중 도주하지 않음, 경비 전투력 +10%"
+effects = Dictionary[StringName, float]({
+&"guard_power": 0.1,
+&"no_flee": 1.0
+})
+exclusive_with = Array[StringName]([&"timid"])

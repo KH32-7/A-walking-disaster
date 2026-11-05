@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="TraitDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/trait_def.gd" id="1_y0qjo"]
+
+[resource]
+script = ExtResource("1_y0qjo")
+id = &"aromantic"
+display_name = "연애에 관심 없음"
+description = "연애 이벤트 대상이 아님, 우정 관계 증가 +30%"
+effects = Dictionary[StringName, float]({
+&"friendship_gain_bonus": 0.3,
+&"romance_exempt": 1.0
+})

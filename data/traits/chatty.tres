@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="TraitDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/trait_def.gd" id="1_ikpng"]
+
+[resource]
+script = ExtResource("1_ikpng")
+id = &"chatty"
+display_name = "수다쟁이"
+description = "모닥불 관계 증가 ×2"
+effects = Dictionary[StringName, float]({
+&"bonfire_relation_mult": 2.0
+})
+exclusive_with = Array[StringName]([&"loner"])

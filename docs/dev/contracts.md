@@ -66,7 +66,15 @@
   (`Settings.PRESETS`), 항목을 따로 바꾸면 `difficulty`가 `custom`이 된다. 하드코어는 새 게임에서만 고른다.
   접근성·소리 설정은 `user://settings.cfg`에 바로 저장되고, 난이도 항목은 게임 저장(`difficulty` provider)에도 들어간다.
 - **SaveSystem**: `register_provider(key, provider)`, `save_slot(slot) -> bool`, `load_slot(slot) -> bool`, `has_slot(slot)`, `delete_slot(slot)`, `slot_info(slot)`(불러오기 화면용), `autosave()`, `save_suspend()`, `has_suspend()`, `load_suspend()`, `current_slot`
-- **SceneRouter**: `go_to_base()`, `go_to_field(loadout)`
+- **SceneRouter**: 하루 흐름의 유일한 진행자. `state()`, `stayed_today`(C: 머무르기 날 생산 +20%), `last_sortie_result`, `last_evening_report`.
+  - D(화면): `start_new_game(slot, difficulty)`, `load_game(slot)`, `load_suspended()`, `quit_to_title()`, `open_sortie_prep()`,
+    `cancel_sortie_prep()`, `go_to_field(loadout)`, `stay_at_base()`, `end_stay()`, `finish_result()`, `confirm_evening()`, `finish_night()`.
+  - C(기지): `start_day_raid(raid)`, `end_day_raid()`, `start_night_event(event_id, participants)`, `end_night_event()`.
+  - B(필드)는 함수를 부르지 않고 신호만 보낸다: `extraction_completed`·`player_downed`(쓰러짐 처리—가방 비우기·유실물—를 끝낸 뒤),
+    `rescue_completed`, `companion_stranded`, `emergency_return_requested`. 라우터가 이것으로 `sortie_ended` 결과를 만든다:
+    `{"extracted", "region_id", "loot": Bag.unload_to_base() 결과, "rescued", "stranded", "xp"}`.
+  - 허용되지 않은 전환은 거부(false + 오류). 디버그·테스트용 `advance()`가 기본 경로로 한 단계 진행.
+  - main.tscn의 `World` 아래에 기지/필드 씬을 바꿔 넣는다. 씬 파일이 아직 없으면 비워 둔다.
 - **Colony**: `get_resident(id)`, `active_resident_ids()`, `base_noise()`, `threat`, `tier`,
   `population()`, `bed_count()`, `free_beds()`, `add_resident(profile) -> id`(구조자 입주도 이것), `assign_bed(resident_id, bed_id)`,
   `settle_day()`, `roll_raid(time)`, `resolve_raid(raid, mode)`, `predict_raid(raid)` (형식은 아래 "하루 정산과 습격")
@@ -128,12 +136,13 @@
 ## 저장
 
 각 레인은 provider 하나만 등록한다(`save_data() -> Dictionary`, `load_data(Dictionary)`). 값은 JSON으로 쓸 수 있는 것만
-(Object·Resource 대신 id). 키: `game`(A), `difficulty`(A, Settings의 난이도 항목), `economy`(A), `armory`(A), `bag`(A), `radio`(A), `field`(B), `colony`(C). D는 저장할 게임 상태가 없다
+(Object·Resource 대신 id). 키: `game`(A), `difficulty`(A, Settings의 난이도 항목), `economy`(A), `armory`(A), `bag`(A), `radio`(A), `router`(A), `field`(B), `colony`(C). D는 저장할 게임 상태가 없다
 (설정은 `Settings`가 따로 저장).
 
 - 파일은 Godot 타입 JSON(`JSON.from_native`)이라 `int`/`float`, `StringName`, `Vector3` 등이 그대로 돌아온다. Object·Resource는 안 된다.
 - `load_data`는 빈 Dictionary를 받을 수 있어야 한다(파일에 그 키가 없으면 `{}`로 호출해 기본값으로 되돌림).
-- 슬롯 0~2. 자동 저장은 `current_slot`에: 아침 시작(`day_started`), 출격 직전(`sortie_started`), 탈출 직후(`extraction_completed`).
+- 슬롯 0~2. 자동 저장은 SceneRouter가 `current_slot`에 한다: 아침 시작, 출격 직전(출격 준비 상태로 저장되어 불러오면 준비 화면),
+  탈출 직후(결과 화면). 새 게임은 `SaveSystem.reset_all()`로 모든 provider를 `load_data({})`.
 - 필드 중 종료는 `save_suspend()`. `load_suspend()`는 불러온 뒤 파일을 지운다.
 - 저장 형식이 호환되지 않게 바뀌면 A가 `SaveSystem.SAVE_VERSION`을 올린다. 버전이 다른 파일은 불러오지 않는다.
 
