@@ -163,14 +163,21 @@ func screen_to_ground(input: Vector2) -> Vector3:
 
 
 ## World point under a screen position: first world-layer hit, else the plane at the target's feet.
+## With Settings `aim_assist` on, a monster under the cursor is aimed at directly (its position), so
+## pointing at a tall monster's head does not aim at the ground behind it.
 ## Returns null when the ray misses both (pointing at the sky).
 func aim_point_from_screen(screen_pos: Vector2) -> Variant:
 	var origin := project_ray_origin(screen_pos)
 	var dir := project_ray_normal(screen_pos)
-	var query := PhysicsRayQueryParameters3D.create(
-		origin, origin + dir * AIM_RAY_LENGTH, 1 << (Enums.LAYER_WORLD - 1))
+	var mask := 1 << (Enums.LAYER_WORLD - 1)
+	if int(Settings.get_value(&"aim_assist")) > 0:
+		mask |= 1 << (Enums.LAYER_MONSTER - 1)
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + dir * AIM_RAY_LENGTH, mask)
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	if not hit.is_empty():
+		var monster := hit.collider as Monster
+		if monster != null and not monster.is_dead():
+			return monster.global_position
 		return hit.position
 	var ground_y := target.global_position.y if target != null else 0.0
 	return Plane(Vector3.UP, ground_y).intersects_ray(origin, dir)

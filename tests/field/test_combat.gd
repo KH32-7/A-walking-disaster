@@ -8,6 +8,8 @@ const DT := 1.0 / 60.0
 const EPS := 0.01
 const PLAYER_SCENE := preload("res://field/player/player.tscn")
 const VINE_DEF := preload("res://data/monsters/vine_tendril.tres")
+const BLOB_DEF := preload("res://data/monsters/swamp_blob.tres")
+const BUG_DEF := preload("res://data/monsters/rubble_bug.tres")
 const TEST_HP := 10000.0
 const SIX_WEAPONS: Array[StringName] = [&"pistol", &"rifle", &"dagger", &"machete", &"club", &"pipe_wrench"]
 
@@ -27,6 +29,8 @@ func run() -> bool:
 	await _test_upgrade_not_doubled()
 	await _test_weak_point()
 	await _test_cover_and_wall()
+	await _test_short_monsters()
+	await _test_shot_radius()
 	await _test_melee_combo_and_backstab()
 	await _test_block()
 	await _test_magazine_and_reload()
@@ -171,6 +175,52 @@ func _test_cover_and_wall() -> void:
 	await _physics()
 	w.holder.fire()
 	_expect_near(TEST_HP - monster.hp, 18.0 * 1.03, "shooter's own cover does not reduce damage")
+	w.root.free()
+
+
+## User feedback 2026-11-06: shots flew over split slimes (0.68 to 0.9 m tall) and rubble bugs
+## (0.4 m), all shorter than the 1 m shot height. Checked with aim assist off (a thin line).
+func _test_short_monsters() -> void:
+	var assist: Variant = Settings.get_value(&"aim_assist")
+	Settings.values[&"aim_assist"] = 0
+	var smallest := MonsterRules.SIZE_MULT * pow(MonsterRules.SPLIT_SIZE_RATIO, MonsterRules.SPLIT_MAX_GENERATIONS)
+	for setup in [[BLOB_DEF, MonsterRules.SPLIT_MAX_GENERATIONS, smallest], [BUG_DEF, 0, 0.0]]:
+		var w := await _world()
+		_equip(&"pistol", Enums.EquipSlot.MAIN)
+		var def: MonsterDef = setup[0]
+		var monster: Monster = def.scene.instantiate()
+		monster.def = def
+		monster.split_generation = setup[1]
+		if setup[2] > 0.0:
+			monster.scale = Vector3.ONE * setup[2]
+			monster.size_applied = true
+		w.root.add_child(monster)
+		monster.set_physics_process(false)
+		monster.global_position = Vector3(0, 0, -5)
+		monster.max_hp = TEST_HP
+		monster.hp = TEST_HP
+		await _physics()
+		w.holder.fire()
+		_expect(monster.hp < TEST_HP, "the shot hits a short %s (gen %d)" % [def.id, setup[1]])
+		w.root.free()
+	Settings.values[&"aim_assist"] = assist
+
+
+## Aim help: the shot is shot_radius_by_assist[level] wide against monsters, a thin line at 0.
+func _test_shot_radius() -> void:
+	var assist: Variant = Settings.get_value(&"aim_assist")
+	var w := await _world()
+	_equip(&"pistol", Enums.EquipSlot.MAIN)
+	# Body edge (0.4 m x SIZE_MULT) misses the line by about 0.18 m.
+	var monster: Monster = await _monster(w, Vector3(0.7, 0, -5), false)
+	Settings.values[&"aim_assist"] = 0
+	w.holder.fire()
+	_expect_near(monster.hp, TEST_HP, "assist off: a near miss stays a miss")
+	Settings.values[&"aim_assist"] = 1
+	w.holder.step(1.0, {})
+	w.holder.fire()
+	_expect(monster.hp < TEST_HP, "weak assist: the wider shot hits the near miss")
+	Settings.values[&"aim_assist"] = assist
 	w.root.free()
 
 

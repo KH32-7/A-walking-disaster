@@ -28,6 +28,7 @@ func run() -> bool:
 	_test_zoom()
 	_test_stick_aim()
 	_test_mouse_aim()
+	await _test_mouse_on_monster()
 	_test_aim_assist()
 	_test_indoor_zone()
 
@@ -113,6 +114,31 @@ func _test_mouse_aim() -> void:
 	_expect_near((point as Vector3).distance_to(ground), 0.0, "cursor point is under the cursor", 0.05)
 	_aim_at(point)
 	_expect_near(_player.facing().angle_to(_flat(ground - _player.global_position)), 0.0, "player faces cursor")
+
+
+## User feedback 2026-11-06: the cursor on a tall monster's head aimed at the ground behind it.
+## With aim assist on, a monster under the cursor is aimed at directly.
+func _test_mouse_on_monster() -> void:
+	var assist: Variant = Settings.get_value(&"aim_assist")
+	var def := preload("res://data/monsters/root_crusher.tres") as MonsterDef
+	var monster := def.scene.instantiate() as Monster
+	monster.def = def
+	add_child(monster)
+	monster.set_physics_process(false)
+	monster.global_position = _player.global_position + Vector3(3.0, 0.0, -2.0)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var head := _camera.unproject_position(monster.global_position + Vector3.UP * 2.0)
+	Settings.values[&"aim_assist"] = 1
+	var point: Variant = _camera.aim_point_from_screen(head)
+	_expect(point is Vector3 and (point as Vector3).distance_to(monster.global_position) < EPS,
+			"cursor on a monster's head aims at the monster")
+	Settings.values[&"aim_assist"] = 0
+	point = _camera.aim_point_from_screen(head)
+	_expect(point is Vector3 and (point as Vector3).distance_to(monster.global_position) > 0.5,
+			"assist off: the cursor ray ignores monsters")
+	Settings.values[&"aim_assist"] = assist
+	monster.free()
 
 
 func _test_aim_assist() -> void:

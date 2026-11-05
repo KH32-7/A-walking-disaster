@@ -27,8 +27,13 @@ signal guard_broken()
 ## Group for low cover colliders. B-12 layouts and D dressing put their low cover bodies here.
 const LOW_COVER_GROUP := &"low_cover"
 const DEFAULT_TUNING := preload("res://data/classes/combat_tuning.tres")
-const SHOT_MASK := (1 << (Enums.LAYER_WORLD - 1)) | (1 << (Enums.LAYER_MONSTER - 1))
 const MELEE_MASK := 1 << (Enums.LAYER_MONSTER - 1)
+const WORLD_MASK := 1 << (Enums.LAYER_WORLD - 1)
+const MONSTER_MASK := 1 << (Enums.LAYER_MONSTER - 1)
+## Shot box half width with aim assist off: a thin line.
+const MIN_SHOT_HALF_WIDTH := 0.01
+## Most monster bodies one shot line can report.
+const MAX_LINE_HITS := 32
 ## Melee hit sphere center height above the player's feet.
 const MELEE_HEIGHT := 1.0
 const MELEE_MAX_HITS := 16
@@ -220,54 +225,112 @@ func fire() -> bool:
 	return true
 
 
-## One hitscan ray. Passes over low cover, stops at other world colliders and damages the first
-## thing with take_damage() (every monster on the line while shot_pierces). Returns the first node
-## it damaged, or null.
+## One hitscan shot along the flat `direction`. Walls: a ray at the shot height that passes over low
+## cover and stops at other world colliders. Monsters: any body on the monster layer touching the
+## line up to that wall, at any height and shot_radius() to either side (monsters_on_line), so
+## short ones (split slimes, rubble bugs) are hit too. Damages the nearest one (every one while
+## shot_pierces), then a world collider with take_damage() where the shot stops.
+## Returns the first node it damaged, or null.
 func shoot_ray(origin: Vector3, direction: Vector3, max_range: float, amount: float,
 		info: Dictionary) -> Node:
 	var space := get_world_3d().direct_space_state
-	var target_point := origin + direction.normalized() * max_range
+	var dir := Vector3(direction.x, 0.0, direction.z).normalized()
 	var exclude: Array[RID] = [_player.get_rid()]
-	var cover_points: Array[Vector3] = []
-	var pierced: Node = null
-	for pass_index in MAX_COVER_PASSES + 1:
-		var query := PhysicsRayQueryParameters3D.create(origin, target_point, SHOT_MASK, exclude)
-		var hit := space.intersect_ray(query)
-		if hit.is_empty():
-			Fx.spawn(&"bullet_tracer", origin, {"to": target_point})
-			shot_traced.emit(origin, target_point, false)
-			return pierced
-		var collider := hit["collider"] as Node
-		if _is_low_cover(collider) and pass_index < MAX_COVER_PASSES:
-			cover_points.append(hit["position"])
-			exclude.append(hit["rid"])
-			continue
-		var point: Vector3 = hit["position"]
-		Fx.spawn(&"bullet_tracer", origin, {"to": point})
-		shot_traced.emit(origin, point, true)
-		var target := _damage_target(collider)
+	var wall := wall_on_line(space, origin, dir, max_range, exclude)
+	var end: Vector3 = wall.get("position", origin + dir * max_range)
+	var cover_points: Array = wall["cover"]
+	var first: Node = null
+	for hit: Dictionary in monsters_on_line(space, origin, dir, origin.distance_to(end), shot_radius(),
+			tuning.shot_hit_below, tuning.shot_hit_above, exclude):
+		var target := _damage_target(hit["collider"])
 		if target == null:
-			Fx.spawn(&"bullet_impact", point, {"normal": hit["normal"]})
-			return pierced
-		var hit_info := info.duplicate()
-		hit_info["position"] = point
-		for cover_point in cover_points:
-			if cover_point.distance_to(point) <= tuning.cover_near_target_m:
-				amount *= tuning.cover_damage_mult
-				hit_info["cover"] = true
-				break
+			continue
 		if target is Monster:
-			var weak := _weak_point_on_line(target as Monster, origin, direction,
-					origin.distance_to(point))
+			var weak := _weak_point_on_line(target as Monster, origin, dir, hit["distance"])
 			if weak != null:
 				target = weak
-		_deal(target, amount, hit_info)
+		_shot_hit(target, hit["position"], amount, info, cover_points)
+		if first == null:
+			first = target
 		if not shot_pierces:
-			return target
-		exclude.append(hit["rid"])
-		if pierced == null:
-			pierced = target
-	return pierced
+			Fx.spawn(&"bullet_tracer", origin, {"to": hit["position"]})
+			shot_traced.emit(origin, hit["position"], true)
+			return first
+	var stopped := wall.has("collider")
+	Fx.spawn(&"bullet_tracer", origin, {"to": end})
+	shot_traced.emit(origin, end, stopped)
+	if stopped:
+		var target := _damage_target(wall["collider"])
+		if target == null:
+			Fx.spawn(&"bullet_impact", end, {"normal": wall["normal"]})
+		else:
+			_shot_hit(target, end, amount, info, cover_points)
+			if first == null:
+				first = target
+	return first
+
+
+## Half width (m) of the shot against monsters, from Settings `aim_assist`.
+func shot_radius() -> float:
+	var sizes := tuning.shot_radius_by_assist
+	if sizes.is_empty():
+		return 0.0
+	return sizes[clampi(int(Settings.get_value(&"aim_assist")), 0, sizes.size() - 1)]
+
+
+## Where a flat shot line stops on the world layer. Low cover is passed and remembered.
+## {"cover": Array[Vector3]} plus "position", "normal", "collider" when something stopped it.
+static func wall_on_line(space: PhysicsDirectSpaceState3D, origin: Vector3, dir: Vector3,
+		max_range: float, exclude: Array[RID]) -> Dictionary:
+	var to := origin + dir * max_range
+	var skip := exclude.duplicate()
+	var cover: Array[Vector3] = []
+	for pass_index in MAX_COVER_PASSES + 1:
+		var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(origin, to, WORLD_MASK, skip))
+		if hit.is_empty():
+			break
+		if is_low_cover(hit["collider"]) and pass_index < MAX_COVER_PASSES:
+			cover.append(hit["position"])
+			skip.append(hit["rid"])
+			continue
+		return {"cover": cover, "position": hit["position"], "normal": hit["normal"],
+			"collider": hit["collider"]}
+	return {"cover": cover}
+
+
+## Bodies on the monster layer touching the flat line from `origin` for `length` m: anywhere from
+## `below` under to `above` over it and up to `radius` to either side. Nearest first, each
+## {"collider", "position" (on the line), "distance"}. FieldCompanion shoots with it too.
+static func monsters_on_line(space: PhysicsDirectSpaceState3D, origin: Vector3, dir: Vector3,
+		length: float, radius: float, below: float, above: float, exclude: Array[RID]) -> Array[Dictionary]:
+	var found: Array[Dictionary] = []
+	var flat := Vector3(dir.x, 0.0, dir.z).normalized()
+	if length <= 0.0 or flat.is_zero_approx():
+		return found
+	var box := BoxShape3D.new()
+	box.size = Vector3(maxf(radius, MIN_SHOT_HALF_WIDTH) * 2.0, below + above, length)
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = box
+	query.transform = Transform3D(Basis.looking_at(flat),
+			origin + flat * length * 0.5 + Vector3.UP * (above - below) * 0.5)
+	query.collision_mask = MONSTER_MASK
+	query.exclude = exclude
+	var seen := {}
+	for hit in space.intersect_shape(query, MAX_LINE_HITS):
+		var body := hit["collider"] as Node3D
+		if body == null or seen.has(body):
+			continue
+		seen[body] = true
+		var along := clampf((body.global_position - origin).dot(flat), 0.0, length)
+		found.append({"collider": body, "position": origin + flat * along, "distance": along})
+	found.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["distance"] < b["distance"])
+	return found
+
+
+## Low cover collider: in LOW_COVER_GROUP itself or through its parent.
+static func is_low_cover(node: Node) -> bool:
+	return node != null and (node.is_in_group(LOW_COVER_GROUP)
+			or (node.get_parent() != null and node.get_parent().is_in_group(LOW_COVER_GROUP)))
 
 
 ## Starts reloading the active gun. False when full, already reloading or out of reserve ammo.
@@ -488,6 +551,18 @@ func _deal(target: Node, amount: float, info: Dictionary) -> void:
 	hit_landed.emit(target, amount, info)
 
 
+## A shot hit at `point`: low cover within tuning.cover_near_target_m of it scales the damage.
+func _shot_hit(target: Node, point: Vector3, amount: float, info: Dictionary, cover_points: Array) -> void:
+	var hit_info := info.duplicate()
+	hit_info["position"] = point
+	for cover_point: Vector3 in cover_points:
+		if cover_point.distance_to(point) <= tuning.cover_near_target_m:
+			amount *= tuning.cover_damage_mult
+			hit_info["cover"] = true
+			break
+	_deal(target, amount, hit_info)
+
+
 ## B-27: hit-stop for melee hits, kills and crit / weak point kills (never a single bullet).
 func _hit_stop(target: Node, info: Dictionary) -> void:
 	var monster := target as Monster
@@ -538,13 +613,8 @@ func _weak_point_on_line(monster: Monster, origin: Vector3, direction: Vector3,
 func _weak_point_radius(weak: MonsterWeakPoint) -> float:
 	for child in weak.get_children():
 		if child is CollisionShape3D and child.shape is SphereShape3D:
-			return child.shape.radius
+			return child.shape.radius * weak.global_basis.get_scale().x
 	return DEFAULT_WEAK_POINT_RADIUS
-
-
-func _is_low_cover(node: Node) -> bool:
-	return node != null and (node.is_in_group(LOW_COVER_GROUP)
-			or (node.get_parent() != null and node.get_parent().is_in_group(LOW_COVER_GROUP)))
 
 
 ## The collider itself or its nearest ancestor with take_damage(), never the player.
