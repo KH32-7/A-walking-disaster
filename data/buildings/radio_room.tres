@@ -6,6 +6,7 @@
 script = ExtResource("1_unfj8")
 id = &"radio_room"
 display_name = "무전실"
+description = "본관 방송실이에요. 구조 소문을 듣고, 레벨을 올리면 먼 신호를 잡아요."
 category = 8
 size = Vector2i(0, 0)
 capacity = 1

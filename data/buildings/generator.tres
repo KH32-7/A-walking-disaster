@@ -6,6 +6,7 @@
 script = ExtResource("1_mu4wj")
 id = &"generator"
 display_name = "발전기"
+description = "전력을 많이 만들어요. 연료를 매일 쓰고 소리가 커요."
 category = 9
 size = Vector2i(2, 2)
 cost = Dictionary[StringName, int]({

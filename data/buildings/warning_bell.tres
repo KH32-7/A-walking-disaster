@@ -6,6 +6,7 @@
 script = ExtResource("1_8x6ui")
 id = &"warning_bell"
 display_name = "경보 종"
+description = "습격이 오면 종을 울려 주민을 깨워요."
 category = 10
 cost = Dictionary[StringName, int]({
 &"scrap": 10

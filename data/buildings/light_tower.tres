@@ -6,6 +6,7 @@
 script = ExtResource("1_esorx")
 id = &"light_tower"
 display_name = "조명탑"
+description = "밤 시야를 넓히고 안개를 걷어요. 전력이 필요해요."
 category = 10
 cost = Dictionary[StringName, int]({
 &"scrap": 10

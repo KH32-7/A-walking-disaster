@@ -6,6 +6,7 @@
 script = ExtResource("1_tuo88")
 id = &"carpentry_shop"
 display_name = "목공소"
+description = "나무를 목재판으로 가공해요. 숙소와 큰 건물에는 목재판이 필요해요."
 category = 2
 size = Vector2i(3, 3)
 cost = Dictionary[StringName, int]({

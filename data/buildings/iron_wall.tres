@@ -6,6 +6,7 @@
 script = ExtResource("1_127it")
 id = &"iron_wall"
 display_name = "철벽"
+description = "마물을 막는 가장 튼튼한 벽이에요."
 category = 10
 cost = Dictionary[StringName, int]({
 &"plank": 2,

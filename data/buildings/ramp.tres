@@ -6,6 +6,7 @@
 script = ExtResource("1_1idb2")
 id = &"ramp"
 display_name = "경사로"
+description = "휠체어를 타는 주민도 그 구역에 들어갈 수 있게 해요."
 category = 5
 size = Vector2i(1, 2)
 cost = Dictionary[StringName, int]({

@@ -6,6 +6,7 @@
 script = ExtResource("1_jbqjg")
 id = &"training_ground"
 display_name = "훈련장"
+description = "클래스를 바꾸고, 주민이 싸우는 법을 익혀요."
 category = 7
 size = Vector2i(4, 4)
 cost = Dictionary[StringName, int]({

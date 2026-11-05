@@ -6,6 +6,7 @@
 script = ExtResource("1_1wcxc")
 id = &"essence_workshop"
 display_name = "정수 공방"
+description = "정수로 장비에 각인을 새겨요. 레벨을 올리면 정수를 정제해요."
 category = 4
 size = Vector2i(3, 3)
 cost = Dictionary[StringName, int]({

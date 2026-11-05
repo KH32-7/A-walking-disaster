@@ -6,6 +6,7 @@
 script = ExtResource("1_c4rkb")
 id = &"kitchen"
 display_name = "부엌"
+description = "식량으로 요리를 해요. 요리는 배고픔을 더 많이 채워요."
 category = 2
 size = Vector2i(2, 3)
 cost = Dictionary[StringName, int]({

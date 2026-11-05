@@ -6,6 +6,7 @@
 script = ExtResource("1_mra4b")
 id = &"memorial"
 display_name = "추모비"
+description = "떠난 사람의 이름을 새겨요. 남은 사람의 슬픔이 빨리 가라앉아요."
 cost = Dictionary[StringName, int]({
 &"stone": 20
 })

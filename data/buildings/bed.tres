@@ -6,6 +6,7 @@
 script = ExtResource("1_0ulry")
 id = &"bed"
 display_name = "침상"
+description = "주민 한 명이 잘 자리예요. 자고 나면 피로가 풀려요."
 category = 0
 size = Vector2i(1, 2)
 cost = Dictionary[StringName, int]({

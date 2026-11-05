@@ -6,6 +6,7 @@
 script = ExtResource("1_ejbga")
 id = &"radio_tower"
 display_name = "무전탑"
+description = "도시 밖과 무전을 이어요. 해솔시를 떠나려면 필요해요."
 category = 8
 size = Vector2i(3, 3)
 cost = Dictionary[StringName, int]({
