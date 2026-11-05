@@ -167,6 +167,13 @@ func go_to_field(loadout: Dictionary) -> bool:
 	return true
 
 
+## Region of the sortie in progress (&"" outside FIELD). Audio picks the field music from it.
+func current_region() -> StringName:
+	if state() != S.FIELD:
+		return &""
+	return StringName(_loadout.get("region_id", DEBUG_REGION))
+
+
 func stay_at_base() -> bool:
 	if not _go(S.BASE_STAY):
 		return false

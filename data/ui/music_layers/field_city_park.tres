@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="MusicLayerDef" format=3]
+
+[ext_resource type="Script" path="res://audio/defs/music_layer_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+state = &"field"
+id = &"field_city_park"
+unlock_population = 0
+region = &"city_park"
+full_track = true
+stream = "res://art/music/city_park.mp3"
+synth = &"mus_field_ambient"
+volume_db = -7.5
+caption = "♪ 수풀 속 낮은 울림"
+visual_cue_id = &"music_field"

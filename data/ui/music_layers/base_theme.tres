@@ -5,9 +5,11 @@
 [resource]
 script = ExtResource("1_def")
 state = &"base"
-id = &"base_bass"
-unlock_population = 6
-synth = &"mus_base_bass"
-volume_db = -6.0
-caption = "♪ 베이스가 더해짐"
+id = &"base_theme"
+unlock_population = 0
+full_track = true
+stream = "res://art/music/base_theme.mp3"
+synth = &"mus_base_guitar"
+volume_db = -7.0
+caption = "♪ 낮게 깔리는 피아노와 현악"
 visual_cue_id = &"music_base"
