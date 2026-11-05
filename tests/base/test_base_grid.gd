@@ -32,31 +32,30 @@ func _place(def_id: StringName, zone: StringName, cell: Vector2i, rot: int = 0) 
 
 
 func _test_rules(grid: BaseGrid) -> bool:
-	var ok := _check(grid.areas.has(&"front_yard") and grid.areas.has(&"playground") and grid.areas.size() == 7, "건설 부지 7곳")
-	ok = _check(grid.check(&"bed", &"front_yard", Vector2i(0, 0))["ok"], "앞마당 0,0에 침상") and ok
-	var r := grid.check(&"bed", &"front_yard", Vector2i(0, 2))
-	ok = _check(not r["ok"] and "부지 밖으로 나감" in r["reasons"], "침상(1×2)이 3칸 높이 부지 아래로 넘침") and ok
-	ok = _check(grid.check(&"bed", &"front_yard", Vector2i(0, 2), 1)["ok"], "90° 돌리면 2×1로 들어감") and ok
+	var ok := _check(grid.areas.has(&"front_yard") and grid.areas.has(&"park_a") and grid.areas.size() == 4, "건설 부지 4곳 (공터 + 숲 3곳)")
+	ok = _check(grid.check(&"bed", &"front_yard", Vector2i(0, 0))["ok"], "공터 0,0에 침상") and ok
+	var r := grid.check(&"bed", &"front_yard", Vector2i(0, 18))
+	ok = _check(not r["ok"] and "부지 밖으로 나감" in r["reasons"], "침상(1×2)이 19칸 높이 공터 아래로 넘침") and ok
+	ok = _check(grid.check(&"bed", &"front_yard", Vector2i(0, 18), 1)["ok"], "90° 돌리면 2×1로 들어감") and ok
 	var bed := _place(&"bed", &"front_yard", Vector2i(0, 0))
 	r = grid.check(&"bonfire", &"front_yard", Vector2i(0, 1))
 	ok = _check(not r["ok"] and "다른 건물과 겹침" in r["reasons"], "겹치기 금지") and ok
 	ok = _check(grid.check(&"bed", &"front_yard", Vector2i(0, 1), 0, bed)["ok"], "옮길 때는 자기 자리 무시") and ok
-	r = grid.check(&"bed", &"playground", Vector2i(3, 3))
-	ok = _check(not r["ok"] and "개간되지 않은 구역" in r["reasons"], "운동장은 개간 전") and ok
-	Colony.clear_zone(&"playground")
-	ok = _check(grid.check(&"bed", &"playground", Vector2i(3, 3))["ok"], "개간하면 운동장에 지을 수 있음") and ok
-	ok = _check(grid.check(&"lumber_yard", &"front_yard", Vector2i(1, 0))["ok"], "앞마당 서쪽: 나무 10m 안 → 벌목장") and ok
-	r = grid.check(&"lumber_yard", &"front_yard", Vector2i(8, 0))
-	ok = _check(not r["ok"] and r["reasons"][0].begins_with("나무"), "앞마당 동쪽 끝은 나무가 멀어 벌목장 불가") and ok
-	ok = _check(grid.check(&"quarry", &"front_yard", Vector2i(8, 0))["ok"], "앞마당 동쪽: 잔해 더미 → 채석장") and ok
+	r = grid.check(&"bed", &"park_a", Vector2i(3, 3))
+	ok = _check(not r["ok"] and "개간되지 않은 구역" in r["reasons"], "서쪽 숲은 개간 전") and ok
+	Colony.clear_zone(&"park_a")
+	ok = _check(grid.check(&"bed", &"park_a", Vector2i(3, 3))["ok"], "개간하면 서쪽 숲에 지을 수 있음") and ok
+	ok = _check(grid.check(&"lumber_yard", &"front_yard", Vector2i(1, 2))["ok"], "공터 서쪽: 나무 10m 안 → 벌목장") and ok
+	r = grid.check(&"lumber_yard", &"front_yard", Vector2i(27, 2))
+	ok = _check(not r["ok"] and r["reasons"][0].begins_with("나무"), "공터 동쪽 끝은 나무가 멀어 벌목장 불가") and ok
+	ok = _check(grid.check(&"quarry", &"front_yard", Vector2i(27, 2))["ok"], "공터 동쪽: 바위 더미 → 채석장") and ok
 	ok = _check(not grid.check(&"interpreter_radio", &"front_yard", Vector2i(4, 0))["ok"], "부착형 건물은 격자에 못 놓음") and ok
-	ok = _check(not grid.check(&"radio_tower", &"front_yard", Vector2i(4, 0))["ok"], "무전탑은 옥상 전용") and ok
 	ok = _check(BaseGrid.footprint(BaseDB.get_building(&"kitchen"), 1) == Vector2i(3, 2), "부엌 2×3 → 회전 3×2") and ok
 	Colony.load_data({})
 	return ok
 
 
-## 통로 연결: front yard is 10×3. A bonfire in the middle row gets walled in by the last building.
+## 통로 연결: a bonfire on the clearing's top row gets walled in by the last building.
 func _test_paths(grid: BaseGrid) -> bool:
 	_place(&"bonfire", &"front_yard", Vector2i(5, 1))
 	_place(&"bed", &"front_yard", Vector2i(4, 0))   # (4,0)(4,1)
@@ -101,7 +100,7 @@ func _test_build_mode(base: Node3D) -> bool:
 func _test_views(base: Node3D) -> bool:
 	var views: BuildingViews = base.building_views
 	await get_tree().process_frame
-	var ok := _check(views.view_count() == Colony.buildings.size() - 1, "무전실 빼고 건물마다 그레이박스 (%d)" % views.view_count())
+	var ok := _check(views.view_count() == Colony.buildings.size() - 1, "방송실 빼고 건물마다 모습 (%d)" % views.view_count())
 	var uid := Colony.building_ids(&"", false)[1]
 	Colony.complete_building(uid)
 	await get_tree().process_frame

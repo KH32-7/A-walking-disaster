@@ -97,7 +97,7 @@ func _work_position(r: Dictionary) -> Variant:
 		var def := BaseDB.get_building(b["def_id"])
 		var size := BaseGrid.footprint(def, int(b["rotation"]))
 		return grid.footprint_center(b["zone_id"], Vector2i(b["cell"][0], b["cell"][1]), size) + _offset(r["id"])
-	# Jobs at fixed map spots (무전실 → radio WorkSpot) or buildings off the grid.
+	# Jobs at fixed map spots (방송실 → radio WorkSpot) or buildings off the grid.
 	for node in layout.find_children("*", "Marker3D", true, false):
 		if node is WorkSpot and node.job_id == job:
 			return node.global_position + _offset(r["id"]) * 0.5

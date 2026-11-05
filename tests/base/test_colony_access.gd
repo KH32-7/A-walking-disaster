@@ -42,29 +42,26 @@ func _test_mobility() -> bool:
 	_fresh({&"food": 50})
 	var wheel := _person([Enums.AccessNeed.MOBILITY])
 	var walker := _person()
-	var ok := _check(not Colony.zone_access(&"main_hall")["mobility"] and Colony.zone_access(&"front_yard")["mobility"], "본관은 경사로가 필요, 앞마당은 평지")
+	var ok := _check(not Colony.zone_access(&"main_hall")["mobility"] and Colony.zone_access(&"front_yard")["mobility"], "방송실(데크 위)은 경사로가 필요, 공터는 평지")
 	var reason := Colony.job_block_reason(wheel, &"radio")
-	ok = _check(reason.begins_with("갈 수 있는 무전실 자리가 없음") or reason.contains("경사로"), "휠체어 사용자: 경사로 없으면 무전실(본관) 배정 불가 (%s)" % reason) and ok
-	ok = _check(Colony.assign_job(walker, &"radio"), "걷는 사람은 무전실 가능") and ok
+	ok = _check(reason.begins_with("갈 수 있는 방송실 자리가 없음") or reason.contains("경사로"), "휠체어 사용자: 경사로 없으면 방송실 배정 불가 (%s)" % reason) and ok
+	ok = _check(Colony.assign_job(walker, &"radio"), "걷는 사람은 방송실 가능") and ok
 	Colony.unassign_job(walker)
 	var shop := _build(&"workshop")
-	ok = _check(Colony.assign_job(wheel, &"maintenance", shop), "앞마당(평지) 정비소는 처음부터 가능") and ok
+	ok = _check(Colony.assign_job(wheel, &"maintenance", shop), "공터(평지) 정비소는 처음부터 가능") and ok
 	_build(&"ramp")
-	ok = _check(Colony.zone_access(&"main_hall")["mobility"] and Colony.assign_job(wheel, &"radio"), "앞마당에 경사로 → 본관 무전실 가능") and ok
-	var gym_shop := _build(&"workshop", &"gym")
-	ok = _check(Colony.access_block_reason(wheel, &"gym") != "", "체육관은 체육관 안에 경사로가 필요") and ok
-	ok = _check(not Colony.assign_job(wheel, &"maintenance", gym_shop), "체육관 정비소 배정 불가") and ok
-	ok = _check(not Colony.zone_access(&"roof")["mobility"], "옥상은 승강기 필요") and ok
-	_build(&"elevator")
-	ok = _check(not Colony.zone_access(&"roof")["mobility"], "전력 없는 승강기는 안 됨") and ok
-	_build(&"solar_panel")
-	ok = _check(Colony.zone_access(&"roof")["mobility"], "전력 들어온 승강기 → 옥상 가능") and ok
+	ok = _check(Colony.zone_access(&"main_hall")["mobility"] and Colony.assign_job(wheel, &"radio"), "공터에 경사로 → 방송실 가능") and ok
+	var slope_shop := _build(&"workshop", &"park_b")
+	ok = _check(Colony.access_block_reason(wheel, &"park_b") != "", "북쪽 숲(비탈)은 그 안에 경사로가 필요") and ok
+	ok = _check(not Colony.assign_job(wheel, &"maintenance", slope_shop), "북쪽 숲 정비소 배정 불가") and ok
+	_build(&"ramp", &"park_b")
+	ok = _check(Colony.zone_access(&"park_b")["mobility"], "북쪽 숲에 경사로 → 오를 수 있음") and ok
 	# Ramp removed later: the resident can no longer reach work and produces nothing that day.
 	Colony.assign_job(wheel, &"radio")
 	for uid in Colony.building_ids(&"ramp"):
 		Colony.demolish_building(uid)
 	var report := Colony.settle_day()
-	ok = _check(not report["work"].has(wheel), "경사로가 없어지면 본관에 못 가서 일 못 함") and ok
+	ok = _check(not report["work"].has(wheel), "경사로가 없어지면 방송실에 못 가서 일 못 함") and ok
 	return ok
 
 
@@ -121,8 +118,8 @@ func _test_access_map() -> bool:
 	_build(&"ramp")
 	var m := Colony.access_map()
 	var ok := _check(m["zones"].size() == BaseDB.zones().size(), "구역마다 항목")
-	ok = _check(m["zones"][&"main_hall"]["mobility"] and not m["zones"][&"gym"]["mobility"], "본관 가능, 체육관 불가") and ok
-	ok = _check("경사로 (체육관)" in m["zones"][&"gym"]["missing"], "체육관에 무엇이 필요한지 글로: %s" % [m["zones"][&"gym"]["missing"]]) and ok
+	ok = _check(m["zones"][&"main_hall"]["mobility"] and not m["zones"][&"park_b"]["mobility"], "방송실 가능, 북쪽 숲 불가") and ok
+	ok = _check("경사로 (북쪽 숲)" in m["zones"][&"park_b"]["missing"], "북쪽 숲에 무엇이 필요한지 글로: %s" % [m["zones"][&"park_b"]["missing"]]) and ok
 	ok = _check(m.has("hearing_alarm") and m["care"].has("slots") and m.has("interpreter_radio"), "기지 전체 항목") and ok
 	return ok
 

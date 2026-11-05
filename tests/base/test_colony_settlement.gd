@@ -131,7 +131,7 @@ func _test_inputs_and_food() -> bool:
 	report = Colony.settle_day()
 	ok = _check(Colony.get_resident(other)["hunger"] == 70 - 40 + 70, "요리 식사 +70") and ok
 	ok = _check(report["consumed"].get(&"food") == roundi(4 / 1.5), "요리하면 식량 효율 ×1.5 (%s)" % report["consumed"]) and ok
-	ok = _check(Colony.get_resident(other)["fatigue"] == 0, "일 안 한 사람은 본관 침상에서 회복") and ok
+	ok = _check(Colony.get_resident(other)["fatigue"] == 0, "일 안 한 사람은 야영지 침낭에서 회복") and ok
 	return ok
 
 

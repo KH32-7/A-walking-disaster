@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_en33b")
 id = &"front_yard"
-display_name = "본관 앞마당"
-size = Vector2i(10, 3)
+display_name = "공터"
+size = Vector2i(30, 19)
 starts_cleared = true
-note = "가안: 처음 건설 부지 (09 탭 표에 없음)"
+note = "맵 한가운데 풀만 자란 빈 땅. 처음부터 모든 건물을 여기에 짓는다"

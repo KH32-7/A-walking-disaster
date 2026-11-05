@@ -12,7 +12,7 @@ extends Resource
 @export var clear_work := 0
 ## Resources gained when cleared.
 @export var clear_yield: Dictionary[StringName, int] = {}
-## Paid once when clearing starts (옥상: 계단 수리 목재판 10).
+## Paid once when clearing starts (북쪽 숲: 비탈 계단 목재판 10).
 @export var clear_cost: Dictionary[StringName, int] = {}
 ## Base tier needed before clearing can start (09 "해금").
 @export var unlock_tier: Enums.BaseTier = Enums.BaseTier.CAMP
@@ -25,6 +25,6 @@ extends Resource
 ##   (empty = this zone); &"elevator" = an upper floor, needs a working 승강기 somewhere in the base.
 @export_enum("open", "ramp", "elevator") var mobility_access: String = "open"
 @export var ramp_zone: StringName = &""
-## Raid damage on buildings here is halved (체육관 실내 −50%).
+## Raid damage on buildings here is halved (실내 구역 −50%).
 @export var raid_damage_mult := 1.0
 @export var note: String = ""

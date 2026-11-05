@@ -10,7 +10,7 @@ const REGIONS := [
 	{"id": &"flooded_mall", "name": "침수 상가", "danger": 2, "families": "물 · 수풀", "res": "페인트 · 천 · 통조림 · 고철", "unlock": "공원 탈출 1회"},
 	{"id": &"hospital", "name": "병원", "danger": 3, "families": "물 · 빛", "res": "의약품 · 의료 기구", "unlock": "기지 단계 정착지"},
 	{"id": &"office_district", "name": "고층 업무지구", "danger": 4, "families": "빛 · 잔해", "res": "전자부품 · 모터 · 무전 부품", "unlock": "정착지 + 승강기 열쇠"},
-	{"id": &"harbor", "name": "항구", "danger": 5, "families": "잔해 · 물", "res": "연료 · 발전기 코어 · 철판", "unlock": "무전실 Lv2"},
+	{"id": &"harbor", "name": "항구", "danger": 5, "families": "잔해 · 물", "res": "연료 · 발전기 코어 · 철판", "unlock": "방송실 Lv2"},
 ]
 const MAX_COMPANIONS := 1
 

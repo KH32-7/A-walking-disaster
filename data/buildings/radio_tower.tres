@@ -16,5 +16,4 @@ cost = Dictionary[StringName, int]({
 capacity = 1
 requires_flags = Array[StringName]([&"blueprint_radio_tower"])
 tier_min = 2
-zone_only = &"roof"
 note = "도시 밖과 연결, 엔딩 조건"

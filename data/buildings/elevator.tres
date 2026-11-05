@@ -18,4 +18,4 @@ effects = Dictionary[StringName, float]({
 })
 power_use = Array[int]([1, 1, 1])
 power_priority = 0
-note = "층이 다른 구역(옥상·체육관 2층)의 이동 조건 충족"
+note = "층이 다른 구역의 이동 조건 충족. 숲 공터 지도에는 지금 층이 다른 구역이 없어 보류"

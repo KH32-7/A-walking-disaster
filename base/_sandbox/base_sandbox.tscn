@@ -121,7 +121,7 @@ starts_cleared = true
 
 [node name="Zone_Playground" parent="Markers" instance=ExtResource("2_zone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2)
-zone_id = &"playground"
+zone_id = &"park_a"
 size_cells = Vector2i(20, 12)
 clear_work = 40
 clear_yield = Dictionary[StringName, int]({
@@ -130,7 +130,7 @@ clear_yield = Dictionary[StringName, int]({
 
 [node name="Zone_Gym" parent="Markers" instance=ExtResource("2_zone")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, 0, -22)
-zone_id = &"gym"
+zone_id = &"park_b"
 size_cells = Vector2i(10, 8)
 indoor = true
 clear_work = 30
@@ -145,7 +145,7 @@ size_cells = Vector2i(18, 5)
 
 [node name="Build_Playground" parent="Markers" instance=ExtResource("3_build")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2)
-zone_id = &"playground"
+zone_id = &"park_a"
 size_cells = Vector2i(20, 12)
 
 [node name="Tree1" parent="Markers" instance=ExtResource("4_res")]
