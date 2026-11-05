@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="RadioTrigger" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/radio_trigger.gd" id="1_8bwvj"]
+
+[resource]
+script = ExtResource("1_8bwvj")
+id = &"quest_rumor"
+lines = Array[String](["{text}", "오늘 들어온 소문 하나. {text}", "확인된 건 아닙니다만, {text}", "무전에 이런 얘기가 잡혔어요. {text}", "소문 하나 전합니다. {text}"])
+cooldown_sec = 0.0
+priority = 1
+guidance = false

@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="QuestDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://systems/defs/quest_def.gd" id="1_qdef"]
+[ext_resource type="Script" path="res://systems/defs/quest_objective.gd" id="2_qobj"]
+
+[sub_resource type="Resource" id="Resource_plane"]
+script = ExtResource("2_qobj")
+id = &"find_plane"
+kind = 1
+text = "상가 공구점에서 대패 찾아오기"
+region_id = &"flooded_mall"
+target_id = &"keepsake_plane"
+marker = &"hardware_store"
+consume = true
+
+[resource]
+script = ExtResource("1_qdef")
+id = &"personal_carpenter_plane"
+type = 1
+request_type = 0
+title = "손때 묻은 대패"
+description = "윤기철 씨가 상가 공구점에 두고 온 대패를 찾아 달라고 한다. 사십 년을 같이 일한 연장이라 다른 걸로는 손이 안 맞는단다."
+trigger = &"trust"
+trigger_params = {
+"trust": 40
+}
+giver_id = &"demo_carpenter"
+objectives = Array[ExtResource("2_qobj")]([SubResource("Resource_plane")])
+rewards = {
+"flags": [&"demo_carpenter_request_1"],
+"trust": 20
+}
+fail_condition = {
+"giver_lost": true
+}

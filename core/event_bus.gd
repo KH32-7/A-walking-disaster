@@ -73,3 +73,13 @@ signal xp_gained(amount: int, reason: StringName)
 signal level_up(level: int)
 signal perk_chosen(perk_id: StringName)
 signal mastery_level_up(combat_class: Enums.CombatClass, level: int)
+
+# --- Quests (emitted by Lane A: Quests) ---
+## A quest became active (Quests.get_def(quest_id) has title, type, giver).
+signal quest_started(quest_id: StringName)
+## One objective moved forward. progress counts up to that objective's count.
+signal quest_updated(quest_id: StringName, objective_id: StringName, progress: int)
+## Rewards were already granted when this fires.
+signal quest_completed(quest_id: StringName)
+## reason: &"deadline", &"giver_lost", &"raid_lost", &"manual"
+signal quest_failed(quest_id: StringName, reason: StringName)
