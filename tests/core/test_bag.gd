@@ -13,7 +13,7 @@ func run() -> bool:
 	_saved_economy = Economy.save_data().duplicate(true)
 	var ok := _check_place_and_rotate() and _check_stacking() and _check_items() \
 		and _check_bonus_row() and _check_resize_refusal() and _check_unload() and _check_lose() \
-		and _check_take_and_consume() and _check_save()
+		and _check_take_and_consume() and _check_looting_api() and _check_save()
 	Bag.load_data(_saved_bag)
 	Armory.load_data(_saved_armory)
 	Economy.load_data(_saved_economy)
@@ -133,6 +133,16 @@ func _check_take_and_consume() -> bool:
 	ok = _expect(not Bag.consume(&"food", 16) and Bag.count(&"food") == 15, "over-consume changed bag") and ok
 	ok = _expect(Bag.consume(&"food", 12) and Bag.count(&"food") == 3, "consume") and ok
 	return ok
+
+
+func _check_looting_api() -> bool:
+	_reset(Vector2i(1, 1))  # one cell
+	var added := Bag.try_add(&"ammo_pistol", 80)  # stack 60
+	var none := Bag.try_add(&"key", 1)
+	return _expect(added == 60 and none == 0, "try_add %d / %d" % [added, none]) \
+		and _expect(Bag.count_of(&"ammo_pistol") == 60, "count_of") \
+		and _expect(not Bag.remove_item(&"ammo_pistol", 61) and Bag.count_of(&"ammo_pistol") == 60, "over-remove") \
+		and _expect(Bag.remove_item(&"ammo_pistol", 60) and Bag.is_empty(), "remove_item")
 
 
 func _check_save() -> bool:

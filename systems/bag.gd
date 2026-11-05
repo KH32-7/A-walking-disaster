@@ -172,6 +172,24 @@ func take_from_storage(resource_id: StringName, amount: int) -> int:
 	return moved
 
 
+# --- Lane B looting API (issue #6). Resource / consumable ids only; for equipment use
+# Armory.create_item(def_id, rarity) and then add_item(uid). ---
+
+## Adds up to `count` of `item_id` wherever it fits. Returns how many went in (0 = no room).
+func try_add(item_id: StringName, amount: int) -> int:
+	return amount - add_resource(item_id, amount)
+
+
+## How many of `item_id` the bag and safe pocket hold.
+func count_of(item_id: StringName) -> int:
+	return count(item_id)
+
+
+## Takes `count` of `item_id` out (keys, ammo ...). False and no change if there are not enough.
+func remove_item(item_id: StringName, amount: int) -> bool:
+	return consume(item_id, amount)
+
+
 # --- Moving / removing (Lane D drag and drop, Lane B use and drop) ---
 
 ## Moves an entry to `pos` in `area` (AREA_POCKET for the safe pocket), optionally rotated.
