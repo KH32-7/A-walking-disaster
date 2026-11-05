@@ -26,7 +26,7 @@ func _on_joined(id: StringName) -> void:
 func _test_defs_loaded() -> bool:
 	var ok := true
 	ok = _check(BaseDB.traits().size() == 16, "특성 16개 (07 탭 표)") and ok
-	ok = _check(BaseDB.jobs().size() == 17, "직업 17개 (07 탭 표)") and ok
+	ok = _check(BaseDB.jobs().size() == 18, "직업 17개 (07 탭 표) + 전초기지 주둔 (C-19)") and ok
 	var wood := BaseDB.get_job(&"woodcutting")
 	ok = _check(wood != null and wood.base_output.get(&"wood") == 8.0 and wood.main_stat_key() == &"str", "벌목: 힘, 나무 8") and ok
 	var diligent := BaseDB.get_trait(&"diligent")
