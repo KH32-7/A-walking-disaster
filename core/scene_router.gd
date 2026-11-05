@@ -159,13 +159,15 @@ func _on_player_downed() -> void:
 
 func _finish_sortie(extracted: bool) -> void:
 	var unloaded := Bag.unload_to_base()
+	var region := StringName(_loadout.get("region_id", &""))
+	var xp := Progression.finish_sortie(extracted, region, _rescued.size())
 	last_sortie_result = {
 		"extracted": extracted,
 		"region_id": _loadout.get("region_id", &""),
 		"loot": unloaded,
 		"rescued": _rescued.duplicate(),
 		"stranded": _stranded.duplicate(),
-		"xp": 0,  # TODO(A-11)
+		"xp": xp,
 	}
 	EventBus.sortie_ended.emit(last_sortie_result)
 	if extracted and _emergency_return and not _day_raid.is_empty():

@@ -23,6 +23,7 @@
 | `UI` | `ui/ui.gd` | D | 화면 열고 닫기, HUD |
 | `SceneRouter` | `core/scene_router.gd` | A | 기지↔필드 씬 전환, 하루 흐름 진행 |
 | `DebugConsole` | `core/debug/debug_console.gd` | A | 개발용 치트 콘솔(백틱 키). 디버그 빌드에서만 동작 |
+| `Progression` | `systems/progression.gd` | A | 플레이어 레벨·경험치·특기, 클래스 숙련 저장 |
 
 `_mcp_game_helper`는 Godot AI 플러그인 것이라 건드리지 않는다.
 
@@ -39,6 +40,7 @@
 | `notification_posted` | 누구나 | D |
 | `radio_message`, `journal_entry_added` | A | D |
 | `settings_changed`, `game_saved`, `game_loaded` | A | 전부 |
+| `xp_gained`, `level_up`, `perk_chosen`, `mastery_level_up` | A | B·D |
 
 ## 공개 함수 (다른 레인이 호출해도 되는 것)
 
@@ -85,6 +87,13 @@
 - **DebugConsole**: `register(name, callable, help)`, `execute(line)`, `is_open()`, `godmode`(B가 읽음).
   각 레인은 자기 스크립트에서 `register`로 명령을 추가한다(콘솔 파일은 고치지 않음). 같은 이름으로 다시 등록하면 교체된다.
   `raid`, `resident`는 C가, `give`는 A-07이 교체할 자리표시 명령이다. 출시 빌드에서는 등록·실행이 모두 무시된다.
+- **Progression**: `level`, `xp`, `xp_needed()`, `xp_to_next(level)`, `max_hp()`(레벨 기본 체력. 장비 보너스 `Armory.get_owner_summary().max_hp`는 B가 더함),
+  `award(action, count)`(A-13: `&"personal_request"` 등 `Progression.XP_TABLE`의 키), `add_xp(amount, reason)`,
+  `pending_perks()`, `perk_choices()`, `choose_perk(id)`(D: 특기 선택 화면), `perk_stacks(id)`, `perk_bonus(stat)`
+  (B·Bag이 읽음: `bag_cells`, `stamina`, `medkit_pct`, `escort_speed_pct`, `lockpick_time_pct`. 정의는 `Progression.PERKS`),
+  `add_mastery(combat_class, xp) -> 새 숙련`(B: 숙련 경험치 계산 후 호출, 보조무기 50%도 B가 적용), `mastery_level(combat_class)`(1~10), `mastery_xp(combat_class)`.
+  처치 경험치는 `monster_killed`의 monster_id로 `data/monsters/<id>.tres`의 `tier`를, 탈출 경험치는 `data/regions/<id>.tres`의 `danger`를 읽는다(없으면 일반·위험도 1).
+  구조·탈출 경험치는 SceneRouter가 `finish_sortie()`로 주고, `sortie_ended` 결과의 `xp`는 그 출격에서 얻은 전부다.
 
 새 공개 함수가 필요하면 그 오토로드의 소유 레인이 추가하고 여기에 한 줄 적는다.
 
@@ -145,6 +154,7 @@
   탈출 직후(결과 화면). 새 게임은 `SaveSystem.reset_all()`로 모든 provider를 `load_data({})`.
 - 필드 중 종료는 `save_suspend()`. `load_suspend()`는 불러온 뒤 파일을 지운다.
 - 저장 형식이 호환되지 않게 바뀌면 A가 `SaveSystem.SAVE_VERSION`을 올린다. 버전이 다른 파일은 불러오지 않는다.
+- `progression`(A) provider: 레벨·경험치·특기·클래스 숙련.
 
 ## 아이템 id 규칙
 

@@ -64,3 +64,11 @@ signal journal_entry_added(day: int, text: String)
 signal settings_changed(key: StringName)
 signal game_saved(slot: int)
 signal game_loaded(slot: int)
+
+# --- Progression (emitted by Lane A: Progression) ---
+## Player XP gained. reason: the XP action (&"kill_normal", &"rescue", &"extract", &"debug" ...).
+signal xp_gained(amount: int, reason: StringName)
+## Player reached `level`. Emitted once per level, so a big gain may emit several times.
+signal level_up(level: int)
+signal perk_chosen(perk_id: StringName)
+signal mastery_level_up(combat_class: Enums.CombatClass, level: int)
