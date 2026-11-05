@@ -4,7 +4,7 @@ class_name ResidentData
 ## Only Colony should call create(); other lanes read residents through Colony.get_resident().
 ##
 ## Key convention: field names (top level, story, assignment) are String keys; maps keyed by ids
-## (stats, job_skill, job_days, class_aptitude, relations) use StringName keys.
+## (stats, job_skill, job_days, stat_days, class_aptitude, relations) use StringName keys.
 ##
 ## Resident fields:
 ##   id, name, nickname: StringName/String
@@ -14,7 +14,7 @@ class_name ResidentData
 ##   traits, likes, dislikes: Array[StringName]
 ##   access_needs: Array[int] (Enums.AccessNeed)
 ##   stats: {str, dex, sense, heart: 1..10}
-##   job_skill: {job_id: 0..5}, job_days: {job_id: days worked} (C-05)
+##   job_skill: {job_id: 0..5}, job_days: {job_id: days worked}, stat_days: {stat: work days} (C-05)
 ##   class_aptitude: {gun, blade, blunt: Enums.Aptitude}
 ##   hunger, fatigue, morale, trust: int 0..100
 ##   health: Enums.HealthState, recover_days: int
@@ -82,6 +82,7 @@ static func create(profile: Dictionary, rng: RandomNumberGenerator) -> Dictionar
 		"stats": roll_stats(former_job, rng),
 		"job_skill": {},
 		"job_days": {},
+		"stat_days": {},
 		"class_aptitude": roll_aptitude(rng),
 		"hunger": START_HUNGER,
 		"fatigue": START_FATIGUE,
@@ -137,6 +138,7 @@ static func normalize(src: Dictionary) -> Dictionary:
 	r["stats"] = stats
 	r["job_skill"] = _int_map(r.get("job_skill", {}), 0, 5)
 	r["job_days"] = _int_map(r.get("job_days", {}), 0, 1 << 30)
+	r["stat_days"] = _int_map(r.get("stat_days", {}), 0, 1 << 30)
 	var apt := {}
 	for key in CLASS_KEYS:
 		apt[key] = clampi(int(_read(r.get("class_aptitude", {}), key, Enums.Aptitude.MID)), 0, Enums.Aptitude.size() - 1)

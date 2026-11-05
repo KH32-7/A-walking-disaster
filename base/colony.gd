@@ -313,7 +313,7 @@ func _refresh_beds() -> void:
 
 
 ## Supplies power to consumers in priority order (09 "전력"): inclusion → infirmary → radio → rest.
-## TODO(C-05): a generator without fuel for the day gives no power.
+## A generator that ran out of fuel in the last settlement gives no power ("fueled" = false).
 func _refresh_power() -> void:
 	var winter := GameState.season() == Enums.Season.WINTER
 	_power_supply = 0.0
@@ -324,6 +324,8 @@ func _refresh_power() -> void:
 		var supply := building_effect(uid, &"power_supply")
 		if winter and def.effects.has(&"power_supply_winter"):
 			supply = building_effect(uid, &"power_supply_winter")
+		if not buildings[uid]["fueled"]:
+			supply = 0.0
 		_power_supply += supply
 		var use := def.power_use_at(int(buildings[uid]["level"]))
 		_power_demand += use
@@ -365,6 +367,7 @@ func _new_building(uid: StringName, def: BuildingDef, cell: Vector2i, rotation: 
 		"progress": 0,
 		"completed": false,
 		"powered": false,
+		"fueled": true,
 		"paid": paid.duplicate(),
 	}
 
@@ -387,6 +390,7 @@ func _normalize_building(src: Dictionary) -> Dictionary:
 	b["progress"] = int(b.get("progress", 0))
 	b["completed"] = bool(b.get("completed", false))
 	b["powered"] = bool(b.get("powered", false))
+	b["fueled"] = bool(b.get("fueled", true))
 	var paid := {}
 	var src_paid: Dictionary = b.get("paid", {})
 	for res in src_paid:
@@ -415,6 +419,266 @@ static func _negated(cost: Dictionary) -> Dictionary:
 	var out := {}
 	for res in cost:
 		out[res] = -int(cost[res])
+	return out
+
+
+# --- Jobs and the daily settlement (Lane C, C-05) ------------------------------
+
+## Worker slots of a completed building: Lv1 정원, +1 per level above 1 (09 "건물 목록").
+func building_capacity(uid: StringName) -> int:
+	var b: Dictionary = buildings.get(uid, {})
+	if b.is_empty():
+		return 0
+	var cap := BaseDB.get_building(b["def_id"]).capacity
+	return cap + int(b["level"]) - 1 if cap > 0 else 0
+
+
+## Why `resident_id` cannot take `job_id` at `building_uid` ("" = allowed). For the UI.
+## building_uid &"" = pick a workplace automatically (see assign_job()).
+func job_block_reason(resident_id: StringName, job_id: StringName, building_uid: StringName = &"") -> String:
+	var r: Dictionary = residents.get(resident_id, {})
+	if r.is_empty():
+		return "주민 없음"
+	var job := BaseDB.get_job(job_id)
+	var reason := WorkRules.job_block_reason(r, job)
+	if reason != "":
+		return reason
+	if job_id == WorkRules.CONSTRUCTION_JOB:
+		var site: Dictionary = buildings.get(building_uid, {})
+		return "" if not site.is_empty() and not site["completed"] else "건설 현장을 골라야 함"
+	if job.workplace == &"":
+		return ""
+	if building_uid == &"":
+		return "" if _free_workplace(job.workplace, resident_id) != &"" else "빈 %s 자리가 없음" % _def_name(job.workplace)
+	var b: Dictionary = buildings.get(building_uid, {})
+	if b.is_empty() or b["def_id"] != job.workplace or not b["completed"]:
+		return "%s가 아님" % _def_name(job.workplace)
+	if not resident_id in b["workers"] and b["workers"].size() >= building_capacity(building_uid):
+		return "정원이 다 참"
+	return ""
+
+
+## Puts a resident on a job. Jobs with a workplace need a completed building of that type with a
+## free slot; building_uid &"" picks the first one. 건설·개간 needs a construction site uid.
+## TODO(C-11): 참여 조건 (이동 조건이면 경사로 없는 구역 작업장 배정 불가).
+func assign_job(resident_id: StringName, job_id: StringName, building_uid: StringName = &"") -> bool:
+	if job_block_reason(resident_id, job_id, building_uid) != "":
+		return false
+	var job := BaseDB.get_job(job_id)
+	if building_uid == &"" and job.workplace != &"":
+		building_uid = _free_workplace(job.workplace, resident_id)
+	unassign_job(resident_id)
+	residents[resident_id]["assignment"] = {"job": job_id, "building_id": building_uid}
+	if buildings.has(building_uid):
+		buildings[building_uid]["workers"].append(resident_id)
+	return true
+
+
+func unassign_job(resident_id: StringName) -> void:
+	if not residents.has(resident_id):
+		return
+	var old: Dictionary = residents[resident_id]["assignment"]
+	var uid: StringName = old.get("building_id", &"")
+	if buildings.has(uid):
+		buildings[uid]["workers"].erase(resident_id)
+	residents[resident_id]["assignment"] = {"job": &"", "building_id": &""}
+
+
+func job_of(resident_id: StringName) -> StringName:
+	return residents.get(resident_id, {}).get("assignment", {}).get("job", &"")
+
+
+## Expected output for one resident today, resource_id -> float (출격 준비·주민 상세 화면용).
+## Ignores whether inputs (나무 → 목재판) are in stock.
+func preview_output(resident_id: StringName) -> Dictionary:
+	var r: Dictionary = residents.get(resident_id, {})
+	var job := BaseDB.get_job(job_of(resident_id))
+	if r.is_empty() or job == null or not WorkRules.can_work(r):
+		return {}
+	var f := WorkRules.efficiency(r, job, _works_alone(resident_id))
+	var out := {}
+	for res: StringName in job.base_output:
+		out[res] = job.base_output[res] * f
+	return out
+
+
+## Evening settlement (A-05 calls this; docs/dev/contracts.md "하루 정산과 습격").
+## Updates residents (hunger, fatigue, skills) and buildings (construction, generator fuel) and
+## returns the report. Economy is NOT changed here: A applies report["changes"].
+## Extra key "work": {resident_id: {"job": id, "output": {res: int}}} for the evening table (D-07).
+## TODO(C-06): morale factors, leave crisis. TODO(C-03): +20 progress when the player stayed.
+func settle_day() -> Dictionary:
+	var produced := {}
+	var consumed := {}
+	var events: Array = []
+	var work := {}
+	var ids := active_resident_ids()
+
+	# 1. Work: output, build progress, skill and stat growth.
+	var worked := {}
+	for id in ids:
+		var r: Dictionary = residents[id]
+		var job := BaseDB.get_job(job_of(id))
+		if job == null or job.id == WorkRules.REST_JOB or not WorkRules.can_work(r):
+			continue
+		var uid: StringName = r["assignment"]["building_id"]
+		if job.workplace != &"" and not is_powered(uid) and buildings.has(uid):
+			continue  # workplace without power does not run
+		var f := WorkRules.efficiency(r, job, _works_alone(id))
+		var out := {}
+		if job.id == WorkRules.CONSTRUCTION_JOB:
+			if add_build_progress(uid, roundi(WorkRules.BUILD_PROGRESS_BASE * f)) and buildings.has(uid):
+				events.append(_event(&"building_completed", id, "%s 완성" % _def_name(buildings[uid]["def_id"])))
+			if buildings.has(uid) and buildings[uid]["completed"]:
+				unassign_job(id)
+		for res: StringName in job.base_output:
+			out[res] = job.base_output[res] * f
+		for res: StringName in job.base_input:
+			consumed[res] = consumed.get(res, 0.0) + job.base_input[res] * f
+		for res in out:
+			produced[res] = produced.get(res, 0.0) + out[res]
+		work[id] = {"job": job.id, "output": _rounded(out)}
+		worked[id] = true
+		_grow(id, job, events)
+
+	# 2. Inputs that are not in stock reduce that job's output proportionally.
+	_limit_inputs(produced, consumed)
+
+	# 3. Food: cooked meals if a cook worked today (식량 효율 ×1.5, 배고픔 +70).
+	var cooked := false
+	for id in work:
+		if work[id]["job"] == &"cooking":
+			cooked = true
+	var food_left: float = float(Economy.get_amount(&"food")) + produced.get(&"food", 0.0)
+	var eat_mult: float = BaseDB.get_job(&"cooking").effects.get(&"food_efficiency", 1.0) if cooked else 1.0
+	var hungry: Array[StringName] = []
+	for id in ids:
+		var r: Dictionary = residents[id]
+		var need: float = WorkRules.food_need(r) / eat_mult
+		var ate: bool = food_left >= need
+		if ate:
+			food_left -= need
+			consumed[&"food"] = consumed.get(&"food", 0.0) + need
+		else:
+			hungry.append(id)
+		var gain: int = (WorkRules.COOKED_MEAL_HUNGER if cooked else WorkRules.MEAL_HUNGER) if ate else 0
+		r["hunger"] = clampi(int(r["hunger"]) - WorkRules.HUNGER_PER_DAY + gain, 0, 100)
+		var rested := job_of(id) == WorkRules.REST_JOB
+		r["fatigue"] = clampi(int(r["fatigue"]) + WorkRules.fatigue_change(worked.has(id), rested, _sleep_recovery(id), r), 0, 100)
+	if not hungry.is_empty():
+		events.append(_event(&"food_short", &"", "식량이 모자라 %d명이 굶었다" % hungry.size()))
+
+	# 4. Generator fuel (2/일, 겨울 3). No fuel → no power tomorrow.
+	var fuel_left: float = float(Economy.get_amount(&"fuel")) + produced.get(&"fuel", 0.0)
+	for uid in building_ids(&"generator"):
+		var need: float = float(WorkRules.FUEL_PER_GENERATOR_WINTER) if GameState.season() == Enums.Season.WINTER \
+			else BaseDB.get_building(&"generator").effect(&"fuel_per_day")
+		buildings[uid]["fueled"] = fuel_left >= need
+		if fuel_left >= need:
+			fuel_left -= need
+			consumed[&"fuel"] = consumed.get(&"fuel", 0.0) + need
+		else:
+			events.append(_event(&"no_fuel", &"", "연료가 없어 발전기가 멈췄다"))
+	_refresh_power()
+
+	var p := _rounded(produced)
+	var c := _rounded(consumed)
+	var changes := {}
+	for res in p:
+		changes[res] = p[res]
+	for res in c:
+		changes[res] = changes.get(res, 0) - c[res]
+	for res in changes.keys():
+		# Rounding must never ask Economy for more than it has: apply_detailed() refuses the whole
+		# report if any amount would go below zero.
+		var floor_change := -Economy.get_amount(res)
+		if changes[res] < floor_change:
+			c[res] = c.get(res, 0) - (floor_change - changes[res])
+			changes[res] = floor_change
+		if changes[res] == 0:
+			changes.erase(res)
+	return {
+		"changes": changes,
+		"produced": p,
+		"consumed": c,
+		"morale": {},
+		"events": events,
+		"work": work,
+	}
+
+
+## Job skill +1 every 7 days on the same job (max 5), stat +1 every 10 work days (max 10).
+func _grow(id: StringName, job: JobDef, events: Array) -> void:
+	var r: Dictionary = residents[id]
+	var days: int = r["job_days"].get(job.id, 0) + 1
+	r["job_days"][job.id] = days
+	if days % WorkRules.DAYS_PER_SKILL == 0 and int(r["job_skill"].get(job.id, 0)) < WorkRules.SKILL_MAX:
+		r["job_skill"][job.id] = int(r["job_skill"].get(job.id, 0)) + 1
+		events.append(_event(&"skill_up", id, "%s의 %s 숙련 %d" % [r["name"], job.display_name, r["job_skill"][job.id]]))
+	var stat := job.main_stat_key()
+	if stat == &"":
+		return
+	var stat_days: int = r["stat_days"].get(stat, 0) + 1
+	r["stat_days"][stat] = stat_days
+	if stat_days % WorkRules.DAYS_PER_STAT == 0 and int(r["stats"][stat]) < ResidentData.STAT_MAX:
+		r["stats"][stat] = int(r["stats"][stat]) + 1
+		events.append(_event(&"stat_up", id, "%s의 %s +1" % [r["name"], stat]))
+
+
+## Scales down outputs of jobs whose inputs (목공: 나무) are short. Simple global ratio per input.
+func _limit_inputs(produced: Dictionary, consumed: Dictionary) -> void:
+	for res: StringName in consumed.keys():
+		var have: float = float(Economy.get_amount(res)) + produced.get(res, 0.0)
+		var want: float = consumed[res]
+		if want <= have or want <= 0.0:
+			continue
+		var ratio: float = have / want
+		consumed[res] = have
+		for job_id: StringName in BaseDB.jobs():
+			var job := BaseDB.get_job(job_id)
+			if not job.base_input.has(res):
+				continue
+			for out_res: StringName in job.base_output:
+				produced[out_res] = produced.get(out_res, 0.0) * ratio
+
+
+func _sleep_recovery(id: StringName) -> int:
+	var bed_id := String(residents[id]["bed_id"])
+	if bed_id == "":
+		return WorkRules.FATIGUE_NO_BED
+	if bed_id.begins_with(START_BED_PREFIX):
+		return WorkRules.FATIGUE_START_BED
+	var uid := StringName(bed_id.get_slice("_bed_", 0))
+	return roundi(building_effect(uid, &"fatigue_recovery", float(WorkRules.FATIGUE_START_BED)))
+
+
+func _works_alone(id: StringName) -> bool:
+	var uid: StringName = residents[id]["assignment"]["building_id"]
+	return buildings.has(uid) and buildings[uid]["workers"].size() == 1
+
+
+func _free_workplace(def_id: StringName, resident_id: StringName) -> StringName:
+	for uid in building_ids(def_id):
+		if resident_id in buildings[uid]["workers"] or buildings[uid]["workers"].size() < building_capacity(uid):
+			return uid
+	return &""
+
+
+func _def_name(def_id: StringName) -> String:
+	var def := BaseDB.get_building(def_id)
+	return def.display_name if def else String(def_id)
+
+
+static func _event(type: StringName, resident_id: StringName, text: String) -> Dictionary:
+	return {"type": type, "resident_id": resident_id, "text": text}
+
+
+static func _rounded(values: Dictionary) -> Dictionary:
+	var out := {}
+	for res in values:
+		var n := roundi(values[res])
+		if n != 0:
+			out[res] = n
 	return out
 
 
@@ -510,8 +774,38 @@ func load_data(data: Dictionary) -> void:
 func _register_debug_commands() -> void:
 	DebugConsole.register(&"resident", _cmd_resident,
 		"resident add [demo 1~3] | resident list - 주민 추가(무작위 또는 데모 구조자)·목록")
+	DebugConsole.register(&"job", _cmd_job,
+		"job <resident_id> <job_id> [building_uid] - 작업 배정 (job list: 직업 목록)")
+	DebugConsole.register(&"settle", _cmd_settle,
+		"settle - 하루 정산을 돌리고 Economy에 반영 (A-05 전 테스트용)")
 	DebugConsole.register(&"build", _cmd_build,
 		"build <building_id> | build list - 비용 없이 건물을 바로 완성 / 건물·전력·소음 목록")
+
+
+func _cmd_job(args: PackedStringArray) -> String:
+	if args.is_empty() or args[0] == "list":
+		return "직업: " + ", ".join(PackedStringArray(BaseDB.jobs().keys()))
+	if args.size() < 2:
+		return "사용법: job <resident_id> <job_id> [building_uid]"
+	var rid := StringName(args[0])
+	var jid := StringName(args[1])
+	var uid := StringName(args[2]) if args.size() > 2 else &""
+	var reason := job_block_reason(rid, jid, uid)
+	if reason != "":
+		return "배정 불가: " + reason
+	assign_job(rid, jid, uid)
+	return "%s → %s (%s)" % [rid, jid, residents[rid]["assignment"]["building_id"]]
+
+
+func _cmd_settle(_args: PackedStringArray) -> String:
+	var report := settle_day()
+	var applied := Economy.apply_detailed(report["changes"])
+	var lines := PackedStringArray([
+		"생산 %s" % report["produced"], "소비 %s" % report["consumed"],
+		"변화 %s (반영 %s, 버림 %s)" % [report["changes"], applied["ok"], applied["discarded"]]])
+	for e in report["events"]:
+		lines.append("  · " + e["text"])
+	return "\n".join(lines)
 
 
 func _cmd_build(args: PackedStringArray) -> String:
