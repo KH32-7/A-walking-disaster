@@ -10,14 +10,14 @@ extends ResidentEventScreen
 ## open_with({"resident_id": target}); without one it takes the oldest rumor waiting.
 
 const LINES := {
-	PrejudiceRules.CHOICE_DEFEND: "…고마워. 그렇게 말해 준 사람은 처음이야.",
+	PrejudiceRules.CHOICE_DEFEND: "...고마워. 그렇게 말해 준 사람은 처음이야.",
 	PrejudiceRules.CHOICE_WATCH: "괜찮아. 내가 어떤 사람인지 보여 줄게.",
-	PrejudiceRules.CHOICE_SEPARATE: "…알았어. 당분간 떨어져 지낼게.",
+	PrejudiceRules.CHOICE_SEPARATE: "...알았어. 당분간 떨어져 지낼게.",
 }
 const HINTS := {
-	PrejudiceRules.CHOICE_DEFEND: "신뢰 +%d · 사기 +%d" % [PrejudiceRules.DEFEND_TRUST, PrejudiceRules.DEFEND_MORALE],
+	PrejudiceRules.CHOICE_DEFEND: "신뢰 +%d / 사기 +%d" % [PrejudiceRules.DEFEND_TRUST, PrejudiceRules.DEFEND_MORALE],
 	PrejudiceRules.CHOICE_WATCH: "그대로 둬요",
-	PrejudiceRules.CHOICE_SEPARATE: "사기 %d · 임시 거처로" % PrejudiceRules.SEPARATE_MORALE,
+	PrejudiceRules.CHOICE_SEPARATE: "사기 %d / 임시 거처로" % PrejudiceRules.SEPARATE_MORALE,
 }
 
 var _chain: Dictionary = {}
@@ -55,7 +55,7 @@ func _start() -> void:
 			choices.append([c, ResidentEventFlow.CHOICE_NAMES[c], false, HINTS[c]])
 		dialog.set_choices(choices)
 	else:
-		dialog.say("", "%s에 대한 소문 — %s." % [target,
+		dialog.say("", "%s에 대한 소문: %s." % [target,
 			ResidentEventFlow.CHOICE_DONE.get(StringName(_chain.get("choice", &"")), "이미 골랐어요")])
 		dialog.set_choices([[&"close", "돌아간다"]])
 	_refresh_column()
@@ -70,7 +70,7 @@ func _band() -> void:
 
 func _draw() -> void:
 	var ids: Array = [resident_id]
-	var chips := {resident_id: [["◆ 마물 흔적", UiTokens.INFO]]}
+	var chips := {resident_id: [["마물 흔적", UiTokens.INFO]]}
 	for h in _chain.get("holders", []):
 		if not Colony.get_resident(StringName(h)).is_empty():
 			ids.append(StringName(h))
@@ -109,7 +109,7 @@ func _on_choice(id: StringName) -> void:
 		notes.append([("▲ 사기 +%d" if dm > 0 else "▼ 사기 %d") % dm, UiTokens.GOOD if dm > 0 else UiTokens.WARN])
 	if id == PrejudiceRules.CHOICE_SEPARATE and StringName(r.get("bed_id", &"")) == &"":
 		notes.append(["● 임시 거처로 옮겼어요", UiTokens.TEXT_DIM])
-	notes.append(["◆ 며칠 안에 무슨 일이 생길 것 같아요", UiTokens.TEXT])
+	notes.append(["며칠 안에 무슨 일이 생길 것 같아요", UiTokens.TEXT])
 	dialog.say(ResidentText.call_name(r), LINES[id], resident_id)
 	dialog.set_notes(notes)
 	if ResidentEventFlow.rumor_queue().is_empty():
@@ -137,7 +137,7 @@ func _refresh_column() -> void:
 		if not hr.is_empty():
 			holders.append(ResidentText.call_name(hr))
 	if not holders.is_empty():
-		v.add_child(card_text("소문을 믿는 사람  ·  " + ", ".join(holders), true, 15))
+		v.add_child(card_text("소문을 믿는 사람 / " + ", ".join(holders), true, 15))
 	var now := ResidentEventFlow.chain_step_index(_chain) + 1
 	if now > 1:
 		v.add_child(ResidentEventScreen.mark_row("✓", ResidentEventFlow.CHOICE_DONE.get(StringName(_chain.get("choice", &"")), "")))

@@ -301,7 +301,8 @@ func _build() -> void:
 
 	_feed = VBoxContainer.new()
 	_feed.add_theme_constant_override(&"separation", 8)
-	_place(_feed, Control.PRESET_CENTER_LEFT, Vector2(m, -80))
+	# Under the minimap (300 px disc + name, 2026-11-06), so a full feed never reaches it.
+	_place(_feed, Control.PRESET_CENTER_LEFT, Vector2(m, 40))
 
 	_build_hint()
 	_build_region()
@@ -406,7 +407,9 @@ func _build() -> void:
 	_stamina.custom_minimum_size = Vector2(300, 12)
 	_stamina.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	bc.add_child(_stamina)
-	_place(bc, Control.PRESET_CENTER_BOTTOM, Vector2(0, -56))
+	# Above the bottom-right weapon and quick slot row, which reaches the middle on 16:9 (the extract
+	# bar used to cover quick slot 3, 2026-11-06 UI pass).
+	_place(bc, Control.PRESET_CENTER_BOTTOM, Vector2(0, -150))
 
 
 func _build_hint() -> void:
@@ -443,24 +446,21 @@ func _build_hint() -> void:
 	_place(_hint, Control.PRESET_CENTER_RIGHT, Vector2(-UiTokens.HUD_MARGIN, -160))
 
 
+## Region title card at sortie start: top centre, clear of the event feed on the left (it used to
+## sit on top of the feed, 2026-11-06 UI pass). The boss bar shares the top centre but only shows in
+## a boss fight, never in the first seconds of a sortie.
 func _build_region() -> void:
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override(&"separation", 16)
-	var pin := Label.new()
-	pin.text = "◉"
-	pin.theme_type_variation = &"LabelHud"
-	pin.add_theme_font_size_override(&"font_size", 34)
-	h.add_child(pin)
 	var v := VBoxContainer.new()
 	_region_l1 = _lbl("", &"LabelHud", 16)
 	_region_l1.add_theme_color_override(&"font_color", UiTokens.TEXT_DIM)
-	_region_l2 = _lbl("", &"LabelHud", 30)
+	_region_l1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_region_l2 = _lbl("", &"LabelHud", 34)
+	_region_l2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(_region_l1)
 	v.add_child(_region_l2)
-	h.add_child(v)
-	_region = h
+	_region = v
 	_region.visible = false
-	_place(_region, Control.PRESET_TOP_LEFT, Vector2(UiTokens.HUD_MARGIN, 330))
+	_place(_region, Control.PRESET_CENTER_TOP, Vector2(0, 110))
 
 
 func _build_weapons(list: Array, idx: int, reloading: bool) -> void:
@@ -502,7 +502,9 @@ func _build_weapons(list: Array, idx: int, reloading: bool) -> void:
 				big.add_theme_color_override(&"font_color",
 					UiTokens.ACCENT if reloading else (UiTokens.DANGER if low else UiTokens.TEXT))
 				col.add_child(big)
-				col.add_child(_lbl("≡ %d" % int(w.get("reserve", 0)), &"LabelNumber", 17))
+				# reserve -1 = infinite ammo (WeaponHolder); the user chose the ∞ sign for it (2026-11-06).
+				var reserve := int(w.get("reserve", 0))
+				col.add_child(_lbl("≡ ∞" if reserve < 0 else "≡ %d" % reserve, &"LabelNumber", 17))
 				ah.add_child(col)
 			var sp := Control.new()
 			sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -546,7 +548,7 @@ func _build_quick(list: Array) -> void:
 			c.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			bv.add_child(c)
 		else:
-			box.modulate.a = 0.5
+			box.visible = false  # empty slots are not drawn (2026-11-06 UI pass: less to watch)
 		body.add_child(bv)
 		box.add_child(body)
 		_quick.add_child(box)
@@ -562,7 +564,9 @@ func _build_skills(list: Array) -> void:
 		k.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		k.modulate.a = 0.5 if left > 0.0 else 1.0
 		b.add_child(k)
-		var t := _lbl("%d" % ceili(left) if left > 0.0 else "준비", &"LabelNumber", 15)
+		# Ready: the skill's name, so the key says what it does. Cooling down: seconds left.
+		var ready_text := String(sk.get("name", "")) if String(sk.get("name", "")) != "" else "준비"
+		var t := _lbl("%d" % ceili(left) if left > 0.0 else ready_text, &"LabelNumber" if left > 0.0 else &"LabelHud", 15)
 		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		b.add_child(t)
 		_skills.add_child(b)
@@ -573,7 +577,7 @@ func _build_mates(list: Array) -> void:
 	for m: Dictionary in list:
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override(&"separation", 10)
-		var l := _lbl("%s · %s" % [String(m.get("name", "")), String(m.get("command", ""))], &"LabelHud", 16)
+		var l := _lbl("%s / %s" % [String(m.get("name", "")), String(m.get("command", ""))], &"LabelHud", 16)
 		l.add_theme_color_override(&"font_color", UiTokens.TEXT_DIM)
 		h.add_child(l)
 		var bar := SegBar.new()
@@ -618,7 +622,7 @@ func _on_sortie_started(loadout: Dictionary) -> void:
 	_set_timer(_dusk_local)
 	var region := String(loadout.get("region_name", region_display_name(StringName(loadout.get("region_id", &"")))))
 	var wx := "비" if GameState.is_raining() else "맑음"
-	show_region("해솔시 · %d일차 · %s" % [GameState.day, wx], region)
+	show_region("해솔시 / %d일차 / %s" % [GameState.day, wx], region)
 
 
 func _on_notification(text: String, severity: StringName) -> void:

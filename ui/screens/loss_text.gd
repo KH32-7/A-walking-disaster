@@ -2,7 +2,7 @@ class_name LossText
 extends RefCounted
 ## Short words for loss (#125 part 3, C-20): grief days, stranded, missing, the sortie block reason,
 ## death causes. Owner: Lane D. Used by the residents list / detail, sortie prep, funeral and memorial.
-## Every state is a word with a shape mark (◇ 슬픔, △ 고립, ◆ 실종), never colour alone.
+## Every state is a word (슬픔, 고립, 실종), never colour alone. Face dots keep a small shape badge.
 ## Numbers come from Colony (grief_days, stranded_residents, sortie_block_reason); nothing is computed.
 
 const CAUSES := {&"raid": "습격으로", &"sickness": "병으로", &"debug": "", &"": ""}
@@ -17,10 +17,10 @@ static func note_missing(resident_id: StringName) -> void:
 		missing_seen.append(resident_id)
 
 
-## "◇ 슬픔 3일" or "" when the resident is not grieving.
+## "슬픔 3일" or "" when the resident is not grieving.
 static func grief_tag(r: Dictionary) -> String:
 	var d := int(r.get("grief_days", 0))
-	return "◇ 슬픔 %d일" % d if d > 0 else ""
+	return "슬픔 %d일" % d if d > 0 else ""
 
 
 ## "남은 기한 2일" / "기한 없음" (-1).
@@ -36,12 +36,12 @@ static func absent_rows() -> Array:
 		var id := StringName(s.get("resident_id", &""))
 		var region := FieldHud.region_display_name(StringName(s.get("region_id", &"")))
 		out.append({"resident_id": id, "name": display_name(id), "kind": &"stranded",
-			"text": "△ 고립 · %s · %s" % [region if region != "" else "필드", strand_days(int(s.get("days_left", -1)))]})
+			"text": "고립 / %s / %s" % [region if region != "" else "필드", strand_days(int(s.get("days_left", -1)))]})
 	for id in missing_seen:
 		var r := Colony.get_resident(id)
 		if r.is_empty() or int(r.get("status", 0)) != Enums.ResidentStatus.MISSING:
 			continue
-		out.append({"resident_id": id, "name": display_name(id), "kind": &"missing", "text": "◆ 실종 · 끝내 찾지 못했어요"})
+		out.append({"resident_id": id, "name": display_name(id), "kind": &"missing", "text": "실종 / 끝내 찾지 못했어요"})
 	return out
 
 
@@ -60,7 +60,7 @@ static func display_name(resident_id: StringName) -> String:
 ## "12일차 · 습격으로" for a memorial entry.
 static func memorial_line(m: Dictionary) -> String:
 	var cause := String(CAUSES.get(StringName(m.get("cause", &"")), ""))
-	return "%d일차%s" % [int(m.get("day", 0)), " · " + cause if cause != "" else ""]
+	return "%d일차%s" % [int(m.get("day", 0)), " / " + cause if cause != "" else ""]
 
 
 ## The one-line story for the funeral: the background, else the first fragment, else the job.

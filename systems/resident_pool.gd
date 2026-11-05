@@ -174,7 +174,7 @@ func _cmd_pool(args: PackedStringArray) -> String:
 		"add":
 			var profile := get_profile(StringName(args[1])) if args.size() > 1 else draw()
 			if profile.is_empty():
-				return "꺼낼 생존자가 없다 (검수 완료·미사용만)"
+				return "꺼낼 생존자가 없다 (검수 완료, 미사용만)"
 			var rid := Colony.add_resident(profile)
 			return "주민 추가: %s %s" % [rid, profile["name"]]
 		"reset":

@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_skill")
 id = &"shadow_step"
+name = "그림자 걸음"
 cooldown_sec = 20.0
 duration_sec = 4.0
 damage_mult = 3.0

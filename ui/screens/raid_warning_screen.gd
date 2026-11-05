@@ -62,9 +62,9 @@ func _build_body(b: Control) -> void:
 	var dirs: Array = raid.get("directions", [])
 	info.add_child(RaidWidgets.cream_row("방향", "%s  (%d방향)" % [RaidFlow.directions_text(dirs), dirs.size()], UiTokens.DANGER))
 	var type := StringName(raid.get("type", &""))
-	var size_text := "%s · 강도 %.0f" % [RaidFlow.type_name(type), float(raid.get("strength", 0.0))]
+	var size_text := "%s / 강도 %.0f" % [RaidFlow.type_name(type), float(raid.get("strength", 0.0))]
 	if bool(raid.get("small", false)):
-		size_text += " · 소규모"
+		size_text += " / 소규모"
 	info.add_child(RaidWidgets.cream_row("규모", size_text))
 	if RaidFlow.type_note(type) != "":
 		var note := MenuScreen.label(RaidFlow.type_note(type), &"LabelOnCreamDim", 14)
@@ -161,8 +161,8 @@ func _defense_line() -> String:
 	var d: Dictionary = Colony.call(&"defense_breakdown")
 	var r := ""
 	if not prediction.is_empty():
-		r = "  ·  방어 비율 %.2f ~ %.2f" % [float(prediction.ratio_min), float(prediction.ratio_max)]
-	return "경비 %d명 · 방어 시설 %d곳 · 지금 방어 %.1f%s" % [(d.get("guards", {}) as Dictionary).size(),
+		r = " / 방어 비율 %.2f ~ %.2f" % [float(prediction.ratio_min), float(prediction.ratio_max)]
+	return "경비 %d명 / 방어 시설 %d곳 / 지금 방어 %.1f%s" % [(d.get("guards", {}) as Dictionary).size(),
 		(d.get("facilities", {}) as Dictionary).size(), float(d.get("total", 0.0)), r]
 
 

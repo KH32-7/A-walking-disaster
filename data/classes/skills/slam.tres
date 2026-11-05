@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_skill")
 id = &"slam"
+name = "내려찍기"
 cooldown_sec = 10.0
 damage_mult = 1.8
 radius = 3.0

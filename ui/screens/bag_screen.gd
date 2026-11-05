@@ -20,6 +20,12 @@ var _equip_cells := {}
 var _flash := {}
 ## Seconds of that flash.
 const FLASH_SEC := 0.7
+## Screen height taken by everything but the bag rows: header, footer, panel title, pocket caption.
+const BAG_CHROME_H := 330.0
+## Loot and equipment cell sizes (px) and their name text (2026-11-06 UI pass: was 84 / 92 / 12-13).
+const LOOT_CELL := 100.0
+const EQUIP_CELL := 100.0
+const CELL_FONT := 15
 
 
 func _init() -> void:
@@ -87,8 +93,8 @@ func _build_body(b: Control) -> void:
 	EventBus.equipment_changed.connect(_on_equipment_changed)
 	(ep[1] as VBoxContainer).add_child(eg)
 	var sum: Dictionary = Armory.get_owner_summary(Armory.PLAYER_ID)
-	(ep[1] as VBoxContainer).add_child(MenuScreen.label("방어 %d · 방어구 소음 %+.1fm" % [int(sum.get("defense", 0)),
-		float(sum.get("armor_noise", 0.0))], &"LabelDim", 14))
+	(ep[1] as VBoxContainer).add_child(MenuScreen.label("방어 %d / 방어구 소음 %+.1fm" % [int(sum.get("defense", 0)),
+		float(sum.get("armor_noise", 0.0))], &"LabelDim", 15))
 	row.add_child(ep[0])
 	var bp := MenuScreen.panel("가방", "")
 	(bp[0] as Control).size_flags_vertical = Control.SIZE_SHRINK_BEGIN
@@ -99,11 +105,15 @@ func _build_body(b: Control) -> void:
 	var ph := HBoxContainer.new()
 	ph.add_theme_constant_override(&"separation", 12)
 	ph.add_child(MenuScreen.label("안전 주머니", &"LabelSection", 16))
-	ph.add_child(MenuScreen.label("쓰러져도 남아요", &"LabelDim", 13))
+	ph.add_child(MenuScreen.label("쓰러져도 남아요", &"LabelDim", 14))
 	(bp[1] as VBoxContainer).add_child(ph)
 	_pocket = BagGrid.new()
 	_pocket.area = Bag.AREA_POCKET
 	(bp[1] as VBoxContainer).add_child(_pocket)
+	# Cells as large as the screen height allows (bag rows + pocket row share it).
+	var rows := _bag.grid_cells().y + _pocket.grid_cells().y
+	for g: BagGrid in [_bag, _pocket]:
+		g.fit_rows(get_viewport_rect().size.y - BAG_CHROME_H, rows)
 	row.add_child(bp[0])
 	for g: BagGrid in [_bag, _pocket]:
 		g.hovered.connect(_on_hover)
@@ -164,7 +174,7 @@ func _fill_loot() -> void:
 
 func _loot_cell(i: int, s: Dictionary) -> Control:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(84, 84)
+	b.custom_minimum_size = Vector2(LOOT_CELL, LOOT_CELL)
 	b.focus_mode = Control.FOCUS_NONE
 	var sb := StyleBoxFlat.new()
 	sb.set_corner_radius_all(UiTokens.SLOT_RADIUS)
@@ -195,7 +205,7 @@ func _loot_cell(i: int, s: Dictionary) -> Control:
 			b.text = ("%s %s" % [info.name, line2]).strip_edges()
 		else:
 			b.text = ("%s\n%s" % [info.name, line2]).strip_edges()
-		b.add_theme_font_size_override(&"font_size", 15)
+		b.add_theme_font_size_override(&"font_size", CELL_FONT)
 		b.add_theme_color_override(&"font_color", UiTokens.TEXT)
 		var flash := Color.TRANSPARENT
 		if s.has("rarity"):
@@ -302,7 +312,7 @@ func _equip_cell(slot: int) -> Control:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override(&"separation", 3)
 	var p := PanelContainer.new()
-	p.custom_minimum_size = Vector2(92, 92)
+	p.custom_minimum_size = Vector2(EQUIP_CELL, EQUIP_CELL)
 	var sb := StyleBoxFlat.new()
 	sb.set_corner_radius_all(UiTokens.SLOT_RADIUS)
 	sb.border_color = Color(1, 1, 1, 0.18)
@@ -326,7 +336,7 @@ func _equip_cell(slot: int) -> Control:
 	else:
 		p.modulate.a = 0.6
 	p.add_theme_stylebox_override(&"panel", sb)
-	var l := MenuScreen.label(text, &"LabelHud", 12)
+	var l := MenuScreen.label(text, &"LabelHud", 14)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
@@ -334,7 +344,7 @@ func _equip_cell(slot: int) -> Control:
 		l.size_flags_vertical = Control.SIZE_SHRINK_END
 	p.add_child(l)
 	v.add_child(p)
-	var cap := MenuScreen.label(ItemInfo.SLOT_NAMES[slot], &"LabelHud", 14)
+	var cap := MenuScreen.label(ItemInfo.SLOT_NAMES[slot], &"LabelHud", 15)
 	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(cap)
 	return v

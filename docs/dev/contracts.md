@@ -202,6 +202,7 @@ B의 결과가 없으면(디버그 진행) 라우터가 기본값으로 채운�
   "region_id": StringName, "point_id": StringName,     # 탈출 못 하면 &""
   "loot": {"resources": {id: n}, "discarded": {id: n}, "items": [uid]},
   "kills": int, "kills_by_monster": {StringName: int},
+  "blueprints": Array[StringName],                     # 이번 출격에 익힌 설계도의 결과물 id (상자, 2026-11-06)
   "rescued": Array[StringName],                        # 데리고 나온 구조자 id
   "rescued_profiles": Array[Dictionary],               # rescue_completed로 받은 프로필 (라우터)
   "companions": Array[StringName], "stranded": Array[StringName],

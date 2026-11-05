@@ -647,7 +647,7 @@ func interact_label() -> String:
 						var def: Variant = Economy.get_def(item)
 						var item_name := String(def.name) if def != null else String(item)
 						if Bag.count_of(item) < 1:
-							return "치료하기 · %s 필요" % item_name
+							return "치료하기 / %s 필요" % item_name
 						return "치료하기"
 					return "일으켜 세우기"
 				RescueSpawn.Type.COMMUNICATION:

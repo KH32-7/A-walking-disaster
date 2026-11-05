@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_skill")
 id = &"suppressive_fire"
+name = "제압 사격"
 cooldown_sec = 15.0
 duration_sec = 3.0
 noise = &"suppressive_fire"

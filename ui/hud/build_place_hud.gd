@@ -71,7 +71,7 @@ func _build() -> void:
 	var sub := HBoxContainer.new()
 	sub.add_theme_constant_override(&"separation", 8)
 	if _moving:
-		sub.add_child(MenuScreen.label("옮기는 중 · 무료, 진행도 그대로", &"LabelDim", 14))
+		sub.add_child(MenuScreen.label("옮기는 중 / 무료, 진행도 그대로", &"LabelDim", 14))
 	elif def != null:
 		var cost := def.cost_for_level(1)
 		for id: StringName in cost:
@@ -80,7 +80,7 @@ func _build() -> void:
 			c.add_child(LineIcon.for_resource(id, 15, UiTokens.TEXT_DIM))
 			c.add_child(MenuScreen.label(str(cost[id]), &"LabelNumber", 14))
 			sub.add_child(c)
-		sub.add_child(MenuScreen.label("·  다른 건물", &"LabelDim", 14))
+		sub.add_child(MenuScreen.label("다른 건물", &"LabelDim", 14))
 		sub.add_child(KeyChip.new("Q", KeyChip.Style.OUTLINE))
 	v.add_child(sub)
 	# cursor card
@@ -170,7 +170,7 @@ func _on_info(info: Dictionary) -> void:
 
 
 func _line(text: String, bad: bool) -> void:
-	var l := MenuScreen.label(("·  " if bad else "") + text, &"LabelOnCreamDim", 14)
+	var l := MenuScreen.label(("- " if bad else "") + text, &"LabelOnCreamDim", 14)
 	if bad:
 		l.add_theme_color_override(&"font_color", Color("b3261e"))
 	_card_lines.add_child(l)

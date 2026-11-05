@@ -17,7 +17,9 @@ extends Control
 
 ## Metres from the centre to the rim.
 const RANGE_M := 32.0
-const RENDER_PX := 256
+const RENDER_PX := 320
+## Disc diameter (px). The region name sits under it. User request 2026-11-06: 220 read too small.
+const DISC_PX := 300.0
 ## Render layer (1-based) the map camera skips (same as MapScreen: B keeps monsters off the map).
 const MAP_HIDDEN_LAYER := 20
 const CAMERA_HEIGHT := 60.0
@@ -57,7 +59,7 @@ var _cam: Camera3D
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	custom_minimum_size = Vector2(220, 250)
+	custom_minimum_size = Vector2(DISC_PX, DISC_PX + 30.0)
 
 
 func _process(delta: float) -> void:

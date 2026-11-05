@@ -42,7 +42,7 @@ const PATIENT := {
 	},
 }
 const TALK := [
-	["한도윤", "…거기 누구야? 마물은… 아, 사람이구나. 문은 제대로 잠갔지?"],
+	["한도윤", "...거기 누구야? 마물은... 아, 사람이구나. 문은 제대로 잠갔지?"],
 	["한도윤", "다리를 물렸어. 피는 멎었는데, 혼자서는 못 걸어."],
 	["한도윤", "그 총, 우리 서에서 챙겨 온 거야. 잘 챙겼네. 밖에선 그거 없으면 못 버텨."],
 	["한도윤", "방송 들었어? 공원 관리사무소에 의사 선생님이 숨어 있대."],
@@ -180,11 +180,11 @@ func _cinematic() -> void:
 	# 1 — the broadcast over black
 	await _wait(0.8)
 	Audio.play(&"radio_static_open")
-	ci.caption("치익… 여기는… 공원 숲 방송실…", 2.4)
+	ci.caption("치익... 여기는... 공원 숲 방송실...", 2.4)
 	await _wait(2.9)
 	if _skipped: return
 	Audio.play(&"radio_blip")
-	ci.caption("살아 있는 사람, 들리면… 숲 속 공터로 와요. 여기는 아직… 치익—", 3.2)
+	ci.caption("살아 있는 사람, 들리면... 숲 속 공터로 와요. 여기는 아직... 치익...", 3.2)
 	await _wait(3.6)
 	if _skipped: return
 	# 2a — dawn wide: high over the clearing, drifting down toward the house
@@ -247,7 +247,7 @@ func _cinematic() -> void:
 	_free_slimes()
 	ci.bars(false, 0.01)
 	UI.hud.visible = false
-	await ci.title("A walking disaster", "1일차 · 봄, 새벽", 1.8).finished
+	await ci.title("A walking disaster", "1일차 / 봄, 새벽", 1.8).finished
 	ci.skippable = false
 
 
@@ -291,7 +291,7 @@ func _enter_house(from_cinematic: bool) -> void:
 		_frame(p + Vector3(1.2, 1.5, 2.6), p + Vector3(0, 1.2, 0))
 		ci.bars(true, 0.01)
 		ci.fade_to(0.0, 1.2)
-		ci.caption("하아… 하아… 살았다.", 2.2)
+		ci.caption("하아... 하아... 살았다.", 2.2)
 		var play_cam := _play_cam()
 		_dolly(p + Vector3(1.2, 1.5, 2.6), play_cam.global_position, p + Vector3(0, 1.2, 0), p, 3.0)
 		await _wait(3.1)
@@ -323,7 +323,7 @@ func _on_talk() -> void:
 	player.look_at(Vector3(interior.patient_point().x, player.global_position.y, interior.patient_point().z), Vector3.UP, true)
 	var lines := TALK.duplicate()
 	if GameState.has_flag(FLAG_TALKED):
-		lines = [["한도윤", "공원 관리사무소야. 의사 선생님을… 부탁해."]]
+		lines = [["한도윤", "공원 관리사무소야. 의사 선생님을... 부탁해."]]
 	UI.cinematic.bars(true, 0.5)
 	await UI.cinematic.talk(lines)
 	UI.cinematic.bars(false, 0.5)

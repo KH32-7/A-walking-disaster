@@ -131,7 +131,7 @@ func _draw() -> void:
 			need = ""  # the bag has it now
 		var dist := Vector2(point.global_position.x - player.global_position.x,
 			point.global_position.z - player.global_position.z).length()
-		var label := "%s · %dm" % [need if need != "" else "탈출", roundi(dist)]
+		var label := "%s / %dm" % [need if need != "" else "탈출", roundi(dist)]
 		var at := point.global_position + Vector3.UP * EXIT_HEIGHT
 		var behind := cam.is_position_behind(at)
 		var p := cam.unproject_position(at)

@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1_h856k")
 id = &"construction"
-display_name = "건설·개간"
+display_name = "건설, 개간"
 effects = Dictionary[StringName, float]({
 &"build_progress": 10.0
 })
-note = "건설 현장·개간 구역"
+note = "건설 현장, 개간 구역"

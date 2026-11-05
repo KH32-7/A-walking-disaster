@@ -30,7 +30,7 @@ const GROUPS := [
 	[BuildingDef.Category.PRODUCTION, "생산", &"sprout", [BuildingDef.Category.PRODUCTION, BuildingDef.Category.PROCESSING]],
 	[BuildingDef.Category.CRAFTING, "제작", &"anvil", [BuildingDef.Category.CRAFTING]],
 	[BuildingDef.Category.INCLUSION, "포용", &"access", [BuildingDef.Category.INCLUSION]],
-	[BuildingDef.Category.STORAGE, "보관·설비", &"box", [BuildingDef.Category.STORAGE, BuildingDef.Category.UTILITY, BuildingDef.Category.SPECIAL]],
+	[BuildingDef.Category.STORAGE, "보관, 설비", &"box", [BuildingDef.Category.STORAGE, BuildingDef.Category.UTILITY, BuildingDef.Category.SPECIAL]],
 	[BuildingDef.Category.DEFENSE, "방어", &"shield", [BuildingDef.Category.DEFENSE, BuildingDef.Category.MILITARY]],
 ]
 ## Card tint per group key (display only).
@@ -43,10 +43,10 @@ const SOON_MAX := 12
 const STEPS := ["건물 고르기", "놓을 곳 정하기", "주민이 짓기"]
 ## Shortfall reason Colony.can_build() gives when only the cost is missing.
 const REASON_COST := "자원 부족"
-const MODES := [[&"build", "새로 짓기"], [&"clear", "개간"], [&"repair", "수리·레벨업"], [&"access", "접근성 보기"]]
+const MODES := [[&"build", "새로 짓기"], [&"clear", "개간"], [&"repair", "수리, 레벨업"], [&"access", "접근성 보기"]]
 const MODE_TITLES := {&"build": "건물", &"clear": "구역", &"repair": "지은 건물", &"access": "구역별 참여 조건"}
 ## ZoneDef.mobility_access → words (07 "참여 조건": 이동).
-const MOBILITY_KIND := {"open": "평지", "ramp": "경사로가 있어야 들어감", "elevator": "위층 · 승강기가 있어야 올라감"}
+const MOBILITY_KIND := {"open": "평지", "ramp": "경사로가 있어야 들어감", "elevator": "위층 / 승강기가 있어야 올라감"}
 const WORKER_LIST_H := 236.0
 ## Enums.BaseTier → words (Colony uses the same names in its tier-up notice).
 const TIER_NAMES := ["캐프", "정착지", "요새"]
@@ -222,7 +222,7 @@ func _show_site() -> void:
 	var tags := HBoxContainer.new()
 	tags.add_theme_constant_override(&"separation", 10)
 	tags.add_child(_cream_tag("건설 현장", &"hammer"))
-	tags.add_child(_cream_tag("%s · %d×%d칸" % [_zone_name(b["zone_id"]), maxi(def.size.x, 1), maxi(def.size.y, 1)]))
+	tags.add_child(_cream_tag("%s / %d×%d칸" % [_zone_name(b["zone_id"]), maxi(def.size.x, 1), maxi(def.size.y, 1)]))
 	_detail.add_child(tags)
 	_detail.add_child(_title(def.display_name))
 	var need := def.build_work_needed()
@@ -481,7 +481,7 @@ func _tier_card() -> Control:
 	tv.add_theme_constant_override(&"separation", -1)
 	tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tv.alignment = BoxContainer.ALIGNMENT_CENTER
-	tv.add_child(MenuScreen.label("다음 기지 단계 · %s" % TIER_NAMES[next], &"LabelSection", 17))
+	tv.add_child(MenuScreen.label("다음 기지 단계 / %s" % TIER_NAMES[next], &"LabelSection", 17))
 	tv.add_child(MenuScreen.label("시설을 Lv%d까지 올릴 수 있어요" % TierRules.level_cap(next), &"LabelDim", 13))
 	h.add_child(tv)
 	var needs := HFlowContainer.new()
@@ -489,7 +489,7 @@ func _tier_card() -> Control:
 	needs.alignment = FlowContainer.ALIGNMENT_END
 	needs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if missing.is_empty():
-		needs.add_child(MenuScreen.label("조건을 다 채웠어요 · 오늘 저녁에 올라가요", &"LabelHud", 14))
+		needs.add_child(MenuScreen.label("조건을 다 채웠어요 / 오늘 저녁에 올라가요", &"LabelHud", 14))
 	for m: String in missing:
 		var mh := HBoxContainer.new()
 		mh.add_theme_constant_override(&"separation", 5)
@@ -720,7 +720,7 @@ func _cost_chip(id: StringName, need: int, short: bool, on_cream: bool) -> Contr
 	n.add_theme_color_override(&"font_color", red if short else ink)
 	h.add_child(n)
 	if on_cream:
-		var have := MenuScreen.label("%s · 보유 %d" % [MenuScreen.resource_name(id), Economy.get_amount(id)], &"LabelOnCreamDim", 13)
+		var have := MenuScreen.label("%s / 보유 %d" % [MenuScreen.resource_name(id), Economy.get_amount(id)], &"LabelOnCreamDim", 13)
 		h.add_child(have)
 	p.add_child(h)
 	return p
@@ -751,7 +751,7 @@ func _show_detail() -> void:
 	BuildingThumbs.show_on(pic_in, def.id, art)
 	var w := maxi(def.size.x, 1)
 	var d := maxi(def.size.y, 1)
-	var size_tag := _cream_tag("%d×%d칸 · %dm × %dm" % [w, d, w * 2, d * 2])
+	var size_tag := _cream_tag("%d×%d칸 / %dm × %dm" % [w, d, w * 2, d * 2])
 	size_tag.position = Vector2(12, 12)
 	pic_in.add_child(size_tag)
 	var count := Colony.working_building_ids(def.id).size()
@@ -797,7 +797,7 @@ func _show_detail() -> void:
 		costs.add_child(MenuScreen.label("없음", &"LabelOnCream", 15))
 	grid.add_child(costs)
 	if def.note != "":
-		grid.add_child(_fact_key("놓는 곳 · 참고"))
+		grid.add_child(_fact_key("놓는 곳 / 참고"))
 		grid.add_child(_fact_val(def.note))
 	if def.power_use[0] > 0:
 		grid.add_child(_fact_key("전력"))
@@ -956,7 +956,7 @@ func _zone_row(zone_id: StringName) -> Control:
 		blocked = not check.ok
 		st = "개간할 수 있음" if check.ok else "▲ " + reason_text(String((check.reasons as Array)[0]), z.clear_cost)
 		col = UiTokens.TEXT if check.ok else UiTokens.TEXT_DIM
-	return _list_row(zone_id == _sel_zone, z.display_name, " · ".join(parts), st, col, blocked,
+	return _list_row(zone_id == _sel_zone, z.display_name, " / ".join(parts), st, col, blocked,
 		func() -> void:
 			_sel_zone = zone_id
 			_fill_clear(), null, mid)
@@ -967,11 +967,11 @@ func _show_zone() -> void:
 	var z := BaseDB.get_zone(_sel_zone)
 	if z == null:
 		return
-	_detail.add_child(_tag("구역  ·  %d×%d칸  ·  %s" % [z.size.x, z.size.y, "실내" if z.indoor else "야외"]))
+	_detail.add_child(_tag("구역 / %d×%d칸 / %s" % [z.size.x, z.size.y, "실내" if z.indoor else "야외"]))
 	_detail.add_child(_title(z.display_name))
 	var cleared := Colony.is_zone_cleared(_sel_zone)
 	if cleared:
-		_detail.add_child(_state_line(true, "개간 완료 — 이 구역에 지을 수 있음"))
+		_detail.add_child(_state_line(true, "개간 완료: 이 구역에 지을 수 있음"))
 		return
 	var grid := _grid()
 	if z.clear_work > 0:
@@ -992,7 +992,7 @@ func _show_zone() -> void:
 	if not started:
 		_action("개간 시작", check.ok, _start_clearing)
 		return
-	_detail.add_child(_state_line(false, "개간 중 — 건설 주민이 저녁마다 진행도를 올립니다"))
+	_detail.add_child(_state_line(false, "개간 중: 건설 주민이 저녁마다 진행도를 올립니다"))
 	_worker_section(_sel_zone)
 
 
@@ -1049,7 +1049,7 @@ func _fill_repair() -> void:
 	for uid: StringName in uids:
 		if Colony.get_building(uid)["damaged"]:
 			broken += 1
-	_count.text = "파손 %d · 전체 %d" % [broken, uids.size()]
+	_count.text = "파손 %d / 전체 %d" % [broken, uids.size()]
 	if not Colony.get_building(_sel_uid).get("completed", false) and not uids.is_empty():
 		_sel_uid = uids[0]
 	if uids.is_empty():
@@ -1062,13 +1062,13 @@ func _fill_repair() -> void:
 func _building_row(uid: StringName) -> Control:
 	var b := Colony.get_building(uid)
 	var def := BaseDB.get_building(b["def_id"])
-	var sub := "%s · %s" % [CATEGORY_NAMES[int(def.category)], _zone_name(b["zone_id"])]
+	var sub := "%s / %s" % [CATEGORY_NAMES[int(def.category)], _zone_name(b["zone_id"])]
 	var st := ""
 	var col := UiTokens.TEXT_DIM
 	var mid: Control = null
 	var wear := _wear(uid)
 	if b["damaged"] and int(b["repair_progress"]) < 0:
-		st = "■ 파손 · 멈춤"
+		st = "■ 파손 / 멈춤"
 		col = UiTokens.DANGER
 	elif b["damaged"]:
 		var need := Colony.repair_work_needed(uid)
@@ -1076,7 +1076,7 @@ func _building_row(uid: StringName) -> Control:
 		col = UiTokens.WARN
 		mid = MenuScreen.bar(_ratio(int(b["repair_progress"]), need), UiTokens.WARN, 140)
 	elif wear != Vector2i(-1, -1):
-		st = "◆ 내구도 %d / %d" % [wear.x, wear.y]
+		st = "내구도 %d / %d" % [wear.x, wear.y]
 		col = UiTokens.WARN
 	elif bool(Colony.can_upgrade(uid).ok):
 		st = "↑ Lv%d 올릴 수 있음" % (int(b["level"]) + 1)
@@ -1098,7 +1098,7 @@ func _show_building() -> void:
 		return
 	var def := BaseDB.get_building(b["def_id"])
 	var level := int(b["level"])
-	_detail.add_child(_tag("%s  ·  %s  ·  Lv%d / %d" % [CATEGORY_NAMES[int(def.category)], _zone_name(b["zone_id"]),
+	_detail.add_child(_tag("%s / %s / Lv%d / %d" % [CATEGORY_NAMES[int(def.category)], _zone_name(b["zone_id"]),
 		level, BuildingDef.MAX_LEVEL]))
 	_detail.add_child(_title(def.display_name))
 	if def.category == BuildingDef.Category.INCLUSION:
@@ -1302,7 +1302,7 @@ func _access_row(zone_id: StringName, acc: Dictionary, facilities: Array) -> Con
 		nm.add_theme_color_override(&"font_color", UiTokens.TEXT_DIM)
 	nv.add_child(nm)
 	var kind := String(MOBILITY_KIND.get(z.mobility_access, "")) if z else ""
-	nv.add_child(MenuScreen.label(kind + ("" if cleared else " · 개간 전"), &"LabelDim", 13))
+	nv.add_child(MenuScreen.label(kind + ("" if cleared else " / 개간 전"), &"LabelDim", 13))
 	h.add_child(nv)
 	var mob := bool(acc.get("mobility", true))
 	var lang := bool(acc.get("language", true))
@@ -1312,7 +1312,7 @@ func _access_row(zone_id: StringName, acc: Dictionary, facilities: Array) -> Con
 	fac.add_theme_constant_override(&"separation", 8)
 	fac.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if facilities.is_empty():
-		fac.add_child(MenuScreen.label("—", &"LabelDim", 14))
+		fac.add_child(MenuScreen.label("-", &"LabelDim", 14))
 	else:
 		fac.add_child(InfoIcon.new(18))
 		var fl := MenuScreen.label(", ".join(PackedStringArray(facilities)), &"LabelHud", 14)
@@ -1343,17 +1343,17 @@ func _met_cell(met: bool, text: String, w: float) -> Control:
 
 func _show_access(map: Dictionary) -> void:
 	MenuScreen.clear(_detail)
-	_detail.add_child(_tag("07 참여 조건  ·  기지가 아직 갖추지 못한 것"))
+	_detail.add_child(_tag("07 참여 조건 / 기지가 아직 갖추지 못한 것"))
 	_detail.add_child(_title("기지 전체"))
 	var hearing := bool(map.get("hearing_alarm", false))
-	_detail.add_child(_state_line(hearing, "청각 — 시각 경보(경광등) " + ("켜짐" if hearing else "꺼짐 (전력이 들어온 경광등 필요)")))
+	_detail.add_child(_state_line(hearing, "청각: 시각 경보(경광등) " + ("켜짐" if hearing else "꺼짐 (전력이 들어온 경광등 필요)")))
 	var care: Dictionary = map.get("care", {})
 	var guardians := int(care.get("guardians", 0))
 	var covered := (care.get("covered", []) as Array).size()
-	_detail.add_child(_state_line(covered >= guardians, "돌봄 — 자리 %d · 보호자 %d명 중 %d명 맡김" % [
+	_detail.add_child(_state_line(covered >= guardians, "돌봄: 자리 %d / 보호자 %d명 중 %d명 맡김" % [
 		int(care.get("slots", 0)), guardians, covered]))
 	var radio := bool(map.get("interpreter_radio", false))
-	_detail.add_child(_state_line(radio, "언어 — 통역 무전기 " + ("있음 (무전·외교 가능)" if radio else "없음")))
+	_detail.add_child(_state_line(radio, "언어. 통역 무전기 " + ("있음 (무전, 외교 가능)" if radio else "없음")))
 	_detail.add_child(HSeparator.new())
 	var counts := [0, 0, 0]
 	for id in Colony.active_resident_ids():
@@ -1361,7 +1361,7 @@ func _show_access(map: Dictionary) -> void:
 		for i in 3:
 			if i in needs:
 				counts[i] += 1
-	_detail.add_child(MenuScreen.label("참여 조건이 있는 주민  이동 %d · 언어 %d · 청각 %d" % counts, &"LabelOnCream", 15))
+	_detail.add_child(MenuScreen.label("참여 조건이 있는 주민  이동 %d / 언어 %d / 청각 %d" % counts, &"LabelOnCream", 15))
 	var legend := HBoxContainer.new()
 	legend.add_theme_constant_override(&"separation", 8)
 	legend.add_child(CheckMark.new(true))

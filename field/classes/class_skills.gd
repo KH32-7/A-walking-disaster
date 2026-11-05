@@ -169,7 +169,7 @@ func hud_skills() -> Array:
 	for slot: StringName in SLOTS:
 		var skill := skill_for(slot)
 		if skill != null:
-			out.append({"key": HUD_KEYS[slot], "left": cooldown_left(slot),
+			out.append({"key": HUD_KEYS[slot], "name": skill.name, "left": cooldown_left(slot),
 				"max": _cooldown_max.get(skill.id, skill.cooldown_sec)})
 	return out
 

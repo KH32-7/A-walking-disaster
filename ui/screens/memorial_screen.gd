@@ -53,7 +53,7 @@ static func grieving() -> int:
 
 ## World tag text: [small name, big state].
 static func marker_lines() -> Array[String]:
-	return ["추모비", "새긴 이름 %d · 오늘 다녀감 %d" % [Colony.memorial_names().size(), visited_today()]]
+	return ["추모비", "새긴 이름 %d / 오늘 다녀감 %d" % [Colony.memorial_names().size(), visited_today()]]
 
 
 ## The stone's [F] lines: [{label, state, screen, args}].
@@ -167,9 +167,9 @@ func _fill_people() -> void:
 	if not has_stone():
 		_status.text = "■ 추모비가 아직 없어요. 건설에서 추모비를 지으면 찾아갈 수 있어요."
 	elif not is_night():
-		_status.text = "▲ 밤에 찾아갈 수 있어요. 한 사람이 하루 한 번, 슬픔 −1일 · 사기 +%d." % LossRules.MEMORIAL_VISIT_MORALE
+		_status.text = "▲ 밤에 찾아갈 수 있어요. 한 사람이 하루 한 번, 슬픔 −1일 / 사기 +%d." % LossRules.MEMORIAL_VISIT_MORALE
 	else:
-		_status.text = "한 사람이 하루 한 번 찾아갈 수 있어요. 슬픔 −1일 · 사기 +%d." % LossRules.MEMORIAL_VISIT_MORALE
+		_status.text = "한 사람이 하루 한 번 찾아갈 수 있어요. 슬픔 −1일 / 사기 +%d." % LossRules.MEMORIAL_VISIT_MORALE
 	var yellow_used := false
 	for id: StringName in _people_ids():
 		var row := _person_row(id, not yellow_used)

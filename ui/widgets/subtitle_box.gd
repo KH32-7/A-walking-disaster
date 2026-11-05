@@ -49,6 +49,12 @@ func _ready() -> void:
 
 
 ## speaker_name may be empty (narration). Lines longer than 2 rows are cut by the label width.
+## Line width in px. UI narrows it while a menu is open so it fits right of the key footer.
+func set_width(w: float) -> void:
+	if _label != null:
+		_label.custom_minimum_size.x = w
+
+
 func show_line(speaker_name: String, text: String, priority: int = 0) -> void:
 	var item := {"speaker": speaker_name, "text": text, "priority": priority}
 	if not _current.is_empty() and priority > int(_current.get("priority", 0)):
@@ -78,7 +84,7 @@ func _play(item: Dictionary) -> void:
 	var show_speaker := bool(Settings.get_value(&"subtitle_speaker")) and not speaker.is_empty()
 	var raw := String(item.text)
 	if raw.length() > MAX_CHARS:
-		raw = raw.left(MAX_CHARS - 1) + "…"
+		raw = raw.left(MAX_CHARS - 1) + "..."
 	var body := raw.replace("[", "[lb]")
 	var head := ("[color=#%s][b]%s[/b][/color]  " % [UiTokens.ACCENT.to_html(false), speaker]) \
 		if show_speaker else ""

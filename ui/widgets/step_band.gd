@@ -38,7 +38,7 @@ func set_steps(list: Array) -> void:
 		c.queue_free()
 	for i in steps.size():
 		if i > 0:
-			var dash := MenuScreen.label("—", &"LabelDim", 14)
+			var dash := MenuScreen.label("-", &"LabelDim", 14)
 			_row.add_child(dash)
 		_row.add_child(_step(i, steps[i]))
 

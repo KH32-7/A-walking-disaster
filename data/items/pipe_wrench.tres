@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_8mi2y")
 id = &"pipe_wrench"
-name = "파이프·렌치"
+name = "파이프 렌치"
 combat_class = 2
 base_stats = {
 "attack_interval": 0.6,
