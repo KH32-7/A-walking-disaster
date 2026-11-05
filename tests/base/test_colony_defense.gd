@@ -97,7 +97,8 @@ func _test_shelter() -> bool:
 
 
 func _test_repair() -> bool:
-	_fresh({&"wood": 50, &"scrap": 50, &"parts": 10, &"plank": 20})
+	# Food so the builder does not starve: hunger 0 → 5% sickness a day would make this depend on luck.
+	_fresh({&"wood": 50, &"scrap": 50, &"parts": 10, &"plank": 20, &"food": 30})
 	var shop := _build(&"workshop")
 	Colony.buildings[shop]["damaged"] = true
 	var builder := Colony.add_resident({"stats": {&"str": 5}, "traits": []})
