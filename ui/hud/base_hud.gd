@@ -32,8 +32,9 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build()
 	for sig in [EventBus.resources_changed, EventBus.day_started, EventBus.phase_changed,
-			EventBus.resident_joined, EventBus.resident_left, EventBus.building_completed]:
-		sig.connect(func(_a: Variant = null) -> void: refresh())
+			EventBus.resident_joined, EventBus.resident_left, EventBus.resident_died, EventBus.building_completed]:
+		# Signals carry 0-2 args (resident_left/died add a reason); the HUD only needs a refresh.
+		sig.connect(func(_a: Variant = null, _b: Variant = null) -> void: refresh())
 	EventBus.notification_posted.connect(push_note)
 	refresh()
 
