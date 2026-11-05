@@ -23,6 +23,9 @@ var _attempts := 0
 
 
 func _ready() -> void:
+	# Every loaded copy of this scene shares the NavigationMesh sub-resource. Bake into our own
+	# copy, or a second base instance (re-entering the base, tests) finds it "already baking".
+	_navigation.navigation_mesh = _navigation.navigation_mesh.duplicate()
 	_navigation.bake_finished.connect(_on_bake_finished)
 	# CSG builds its shapes at the end of the frame; bake after that.
 	await get_tree().process_frame

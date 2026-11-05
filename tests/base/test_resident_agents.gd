@@ -25,7 +25,8 @@ func run() -> bool:
 	var base := (load(SCENE) as PackedScene).instantiate() as Node3D
 	add_child(base)
 	var layout: Node = base.get_node("Layout")
-	while not layout.navigation_baked:
+	var bake_deadline := Time.get_ticks_msec() + 20000
+	while not layout.navigation_baked and Time.get_ticks_msec() < bake_deadline:
 		await get_tree().process_frame
 	await get_tree().process_frame
 	var crowd: ResidentCrowd = base.residents
