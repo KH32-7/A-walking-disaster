@@ -92,6 +92,8 @@ func _test_memorial() -> bool:
 	ok = _expect(_buttons_disabled(s._people), "daytime: visit buttons disabled") and ok
 	GameState.flow_state = Enums.FlowState.NIGHT
 	s.refresh()
+	ok = _expect(_yellow_count(s._people) == 1, "night: one yellow visit button") and ok
+	ok = _expect(MemorialScreen.marker_lines()[1].contains("새긴 이름 1"), "memorial world tag") and ok
 	var before := int(Colony.get_resident(b)["grief_days"])
 	var res: Dictionary = s.visit(b)
 	ok = _expect(res.ok and int(Colony.get_resident(b)["grief_days"]) == before - 1, "visit goes through Colony (슬픔 −1일)") and ok
@@ -99,6 +101,11 @@ func _test_memorial() -> bool:
 	ok = _expect(not res.ok and String(s._notes[b]).contains(String(res.reason)), "a refused visit shows Colony's reason") and ok
 	UI.close(&"memorial")
 	return ok
+
+
+func _yellow_count(n: Node) -> int:
+	return n.find_children("*", "Button", true, false).filter(
+		func(b: Button) -> bool: return b.theme_type_variation == &"ButtonPrimary").size()
 
 
 func _buttons_disabled(n: Node) -> bool:
@@ -128,7 +135,8 @@ func _test_absent() -> bool:
 	UI.open(&"residents")
 	var s = UI.get_screen(&"residents")
 	var labels: Array = s._list.find_children("*", "Label", true, false).map(func(l: Label) -> String: return l.text)
-	ok = _expect(labels.any(func(t: String) -> bool: return t.contains("자리에 없는 사람")), "residents list shows who is away") and ok
+	ok = _expect(labels.any(func(t: String) -> bool: return t.contains("△ 고립")) and labels.any(func(t: String) -> bool: return t.contains("◆ 실종")),
+		"residents list shows who is away as one-line card states") and ok
 	UI.close(&"residents")
 	return ok
 
@@ -149,6 +157,12 @@ func _test_outposts() -> bool:
 	Colony.outposts[&"outpost_north"]["ready_day"] = GameState.day
 	Colony.outposts_changed.emit()
 	ok = _expect(OutpostsScreen.state_of(s._node(s._map.nodes, &"outpost_north")) == &"short", "outposts_changed redraws (주둔 부족)") and ok
+	var steps := OutpostsScreen.steps_for(s._node(s._map.nodes, &"outpost_north"))
+	ok = _expect(steps.size() == 3 and steps[0].state == StepBand.DONE and steps[1].state == StepBand.NOW,
+		"step band: 짓기 ✓ → 주둔 (now) → 가동") and ok
+	ok = _expect(_yellow_count(s._detail) == 1, "one yellow button: the first resident who can be stationed") and ok
+	ok = _expect(OutpostsScreen.facility_choices(s._node(s._map.nodes, &"outpost_north"))[0].label == "주둔 배정"
+		and OutpostsScreen.marker_lines(s._node(s._map.nodes, &"outpost_north"))[1] == "주둔 0/2", "[F] line and world tag text") and ok
 	ok = _expect(s.station(&"outpost_north", a) and s.station(&"outpost_north", b), "two residents garrisoned") and ok
 	ok = _expect(Colony.garrison_of(&"outpost_north").size() == 2 and Colony.job_of(a) == OutpostRules.GARRISON_JOB,
 		"garrison goes through assign_garrison") and ok
@@ -160,6 +174,7 @@ func _test_outposts() -> bool:
 	Colony.outposts[&"outpost_north"]["damaged"] = true
 	Colony.outposts_changed.emit()
 	ok = _expect(OutpostsScreen.state_of(s._node(s._map.nodes, &"outpost_north")) == &"damaged", "damaged state") and ok
+	ok = _expect(OutpostsScreen.steps_for(s._node(s._map.nodes, &"outpost_north"))[0].label == "수리", "broken: the first step is 수리") and ok
 	ok = _expect(not s.repair(&"outpost_north"), "repair needs resources") and ok
 	Economy.apply(Colony.outpost_repair_cost(&"outpost_north"))
 	ok = _expect(s.repair(&"outpost_north") and not Colony.outposts[&"outpost_north"]["damaged"], "repair through Colony") and ok

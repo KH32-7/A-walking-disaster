@@ -1,6 +1,7 @@
 extends Control
 ## Funeral (#125 part 3, C-20). Owner: Lane D. Screen id `funeral`. Design 08 "사망과 추모".
-## A quiet scene the morning after a death: the base dims, one page per resident with the name, the
+## A quiet scene the morning after a death: the base dims, one page per resident with the face first
+## (ResidentPortrait), then the name, the
 ## day they joined, the memorial line and one line of their story, then who is grieving.
 ## Opened by UI on Colony.funeral_ready(resident_ids); the last page's button (or Esc) calls
 ## Colony.end_funeral() and closes. open_with({"resident_ids": [...]}) — default Colony.pending_funeral().
@@ -11,6 +12,7 @@ var index := 0
 var _built := false
 var _kicker: Label
 var _name: Label
+var _portrait: ResidentPortrait
 var _when: Label
 var _story: Label
 var _stone: Label
@@ -51,6 +53,11 @@ func _ready() -> void:
 	_kicker = _centered(MenuScreen.label("", &"LabelHud", 18))
 	_kicker.add_theme_color_override(&"font_color", UiTokens.TEXT_DIM)
 	col.add_child(_kicker)
+	# 그림 먼저 (UI 재설계): the face, then a candle on the line under it, then the words.
+	var pc := CenterContainer.new()
+	_portrait = ResidentPortrait.new(Vector2(210, 240))
+	pc.add_child(_portrait)
+	col.add_child(pc)
 	col.add_child(Candle.new())
 	_name = _centered(MenuScreen.label("", &"LabelTitle", 46))
 	col.add_child(_name)
@@ -108,6 +115,7 @@ func _centered(l: Label) -> Label:
 func _show() -> void:
 	_kicker.text = "%d일차 아침 · 장례" % GameState.day
 	if ids.is_empty():
+		_portrait.visible = false
 		_name.text = "보낼 사람이 없어요"
 		_when.text = ""
 		_story.text = ""
@@ -118,6 +126,7 @@ func _show() -> void:
 		return
 	var id := ids[index]
 	var r := Colony.get_resident(id)
+	_portrait.set_resident(id)
 	_name.text = LossText.display_name(id)
 	var mem := _memorial_entry(id)
 	_when.text = "%d일차에 합류%s" % [int(r.get("joined_day", 1)),
@@ -174,13 +183,13 @@ func _unhandled_input(event: InputEvent) -> void:
 ## A small flame over a short line: the only motion-free ornament of the scene.
 class Candle extends Control:
 	func _init() -> void:
-		custom_minimum_size = Vector2(0, 74)
+		custom_minimum_size = Vector2(0, 40)
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	func _draw() -> void:
 		var c := Vector2(size.x * 0.5, 0)
-		draw_rect(Rect2(c + Vector2(-7, 34), Vector2(14, 40)), UiTokens.CREAM)
-		draw_line(c + Vector2(0, 34), c + Vector2(0, 26), UiTokens.TEXT_DIM, 2.0)
-		var flame := PackedVector2Array([c + Vector2(0, 2), c + Vector2(7, 18), c + Vector2(0, 28), c + Vector2(-7, 18)])
+		draw_rect(Rect2(c + Vector2(-5, 20), Vector2(10, 20)), UiTokens.CREAM)
+		draw_line(c + Vector2(0, 20), c + Vector2(0, 15), UiTokens.TEXT_DIM, 2.0)
+		var flame := PackedVector2Array([c + Vector2(0, 0), c + Vector2(5, 10), c + Vector2(0, 17), c + Vector2(-5, 10)])
 		draw_colored_polygon(flame, UiTokens.WARN)
-		draw_line(c + Vector2(-120, 74), c + Vector2(120, 74), UiTokens.LINE, 1.0)
+		draw_line(c + Vector2(-140, 40), c + Vector2(140, 40), UiTokens.LINE, 1.0)

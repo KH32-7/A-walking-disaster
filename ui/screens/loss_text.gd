@@ -75,3 +75,27 @@ static func story_line(resident_id: StringName) -> String:
 	if not frags.is_empty():
 		return String(frags[0])
 	return "%d일차부터 함께 지냈어요." % int(r.get("joined_day", 1))
+
+
+## One short icon + text state for a resident card (UI 재설계: 카드에 상태 한 줄, 새 판 없이).
+## Order: 출산 대기 (■) → 슬픔 (◇). Absent residents use absent_rows() instead. "" = nothing to say.
+static func card_state(resident_id: StringName) -> String:
+	var block := sortie_block(resident_id)
+	if block != "":
+		return block
+	return grief_tag(Colony.get_resident(resident_id))
+
+
+## The mark FaceDot shows for a resident ("" = none).
+static func face_mark(resident_id: StringName) -> String:
+	var r := Colony.get_resident(resident_id)
+	match int(r.get("status", Enums.ResidentStatus.ACTIVE)):
+		Enums.ResidentStatus.STRANDED:
+			return "△"
+		Enums.ResidentStatus.MISSING:
+			return "◆"
+		Enums.ResidentStatus.DEAD:
+			return "†"
+	if sortie_block(resident_id) != "":
+		return "■"
+	return "◇" if int(r.get("grief_days", 0)) > 0 else ""

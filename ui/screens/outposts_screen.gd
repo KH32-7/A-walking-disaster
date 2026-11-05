@@ -7,6 +7,9 @@ extends MenuScreen
 ## Right: the chosen node — build (can_build_outpost reasons + cost → build_outpost), the 2 garrison
 ## places (assign_garrison; leaving is unassign_job — never assign_job), repair (outpost_repair_cost →
 ## repair_outpost). Redraws on Colony.outposts_changed. open_with({"node_id": id}) picks one.
+## UI 재설계: a step band shows the order (① 짓기 → ② 주둔 2명 → ③ 가동; a broken one starts with 수리),
+## faces come before names, and only the current step's button is yellow. Outposts are places:
+## marker_lines() / facility_choices() give the world tag and the [F] lines for the coming facility list.
 
 const STATE_WORDS := {
 	&"empty": "○ 비어 있음", &"building": "◐ 짓는 중", &"short": "△ 주둔 부족 · 멈춤",
@@ -118,6 +121,52 @@ static func short_name(n: Dictionary) -> String:
 	return "%s 입구" % FieldHud.region_display_name(StringName(n.get("region_id", &"")))
 
 
+## The order of the work for a node, as StepBand steps.
+static func steps_for(n: Dictionary) -> Array:
+	var g: int = (n.get("garrison", []) as Array).size()
+	var full := g >= OutpostRules.GARRISON_SIZE
+	var crew := "주둔 %d/%d" % [g, OutpostRules.GARRISON_SIZE]
+	match state_of(n):
+		&"empty":
+			return [{"label": "짓기 · %d일" % OutpostRules.BUILD_DAYS, "state": StepBand.NOW},
+				{"label": crew, "state": StepBand.TODO}, {"label": "가동", "state": StepBand.TODO}]
+		&"building":
+			return [{"label": "짓는 중 · %d일차 완성" % int(n.get("ready_day", 0)), "state": StepBand.NOW},
+				{"label": crew, "state": StepBand.TODO}, {"label": "가동", "state": StepBand.TODO}]
+		&"damaged":
+			return [{"label": "수리", "state": StepBand.NOW},
+				{"label": crew, "state": StepBand.DONE if full else StepBand.TODO}, {"label": "가동", "state": StepBand.TODO}]
+		&"short":
+			return [{"label": "짓기", "state": StepBand.DONE}, {"label": crew, "state": StepBand.NOW},
+				{"label": "가동", "state": StepBand.TODO}]
+	return [{"label": "짓기", "state": StepBand.DONE}, {"label": crew, "state": StepBand.DONE},
+		{"label": "가동 중", "state": StepBand.DONE}]
+
+
+## World tag text for a node: [small name, big state].
+static func marker_lines(n: Dictionary) -> Array[String]:
+	var g: int = (n.get("garrison", []) as Array).size()
+	var big: String = {&"empty": "빈 노드 · 지을 수 있음", &"building": "짓는 중 · %d일차" % int(n.get("ready_day", 0)),
+		&"damaged": "✕ 부서짐 · 수리 필요", &"short": "주둔 %d/%d" % [g, OutpostRules.GARRISON_SIZE],
+		&"active": "◆ 가동 중 · 주둔 %d/%d" % [g, OutpostRules.GARRISON_SIZE]}[state_of(n)]
+	return [node_name(n), big]
+
+
+## A node's [F] lines: [{label, state, screen, args}] (the screen opens on that node).
+static func facility_choices(n: Dictionary) -> Array:
+	var args := {"node_id": StringName(n.get("node_id", &""))}
+	var g: int = (n.get("garrison", []) as Array).size()
+	match state_of(n):
+		&"empty":
+			return [{"label": "전초기지 짓기", "state": "", "screen": &"outposts", "args": args}]
+		&"building":
+			return [{"label": "짓는 중", "state": "%d일차" % int(n.get("ready_day", 0)), "screen": &"outposts", "args": args}]
+		&"damaged":
+			return [{"label": "수리", "state": "", "screen": &"outposts", "args": args},
+				{"label": "주둔 배정", "state": "%d/%d" % [g, OutpostRules.GARRISON_SIZE], "screen": &"outposts", "args": args}]
+	return [{"label": "주둔 배정", "state": "%d/%d" % [g, OutpostRules.GARRISON_SIZE], "screen": &"outposts", "args": args}]
+
+
 func _node(nodes: Array, id: StringName) -> Dictionary:
 	for n: Dictionary in nodes:
 		if StringName(n["node_id"]) == id:
@@ -137,6 +186,9 @@ func _show_detail(n: Dictionary) -> void:
 	sl.add_theme_color_override(&"font_color", {&"active": UiTokens.GOOD, &"damaged": UiTokens.DANGER,
 		&"short": UiTokens.WARN}.get(st, UiTokens.TEXT))
 	_detail.add_child(sl)
+	var band := StepBand.new()
+	band.set_steps(steps_for(n))
+	_detail.add_child(band)
 	_detail.add_child(_effect_card(n))
 	match st:
 		&"empty":
@@ -146,9 +198,11 @@ func _show_detail(n: Dictionary) -> void:
 				int(n.get("ready_day", 0)), OutpostRules.GARRISON_SIZE], &"LabelHud", 15))
 		&"damaged":
 			_repair_part(id)
-			_garrison_part(n)
+			_garrison_part(n, false)
+		&"short":
+			_garrison_part(n, true)
 		_:
-			_garrison_part(n)
+			_garrison_part(n, false)
 	if _note != "":
 		var nl := MenuScreen.label(_note, &"LabelHud", 14)
 		nl.add_theme_color_override(&"font_color", UiTokens.WARN)
@@ -230,7 +284,8 @@ func _cost_row(cost: Dictionary) -> Control:
 	return h
 
 
-func _garrison_part(n: Dictionary) -> void:
+## `lead`: the garrison is the current step, so the first resident who can go gets the yellow button.
+func _garrison_part(n: Dictionary, lead: bool) -> void:
 	var id := StringName(n["node_id"])
 	var garrison: Array = n.get("garrison", [])
 	_detail.add_child(MenuScreen.label("주둔  %d / %d" % [garrison.size(), OutpostRules.GARRISON_SIZE], &"LabelSection", 16))
@@ -241,14 +296,16 @@ func _garrison_part(n: Dictionary) -> void:
 		h.add_theme_constant_override(&"separation", 12)
 		if i < garrison.size():
 			var rid := StringName(garrison[i])
-			var nm := MenuScreen.label("◆ " + LossText.display_name(rid), &"LabelSection", 17)
+			h.add_child(FaceDot.new(LossText.display_name(rid), 40))
+			var nm := MenuScreen.label(LossText.display_name(rid), &"LabelSection", 17)
 			nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			h.add_child(nm)
 			var off := MenuScreen.button("해제", &"ButtonCancel")
 			off.pressed.connect(release.bind(rid))
 			h.add_child(off)
 		else:
-			var e := MenuScreen.label("○ 빈 자리", &"LabelDim", 16)
+			h.add_child(EmptySeat.new())
+			var e := MenuScreen.label("빈 자리", &"LabelDim", 16)
 			e.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			h.add_child(e)
 		p.add_child(h)
@@ -256,22 +313,27 @@ func _garrison_part(n: Dictionary) -> void:
 	_detail.add_child(MenuScreen.label("주둔할 주민", &"LabelSection", 16))
 	var full := garrison.size() >= OutpostRules.GARRISON_SIZE
 	var any := false
+	var yellow := lead
 	for rid: StringName in Colony.active_resident_ids():
 		if rid in garrison:
 			continue
 		any = true
-		_detail.add_child(_candidate_row(id, rid, full))
+		var row := _candidate_row(id, rid, full, yellow)
+		if row.get_meta(&"primary", false):
+			yellow = false
+		_detail.add_child(row)
 	if not any:
 		_detail.add_child(MenuScreen.label("보낼 수 있는 주민이 없어요.", &"LabelDim", 15))
 
 
-func _candidate_row(node_id: StringName, rid: StringName, full: bool) -> Control:
+func _candidate_row(node_id: StringName, rid: StringName, full: bool, may_be_primary := false) -> Control:
 	var r := Colony.get_resident(rid)
 	var why := Colony.job_block_reason(rid, OutpostRules.GARRISON_JOB)
 	if why == "" and full:
 		why = "자리가 다 찼어요"
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override(&"separation", 12)
+	h.add_child(FaceDot.new(LossText.display_name(rid), 36, why != "", LossText.face_mark(rid)))
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override(&"separation", -2)
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -289,11 +351,13 @@ func _candidate_row(node_id: StringName, rid: StringName, full: bool) -> Control
 		wl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		v.add_child(wl)
 	h.add_child(v)
-	var b := MenuScreen.button("주둔", &"ButtonSecondary")
+	var primary := may_be_primary and why == ""
+	var b := MenuScreen.button("주둔", &"ButtonPrimary" if primary else &"ButtonSecondary")
 	b.disabled = why != ""
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	b.pressed.connect(station.bind(node_id, rid))
 	h.add_child(b)
+	h.set_meta(&"primary", primary)
 	return h
 
 
@@ -329,6 +393,19 @@ func repair(id: StringName) -> bool:
 	_note = "" if ok else "■ 수리할 수 없어요"
 	refresh()
 	return ok
+
+
+## Dashed circle for an empty garrison seat (the mockup's "자리 하나 비어 있음" card).
+class EmptySeat extends Control:
+	func _init() -> void:
+		custom_minimum_size = Vector2(40, 40)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var c := size * 0.5
+		for i in 16:
+			if i % 2 == 0:
+				draw_arc(c, 18.0, TAU * i / 16.0, TAU * (i + 1) / 16.0, 4, UiTokens.TEXT_DIM, 1.5, true)
 
 
 ## World map of the outpost nodes. Pure drawing + click picking; state comes from `nodes`.

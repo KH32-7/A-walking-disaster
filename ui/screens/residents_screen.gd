@@ -117,22 +117,33 @@ func _fill() -> void:
 	_show_detail()
 
 
-## #125 part 3: stranded (region, days left / 기한 없음) and missing residents under the list.
+## #125 part 3: stranded (region, days left / 기한 없음) and missing residents as dim face cards after
+## the rows (UI 재설계: 카드에 상태 한 줄, 새 판 없이).
 func _add_absent_rows() -> void:
-	var rows := LossText.absent_rows()
-	if rows.is_empty():
-		return
-	_list.add_child(MenuScreen.label("자리에 없는 사람  %d" % rows.size(), &"LabelSection", 16))
-	for a: Dictionary in rows:
+	for a: Dictionary in LossText.absent_rows():
+		var p := PanelContainer.new()
+		var box := StyleBoxFlat.new()
+		box.bg_color = Color(1, 1, 1, 0.02)
+		box.border_color = Color(1, 1, 1, 0.12)
+		box.set_border_width_all(1)
+		box.set_corner_radius_all(UiTokens.SLOT_RADIUS)
+		box.content_margin_left = 14
+		box.content_margin_right = 14
+		box.content_margin_top = 8
+		box.content_margin_bottom = 8
+		p.add_theme_stylebox_override(&"panel", box)
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override(&"separation", 14)
-		var nm := MenuScreen.label(String(a.name), &"LabelHud", 16)
-		nm.custom_minimum_size = Vector2(150, 0)
-		h.add_child(nm)
-		var t := MenuScreen.label(String(a.text), &"LabelHud", 14)
+		h.add_child(FaceDot.new(String(a.name), 44, true, LossText.face_mark(StringName(a.resident_id))))
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override(&"separation", -2)
+		v.add_child(MenuScreen.label(String(a.name), &"LabelSection", 18))
+		var t := MenuScreen.label(String(a.text), &"LabelHud", 13)
 		t.add_theme_color_override(&"font_color", UiTokens.WARN if a.kind == &"stranded" else UiTokens.TEXT_DIM)
-		h.add_child(t)
-		_list.add_child(h)
+		v.add_child(t)
+		h.add_child(v)
+		p.add_child(h)
+		_list.add_child(p)
 
 
 func _row(id: StringName) -> Control:
