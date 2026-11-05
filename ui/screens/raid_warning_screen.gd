@@ -176,8 +176,8 @@ func _choose(direct: bool) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"ui_accept"):
+		get_viewport().set_input_as_handled()  # first: the action may close this screen
 		_choose(false)
-		get_viewport().set_input_as_handled()
 	elif event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).keycode == KEY_D:
 		_choose(true)
 		get_viewport().set_input_as_handled()

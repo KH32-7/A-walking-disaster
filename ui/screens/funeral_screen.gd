@@ -176,8 +176,8 @@ func close() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"ui_accept") and not _next.has_focus():
+		get_viewport().set_input_as_handled()  # first: the action may close this screen
 		_advance()
-		get_viewport().set_input_as_handled()
 
 
 ## A small flame over a short line: the only motion-free ornament of the scene.

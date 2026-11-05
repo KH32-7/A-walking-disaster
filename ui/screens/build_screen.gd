@@ -584,6 +584,7 @@ func _card(def: BuildingDef, check: Dictionary, goal: bool) -> Control:
 	var pad := MarginContainer.new()
 	pad.add_theme_constant_override(&"margin_left", 12)
 	pad.add_theme_constant_override(&"margin_right", 10)
+	pad.add_theme_constant_override(&"margin_bottom", 12)  # keeps the 상태 줄 off the card edge
 	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pad.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(pad)
@@ -631,6 +632,10 @@ func _card(def: BuildingDef, check: Dictionary, goal: bool) -> Control:
 	st.add_child(sl)
 	inner.add_child(st)
 	b.pressed.connect(func() -> void:
+		# First click picks the card; a click on the picked card goes on to ②놓기 (same as Enter).
+		if _sel == def.id and bool(Colony.can_build(def.id).ok):
+			_place()
+			return
 		_sel = def.id
 		_fill())
 	return b
@@ -1531,11 +1536,12 @@ func _ratio(v: int, total: int) -> float:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"ui_accept"):
+		# Mark it handled first: _place() / the action may close this screen (no viewport after that).
+		get_viewport().set_input_as_handled()
 		if _mode == &"build":
 			_place()
 		elif _primary.is_valid():
 			_primary.call()
-		get_viewport().set_input_as_handled()
 		return
 	if _mode != &"build":
 		return
