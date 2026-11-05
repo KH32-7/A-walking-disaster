@@ -1,6 +1,7 @@
 class_name FieldHud
 extends Control
 ## Field HUD (D-04). Owner: Lane D. Rules: ui/UI_RULES.md §4 "필드 HUD" (ARC Raiders base, no panels).
+## No compass: the quarter view + minimap already show direction (design 14 has none).
 ## Design: docs/design/14-ui-controls-accessibility.md "필드 HUD".
 ##
 ## The HUD computes no game rules. It draws a state Dictionary that it pulls every frame from the
@@ -15,7 +16,7 @@ extends Control
 ##   skills: [{key: "Q", left: sec, max: sec}]   mana: 0..1
 ##   companions: [{name, hp: 0..1, command: String}]
 ##   objectives: [{text, progress: String, main: bool}]
-##   heading_deg: float   compass_markers: [{bearing, kind, dist}]
+##   heading_deg: float (minimap arrow when minimap.heading is missing)
 ##   minimap: {points: [{pos: Vector2, kind}], heading: float}
 ##   dusk_left_sec: float  (else counted down locally from sortie_started)
 ##   hold: {label: String, progress: 0..1} or {} ; prompt: {key, label} or {}
@@ -31,9 +32,9 @@ var state: Dictionary = {}
 var auto_bind := true
 
 var _minimap: HudMinimap
-var _compass: HudCompass
 var _timer: Label
 var _timer_cap: Label
+var _timer_icon: Label
 var _objectives: VBoxContainer
 var _feed: VBoxContainer
 var _hint: PanelContainer
@@ -179,8 +180,6 @@ func _apply(s: Dictionary) -> void:
 	_stamina.visible = sta < 0.999
 	_mana.value = float(s.get("mana", 0.0))
 	_mana.fill_color = UiTokens.INFO if _mana.value < 1.0 else UiTokens.ACCENT
-	_compass.heading_deg = float(s.get("heading_deg", 0.0))
-	_compass.markers = s.get("compass_markers", [])
 	var mm: Dictionary = s.get("minimap", {})
 	_minimap.points = mm.get("points", [])
 	_minimap.player_heading = float(mm.get("heading", s.get("heading_deg", 0.0)))
@@ -206,6 +205,7 @@ func _set_timer(left: float) -> void:
 	_timer.text = "%02d:%02d" % [t / 60, t % 60]
 	var warn := left < DUSK_WARN_SEC
 	_timer.add_theme_color_override(&"font_color", UiTokens.WARN if warn else UiTokens.TEXT)
+	_timer_icon.visible = warn
 	_timer_cap.text = "해질녘까지" if left > 0.0 else "해가 졌습니다"
 
 
@@ -230,25 +230,26 @@ func _build() -> void:
 	_minimap = HudMinimap.new()
 	_place(_minimap, Control.PRESET_TOP_LEFT, Vector2(m, 24))
 
-	var top := VBoxContainer.new()
-	top.alignment = BoxContainer.ALIGNMENT_BEGIN
-	top.add_theme_constant_override(&"separation", 2)
-	_compass = HudCompass.new()
-	top.add_child(_compass)
+	# top-right: sortie timer, then objectives (design 14: "목표 목록, 출격 타이머")
+	var tr := VBoxContainer.new()
+	tr.add_theme_constant_override(&"separation", 10)
+	tr.custom_minimum_size = Vector2(380, 0)
 	var trow := HBoxContainer.new()
-	trow.alignment = BoxContainer.ALIGNMENT_CENTER
+	trow.alignment = BoxContainer.ALIGNMENT_END
 	trow.add_theme_constant_override(&"separation", 10)
-	_timer_cap = _lbl("해질녘까지", &"LabelHud", 15)
-	_timer = _lbl("--:--", &"LabelNumber", 24)
+	_timer_icon = _lbl("▲", &"LabelHud", 16)
+	_timer_icon.add_theme_color_override(&"font_color", UiTokens.WARN)
+	_timer_icon.visible = false
+	_timer_cap = _lbl("해질녘까지", &"LabelHud", 16)
+	_timer = _lbl("--:--", &"LabelNumber", 26)
+	trow.add_child(_timer_icon)
 	trow.add_child(_timer_cap)
 	trow.add_child(_timer)
-	top.add_child(trow)
-	_place(top, Control.PRESET_CENTER_TOP, Vector2(0, 12))
-
+	tr.add_child(trow)
 	_objectives = VBoxContainer.new()
 	_objectives.add_theme_constant_override(&"separation", 6)
-	_objectives.custom_minimum_size = Vector2(380, 0)
-	_place(_objectives, Control.PRESET_TOP_RIGHT, Vector2(-m, 30))
+	tr.add_child(_objectives)
+	_place(tr, Control.PRESET_TOP_RIGHT, Vector2(-m, 28))
 
 	_feed = VBoxContainer.new()
 	_feed.add_theme_constant_override(&"separation", 8)

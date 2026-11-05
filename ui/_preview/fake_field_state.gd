@@ -28,8 +28,6 @@ static func make(t: float) -> Dictionary:
 			{"text": "약품장 뒤지기", "progress": "1/2"},
 		],
 		"heading_deg": fmod(t * 20.0, 360.0),
-		"compass_markers": [{"bearing": 300.0, "kind": &"extract", "dist": 42.0},
-			{"bearing": 80.0, "kind": &"objective", "dist": 18.0}],
 		"minimap": {"heading": fmod(t * 20.0, 360.0), "points": [
 			{"pos": Vector2(0.55, -0.4), "kind": &"objective"},
 			{"pos": Vector2(-0.8, -0.9), "kind": &"extract"},

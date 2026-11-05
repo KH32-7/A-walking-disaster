@@ -49,16 +49,22 @@ func _ready() -> void:
 
 ## The field HUD (D-04). Created on first use, shown only in FlowState.FIELD.
 var field_hud: FieldHud
+## Noise rings, monster ?/!, edge arrows (D-05). Lives with the field HUD.
+var world_markers: WorldMarkers
 
 
 func show_field_hud(on: bool) -> void:
 	if on and field_hud == null:
+		world_markers = WorldMarkers.new()
+		world_markers.name = &"WorldMarkers"
+		hud.add_child(world_markers)  # under the HUD widgets
 		field_hud = FieldHud.new()
 		field_hud.name = &"FieldHud"
 		hud.add_child(field_hud)
-	if field_hud != null:
-		field_hud.visible = on
-		field_hud.process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
+	for n: Control in [field_hud, world_markers]:
+		if n != null:
+			n.visible = on
+			n.process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
 
 
 func _on_flow_state_changed(state: Enums.FlowState) -> void:
