@@ -48,6 +48,8 @@ func _ready() -> void:
 	EventBus.settings_changed.connect(_on_settings_changed)
 	EventBus.radio_message.connect(_on_radio_message)
 	EventBus.flow_state_changed.connect(_on_flow_state_changed)
+	EventBus.sortie_started.connect(_on_sortie_started)
+	_last_flow = GameState.flow_state
 	_on_flow_state_changed(GameState.flow_state)
 
 
@@ -121,10 +123,14 @@ func _input(event: InputEvent) -> void:
 
 ## Flow screens (D-07): opened when the router enters the state, closed when it leaves.
 const FLOW_SCREENS := {
+	Enums.FlowState.TITLE: &"title",  # D-19
 	Enums.FlowState.SORTIE_PREP: &"sortie_prep",
 	Enums.FlowState.RESULT: &"result",
 	Enums.FlowState.EVENING: &"evening",
 }
+
+
+var _last_flow: Enums.FlowState = Enums.FlowState.TITLE
 
 
 func _on_flow_state_changed(state: Enums.FlowState) -> void:
@@ -137,6 +143,17 @@ func _on_flow_state_changed(state: Enums.FlowState) -> void:
 				open(id)
 		elif is_open(id):
 			close(id)
+	# D-19: transition card (출격 / 귀환 / 쓰러짐 / 불러오기) above the screen just opened.
+	var t := LoadingScreen.transition_for(_last_flow, state)
+	_last_flow = state
+	if not t.is_empty() and has_screen(&"loading"):
+		open(&"loading", t)
+
+
+## D-19: the sortie card learns the region once the router announces the loadout.
+func _on_sortie_started(loadout: Dictionary) -> void:
+	if is_open(&"loading"):
+		open(&"loading", {"kind": &"sortie", "region_id": StringName(loadout.get("region_id", &""))})
 
 
 # --- public API (contracts.md) ---
