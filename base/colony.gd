@@ -1646,7 +1646,8 @@ func relation_flags(a: StringName, b: StringName) -> Array:
 	return relation_meta.get(RelationRules.pair_key(a, b), {}).get("flags", [])
 
 
-## &"rival", &"awkward", &"acquainted", &"friend", &"best_friend", &"lovers", &"married"
+## &"rival", &"awkward", &"acquainted", &"friend", &"best_friend", &"lover", &"married".
+## relationship_changed also sends &"separated" once when lovers or a couple break up.
 ## (names: RelationRules.STAGE_NAMES).
 func relation_stage(a: StringName, b: StringName) -> StringName:
 	return RelationRules.stage_of(relation(a, b), relation_flags(a, b))
@@ -1928,7 +1929,6 @@ func _apply_night_event(ev: Dictionary, choice: StringName) -> Dictionary:
 			_emit_stage(a, b, before)
 			result["text"] = "%s이(가) 결혼했다. 내일은 축제" % names
 		&"breakup":
-			var before := relation_stage(a, b)
 			var m := _relation_meta(a, b)
 			m["flags"] = []
 			m["engaged"] = false
@@ -1937,7 +1937,8 @@ func _apply_night_event(ev: Dictionary, choice: StringName) -> Dictionary:
 			m["low_days"] = 0
 			for id in who:
 				residents[id]["morale"] = NeedsRules.apply_morale(residents[id], RelationRules.BREAKUP_MORALE)
-			_emit_stage(a, b, before)
+			# Journal (A-17) reads &"separated" for 이별; the pair's value stage is unchanged.
+			EventBus.relationship_changed.emit(a, b, RelationRules.SEPARATED)
 			result["text"] = "%s이(가) 헤어졌다" % names
 	last_night_results.append(result)
 	if ev["event_id"] in [&"confession", &"proposal", &"wedding", &"breakup"]:
