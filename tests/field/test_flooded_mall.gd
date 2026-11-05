@@ -2,19 +2,23 @@ extends RefCounted
 ## B-12: flooded mall layout. Markers match the confirmed map file, the navmesh reaches every
 ## marker from the north spawn, every extract point from both spawns, and the wheelchair layer
 ## leaves the mall's 2F only by the hidden ramp. The assembly spawns the player, monsters and loot,
-## activates 2 extract points and has a B-04 IndoorZone per building.
+## roaming packs, activates 2 extract points and has a B-04 IndoorZone per building.
 
 const LAYOUT := "res://levels/field/flooded_mall/layout.tscn"
 const ASSEMBLY := "res://levels/field/flooded_mall/flooded_mall.tscn"
 const NAV_WALK := 1
 const NAV_WHEELCHAIR := 2
 const REACH := 1.5 ## path end within this distance (xz) of the target
+## Map file markers plus the generator's extras (build_layout.gd EXTRA_NESTS, extra LootSpots):
+## loot 19 + 26, nests 3 + 3.
 const MARKER_COUNTS := {
-	PlayerSpawn.GROUP: 2, ExtractPoint.GROUP: 3, LootSpot.GROUP: 19, MonsterNest.GROUP: 3,
+	PlayerSpawn.GROUP: 2, ExtractPoint.GROUP: 3, LootSpot.GROUP: 45, MonsterNest.GROUP: 6,
 	RescueSpot.GROUP: 4, HiddenRoute.GROUP: 1, Recording.GROUP: 2, BossArena.GROUP: 0,
 }
 const EXTRACT_IDS := [&"mall_dock", &"mall_gas_station", &"mall_north_gate"]
 const NAV_SYNC_MAX_FRAMES := 300
+## Nest interval after the generator's NEST_INTERVAL_MULT (map file 180s).
+const NEST_INTERVAL := 120.0
 ## Floor plan scale of the generated layout. Path length limits below are for the unscaled map.
 const MAP_SCALE: float = preload("res://levels/field/flooded_mall/build/build_layout.gd").MAP_SCALE
 const WALK_TO_STAIRS_MAX := 30.0
@@ -63,6 +67,9 @@ func _check_markers() -> void:
 		if node.id == &"mall_gas_station":
 			_expect(node.type == ExtractPoint.Type.GENERATOR and node.wait_sec == 20.0 and node.noise_radius == 25.0,
 				"gas station extract is a 20s, 25m generator")
+	for node in _tree.get_nodes_in_group(MonsterNest.GROUP):
+		_expect(is_equal_approx(node.spawn_interval_sec, NEST_INTERVAL), "nest %s spawns every %ds (%.1f)" % [
+			node.name, NEST_INTERVAL, node.spawn_interval_sec])
 	_expect(ids.size() == EXTRACT_IDS.size() and ids.all(func(i: StringName) -> bool: return i in EXTRACT_IDS),
 		"extract ids %s" % [ids])
 
@@ -104,6 +111,21 @@ func _check_assembly() -> void:
 		var spawn := _marker_pos(PlayerSpawn.GROUP, &"spawn_id", &"main")
 		_expect((players[0] as Node3D).global_position.distance_to(spawn) < 1.0, "player starts at the main spawn")
 	_expect(_tree.get_nodes_in_group(Monster.GROUP).size() > 0, "monsters spawn at the nests")
+	var roaming := mall.get_node_or_null(^"RoamingSpawner") as RoamingSpawner
+	_expect(roaming != null, "roaming spawner in the assembly")
+	if roaming:
+		# Start packs wait for the navigation map to sync.
+		for i in NAV_SYNC_MAX_FRAMES:
+			if roaming.alive_count() > 0:
+				break
+			await _tree.physics_frame
+		var packs := {}
+		for m in roaming.alive():
+			packs[m.pack] = m.home
+		_expect(packs.size() == MonsterRules.ROAM_START_GROUPS, "%d roaming packs on the map (%d)" % [
+			MonsterRules.ROAM_START_GROUPS, packs.size()])
+		_expect(packs.values().all(func(h: Vector3) -> bool: return h != Vector3.ZERO and h.y < MonsterRules.ROAM_MAX_Y),
+			"roaming packs start on real navmesh points %s" % [packs.values()])
 	_expect((mall.get_node(^"LootSpawner") as LootSpawner).spawned.size() > 0, "loot containers spawn")
 	var extraction := mall.get_node(^"ExtractionManager") as ExtractionManager
 	_expect(extraction.active_point_ids().size() == ExtractionManager.ACTIVE_COUNT, "2 of 3 extract points are active")

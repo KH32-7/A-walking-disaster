@@ -15,6 +15,7 @@
 [ext_resource type="Resource" path="res://data/regions/flooded_mall/rescues/trapped_wheelchair.tres" id="13_wheelchair"]
 [ext_resource type="Resource" path="res://data/regions/flooded_mall/rescues/lost_child.tres" id="14_child"]
 [ext_resource type="Script" path="res://field/companion/companion_manager.gd" id="15_companions"]
+[ext_resource type="Script" path="res://field/monsters/roaming_spawner.gd" id="16_roaming"]
 
 [sub_resource type="Environment" id="Env_greybox"]
 background_mode = 1
@@ -33,9 +34,15 @@ script = ExtResource("3_monster_spawner")
 monster_defs = Array[Resource]([ExtResource("4_vine"), ExtResource("5_pod"), ExtResource("6_blob")])
 region_id = &"flooded_mall"
 
+[node name="RoamingSpawner" type="Node3D" parent="."]
+script = ExtResource("16_roaming")
+monster_defs = Array[Resource]([ExtResource("4_vine"), ExtResource("5_pod"), ExtResource("6_blob")])
+region_id = &"flooded_mall"
+
 [node name="LootSpawner" type="Node3D" parent="."]
 script = ExtResource("7_loot_spawner")
 region_id = &"flooded_mall"
+spawn_ratio = 0.7
 spots_root = NodePath("../Layout")
 
 [node name="GreyboxLighting" type="Node3D" parent="."]

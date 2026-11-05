@@ -61,6 +61,29 @@ const NEST_SPAWN_MAX := 2
 ## Spawned monsters appear inside this radius around the nest.
 const SPAWN_SCATTER_RADIUS := 2.0
 
+# --- Roaming packs (RoamingSpawner). Not in the design yet (user request 2026-11-05). ---
+## Packs scattered over outdoor navmesh when the region loads.
+const ROAM_START_GROUPS := 5
+## One more pack this often (night: FieldState.night.spawn_mult faster, like the nests).
+const ROAM_INTERVAL_SEC := 90.0
+const ROAM_GROUP_MIN := 1
+const ROAM_GROUP_MAX := 3
+## Roaming monsters alive at once. They also count toward REGION_MAX_ALIVE.
+const ROAM_MAX_ALIVE := 12
+## New packs appear at least this far from the player and off camera.
+const ROAM_MIN_PLAYER_DIST := 40.0
+## Packs placed at load keep this far from the player.
+const ROAM_START_MIN_PLAYER_DIST := 50.0
+## Spawn points keep this far from nests and from other roaming packs' homes.
+const ROAM_CLEAR_NEST := 20.0
+const ROAM_SPREAD := 30.0
+## A roaming pack wanders around its spawn point inside this radius.
+const ROAM_WANDER_RADIUS := 25.0
+## Navmesh points higher than this (2F, decks) are not spawn points.
+const ROAM_MAX_Y := 1.5
+## Random navmesh points tried per pack before giving up until the next try.
+const ROAM_POINT_TRIES := 40
+
 # --- Behaviors (04 "마물 목록" 특징) ---
 ## &"bind": vine tendril hit binds for 1 s.
 const BIND_SEC := 1.0

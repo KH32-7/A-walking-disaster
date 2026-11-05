@@ -92,7 +92,7 @@ func spawn_at(entry: Dictionary, count: int, def: MonsterDef) -> void:
 		add_child(monster, true)
 		entry.alive.append(monster)
 		if FieldState.is_night():
-			_apply_night(monster, true)
+			apply_night(monster, true)
 		monster_spawned.emit(monster, nest)
 
 
@@ -109,7 +109,8 @@ func _pick_def(nest: MonsterNest) -> MonsterDef:
 
 ## Night rules on one monster. drop_mult, sight_mult and make_elite() come with B-18;
 ## until it lands the guards skip them. TODO(B-18 merged): test the real multipliers.
-func _apply_night(monster: Monster, roll_elite: bool) -> void:
+## Static so RoamingSpawner applies the same rules.
+static func apply_night(monster: Monster, roll_elite: bool) -> void:
 	var rules := FieldState.night
 	if "sight_mult" in monster:
 		monster.set(&"sight_mult", rules.sight_mult)
@@ -124,7 +125,7 @@ func _on_night_started() -> void:
 	for entry in _nests:
 		_prune(entry)
 		for monster: Monster in entry.alive:
-			_apply_night(monster, false)
+			apply_night(monster, false)
 
 
 func _prune(entry: Dictionary) -> void:
