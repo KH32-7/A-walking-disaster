@@ -143,18 +143,32 @@ func _blank() -> Texture2D:
 
 ## Label rectangles placed this frame; a label that would cover another moves up or is skipped
 ## (the side panels list everything anyway).
+## Region name drawn big at the top of the map (덕코프 지도처럼).
+var title := ""
+## Place names on the map: [{"pos": Vector3, "text": String, "big": bool}]. Text only, under the marks.
+var areas: Array = []
 var _labels: Array[Rect2] = []
 
 
 func _draw_ink() -> void:
 	_labels.clear()
 	var font := UiThemeBuilder.font_kr(600)
+	for a: Dictionary in areas:
+		var big := bool(a.get("big", false))
+		var fs := 20 if big else 13
+		var txt := String(a.text)
+		var at := to_map(a.pos)
+		var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		_text(Vector2(at.x - w * 0.5, at.y + fs * 0.35), txt, font, fs, UiTokens.TEXT if big else Color(UiTokens.TEXT, 0.82))
 	for r: Dictionary in routes:
 		_draw_route(to_map(r.from), to_map(r.to), String(r.get("label", "숨은 경로")), font)
 	for m: Dictionary in marks:
 		_draw_mark(to_map(m.pos), StringName(m.kind), String(m.get("label", "")), font)
 	if has_player:
 		_draw_player(to_map(player_pos))
+	if title != "" and areas.is_empty():  # with place names the header already names the region
+		var tw := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 34).x
+		_text(Vector2((size.x - tw) * 0.5, 52), title, font, 34, UiTokens.TEXT)
 	# frame, north tick, scale bar
 	_ink.draw_rect(Rect2(Vector2.ZERO, size), UiTokens.LINE_STRONG, false, 2.0)
 	var n := Vector2(size.x - 30, 34)
@@ -230,6 +244,10 @@ static func draw_symbol(ci: CanvasItem, at: Vector2, kind: StringName) -> void:
 			ci.draw_colored_polygon(pin, UiTokens.PING)
 			ci.draw_circle(head, 9.0, UiTokens.PING)
 			ci.draw_circle(head, 3.5, UiTokens.INK)
+		&"danger":
+			var tri := PackedVector2Array([at + Vector2(0, -12), at + Vector2(11, 8), at + Vector2(-11, 8)])
+			ci.draw_colored_polygon(_grow(tri, at, 3.0), out)
+			ci.draw_colored_polygon(tri, UiTokens.DANGER)
 		&"route":
 			for i in 3:
 				var x := at.x - 14 + i * 11

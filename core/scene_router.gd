@@ -30,6 +30,9 @@ const FIELD_LEVELS_DIR := "res://levels/field"
 ## Starting loadout of a new game: slot -> item def id, equipped on Armory.PLAYER_ID
 ## (design 03 "기본 권총(초반 지급)"; Lane B gives it infinite reserve ammo).
 const STARTER_LOADOUT := {Enums.EquipSlot.MAIN: &"pistol"}
+## What the camp has on day 1 (가안 — not in the design yet): enough for the tutorial 모닥불 and a
+## 침상, so building can be tried before the first sortie. Numbers live only here.
+const STARTER_RESOURCES := {&"wood": 25, &"stone": 10, &"food": 10}
 
 const S := Enums.FlowState
 ## Allowed moves. Anything else is refused with an error.
@@ -92,6 +95,7 @@ func start_new_game(slot: int = 0, difficulty: StringName = &"normal") -> bool:
 	GameState.day = 1
 	GameState.roll_weather()
 	_give_starter_loadout()
+	Economy.apply(STARTER_RESOURCES)
 	_begin_morning()
 	return true
 
@@ -218,6 +222,9 @@ func _finish_sortie(extracted: bool) -> void:
 	result["rescued_profiles"] = _rescued.duplicate()
 	result["down"] = FieldState.call(&"down_result") if not extracted and FieldState.has_method(&"down_result") else {}
 	result["xp"] = Progression.finish_sortie(extracted, region, rescued_ids.size())
+	# Region unlocks (data/regions unlock_flags, e.g. 침수 상가 ← "공원 탈출 1회"): extracted_<region>.
+	if extracted and region != &"":
+		GameState.set_flag(StringName("extracted_%s" % region))
 	last_sortie_result = result
 	EventBus.sortie_ended.emit(last_sortie_result)
 	if extracted and _emergency_return and not _day_raid.is_empty():

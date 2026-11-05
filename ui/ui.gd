@@ -49,6 +49,8 @@ func _ready() -> void:
 	subtitle.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	subtitle.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	subtitle.offset_bottom = -200
+	# B-09 "두고 갈까요?": the extraction manager asks, nothing else answers it (softlock otherwise).
+	get_tree().node_added.connect(_on_node_added)
 	# D-15: colour-blind filter above every layer, menu TTS on focus changes.
 	color_filter = ColorFilterLayer.new()
 	color_filter.name = &"ColorFilterLayer"
@@ -79,6 +81,8 @@ func _ready() -> void:
 ## and the radio voice (TTS).
 var explore: FieldExplore
 var notice_toast: NoticeToast
+## First-day guide (방송실 지기 안내 카드).
+var tutorial: TutorialGuide
 var radio_voice: RadioVoice
 
 
@@ -89,6 +93,9 @@ func _add_d16_nodes() -> void:
 	radio_voice = RadioVoice.new()
 	radio_voice.name = &"RadioVoice"
 	add_child(radio_voice)
+	tutorial = TutorialGuide.new()
+	tutorial.name = &"TutorialGuide"
+	overlay.add_child(tutorial)
 	notice_toast = NoticeToast.new()
 	notice_toast.name = &"NoticeToast"
 	overlay.add_child(notice_toast)
@@ -139,6 +146,43 @@ func show_base_hud(on: bool) -> void:
 
 ## Raid screens (D-14): warning / result / emergency return, and the direct defense HUD.
 var build_place_hud: BuildPlaceHud
+
+
+func _on_node_added(node: Node) -> void:
+	if node is ExtractionManager:
+		(node as ExtractionManager).leave_behind_requested.connect(_on_leave_behind.bind(node))
+
+
+## 탈출 지점에 섰는데 동행·구조한 사람이 멀리 있으면 묻는다. 취소 = 다 모일 때까지 기다림.
+func _on_leave_behind(_point_id: StringName, people: Array, manager: Node) -> void:
+	var names: PackedStringArray = []
+	for p: Dictionary in people:
+		names.append(String(p.get("name", "")))
+	ConfirmDialog.ask(overlay, "%d명을 두고 갈까요?" % people.size(),
+		"아직 탈출 지점에 오지 못했어요: %s. 두고 가면 그 자리에 남고, 다시 데리러 갈 수 있어요. 취소하면 다 모일 때까지 기다려요." % ", ".join(names),
+		"두고 가기", func() -> void:
+			if is_instance_valid(manager):
+				manager.answer_leave_behind(true)).decided.connect(func(ok: bool) -> void:
+		if not ok and is_instance_valid(manager):
+			manager.answer_leave_behind(false))
+
+
+## Subtitles sit low over the world; with a menu open they move up out of its buttons' way.
+func _place_subtitle() -> void:
+	if subtitle == null:
+		return
+	var menu := false
+	for e: Dictionary in _stack:
+		if not (e.def as ScreenDef).is_overlay:
+			menu = true
+	subtitle.offset_bottom = -20 if menu else -200  # menu: in the key-footer row, under the panels
+	# Toasts sit bottom right over the world; with a menu open that corner holds its buttons
+	# (출격, 맞이하기 …), so they move up under the header.
+	if notice_toast != null:
+		var h := get_viewport().get_visible_rect().size.y
+		notice_toast.offset_bottom = -(h - 330.0) if menu else -22.0
+
+
 
 
 ## D-06 재설계 ②놓기: overlay for a running BuildMode (단계 띠, 고른 건물, 커서 카드, 키 안내).
@@ -466,6 +510,7 @@ func _call_open(node: Node, args: Dictionary) -> void:
 ## Only the top non-overlay screen and the overlays above it are visible.
 ## The game pauses while any open screen asks for it; HUD hides while any screen asks for it.
 func _refresh_visibility() -> void:
+	_place_subtitle()
 	var show_from := 0
 	for i in range(_stack.size() - 1, -1, -1):
 		if not (_stack[i].def as ScreenDef).is_overlay:

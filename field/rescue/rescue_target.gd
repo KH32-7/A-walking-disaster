@@ -593,3 +593,28 @@ func _find_player() -> Node3D:
 
 func _flat_distance(point: Vector3) -> float:
 	return Vector2(point.x - global_position.x, point.z - global_position.z).length()
+
+
+## [F] prompt words (Player HUD "prompt"; empty = nothing to do with F right now). QA 플레이 준비.
+func interact_label() -> String:
+	match state:
+		State.WAITING:
+			match spawn.rescue_type:
+				RescueSpawn.Type.INJURED:
+					var item := spawn.required_item
+					if item != &"":
+						var def: Variant = Economy.get_def(item)
+						var item_name := String(def.name) if def != null else String(item)
+						if Bag.count_of(item) < 1:
+							return "치료하기 · %s 필요" % item_name
+						return "치료하기"
+					return "일으켜 세우기"
+				RescueSpawn.Type.COMMUNICATION:
+					return "말 걸기"
+				RescueSpawn.Type.TRAPPED:
+					return ""  # the door in front takes F
+		State.DOWNED:
+			return "일으키기"
+		State.HIDE:
+			return "따라오게 하기"
+	return ""

@@ -56,7 +56,7 @@ func setup(id: StringName) -> void:
 
 func _ready() -> void:
 	add_to_group(GROUP)
-	collision_layer = 1 << (Enums.LAYER_ALLY - 1)
+	collision_layer = (1 << (Enums.LAYER_ALLY - 1)) | (1 << (Enums.LAYER_INTERACTABLE - 1))
 	collision_mask = 1 << (Enums.LAYER_WORLD - 1)
 	var shape := CollisionShape3D.new()
 	var capsule := CapsuleShape3D.new()
@@ -187,7 +187,7 @@ func is_reachable() -> bool:
 
 
 func set_reachable(on: bool) -> void:
-	collision_layer = (1 << (Enums.LAYER_ALLY - 1)) if on else 0
+	collision_layer = ((1 << (Enums.LAYER_ALLY - 1)) if on else 0) | (1 << (Enums.LAYER_INTERACTABLE - 1))
 
 
 func _physics_process(_delta: float) -> void:
@@ -210,3 +210,16 @@ func _physics_process(_delta: float) -> void:
 	velocity = dir.normalized() * (SPEED_MOBILITY if mobility else SPEED)
 	move_and_slide()
 	look_at(global_position + velocity.normalized(), Vector3.UP)
+
+
+## [F] near a resident on the base map: talk (Lane D dialog screen). QA 플레이 준비.
+func interact_label() -> String:
+	var r := Colony.get_resident(resident_id)
+	return "" if r.is_empty() else "이야기하기"
+
+
+func begin_open(_interactor: Node3D) -> bool:
+	if Colony.get_resident(resident_id).is_empty() or not UI.has_screen(&"dialog") or not UI.stack_ids().is_empty():
+		return false
+	UI.open(&"dialog", {"resident_id": resident_id})
+	return true

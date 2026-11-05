@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tools/playthrough/playthrough_bot.gd" id="1_bot"]
+
+[node name="PlaythroughBot" type="Node"]
+script = ExtResource("1_bot")

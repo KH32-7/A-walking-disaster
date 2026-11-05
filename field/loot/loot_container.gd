@@ -11,11 +11,11 @@ enum State { CLOSED, OPENING, OPEN }
 
 ## HUD text per container kind (#28): [prompt, while opening]. Forced = locked without a key.
 const LABELS := {
-	LootSpot.ContainerType.DRAWER: ["서랍 뒤지기", "서랍 뒤지는 중"],
-	LootSpot.ContainerType.MEDICINE: ["약품장 뒤지기", "약품장 뒤지는 중"],
-	LootSpot.ContainerType.TOOLBOX: ["공구함 뒤지기", "공구함 뒤지는 중"],
-	LootSpot.ContainerType.SUPPLY_CRATE: ["보급 상자 열기", "보급 상자 여는 중"],
-	LootSpot.ContainerType.MONSTER_NEST: ["둥지 뒤지기", "둥지 뒤지는 중"],
+	LootSpot.ContainerType.DRAWER: ["뒤지기", "뒤지는 중"],
+	LootSpot.ContainerType.MEDICINE: ["뒤지기", "뒤지는 중"],
+	LootSpot.ContainerType.TOOLBOX: ["열기", "여는 중"],
+	LootSpot.ContainerType.SUPPLY_CRATE: ["열기", "여는 중"],
+	LootSpot.ContainerType.MONSTER_NEST: ["뒤지기", "뒤지는 중"],
 }
 const FORCED_LABELS := ["자물쇠 따기", "자물쇠 따는 중"]
 
