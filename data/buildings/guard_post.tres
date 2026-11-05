@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_bdef"]
+
+[resource]
+script = ExtResource("1_bdef")
+id = &"guard_post"
+display_name = "경비 초소"
+category = 10
+size = Vector2i(2, 2)
+cost = Dictionary[StringName, int]({
+&"stone": 10,
+&"wood": 30
+})
+capacity = 2
+effects = Dictionary[StringName, float]({
+&"raid_warning": 1.0,
+&"ranged_range_bonus_m": 4.0
+})
+durability = 200
+defense_value = 5.0
+note = "경비 2명, 원거리 사거리 +4m, 습격 예고 (10 탭 방어 시설, 데모)"

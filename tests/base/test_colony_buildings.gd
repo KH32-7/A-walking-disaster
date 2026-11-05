@@ -2,9 +2,9 @@ extends Node
 ## C-04: building data + effects (beds, storage cap, power, noise), construction sites, save.
 ## Called by tests/run_tests.gd: run() -> bool. Restores Colony and Economy afterwards.
 
-const DEMO := [&"bed", &"bonfire", &"lumber_yard", &"quarry", &"workshop", &"essence_workshop", &"ramp", &"palisade"]
+const DEMO := [&"bed", &"bonfire", &"lumber_yard", &"quarry", &"workshop", &"essence_workshop", &"ramp", &"palisade", &"guard_post", &"spike_trap"]
 ## Workplaces of jobs that belong to defense/outposts (C-18, C-19), not to the 09 tab list.
-const LATER_WORKPLACES := [&"guard_post", &"outpost"]
+const LATER_WORKPLACES := [&"outpost"]
 
 var _completed: Array[StringName] = []
 
@@ -41,7 +41,7 @@ func _fresh(resources: Dictionary = {}) -> void:
 
 
 func _test_defs() -> bool:
-	var ok := _check(BaseDB.buildings().size() == 32, "건물 32종 (09 탭 31 + 목책)")
+	var ok := _check(BaseDB.buildings().size() == 34, "건물 34종 (09 탭 31 + 목책·경비 초소·가시 함정)")
 	for id in DEMO:
 		ok = _check(BaseDB.get_building(id) != null, "데모 건물 %s" % id) and ok
 	for job_id: StringName in BaseDB.jobs():
