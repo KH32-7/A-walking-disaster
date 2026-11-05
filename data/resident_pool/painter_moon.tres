@@ -18,3 +18,4 @@ contribution = "수어 손짓을 가르쳐 필드에서 소리 없이 신호하�
 first_line = "(스케치북에 적는다) 와 줘서 고마워요."
 rescue_lines = Array[String](["(손바닥을 아래로 누른다) 조용히.", "(앞을 가리킨다) 저기 뭔가 움직여요.", "(스케치북) 어깨를 두드려 주면 돼요."])
 situation = "벽화 작업실"
+reviewed = true

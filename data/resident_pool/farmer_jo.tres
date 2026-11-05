@@ -18,3 +18,4 @@ contribution = "텃밭과 씨앗을 맡아 먹을거리를 키운다."
 first_line = "어디서 왔어? 밭에 물 줄 시간인데."
 rescue_lines = Array[String](["저 풀, 데치면 먹을 수 있어.", "천천히 가자. 나는 길을 잘 잊어.", "손 놓지 마. 그럼 안 잊어버려."])
 situation = "요양원 2층 휴게실"
+reviewed = true
