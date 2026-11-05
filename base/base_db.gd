@@ -5,10 +5,22 @@ class_name BaseDB
 const TRAITS_DIR := "res://data/traits"
 const JOBS_DIR := "res://data/jobs"
 const BUILDINGS_DIR := "res://data/buildings"
+const ZONES_DIR := "res://data/buildings/zones"
 
 static var _traits: Dictionary = {}
 static var _jobs: Dictionary = {}
 static var _buildings: Dictionary = {}
+static var _zones: Dictionary = {}
+
+
+static func zones() -> Dictionary:
+	if _zones.is_empty():
+		_zones = _load_dir(ZONES_DIR)
+	return _zones
+
+
+static func get_zone(zone_id: StringName) -> ZoneDef:
+	return zones().get(zone_id)
 
 
 static func traits() -> Dictionary:
