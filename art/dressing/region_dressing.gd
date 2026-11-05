@@ -31,6 +31,21 @@ enum Kind { FIELD, BASE }
 @export var ambient_energy := 0.55
 @export var fog_color := Color("b8d6da")
 @export var fog_density := 0.0025
+@export var shade_tint := Color("6b7f8c") ## toon shadow colour mixed into skinned materials
+@export_range(0.0, 1.0) var shade_tint_mix := 0.5
+@export var sun_shadow_distance := 80.0
+@export_group("Post")
+@export var tonemap: Environment.ToneMapper = Environment.TONE_MAPPER_FILMIC
+@export var exposure := 1.0
+@export var agx_contrast := 1.25
+@export var glow_intensity := 0.6
+@export var glow_bloom := 0.05
+@export var ssao := false
+@export var ssao_intensity := 2.0
+@export var adjust := false
+@export var contrast := 1.0
+@export var saturation := 1.0
+@export var grade: Gradient ## per-channel 1D LUT (GradientTexture1D); null = none
 @export_group("Dressing")
 @export var toon_skin := true
 @export var vines_per_10m := 3.0
@@ -105,10 +120,21 @@ func _environment() -> void:
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	e.ambient_light_color = ambient
 	e.ambient_light_energy = ambient_energy
-	e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	e.tonemap_mode = tonemap
+	e.tonemap_exposure = exposure
+	e.tonemap_agx_contrast = agx_contrast
 	e.glow_enabled = true
-	e.glow_intensity = 0.6
-	e.glow_bloom = 0.05
+	e.glow_intensity = glow_intensity
+	e.glow_bloom = glow_bloom
+	e.ssao_enabled = ssao
+	e.ssao_intensity = ssao_intensity
+	e.adjustment_enabled = adjust
+	e.adjustment_contrast = contrast
+	e.adjustment_saturation = saturation
+	if grade != null:
+		var lut := GradientTexture1D.new()
+		lut.gradient = grade
+		e.adjustment_color_correction = lut
 	e.fog_enabled = true
 	e.fog_light_color = fog_color
 	e.fog_density = fog_density
@@ -122,7 +148,7 @@ func _environment() -> void:
 	sun.light_color = sun_color
 	sun.light_energy = sun_energy
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 80.0
+	sun.directional_shadow_max_distance = sun_shadow_distance
 	add_child(sun)
 
 
@@ -145,7 +171,7 @@ func _toon_for(c: Color) -> ShaderMaterial:
 	if not _toon_cache.has(key):
 		var t := TOON.duplicate() as ShaderMaterial
 		t.set_shader_parameter(&"albedo", c)
-		t.set_shader_parameter(&"shade_color", c.darkened(0.35).lerp(Color("6b7f8c"), 0.5))
+		t.set_shader_parameter(&"shade_color", c.darkened(0.35).lerp(shade_tint, shade_tint_mix))
 		_toon_cache[key] = t
 	return _toon_cache[key]
 
