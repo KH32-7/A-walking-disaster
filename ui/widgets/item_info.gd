@@ -62,6 +62,108 @@ static func for_item(uid: StringName, compare_with: StringName = &"") -> Diction
 			"action": "비교: 장착 중" if compare_with != &"" else ""}}
 
 
+## Before/after rows for the craft screen (D-12): [[label, before, after, "up"|"dn"|""]].
+## Both are Armory.get_item_stats()-shaped. `after` empty = only the current values.
+## Lower is better for attack_interval / noise / noise_mod. Also the durability and the
+## essence parts (display name, attack element, combo) when they change.
+static func compare_rows(before: Dictionary, after: Dictionary) -> Array:
+	var rows := []
+	var other := after if not after.is_empty() else before
+	if String(before.get("display_name", "")) != String(other.get("display_name", "")):
+		rows.append(["이름", String(before.get("display_name", "")), String(other.get("display_name", "")), ""])
+	for k: String in STAT_NAMES:
+		var a: Variant = before.get(k)
+		var b: Variant = other.get(k)
+		if typeof(a) not in [TYPE_INT, TYPE_FLOAT] and typeof(b) not in [TYPE_INT, TYPE_FLOAT]:
+			continue
+		var va := float(a) if typeof(a) in [TYPE_INT, TYPE_FLOAT] else 0.0
+		var vb := float(b) if typeof(b) in [TYPE_INT, TYPE_FLOAT] else 0.0
+		if is_zero_approx(va) and is_zero_approx(vb) and k in ["magazine", "range", "noise_mod", "defense"]:
+			continue
+		var mark := ""
+		if not is_equal_approx(va, vb):
+			var better := vb < va if k in ["attack_interval", "noise", "noise_mod"] else vb > va
+			mark = "up" if better else "dn"
+		rows.append([STAT_NAMES[k], _fmt(k, va), _fmt(k, vb), mark])
+	if before.has("durability"):
+		var da := float(before["durability"])
+		var db := float(other.get("durability", da))
+		rows.append(["내구도", str(roundi(da)), str(roundi(db)), "up" if db > da + 0.01 else ""])
+	var ea := int(before.get("element", 0))
+	var eb := int(other.get("element", 0))
+	if ea != 0 or eb != 0:
+		rows.append(["공격 속성", UiTokens.ELEMENT_NAMES[clampi(ea, 0, 4)], UiTokens.ELEMENT_NAMES[clampi(eb, 0, 4)],
+			"up" if ea != eb and eb != 0 else ""])
+	var ca: Variant = before.get("combo")
+	var cb: Variant = other.get("combo")
+	if ca is Dictionary or cb is Dictionary:
+		var na := String((ca as Dictionary).get("name", "")) if ca is Dictionary else "없음"
+		var nb := String((cb as Dictionary).get("name", "")) if cb is Dictionary else "없음"
+		rows.append(["조합", na, nb, "up" if na != nb and cb is Dictionary else ""])
+	var ra: Dictionary = before.get("element_resist", {})
+	var rb: Dictionary = other.get("element_resist", {})
+	if not ra.is_empty() or not rb.is_empty():
+		var sa := _resist_text(ra)
+		var sb := _resist_text(rb)
+		rows.append(["속성 저항", sa, sb, "up" if sa != sb and not rb.is_empty() else ""])
+	return rows
+
+
+## Essence effects of a weapon / accessory for display (D-12): [[element, text], ...].
+## Reads Armory.get_item_stats()["essence_effects"] (A-10, numbers are already final).
+static func essence_lines(stats: Dictionary) -> Array:
+	var out := []
+	for e: Dictionary in stats.get("essence_effects", []):
+		var p: Dictionary = e.get("params", {})
+		var parts: PackedStringArray = []
+		if p.has("resist_ratio"):
+			parts.append("%s 피해 저항 %d%%" % [UiTokens.ELEMENT_NAMES[clampi(int(e.get("element", 0)), 0, 4)],
+				_pct(p["resist_ratio"])])
+		if p.has("root_chance"):
+			parts.append("속박 %d%% · %s초" % [_pct(p["root_chance"]), _num(p.get("root_sec", 0.0))])
+		if p.has("lifesteal_ratio"):
+			parts.append("흡수 %d%%" % _pct(p["lifesteal_ratio"]))
+		if p.has("stagger_bonus"):
+			parts.append("경직 +%d%%" % _pct(p["stagger_bonus"]))
+		if p.has("guard_break_chance"):
+			parts.append("방어 파괴 %d%%" % _pct(p["guard_break_chance"]))
+		if p.has("slow_chance") or p.has("slow_ratio"):
+			var slow := "둔화 %s초" % _num(p.get("slow_sec", 0.0))
+			if p.has("slow_chance"):
+				slow = "둔화 %d%% · %s초" % [_pct(p["slow_chance"]), _num(p.get("slow_sec", 0.0))]
+			if p.has("slow_ratio"):
+				slow += " · 이동 −%d%%" % _pct(p["slow_ratio"])
+			parts.append(slow)
+		if p.has("wet_sec"):
+			parts.append("젖음 %s초 (빛 피해 +%d%%)" % [_num(p["wet_sec"]), _pct(p.get("wet_light_bonus", 0.0))])
+		if p.has("chain_chance"):
+			parts.append("감전 %d%% · %d마리에게 %d%%" % [_pct(p["chain_chance"]), int(p.get("chain_targets", 0)),
+				_pct(p.get("chain_damage_ratio", 0.0))])
+		var text := ", ".join(parts)
+		if float(e.get("mult", 1.0)) > 1.0:
+			text += "  (같은 정수 ×%s)" % _num(e["mult"])
+		out.append([int(e.get("element", 0)), text])
+	return out
+
+
+static func _pct(v: Variant) -> int:
+	return roundi(float(v) * 100.0)
+
+
+static func _num(v: Variant) -> String:
+	var f := float(v)
+	return str(roundi(f)) if is_equal_approx(f, roundf(f)) else "%.1f" % f
+
+
+static func _resist_text(resist: Dictionary) -> String:
+	if resist.is_empty():
+		return "없음"
+	var parts: PackedStringArray = []
+	for e: int in resist:
+		parts.append("%s %d%%" % [UiTokens.ELEMENT_NAMES[clampi(e, 0, 4)], roundi(float(resist[e]) * 100.0)])
+	return " · ".join(parts)
+
+
 static func _fmt(k: String, v: float) -> String:
 	match k:
 		"attack_interval":

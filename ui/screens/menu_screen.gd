@@ -17,7 +17,10 @@ var footer_keys: Array = [["Esc", "뒤로"]]
 var header_resources: Array[StringName] = [&"wood", &"stone", &"scrap", &"food", &"parts", &"cloth"]
 
 var body: Control
+## Blurred backdrop. Scene-type screens (UI_RULES §4 "장면형 화면") narrow it to the right side.
+var backdrop: ColorRect
 var _header_res: HBoxContainer
+var _subtitle_label: Label
 
 
 func _ready() -> void:
@@ -31,6 +34,7 @@ func _ready() -> void:
 		mat.set_shader_parameter(&"blur_lod", 0.0)
 	bd.material = mat
 	add_child(bd)
+	backdrop = bd
 	_build_header()
 	body = Control.new()
 	body.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -69,10 +73,10 @@ func _build_header() -> void:
 	h.add_child(back)
 	var t := label(title_text, &"LabelTitle")
 	h.add_child(t)
-	if not subtitle_text.is_empty():
-		var s := label("—  " + subtitle_text, &"LabelSection")
-		s.add_theme_color_override(&"font_color", UiTokens.TEXT_DIM)
-		h.add_child(s)
+	_subtitle_label = label("—  " + subtitle_text, &"LabelSection")
+	_subtitle_label.add_theme_color_override(&"font_color", UiTokens.TEXT_DIM)
+	_subtitle_label.visible = not subtitle_text.is_empty()
+	h.add_child(_subtitle_label)
 	add_child(h)
 	_header_res = HBoxContainer.new()
 	_header_res.add_theme_constant_override(&"separation", 20)
@@ -81,6 +85,14 @@ func _build_header() -> void:
 	_header_res.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_header_res.position += Vector2(-52, 40)
 	refresh_header()
+
+
+## Changes "장소 — 부제" after the screen is built (e.g. switching facility in the craft screen).
+func set_subtitle(text: String) -> void:
+	subtitle_text = text
+	if _subtitle_label != null:
+		_subtitle_label.text = "—  " + text
+		_subtitle_label.visible = not text.is_empty()
 
 
 func refresh_header() -> void:
