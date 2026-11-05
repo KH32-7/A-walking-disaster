@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ConsumableDef" format=3]
+
+[ext_resource type="Script" path="res://field/defs/consumable_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"bandage"
+name = "붕대"
+effect = 0
+use_sec = 1.5
+can_move = false
+slot_priority = 1
+heal = 15.0
+remove_status = &"bleed"

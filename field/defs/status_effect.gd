@@ -25,3 +25,7 @@ extends Resource
 ## Damage of this element taken while active is multiplied by vulnerable_mult (wet: LIGHT x1.25).
 @export var vulnerable_element: Enums.Element = Enums.Element.NONE
 @export var vulnerable_mult: float = 1.0
+## All damage taken while active is multiplied by this (B-16 painkiller 0.8).
+@export var damage_mult: float = 1.0
+## Sight range multiplier while active (B-16 flash blind 0: no sight and no touch sensing).
+@export var sight_mult: float = 1.0

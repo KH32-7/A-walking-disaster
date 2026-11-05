@@ -57,6 +57,8 @@ var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 @onready var status: StatusHolder = StatusHolder.attach(self)
 ## Class skills, passives and mastery (B-13). It hooks the Weapons node and incoming_damage_filter.
 @onready var skills: ClassSkills = ClassSkills.attach(self)
+## Quick-slot consumables (B-16): keys 3 to 6, use time, throwing. Logic in field/consumables/.
+@onready var consumables: ConsumableUser = ConsumableUser.attach(self)
 
 
 func _ready() -> void:
@@ -197,6 +199,7 @@ func step(delta: float, input: Dictionary) -> void:
 		# Bound, staggered or knocked back (B-14): no moving or dodging, aiming still works.
 		dir = Vector3.ZERO
 		input = input.merged({"dodge": false, "sprint": false}, true)
+	input = consumables.filter_input(input)
 	if move_state == MoveState.DODGE:
 		_step_dodge(delta)
 	elif input.get("dodge", false) and stamina >= stats.dodge_stamina:

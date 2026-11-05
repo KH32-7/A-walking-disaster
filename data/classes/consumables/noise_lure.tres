@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ConsumableDef" format=3]
+
+[ext_resource type="Script" path="res://field/defs/consumable_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"noise_lure"
+name = "소음 미끼"
+effect = 1
+use_sec = 0.0
+noise = &"noise_lure"
+slot_priority = 2
+delay_sec = 4.0
