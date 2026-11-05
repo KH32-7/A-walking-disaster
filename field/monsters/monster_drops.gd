@@ -38,8 +38,11 @@ static func table(table_id: StringName) -> MonsterDropTable:
 	return load(path) as MonsterDropTable if ResourceLoader.exists(path) else null
 
 
-## The table a monster drops from: the elite table for elites, else def.drop_table_id.
+## The table a monster drops from: the elite table for elites, a boss's own pick (first kill,
+## B-19), else def.drop_table_id.
 static func table_for(monster: Monster) -> MonsterDropTable:
+	if monster is BossMonster:
+		return table((monster as BossMonster).drop_table_id())
 	return table(ELITE_TABLE_ID if monster.elite else monster.def.drop_table_id)
 
 
@@ -57,6 +60,8 @@ static func roll(drop_table: MonsterDropTable, family: Enums.Element, mult: floa
 	var material_key := material_id(family)
 	if material > 0 and material_key != &"":
 		out.resources[material_key] = material
+	for id: StringName in drop_table.bonus_resources:
+		out.resources[id] = out.resources.get(id, 0) + drop_table.bonus_resources[id]
 	for i in _hits(drop_table.gear_chance, mult, rng):
 		var rarity := rng.rand_weighted(PackedFloat32Array(drop_table.gear_rarity_weights))
 		var def_id := _pick_gear(drop_table.gear_pool, rarity, rng)

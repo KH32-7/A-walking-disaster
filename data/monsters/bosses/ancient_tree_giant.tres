@@ -1,0 +1,61 @@
+[gd_resource type="Resource" script_class="BossDef" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://field/defs/boss_def.gd" id="1_boss"]
+[ext_resource type="Script" path="res://field/defs/boss_pattern.gd" id="2_pattern"]
+
+[sub_resource type="Resource" id="Pattern_slam"]
+script = ExtResource("2_pattern")
+id = &"slam"
+range_min = 0.0
+range_max = 4.5
+cooldown_sec = 4.0
+windup_sec = 1.0
+shape = &"circle"
+anchor = 1
+offset = 2.5
+radius = 3.0
+kind = &"danger"
+damage_mult = 1.5
+status = Array[Dictionary]([{"id": &"knockback"}])
+
+[sub_resource type="Resource" id="Pattern_root_burst"]
+script = ExtResource("2_pattern")
+id = &"root_burst"
+range_min = 4.5
+range_max = 14.0
+cooldown_sec = 6.0
+windup_sec = 1.0
+shape = &"line"
+anchor = 0
+length = 14.0
+width = 2.0
+kind = &"danger"
+damage_mult = 1.0
+status = Array[Dictionary]([{"id": &"bind", "duration": 1.0}])
+
+[sub_resource type="Resource" id="Pattern_summon_pods"]
+script = ExtResource("2_pattern")
+id = &"summon_pods"
+range_min = 0.0
+range_max = 14.0
+cooldown_sec = 20.0
+windup_sec = 1.0
+shape = &""
+summon_id = &"spore_pod"
+summon_count = 2
+summon_max_alive = 4
+summon_dist_min = 4.0
+summon_dist_max = 8.0
+
+[resource]
+script = ExtResource("1_boss")
+monster_id = &"ancient_tree_giant"
+phases = Array[float]([0.5])
+phase_speed = Array[float]([1.0, 1.5])
+patterns = Array[ExtResource("2_pattern")]([SubResource("Pattern_slam"), SubResource("Pattern_root_burst"), SubResource("Pattern_summon_pods")])
+pattern_gap_sec = 1.0
+respawn_days = 3
+first_kill_flags = Array[StringName]([&"blueprint_essence_workshop"])
+first_kill_text = "고목 거인을 쓰러뜨렸다. 정수 공방 설계도를 얻었다"
+first_kill_drop_table_id = &"monster_boss_first"
+regen_ratio = 0.05

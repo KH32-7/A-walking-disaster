@@ -139,6 +139,12 @@ const RALLY_RADIUS := 15.0
 ## Any monster notices a target this close even without sight (blind statue attacks).
 const TOUCH_SENSE_RANGE := 2.0
 
+# --- Bosses (B-19, 04 "보스"). Per-boss numbers are in data/monsters/bosses/. ---
+## A boss wanders this far around its arena center after losing its target.
+const BOSS_WANDER_RADIUS := 6.0
+## Player.hud_state()["boss"] is filled while the player is within the arena radius plus this.
+const BOSS_HUD_MARGIN := 10.0
+
 # --- Elite (04 "정예") ---
 const ELITE_HP_MULT := 3.0
 const ELITE_ATTACK_MULT := 1.5

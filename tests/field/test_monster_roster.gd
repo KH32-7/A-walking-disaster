@@ -90,7 +90,7 @@ func _test_all_defs() -> void:
 		var m := _spawn(def, Vector3(count * 4.0, 0, 0))
 		_check(m.get_node_or_null("WeakPoint") is MonsterWeakPoint, "%s scene has a weak point" % def.id)
 		_check(m._behaviors.size() == def.behaviors.size(), "%s attaches every behavior" % def.id)
-	_check(count == 10, "8 field monsters + 2 raid monsters (no bosses yet)")
+	_check(count == 11, "8 field monsters + 2 raid monsters + 1 boss")
 
 
 func _test_design_numbers() -> void:

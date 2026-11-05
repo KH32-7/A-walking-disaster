@@ -2,7 +2,7 @@ extends Node3D
 ## City park region (B-24). Assembly: layout (B), dressing (D, optional), spawners, extraction,
 ## rescue, hidden routes, lost gear, camera and the player. Run alone with F6 to walk the map.
 ## Map source: build/city_park_map.json (user-confirmed), layout built by build/build_layout.gd.
-## The boss arena marker is in the layout; the ancient tree giant itself is B-19.
+## BossSpawner puts the ancient tree giant (B-19) at the layout's boss arena, asleep.
 ## Design: docs/design/02-field.md "지역", "맵 구조"
 ## TODO(A-05): SceneRouter.go_to_field(loadout) picks spawn_id from the loadout.
 

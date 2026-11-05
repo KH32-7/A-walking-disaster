@@ -21,6 +21,8 @@ var night: NightTuning = preload("res://field/night_tuning.tres")
 var lost_gear: Array = []
 ## region_id -> day the boss respawns
 var boss_respawn_day: Dictionary = {}
+## boss monster id -> times killed (B-19). The first kill gives the BossDef first-kill reward.
+var boss_kills: Dictionary = {}
 ## region_id -> times the player went down there (A-14 radio: "같은 지역에서 3번 쓰러짐").
 var downs_by_region: Dictionary = {}
 ## Current sortie, from EventBus.sortie_started. Saved so a suspended sortie keeps them.
@@ -121,6 +123,22 @@ func set_sortie_result(result: Dictionary) -> void:
 	_sortie_result = result.duplicate(true)
 
 
+## The region's boss is up: never killed, or GameState.day reached its respawn day (B-19).
+func boss_ready(region: StringName) -> bool:
+	return GameState.day >= int(boss_respawn_day.get(region, 0))
+
+
+func boss_kill_count(boss_id: StringName) -> int:
+	return int(boss_kills.get(boss_id, 0))
+
+
+## BossMonster calls this on death. An empty region keeps no respawn day (sandbox scenes).
+func record_boss_kill(region: StringName, boss_id: StringName, respawn_day: int) -> void:
+	boss_kills[boss_id] = boss_kill_count(boss_id) + 1
+	if region != &"":
+		boss_respawn_day[region] = respawn_day
+
+
 func down_count(region: StringName) -> int:
 	return downs_by_region.get(region, 0)
 
@@ -216,7 +234,7 @@ func _drop_lost_gear(should_drop: Callable) -> void:
 
 
 func save_data() -> Dictionary:
-	return {"lost_gear": lost_gear, "boss_respawn_day": boss_respawn_day,
+	return {"lost_gear": lost_gear, "boss_respawn_day": boss_respawn_day, "boss_kills": boss_kills,
 		"downs_by_region": downs_by_region, "region_id": region_id, "companions": companions,
 		"sortie_time": _sortie_time, "clock_running": _clock_running}
 
@@ -224,6 +242,7 @@ func save_data() -> Dictionary:
 func load_data(data: Dictionary) -> void:
 	lost_gear = data.get("lost_gear", [])
 	boss_respawn_day = data.get("boss_respawn_day", {})
+	boss_kills = data.get("boss_kills", {})
 	downs_by_region = data.get("downs_by_region", {})
 	region_id = data.get("region_id", &"")
 	companions.assign(data.get("companions", []))
