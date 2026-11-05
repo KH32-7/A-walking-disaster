@@ -17,6 +17,7 @@ class_name ResidentData
 ##   job_skill: {job_id: 0..5}, job_days: {job_id: days worked}, stat_days: {stat: work days} (C-05)
 ##   class_aptitude: {gun, blade, blunt: Enums.Aptitude}
 ##   hunger, fatigue, morale, trust: int 0..100
+##   low_morale_days: int (days in a row under 20), leave_crisis: bool (떠나려 한다, C-06)
 ##   health: Enums.HealthState, recover_days: int
 ##   relations: {resident_id: -100..100} (C-14)
 ##   assignment: {job: StringName, building_id: StringName}
@@ -83,6 +84,8 @@ static func create(profile: Dictionary, rng: RandomNumberGenerator) -> Dictionar
 		"job_skill": {},
 		"job_days": {},
 		"stat_days": {},
+		"low_morale_days": 0,
+		"leave_crisis": false,
 		"class_aptitude": roll_aptitude(rng),
 		"hunger": START_HUNGER,
 		"fatigue": START_FATIGUE,
@@ -139,6 +142,8 @@ static func normalize(src: Dictionary) -> Dictionary:
 	r["job_skill"] = _int_map(r.get("job_skill", {}), 0, 5)
 	r["job_days"] = _int_map(r.get("job_days", {}), 0, 1 << 30)
 	r["stat_days"] = _int_map(r.get("stat_days", {}), 0, 1 << 30)
+	r["low_morale_days"] = maxi(int(r.get("low_morale_days", 0)), 0)
+	r["leave_crisis"] = bool(r.get("leave_crisis", false))
 	var apt := {}
 	for key in CLASS_KEYS:
 		apt[key] = clampi(int(_read(r.get("class_aptitude", {}), key, Enums.Aptitude.MID)), 0, Enums.Aptitude.size() - 1)
