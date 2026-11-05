@@ -50,6 +50,12 @@ const CONSTRUCTION_JOB := &"construction"
 ## Base build progress per construction worker per day (09 "건설 규칙": 하루 10 + 힘 보정).
 const BUILD_PROGRESS_BASE := 10.0
 
+## Stay day (기획 01 "기지에 머무르기"): 그날 생산 +20%; 09 "건설 규칙": 머무르면 진행도 +20.
+const STAY_OUTPUT_MULT := 1.2
+const STAY_BUILD_PROGRESS := 20
+## Workshop / infirmary worker: batches per day at efficiency 1.0 (가안, issue #45).
+const CRAFT_BATCHES_PER_DAY := 2.0
+
 
 static func can_work(resident: Dictionary) -> bool:
 	var age := int(resident["age_stage"])
