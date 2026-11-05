@@ -22,7 +22,9 @@ const PREVIEW_HEIGHT := 0.6
 const LABEL_HEIGHT := 2.2
 ## Ground overlay (컬트 오브 더 램 배치 화면 + 덕코프 청록 격자): grid lines on cleared areas, a dark
 ## veil on uncleared ones, existing buildings' cells in red, the new footprint in green / red.
-const GRID_COLOR := Color(0.42, 0.78, 1.0, 0.42)
+const GRID_COLOR := Color(0.42, 0.78, 1.0, 0.55)
+## Line width on the ground (m): 1-pixel lines vanish in the grass from the base camera.
+const LINE_W := 0.07
 const UNCLEARED_COLOR := Color(0.05, 0.06, 0.1, 0.42)
 const TAKEN_FILL := Color(0.85, 0.27, 0.23, 0.16)
 const TAKEN_LINE := Color(1.0, 0.47, 0.43, 0.8)
@@ -69,6 +71,9 @@ func _ready() -> void:
 	_overlay_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_overlay_material.vertex_color_use_as_albedo = true
 	_overlay_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	# The forest clearing's grass and ground props stand above y = 0: draw the grid on top of them.
+	_overlay_material.no_depth_test = true
+	_overlay_material.render_priority = 10
 	_box = MeshInstance3D.new()
 	_box.mesh = BoxMesh.new()
 	_box.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -242,6 +247,18 @@ func _outline(lines: Array, area: BuildArea, c: Vector2i, lift: float, col: Colo
 
 func _flush(im: ImmediateMesh, tris: Array, lines: Array) -> void:
 	im.clear_surfaces()
+	# Lines become thin ground quads (LINE_W wide) so they keep a real width at any zoom.
+	for i in range(0, lines.size() - 1, 2):
+		var a: Vector3 = lines[i][0]
+		var b: Vector3 = lines[i + 1][0]
+		var col: Color = lines[i][1]
+		var d := b - a
+		d.y = 0.0
+		if d.length() < 0.001:
+			continue
+		var side := Vector3(-d.z, 0.0, d.x).normalized() * (LINE_W * 0.5)
+		tris.append_array([[a - side, col], [a + side, col], [b + side, col], [a - side, col], [b + side, col], [b - side, col]])
+	lines = []
 	for pair: Array in [[Mesh.PRIMITIVE_TRIANGLES, tris], [Mesh.PRIMITIVE_LINES, lines]]:
 		var verts: Array = pair[1]
 		if verts.is_empty():

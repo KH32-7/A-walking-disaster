@@ -14,6 +14,12 @@ const THREAT_AFTER_WIN := 20
 const THREAT_AFTER_LOSS := 30
 
 const FIRST_RAID_DAY := 5           # 5일차 전에는 습격 없음
+## 직접 방어전 (C-17 / B-23). Off for now (사용자 요청 2026-11-06): every raid is judged
+## automatically (RaidMode.AUTO). The battle code stays; turn this on to bring it back.
+const DIRECT_DEFENSE := false
+## 습격 전체 (밤·낮·출격 중). Off for now (사용자 요청 2026-11-06): no raid is rolled.
+## `force` rolls (debug `raid` command, tests) still work. Turn on to bring raids back.
+const RAIDS := false
 ## Night: threat → chance. Below 60 only a small swarm raid can happen.
 const NIGHT_CHANCES := [[100, 1.0], [80, 0.5], [60, 0.3]]
 const NIGHT_LOW_CHANCE := 0.05

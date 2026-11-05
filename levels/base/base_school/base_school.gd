@@ -13,6 +13,8 @@ const SPAWN_ID := &"main"
 @onready var build_mode: BuildMode = $BuildMode
 @onready var building_views: BuildingViews = $BuildingViews
 @onready var residents: ResidentCrowd = $Residents
+@onready var field_camera: Node3D = $FieldCamera
+var base_camera: BaseCamera
 
 ## Placement rules for this map (C-03). Built from the layout's BuildArea / ZoneMarker / ResourceNode.
 var grid: BaseGrid
@@ -42,16 +44,24 @@ func _ready() -> void:
 	else:
 		_add_greybox_lighting()
 	_place_player()
+	# 기지는 걸어 다니지 않는다 (사용자 요청): base camera + clicks; the player only for 직접 방어전.
+	base_camera = BaseCamera.new()
+	base_camera.name = "BaseCamera"
+	add_child(base_camera)
+	base_camera.setup(grid, build_mode, player.global_position)
+	_set_player_mode(false)
 
 
 ## The battle node runs the waves and reports to Colony; D-14 finds it with get_battle().
 func _on_defense_requested(raid: Dictionary, first_wave: int) -> void:
 	if get_battle() != null:
 		return
+	_set_player_mode(true)
 	var battle := DefenseBattle.new()
 	battle.name = "DefenseBattle"
 	add_child(battle)
 	battle.setup(raid, first_wave, layout, player, residents, building_views)
+	battle.finished.connect(func(_r: Dictionary) -> void: _set_player_mode(false))
 	battle.start()
 
 
@@ -95,3 +105,19 @@ func _add_greybox_lighting() -> void:
 	env.environment.sky.sky_material = ProceduralSkyMaterial.new()
 	env.environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	add_child(env)
+
+
+## Walking player + follow camera (직접 방어전) or no player + BaseCamera (기지 평소).
+func _set_player_mode(on: bool) -> void:
+	player.visible = on
+	player.process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
+	if on:
+		player.add_to_group(Player.GROUP)
+	else:
+		player.remove_from_group(Player.GROUP)
+	field_camera.process_mode = player.process_mode
+	var fcam := field_camera as Camera3D if field_camera is Camera3D else field_camera.find_child("*", true, false) as Camera3D
+	if fcam != null:
+		fcam.current = on
+	if base_camera != null:
+		base_camera.current = not on

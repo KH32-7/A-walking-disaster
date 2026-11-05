@@ -66,6 +66,10 @@ func _run() -> void:
 	_main.name = &"Main"
 	get_tree().root.add_child(_main)
 	await _frames(10)
+	if "--quick=base" in OS.get_cmdline_user_args():
+		await _quick_base()
+		_finish()
+		return
 	if "--quick=prompts" in OS.get_cmdline_user_args():
 		await _quick_prompts()
 		_finish()
@@ -298,6 +302,50 @@ func _quick_prompts() -> void:
 		player.global_position = (pts[0] as Node3D).global_position + Vector3(6, 0, 6)
 		await _frames(20)
 		await _shot("exit_marker")
+
+
+## Short look at the base: 45° camera, no player, grid while placing, [클릭] chip on hover.
+func _quick_base() -> void:
+	_step("quick_base")
+	await _until(func() -> bool: return UI.is_open(&"title"), "타이틀")
+	UI.get_screen(&"title").list.focus_row(&"new")
+	await _frames(3)
+	(UI.get_screen(&"title").find_child("start", true, false) as Button).pressed.emit()
+	await _until(func() -> bool: return GameState.flow_state == Enums.FlowState.BASE_MORNING, "기지")
+	await _loading_done()
+	await get_tree().create_timer(1.0).timeout
+	_check(get_viewport().get_camera_3d() is BaseCamera, "기지 카메라가 BaseCamera")
+	_check(get_tree().get_first_node_in_group(&"player") == null, "기지에 걷는 플레이어가 없음")
+	await _shot("base_camera")
+	UI.base_hud._menu_buttons[&"build"].pressed.emit()
+	await _until(func() -> bool: return UI.is_open(&"build"), "건설 화면")
+	var screen: Node = UI.get_screen(&"build")
+	screen._sel = &"bonfire"
+	screen._fill()
+	_button(screen._detail, "놓을 곳 고르기").pressed.emit()
+	await _until(func() -> bool: return is_instance_valid(UI.build_place_hud), "②놓기")
+	var base := _world_scene()
+	var spot := _find_spot(base.grid, &"bonfire")
+	base.build_mode.preview_cell(spot["zone_id"], spot["cell"])
+	await _frames(10)
+	await _shot("base_grid")
+	base.build_mode.preview_cell(spot["zone_id"], spot["cell"])
+	var uid: StringName = base.build_mode.confirm()
+	await _until(func() -> bool: return UI.is_open(&"build"), "현장 카드")
+	_button(UI.get_screen(&"build")._detail, "이대로 짓기").pressed.emit()
+	await _frames(10)
+	var cam := get_viewport().get_camera_3d()
+	var at: Vector3 = base.grid.footprint_center(spot["zone_id"], spot["cell"], Vector2i.ONE)
+	(cam as BaseCamera).focus = at + Vector3(0, 0, 4)
+	await _frames(30)
+	var hover_at := cam.unproject_position(at)
+	for i in 15:  # again every frame: a real mouse moving over the window would win otherwise
+		Input.warp_mouse(hover_at)
+		await _frames(1)
+	print("[quick_base] site=%s hover_at=%s mouse=%s pick=%s" % [at, hover_at, get_viewport().get_mouse_position(),
+		(cam as BaseCamera)._pick(hover_at)])
+	_check(not (cam as BaseCamera).hover.is_empty(), "건물에 마우스를 올리면 안내가 뜸: %s" % (cam as BaseCamera).hover.get("text", ""))
+	await _shot("base_hover")
 
 
 # ---------------- base ----------------
