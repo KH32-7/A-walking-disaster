@@ -76,7 +76,10 @@ func _make_view(uid: StringName, b: Dictionary, def: BuildingDef) -> Node3D:
 	label.position.y = height + 0.8
 	var state := ""
 	if not done:
-		state = "\n건설 중 %d/%d" % [int(b["progress"]), def.build_work_needed()]
+		# D-06 재설계 ③짓기: 현장은 진행과 일손을 함께 보여 준다 (일손 0이면 아무도 짓지 않음).
+		var workers := (b["workers"] as Array).size()
+		state = "\n건설 현장 %d/%d · %s" % [int(b["progress"]), def.build_work_needed(),
+			"일손 %d명" % workers if workers > 0 else "일손을 보내야 지어져요"]
 	elif b.get("damaged", false):
 		state = "\n(파손)"
 	label.text = def.display_name + state

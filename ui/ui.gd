@@ -13,6 +13,9 @@ signal screen_closed(screen_id: StringName)
 ## The build panel asked to place a building (D-06). Lane C starts the grid placement preview
 ## (C-03) and calls Colony.place_building() when the player confirms.
 signal build_requested(def_id: StringName)
+## The site card asked to move a construction site / building (D-06 재설계 ③). Lane C runs
+## BuildMode.start_move(uid) and then show_build_place().
+signal build_move_requested(uid: StringName)
 ## The theme was rebuilt (text size / high contrast changed). Screens normally just inherit it.
 signal theme_changed(theme: Theme)
 
@@ -131,6 +134,25 @@ func show_base_hud(on: bool) -> void:
 
 
 ## Raid screens (D-14): warning / result / emergency return, and the direct defense HUD.
+var build_place_hud: BuildPlaceHud
+
+
+## D-06 재설계 ②놓기: overlay for a running BuildMode (단계 띠, 고른 건물, 커서 카드, 키 안내).
+## Hides the base HUD while it is up. On placed → opens the site card (③); on cancel → back to the list.
+func show_build_place(build_mode: Node) -> void:
+	if is_instance_valid(build_place_hud):
+		build_place_hud.queue_free()
+	build_place_hud = BuildPlaceHud.new()
+	build_place_hud.name = &"BuildPlaceHud"
+	hud.add_child(build_place_hud)
+	build_place_hud.bind(build_mode)
+	if base_hud != null:
+		base_hud.visible = false
+	build_place_hud.tree_exited.connect(func() -> void:
+		if base_hud != null and GameState.flow_state in BASE_STATES:
+			base_hud.visible = true)
+
+
 var raid_flow: RaidFlow
 var raid_hud: RaidDefenseHud
 const RAID_STATES := [Enums.FlowState.BASE_DAY_RAID, Enums.FlowState.NIGHT_RAID]

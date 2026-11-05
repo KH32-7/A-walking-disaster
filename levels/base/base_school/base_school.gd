@@ -28,6 +28,7 @@ func _ready() -> void:
 	layout.navigation_ready.connect(residents.retarget)
 	# D-06 건설 패널 "배치하기" → grid placement here (C-03). The connection ends with this node.
 	UI.build_requested.connect(_on_build_requested)
+	UI.build_move_requested.connect(_on_build_move_requested)
 	build_mode.placed.connect(func(uid: StringName) -> void:
 		EventBus.notification_posted.emit("%s 건설 현장을 놓았다" % BaseDB.get_building(Colony.get_building(uid)["def_id"]).display_name, &"info"))
 	# 직접 방어전 (C-17): Colony asks this scene to play a raid on the base map.
@@ -61,6 +62,14 @@ func get_battle() -> DefenseBattle:
 func _on_build_requested(def_id: StringName) -> void:
 	if not build_mode.start(def_id):
 		EventBus.notification_posted.emit("이 건물은 격자에 놓을 수 없어요", &"warn")
+		return
+	UI.show_build_place(build_mode)  # D-06 재설계 ②놓기: 단계 띠·커서 카드·키 안내
+
+
+## 건설 현장 카드의 "현장 옮기기" (D-06 재설계 ③짓기) → same placement, moving instead.
+func _on_build_move_requested(uid: StringName) -> void:
+	if build_mode.start_move(uid):
+		UI.show_build_place(build_mode)
 
 
 ## Puts the player on the layout's PlayerSpawn (spawn_id "main").

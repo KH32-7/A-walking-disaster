@@ -9,6 +9,10 @@ extends Node3D
 ## TODO: dedicated build_place / build_rotate / build_cancel actions (request to Lane A).
 
 signal preview_changed(ok: bool, reasons: Array)
+## Same moment as preview_changed, with what the UI needs for its cursor card (D-06 재설계):
+## {"ok", "reasons", "def_id", "move", "on_grid", "node_kind" ("나무" / "잔해 더미" / ""), "nodes", "radius",
+##  "center" (world position of the footprint centre)}.
+signal preview_info(info: Dictionary)
 signal placed(uid: StringName)
 signal moved(uid: StringName)
 signal cancelled
@@ -16,6 +20,19 @@ signal cancelled
 const GROUND_Y := 0.0
 const PREVIEW_HEIGHT := 0.6
 const LABEL_HEIGHT := 2.2
+## Ground overlay (컬트 오브 더 램 배치 화면 + 덕코프 청록 격자): grid lines on cleared areas, a dark
+## veil on uncleared ones, existing buildings' cells in red, the new footprint in green / red.
+const GRID_COLOR := Color(0.42, 0.78, 1.0, 0.42)
+const UNCLEARED_COLOR := Color(0.05, 0.06, 0.1, 0.42)
+const TAKEN_FILL := Color(0.85, 0.27, 0.23, 0.16)
+const TAKEN_LINE := Color(1.0, 0.47, 0.43, 0.8)
+const OK_FILL := Color(0.37, 0.77, 0.42, 0.5)
+const OK_LINE := Color(0.62, 0.96, 0.66, 1.0)
+const BAD_FILL := Color(0.85, 0.27, 0.23, 0.5)
+const BAD_LINE := Color(1.0, 0.6, 0.55, 1.0)
+const RING_COLOR := Color(0.34, 0.76, 0.79, 0.95)
+const Y_BOARD := 0.04
+const Y_CELLS := 0.07
 
 var grid: BaseGrid
 var active := false
@@ -27,6 +44,12 @@ var last := {}
 
 var _box: MeshInstance3D
 var _label: Label3D
+## Grid + taken cells (drawn when build mode starts) and the footprint + range ring (every preview).
+var _board: MeshInstance3D
+var _cells: MeshInstance3D
+var _overlay_material := StandardMaterial3D.new()
+## The in-world text label. Off when a UI card shows the same words (BuildPlaceHud).
+var show_label := false
 var _ok_material := StandardMaterial3D.new()
 var _bad_material := StandardMaterial3D.new()
 
@@ -35,8 +58,12 @@ func _ready() -> void:
 	for m in [_ok_material, _bad_material]:
 		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	_ok_material.albedo_color = Color(0.3, 0.9, 0.4, 0.45)
-	_bad_material.albedo_color = Color(0.95, 0.3, 0.25, 0.45)
+	_ok_material.albedo_color = Color(0.3, 0.9, 0.4, 0.3)
+	_bad_material.albedo_color = Color(0.95, 0.3, 0.25, 0.3)
+	_overlay_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_overlay_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_overlay_material.vertex_color_use_as_albedo = true
+	_overlay_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_box = MeshInstance3D.new()
 	_box.mesh = BoxMesh.new()
 	_box.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -95,7 +122,10 @@ func preview_at(world_pos: Vector3) -> Dictionary:
 	var hit := grid.pick(world_pos)
 	if hit.is_empty():
 		last = {}
+		if _cells != null:
+			(_cells.mesh as ImmediateMesh).clear_surfaces()
 		_show(world_pos, Vector2i.ONE, false, ["건설 부지 밖"])
+		preview_info.emit(_info(false, ["건설 부지 밖"], world_pos, false))
 		return {"ok": false, "reasons": ["건설 부지 밖"]}
 	# The cursor is the footprint's center cell, so the box sits under the mouse.
 	var size := BaseGrid.footprint(BaseDB.get_building(def_id), rotation_index)
@@ -111,7 +141,11 @@ func preview_cell(zone_id: StringName, origin: Vector2i) -> Dictionary:
 			result = {"ok": false, "reasons": can["reasons"]}
 	last = {"zone_id": zone_id, "cell": origin, "ok": result["ok"], "reasons": result["reasons"]}
 	var size := BaseGrid.footprint(BaseDB.get_building(def_id), rotation_index)
-	_show(grid.footprint_center(zone_id, origin, size), size, result["ok"], result["reasons"])
+	var center := grid.footprint_center(zone_id, origin, size)
+	_ensure_overlay()
+	_draw_cells(zone_id, origin, size, result["ok"], center)
+	_show(center, size, result["ok"], result["reasons"])
+	preview_info.emit(_info(result["ok"], result["reasons"], center, true))
 	return result
 
 
@@ -141,6 +175,125 @@ func _begin() -> void:
 	active = true
 	visible = true
 	last = {}
+	_label.visible = show_label
+	_ensure_overlay()
+	_draw_board()
+	(_cells.mesh as ImmediateMesh).clear_surfaces()
+
+
+## Overlay meshes are made the first time build mode starts, not in _ready: an empty ImmediateMesh in
+## the scene while the base navmesh bakes leaves residents with no path (test_resident_agents).
+func _ensure_overlay() -> void:
+	if _board != null:
+		return
+	for i in 2:
+		var mi := MeshInstance3D.new()
+		mi.mesh = ImmediateMesh.new()
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mi)
+		if i == 0:
+			_board = mi
+		else:
+			_cells = mi
+
+
+func _info(ok: bool, reasons: Array, center: Vector3, on_grid: bool) -> Dictionary:
+	var info := {"ok": ok, "reasons": reasons, "def_id": def_id, "move": move_uid != &"", "on_grid": on_grid,
+		"node_kind": "", "nodes": 0, "radius": 0.0, "center": center}
+	if BaseGrid.NEEDS_NODE.has(def_id) and grid != null:
+		var kind: ResourceNode.Kind = BaseGrid.NEEDS_NODE[def_id]
+		var radius := BaseDB.get_building(def_id).effect(&"resource_node_radius", 10.0)
+		info["node_kind"] = "나무" if kind == ResourceNode.Kind.TREE else "잔해 더미"
+		info["radius"] = radius
+		info["nodes"] = grid.nodes_in_range(kind, center, radius).size() if on_grid else 0
+	return info
+
+
+# --- ground overlay ------------------------------------------------------------
+
+## World position of a cell corner (x, y in cells from the area's top-left) on `area`.
+func _corner(area: BuildArea, x: float, y: float, lift: float) -> Vector3:
+	var half := area.size_m() * 0.5
+	return area.to_global(Vector3(-half.x + x * ColonyMarker.CELL_SIZE, lift, -half.y + y * ColonyMarker.CELL_SIZE))
+
+
+func _quad(tris: Array, area: BuildArea, c: Vector2i, lift: float, col: Color) -> void:
+	var a := _corner(area, c.x, c.y, lift)
+	var b := _corner(area, c.x + 1, c.y, lift)
+	var d := _corner(area, c.x + 1, c.y + 1, lift)
+	var e := _corner(area, c.x, c.y + 1, lift)
+	tris.append_array([[a, col], [b, col], [d, col], [a, col], [d, col], [e, col]])
+
+
+func _outline(lines: Array, area: BuildArea, c: Vector2i, lift: float, col: Color) -> void:
+	var p := [_corner(area, c.x, c.y, lift), _corner(area, c.x + 1, c.y, lift),
+		_corner(area, c.x + 1, c.y + 1, lift), _corner(area, c.x, c.y + 1, lift)]
+	for i in 4:
+		lines.append_array([[p[i], col], [p[(i + 1) % 4], col]])
+
+
+func _flush(im: ImmediateMesh, tris: Array, lines: Array) -> void:
+	im.clear_surfaces()
+	for pair: Array in [[Mesh.PRIMITIVE_TRIANGLES, tris], [Mesh.PRIMITIVE_LINES, lines]]:
+		var verts: Array = pair[1]
+		if verts.is_empty():
+			continue
+		im.surface_begin(pair[0], _overlay_material)
+		for v: Array in verts:
+			im.surface_set_color(v[1])
+			im.surface_add_vertex(v[0])
+		im.surface_end()
+
+
+## Every build area: grid lines when cleared, a veil when not; cells other buildings take in red.
+func _draw_board() -> void:
+	var tris := []
+	var lines := []
+	if grid != null:
+		for zone_id: StringName in grid.areas:
+			var area: BuildArea = grid.areas[zone_id]
+			if not grid.is_zone_cleared(zone_id):
+				for x in area.size_cells.x:
+					for y in area.size_cells.y:
+						_quad(tris, area, Vector2i(x, y), Y_BOARD, UNCLEARED_COLOR)
+				continue
+			for x in area.size_cells.x + 1:
+				lines.append_array([[_corner(area, x, 0, Y_BOARD), GRID_COLOR], [_corner(area, x, area.size_cells.y, Y_BOARD), GRID_COLOR]])
+			for y in area.size_cells.y + 1:
+				lines.append_array([[_corner(area, 0, y, Y_BOARD), GRID_COLOR], [_corner(area, area.size_cells.x, y, Y_BOARD), GRID_COLOR]])
+			for c: Vector2i in grid.occupied(zone_id, move_uid):
+				_quad(tris, area, c, Y_BOARD + 0.01, TAKEN_FILL)
+				_outline(lines, area, c, Y_BOARD + 0.01, TAKEN_LINE)
+	_flush(_board.mesh as ImmediateMesh, tris, lines)
+
+
+## The footprint cells (green = ok, red = not) and, for 벌목장·채석장, the node range ring with a
+## small ring under every node inside it.
+func _draw_cells(zone_id: StringName, origin: Vector2i, size: Vector2i, ok: bool, center: Vector3) -> void:
+	var tris := []
+	var lines := []
+	var area: BuildArea = grid.areas.get(zone_id)
+	if area != null:
+		for c in BaseGrid.cells(origin, size):
+			if area.has_cell(c):
+				_quad(tris, area, c, Y_CELLS, OK_FILL if ok else BAD_FILL)
+				_outline(lines, area, c, Y_CELLS, OK_LINE if ok else BAD_LINE)
+	if BaseGrid.NEEDS_NODE.has(def_id):
+		var radius := BaseDB.get_building(def_id).effect(&"resource_node_radius", 10.0)
+		_circle(lines, center, radius, RING_COLOR, 72, true)
+		for node in grid.nodes_in_range(BaseGrid.NEEDS_NODE[def_id], center, radius):
+			_circle(lines, node.global_position, 0.9, RING_COLOR, 20, false)
+	_flush(_cells.mesh as ImmediateMesh, tris, lines)
+
+
+func _circle(lines: Array, center: Vector3, radius: float, col: Color, segments: int, dashed: bool) -> void:
+	for i in segments:
+		if dashed and i % 2 == 1:
+			continue
+		var a := TAU * i / segments
+		var b := TAU * (i + 1) / segments
+		lines.append_array([[Vector3(center.x + cos(a) * radius, Y_CELLS, center.z + sin(a) * radius), col],
+			[Vector3(center.x + cos(b) * radius, Y_CELLS, center.z + sin(b) * radius), col]])
 
 
 func _unhandled_input(event: InputEvent) -> void:

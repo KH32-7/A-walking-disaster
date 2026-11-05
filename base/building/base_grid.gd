@@ -122,6 +122,16 @@ func check(def_id: StringName, zone_id: StringName, origin: Vector2i, rotation: 
 	return {"ok": reasons.is_empty(), "reasons": reasons}
 
 
+## Resource nodes of `kind` within `radius` m of `pos` (ground distance). For the build preview's
+## "범위 안 나무 6그루" (D-06 재설계); the yes/no rule is still check().
+func nodes_in_range(kind: ResourceNode.Kind, pos: Vector3, radius: float) -> Array[ResourceNode]:
+	var out: Array[ResourceNode] = []
+	for node in resource_nodes:
+		if node.kind == kind and Vector2(node.global_position.x, node.global_position.z).distance_to(Vector2(pos.x, pos.z)) <= radius:
+			out.append(node)
+	return out
+
+
 func _nearest_node(kind: ResourceNode.Kind, pos: Vector3) -> float:
 	var best := INF
 	for node in resource_nodes:

@@ -1,3 +1,4 @@
+class_name BuildScreen
 extends MenuScreen
 ## Build panel (D-06) + 개간 · 수리·레벨업 · 접근성 보기 (issue #125 part 6). Owner: Lane D.
 ## Design 09 "건물 목록"·"구역과 개간", 07 "참여 조건", 14 "건설 모드", UI_RULES §7 "포함 시설".
@@ -17,6 +18,8 @@ extends MenuScreen
 ## the scene behind goes grey, a ①고르기 ②놓기 ③짓기 strip sits on top, buildings are picture cards
 ## (BuildingArt shows the footprint) in display groups, and 추천 splits them into "정착지에 필요해요 /
 ## 지금 지을 수 있어요 / 곧 열려요" under the next-tier card (Colony.next_tier_status()).
+## ③주민이 짓기: mode &"site" (BuildPlaceHud opens it after placing) shows only the cream card over the
+## live base: progress, 건설 주민 보내기/빼기 (Colony.assign_job construction), 현장 옮기기.
 
 const CATEGORY_NAMES := ["주거", "생산", "가공", "생활", "제작", "포함", "저장", "군사", "특수", "설비", "방어"]
 ## Display groups for the build tabs: [key (= _cat value), name, icon, categories]. -1 = 추천.
@@ -61,7 +64,10 @@ var _list: VBoxContainer
 var _detail: VBoxContainer
 var _count: Label
 var _list_title: Label
-var _steps: HBoxContainer
+var _steps: StepStrip
+var _left: Control
+var _row: HBoxContainer
+var _blur0 := 2.6
 ## Build ids in the order the cards are shown (← → moves through it).
 var _order: Array[StringName] = []
 
@@ -72,9 +78,12 @@ func _init() -> void:
 	footer_keys = [["Esc", "뒤로"], ["← →", "고르기"], ["Q E", "분류"], ["Enter", "실행"]]
 
 
-## args: mode (&"build"|&"clear"|&"repair"|&"access"), zone (zone id), uid (building uid).
+## args: mode (&"build"|&"clear"|&"repair"|&"access"|&"site"), zone (zone id), uid (building uid),
+## select (building def id to pick in the build list).
 func open_with(args: Dictionary) -> void:
 	_mode = StringName(args.get("mode", _mode))
+	if args.has("select"):
+		_sel = StringName(args["select"])
 	if args.has("zone"):
 		_sel_zone = StringName(args["zone"])
 	if args.has("uid"):
@@ -95,7 +104,9 @@ func _build_body(b: Control) -> void:
 	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override(&"separation", 24)
 	col.add_child(row)
+	_row = row
 	var left := MenuScreen.panel("건물", "", Vector2(980, 0))
+	_left = left[0]
 	(left[0] as Control).size_flags_vertical = Control.SIZE_EXPAND_FILL
 	(left[0] as Control).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(left[0])
@@ -120,8 +131,8 @@ func _build_body(b: Control) -> void:
 	# 컬트 오브 더 램: the base goes grey behind the build menu so the cards stand out.
 	var mat := backdrop.material as ShaderMaterial
 	if mat != null:
-		mat.set_shader_parameter(&"saturation", 0.12)
-		mat.set_shader_parameter(&"tint", Color(0.04, 0.05, 0.08, 0.5))
+		var lod: Variant = mat.get_shader_parameter(&"blur_lod")
+		_blur0 = float(lod) if lod != null else 2.6
 	Colony.buildings_changed.connect(_on_colony_changed)
 	_refresh()
 
@@ -139,10 +150,18 @@ func set_mode(mode: StringName) -> void:
 func _refresh() -> void:
 	_build_modes()
 	_tabs.visible = _mode == &"build"
-	_steps.visible = _mode == &"build"
+	_steps.visible = _mode == &"build" or _mode == &"site"
+	_steps.set_current(3 if _mode == &"site" else 1)
+	var site := _mode == &"site"
+	_modes.visible = not site
+	_left.visible = not site
+	_row.alignment = BoxContainer.ALIGNMENT_END if site else BoxContainer.ALIGNMENT_BEGIN
+	_set_backdrop(site)
 	_list_title.text = MODE_TITLES.get(_mode, "건물")
 	_primary = Callable()
 	match _mode:
+		&"site":
+			_show_site()
 		&"clear":
 			_fill_clear()
 		&"repair":
@@ -167,55 +186,77 @@ func _build_modes() -> void:
 
 # ---------------- 새로 짓기 (D-06, 재설계) ----------------
 
-## ① 건물 고르기 ② 놓을 곳 정하기 ③ 주민이 짓기 — always on top while the build view is open.
-## Steps 2 and 3 happen on the base map (C-03 BuildMode, 건설 현장), so here only ① is lit.
+## ① 건물 고르기 ② 놓을 곳 정하기 ③ 주민이 짓기 — on top while choosing (①) and on the site card (③).
+## ② is BuildPlaceHud over the base map.
 func _build_steps() -> void:
-	_steps = HBoxContainer.new()
-	_steps.add_theme_constant_override(&"separation", 10)
-	var bg := PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(UiTokens.INK, 0.72)
-	sb.set_corner_radius_all(99)
-	sb.content_margin_left = 10
-	sb.content_margin_right = 10
-	sb.content_margin_top = 7
-	sb.content_margin_bottom = 7
-	bg.add_theme_stylebox_override(&"panel", sb)
-	bg.add_child(_steps)
-	for i in STEPS.size():
-		if i > 0:
-			var ar := ColorRect.new()
-			ar.color = Color(UiTokens.TEXT, 0.3)
-			ar.custom_minimum_size = Vector2(18, 2)
-			ar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			_steps.add_child(ar)
-		_steps.add_child(_step_pill(i + 1, STEPS[i], i == 0))
-	add_child(bg)
-	bg.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE)
-	bg.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	bg.position.y = 34
-	_steps.visibility_changed.connect(func() -> void: bg.visible = _steps.visible)
+	_steps = StepStrip.new(STEPS, 1)
+	add_child(_steps)
+	_steps.place_top_center()
 
 
-func _step_pill(n: int, text: String, on: bool) -> Control:
-	var p := PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(UiTokens.TEXT, 0.12) if on else Color.TRANSPARENT
-	sb.set_corner_radius_all(99)
-	sb.content_margin_left = 6
-	sb.content_margin_right = 14
-	sb.content_margin_top = 4
-	sb.content_margin_bottom = 4
-	p.add_theme_stylebox_override(&"panel", sb)
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override(&"separation", 8)
-	p.add_child(h)
-	h.add_child(StepNumber.new(n, on))
-	var l := MenuScreen.label(text, &"LabelHud", 16)
-	l.add_theme_color_override(&"font_color", UiTokens.TEXT if on else UiTokens.TEXT_DIM)
-	h.add_child(l)
-	return p
+## 고르기: the base goes grey and blurred (컬트 오브 더 램). 현장 카드: the live base stays in view.
+func _set_backdrop(live: bool) -> void:
+	var mat := backdrop.material as ShaderMaterial
+	if mat == null:
+		return
+	mat.set_shader_parameter(&"saturation", 1.0 if live else 0.12)
+	mat.set_shader_parameter(&"blur_lod", 0.0 if live else _blur0)
+	mat.set_shader_parameter(&"tint", Color(0.04, 0.05, 0.08, 0.08 if live else 0.5))
 
+
+# ---------------- ③ 주민이 짓기: 건설 현장 카드 ----------------
+
+func _show_site() -> void:
+	MenuScreen.clear(_detail)
+	var b := Colony.get_building(_sel_uid)
+	var def := BaseDB.get_building(b.get("def_id", &""))
+	if b.is_empty() or def == null:
+		_detail.add_child(MenuScreen.label("건설 현장이 없어요.", &"LabelOnCreamDim", 15))
+		_action("닫기", true, close)
+		return
+	var tags := HBoxContainer.new()
+	tags.add_theme_constant_override(&"separation", 6)
+	tags.add_child(_cream_tag("건설 현장", &"hammer"))
+	tags.add_child(_cream_tag("%s · %d×%d칸" % [_zone_name(b["zone_id"]), maxi(def.size.x, 1), maxi(def.size.y, 1)]))
+	_detail.add_child(tags)
+	_detail.add_child(_title(def.display_name))
+	var need := def.build_work_needed()
+	var prog := int(b["progress"])
+	if b["completed"]:
+		_detail.add_child(_state_line(true, "다 지었어요. 이제 일손을 배정하면 일을 시작해요."))
+		_action("닫기", true, close)
+		return
+	var desc := MenuScreen.label("일손을 보내야 지어져요. 보낸 주민은 다 지을 때까지 원래 일을 쉬어요.", &"LabelOnCream", 16)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.custom_minimum_size = Vector2(520, 0)
+	_detail.add_child(desc)
+	var ph := HBoxContainer.new()
+	var pl := MenuScreen.label("진행 %d / %d" % [prog, need], &"LabelOnCream", 16)
+	pl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ph.add_child(pl)
+	ph.add_child(MenuScreen.label("일손 %d명" % (b["workers"] as Array).size(), &"LabelOnCreamDim", 14))
+	_detail.add_child(ph)
+	_detail.add_child(_cream_bar(_ratio(prog, need), UiTokens.TEXT_ON_CREAM))
+	var how := MenuScreen.label("주민 한 명이 하루에 %d쯤 지어요(힘이 세면 더). 기지에 머무르면 하루 +%d." % [
+		roundi(WorkRules.BUILD_PROGRESS_BASE), WorkRules.STAY_BUILD_PROGRESS], &"LabelOnCreamDim", 14)
+	how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	how.custom_minimum_size = Vector2(520, 0)
+	_detail.add_child(how)
+	_worker_section(_sel_uid)
+	var foot := HBoxContainer.new()
+	foot.alignment = BoxContainer.ALIGNMENT_END
+	foot.add_theme_constant_override(&"separation", 10)
+	var mv := MenuScreen.button("현장 옮기기", &"ButtonCancel")
+	mv.pressed.connect(func() -> void:
+		var uid := _sel_uid
+		close()
+		UI.build_move_requested.emit(uid))
+	foot.add_child(mv)
+	var go := MenuScreen.button("이대로 짓기", &"ButtonPrimary")
+	go.pressed.connect(close)
+	foot.add_child(go)
+	_detail.add_child(foot)
+	_primary = close
 
 func _build_tabs() -> void:
 	MenuScreen.clear(_tabs)
@@ -1499,32 +1540,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		if k == KEY_Q or k == KEY_E:
 			_step_group(-1 if k == KEY_Q else 1)
 			get_viewport().set_input_as_handled()
-
-
-## Number circle in the step strip: filled when it is the current step.
-class StepNumber extends Control:
-	var n := 1
-	var on := false
-
-	func _init(num: int, lit: bool) -> void:
-		n = num
-		on = lit
-		custom_minimum_size = Vector2(26, 26)
-		size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	func _draw() -> void:
-		var c := size * 0.5
-		if on:
-			draw_circle(c, 12.0, UiTokens.TEXT, true, -1.0, true)
-		else:
-			draw_arc(c, 11.5, 0.0, TAU, 32, Color(UiTokens.TEXT, 0.5), 1.6, true)
-		var font := get_theme_default_font()
-		var s := str(n)
-		var fs := 14
-		var tw := font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		draw_string(font, Vector2(c.x - tw * 0.5, c.y + fs * 0.36), s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs,
-			UiTokens.INK if on else UiTokens.TEXT_DIM)
 
 
 ## Lock diamond with "met / total" (컬트 오브 더 램 신성한 영감의 잠금 마름모).
