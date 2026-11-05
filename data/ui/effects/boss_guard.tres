@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="FxDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/fx_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://vfx/defs/fx_layer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/shield_rock.png"
+amount = 1
+size = Vector2(6.0, 6.0)
+speed = Vector2(0.0, 0.0)
+spin = false
+lifetime = 0.5
+loop = true
+fade_in = 0.3
+color = Color(0.85, 0.82, 0.75, 0.55)
+offset = Vector3(0.0, 2.8, 0.0)
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/earth_dust.png"
+blend = 1
+amount = 6
+loop = true
+explosiveness = 0.0
+emit_radius = 2.2
+size = Vector2(0.4, 0.7)
+speed = Vector2(0.2, 0.6)
+lifetime = 1.0
+color = Color(0.6, 0.58, 0.52, 0.5)
+offset = Vector3(0.0, 0.4, 0.0)
+
+[resource]
+script = ExtResource("1_def")
+id = &"boss_guard"
+lifetime_param = &"duration"
+max_alive = 2
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1")])

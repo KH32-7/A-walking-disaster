@@ -52,6 +52,8 @@
 | `boss_scalpels` / `boss_flash` / `boss_clones` / `boss_decoy_pop` | `to` / `radius`(9) / - / - | B wraith_mechanic (수술등 망령). 메스 줄기 / 섬광(실명, 깜빡임 줄이기 따름) / 분신 연기 / 분신이 맞아 사라짐 |
 | `boss_laser` / `boss_shock_floor` / `boss_summon_moths` | `to` / `radius`(2.5), `duration` / - | B 네온 거신. 전광판 레이저(직선 공통 패턴) / 감전 장판(남는 바닥) / 나방 소환 자리 |
 | `boss_cable_cut` / `boss_overload` | - | B colossus_mechanic. 전원 케이블이 끊김 / 셋 다 끊겨 무력화 |
+| `boss_wave_slam` / `boss_rock_throw` | `to` / `radius`(3) | B 방파제 골렘. 파도 내리치기(직선 공통 패턴) / 바위 투척(원 공통 패턴, 위에서 떨어짐) |
+| `boss_guard` / `boss_guard_break` | `duration` / - | B golem_mechanic. 방어 태세 돌 방패(일찍 풀리면 지움) / 둔기에 깨짐 |
 
 속성 4종(초록, 돌, 물, 빛)은 따로 id가 없다. `params.element`를 받는 레이어가 `element_textures`로 텍스처를 바꾸고
 `tint_element`로 `UiTokens.ELEMENT_COLORS` 색을 곱한다.

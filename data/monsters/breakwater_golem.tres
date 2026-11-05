@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="MonsterDef" format=3]
+
+[ext_resource type="Script" path="res://field/defs/monster_def.gd" id="1_def"]
+[ext_resource type="PackedScene" path="res://field/monsters/breakwater_golem.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"breakwater_golem"
+name = "방파제 골렘"
+family = 2
+tier = 2
+hp = 3000.0
+defense = 60.0
+attack = 45.0
+move_speed = 2.0
+hearing_mult = 1.0
+sight_range = 14.0
+weak_point_shape = 1
+drop_table_id = &"monster_boss"
+regions = Array[StringName]([&"flooded_mall"])
+scene = ExtResource("2_scene")
+attack_range = 5.0
+attack_interval = 1.0
