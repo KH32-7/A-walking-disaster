@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_ess")
 id = &"essence_light_high"
-name = "상급 광 정수"
+name = "상급 번개 정수"
 element = 4
 grade = 2
 effect_params = {

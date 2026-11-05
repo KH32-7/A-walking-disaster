@@ -46,7 +46,7 @@ func _test_data() -> void:
 	var got := [def.family, def.tier, def.hp, def.defense, def.attack, def.move_speed, def.hearing_mult, def.sight_range]
 	_check(got == [Enums.Element.LIGHT, Enums.MonsterTier.BOSS, 1400.0, 20.0, 35.0, 4.0, 1.0, 16.0],
 			"wraith matches the 04 table %s" % [got])
-	_check(Enums.element_multiplier(Enums.Element.GREEN, Enums.Element.LIGHT) > 1.0, "green beats it (04: 녹 속성)")
+	_check(Enums.element_multiplier(Enums.Element.GREEN, Enums.Element.LIGHT) > 1.0, "green beats it (04: 풀 속성)")
 	var boss := BossDef.for_monster(BOSS_ID)
 	_check(boss != null and boss.mechanic != null and boss.first_kill_flags.has(FLAG), "boss def, mechanic, Lv3 flag")
 
