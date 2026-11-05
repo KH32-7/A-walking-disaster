@@ -71,5 +71,7 @@ patterns = Array[ExtResource("2_pattern")]([SubResource("Pattern_tail_swing"), S
 pattern_gap_sec = 1.0
 mechanic = ExtResource("3_mech")
 respawn_days = 3
+first_day = 12
+buried_intro = false
 first_kill_text = "가라앉은 간판뱀을 쓰러뜨렸다. 전설 칼을 얻었다"
 first_kill_drop_table_id = &"boss_serpent_first"

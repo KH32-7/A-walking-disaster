@@ -19,6 +19,12 @@ const DIR := "res://data/monsters/bosses/"
 ## Empty: only the common area and summon patterns.
 @export var mechanic: Script
 @export var respawn_days: int = 3
+## First day the boss shows up at its arena (design 12 "보스 첫 도전": park 4~6, mall 12~18).
+## Before it the arena stays empty, so a new player does not walk into a boss on day 1.
+@export var first_day: int = 1
+## Spawned asleep, it lies buried and climbs out on its first wake (BossMonster intro). Off for a boss
+## whose mechanic hides it another way (the serpent starts underwater).
+@export var buried_intro := true
 
 @export_group("First kill")
 ## GameState flags set on the first kill. The park boss: blueprint_essence_workshop (Lane C's

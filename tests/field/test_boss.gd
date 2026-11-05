@@ -63,6 +63,7 @@ func run() -> bool:
 	_saved_kills = FieldState.boss_kills.duplicate()
 	_saved_respawn = FieldState.boss_respawn_day.duplicate()
 	_saved_flags = GameState.flags.duplicate()
+	var saved_day := GameState.day
 	var tests: Array[Callable] = [
 		_test_data,
 		_test_area_shapes,
@@ -76,6 +77,9 @@ func run() -> bool:
 		_test_first_kill,
 		_test_second_kill_table,
 		_test_spawner_respawn,
+		_test_first_day,
+		_test_bosses_per_day,
+		_test_intro,
 		_test_park_wiring,
 		_test_hud,
 		_test_save,
@@ -84,10 +88,12 @@ func run() -> bool:
 	for test in tests:
 		FieldState.boss_kills = {}
 		FieldState.boss_respawn_day = {}
+		GameState.day = saved_day
 		await test.call()
 		for child in _root.get_children():
 			child.free()
 	_root.free()
+	GameState.day = saved_day
 	FieldState.boss_kills = _saved_kills
 	FieldState.boss_respawn_day = _saved_respawn
 	GameState.flags = _saved_flags
@@ -316,15 +322,9 @@ func _test_second_kill_table() -> void:
 
 
 func _test_spawner_respawn() -> void:
-	var arena := (load("res://field/markers/boss_arena.tscn") as PackedScene).instantiate() as BossArena
-	arena.boss_id = BOSS_ID
-	arena.radius = 12.0
-	arena.position = Vector3(40, 0, 0)
-	_root.add_child(arena)
-	var spawner := BossSpawner.new()
-	spawner.region_id = &"test_region"
-	_root.add_child(spawner)
-	spawner.set_process(false)
+	var arena := _arena(BOSS_ID, Vector3(40, 0, 0))
+	var spawner := _spawner(&"test_region")
+	GameState.day = BossDef.for_monster(BOSS_ID).first_day
 	spawner.spawn_all()
 	var giant := spawner.boss_at(arena)
 	_check(giant != null, "spawner puts the boss at the arena")
@@ -341,6 +341,83 @@ func _test_spawner_respawn() -> void:
 	FieldState.boss_respawn_day[BOSS_ID] = GameState.day
 	spawner.spawn_all()
 	_check(spawner.boss_at(arena) != null, "boss is back on the respawn day")
+
+
+func _test_first_day() -> void:
+	var first := BossDef.for_monster(BOSS_ID).first_day
+	_check(first > 1, "the park boss does not show up on day 1 (first_day %d)" % first)
+	var arena := _arena(BOSS_ID, Vector3(40, 0, 0))
+	var spawner := _spawner(&"test_region")
+	GameState.day = first - 1
+	spawner.spawn_all()
+	_check(spawner.boss_at(arena) == null, "no boss before its first day")
+	GameState.day = first
+	spawner.spawn_all()
+	_check(spawner.boss_at(arena) != null, "the boss is out from its first day")
+
+
+func _test_bosses_per_day() -> void:
+	var mall := _spawner(&"flooded_mall")
+	var arenas: Array[BossArena] = []
+	for id: StringName in [&"sunken_sign_serpent", &"surgical_lamp_wraith", &"neon_colossus", &"breakwater_golem"]:
+		arenas.append(_arena(id, Vector3(40, 0, 0)))
+	var picked := mall.todays(arenas, 20)
+	_check(picked.size() == RegionDef.load_def(&"flooded_mall").bosses_per_day, "the mall puts bosses_per_day out")
+	_check(mall.todays(arenas, 20) == picked, "same day, same boss")
+	var reversed := arenas.duplicate()
+	reversed.reverse()
+	_check(mall.todays(reversed, 20) == picked, "the pick does not depend on the arena order")
+	var seen := {}
+	for day in range(12, 40):
+		for arena in mall.todays(arenas, day):
+			seen[arena.boss_id] = true
+	_check(seen.size() >= 3, "other days bring out other bosses (%d seen)" % seen.size())
+	_check(_spawner(&"city_park").todays(arenas, 20).size() == arenas.size(), "bosses_per_day 0 = every arena")
+	# Today's boss killed: its arena stays empty and no other boss takes its place.
+	GameState.day = 20
+	for arena in picked:
+		FieldState.boss_respawn_day[arena.boss_id] = 23
+	mall.spawn_all()
+	_check(arenas.all(func(a: BossArena) -> bool: return mall.boss_at(a) == null),
+			"killing today's boss does not bring out another one the same day")
+
+
+func _test_intro() -> void:
+	GameState.day = BossDef.for_monster(BOSS_ID).first_day
+	var arena := _arena(BOSS_ID, Vector3.ZERO)
+	var spawner := _spawner(&"test_region")
+	spawner.spawn_all()
+	var giant := spawner.boss_at(arena)
+	_check(giant != null, "intro: spawner puts the giant out")
+	if giant == null:
+		return
+	giant.set_physics_process(false)
+	_check(giant.is_buried() and giant.state == Enums.AIState.SLEEP, "spawned asleep: buried")
+	var visual := giant.get_node_or_null(^"Visual") as MonsterVisual
+	var model := giant.get_node_or_null(^"Visual/Model") as Node3D
+	if model:
+		_check(model.position.y < visual.model_offset.y - 0.5, "only its top shows (model at %.2f)" % model.position.y)
+	var woke := [false]
+	giant.woke.connect(func() -> void: woke[0] = true)
+	var player := _player(Vector3(0, 0, -3))
+	giant.take_damage(10.0, {"source": player})
+	_check(not giant.is_buried() and giant.is_in_intro() and giant.is_held(), "the first hit wakes it into the intro")
+	var hp := giant.hp
+	giant.take_damage(100.0, {"source": player})
+	_check(is_equal_approx(giant.hp, hp), "hits are ignored while it climbs out")
+	_tick(giant, 0.5)
+	_check(giant.casting() == null, "no pattern during the intro")
+	_check(not woke[0], "still climbing out")
+	_tick(giant, MonsterRules.BOSS_RISE_SEC - 0.5 + DT)
+	_check(woke[0], "woke fires once it has climbed out")
+	if model:
+		_check(absf(model.position.y - visual.model_offset.y) < 0.01, "model back on the ground (%.2f)" % model.position.y)
+	_tick(giant, MonsterRules.BOSS_INTRO_SEC - MonsterRules.BOSS_RISE_SEC)
+	_check(not giant.is_in_intro() and not giant.is_held(), "the intro ends")
+	giant.take_damage(10.0, {"source": player})
+	_check(giant.hp < hp, "hits land after the intro")
+	var awake := _spawn()
+	_check(not awake.is_buried(), "a boss not spawned asleep is not buried")
 
 
 func _test_park_wiring() -> void:
@@ -437,6 +514,23 @@ func _spawn() -> BossMonster:
 	_root.add_child(giant)
 	giant.set_physics_process(false)  # tests drive tick() by hand
 	return giant
+
+
+func _arena(boss_id: StringName, pos: Vector3) -> BossArena:
+	var arena := (load("res://field/markers/boss_arena.tscn") as PackedScene).instantiate() as BossArena
+	arena.boss_id = boss_id
+	arena.radius = 12.0
+	arena.position = pos
+	_root.add_child(arena)
+	return arena
+
+
+func _spawner(region: StringName) -> BossSpawner:
+	var spawner := BossSpawner.new()
+	spawner.region_id = region
+	_root.add_child(spawner)
+	spawner.set_process(false)
+	return spawner
 
 
 func _player(pos: Vector3) -> FakeTarget:

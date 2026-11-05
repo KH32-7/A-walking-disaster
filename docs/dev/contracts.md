@@ -138,6 +138,8 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
 - **FieldState**: `in_sortie()`, `lost_gear`, `boss_ready(boss_id)`, `boss_kill_count(boss_id)`.
   보스 부활 날짜 `boss_respawn_day`는 **보스 id별**이다(한 지역에 보스가 여럿일 수 있다). 지역 id로 저장된 옛 세이브는 불러올 때 그 지역의 `boss_id`로 옮긴다.
 - **보스 (B-19)**: `BossSpawner`가 `BossArena`마다 그 보스의 부활 날짜를 따로 본다. 보스마다의 공략 규칙은 `BossDef.mechanic`(`BossMechanic` 스크립트)에 둔다.
+  `BossDef.first_day` 전에는 안 나온다. `RegionDef.bosses_per_day`(0이면 전부)가 있으면 `BossSpawner.todays(arenas, day)`가 지역과 날짜로 그만큼만 뽑는다.
+  잠든 채 소환된 보스(`BossDef.buried_intro`)는 땅에 묻혀 있다가 처음 깰 때 솟아오른다: `is_buried()`, `is_in_intro()`(피격 무시), 끝나면 신호 `woke`.
 - **동행 주민 고유 스킬 (B-29)**: `ResidentTemplate.signature_skill`(SkillDef, 실행 id는 `CompanionSkill.RUNNERS` 중 하나)과 `signature_line`.
   `FieldCompanion.setup()`이 `ResidentPool.templates`에서 읽는다(Colony 주민 Dictionary에는 없음). 신호 `FieldCompanion.called_out(text, near)`는
   `RescueTarget.called_out`과 같은 모양이고 `WorldMarkers`가 말풍선으로 띄운다. `SkillDef.fx`, `fx_element`로 실행 id와 다른 이펙트를 쓴다.

@@ -55,6 +55,7 @@ phase_speed = Array[float]([1.0, 1.5])
 patterns = Array[ExtResource("2_pattern")]([SubResource("Pattern_slam"), SubResource("Pattern_root_burst"), SubResource("Pattern_summon_pods")])
 pattern_gap_sec = 1.0
 respawn_days = 3
+first_day = 4
 first_kill_flags = Array[StringName]([&"blueprint_essence_workshop"])
 first_kill_text = "고목 거인을 쓰러뜨렸다. 정수 공방 설계도를 얻었다"
 first_kill_drop_table_id = &"monster_boss_first"
