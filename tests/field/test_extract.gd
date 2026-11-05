@@ -70,6 +70,15 @@ func _setup(types: Dictionary = {}) -> void:
 	_manager.set_physics_process(false)
 
 
+## Leave-behind confirm dialogs still up in UI.overlay (not already on their way out).
+func _open_dialogs() -> int:
+	var n := 0
+	for d in UI.overlay.find_children("*", "", true, false):
+		if d is ConfirmDialog and not d.is_queued_for_deletion():
+			n += 1
+	return n
+
+
 func _teardown() -> void:
 	if _root != null:
 		_root.free()
@@ -243,7 +252,9 @@ func _test_leave_behind_wait() -> void:
 	_expect_eq(_completed, [&"ex_a"], "extracts once the companion is within 6m")
 	_expect_eq(_manager.get_result().get("companions"), [&"res_1"], "companion came back")
 	_expect_eq(_manager.get_result().get("stranded"), [], "nobody stranded")
+	_expect(_open_dialogs() > 0, "UI asks with a confirm dialog")
 	_teardown()
+	_expect(_open_dialogs() == 0, "the question goes away with the field")
 
 
 func _test_leave_behind_leave() -> void:
