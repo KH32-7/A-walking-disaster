@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_bdef"]
+
+[resource]
+script = ExtResource("1_bdef")
+id = &"spike_trap"
+display_name = "가시 함정"
+category = 10
+size = Vector2i(1, 1)
+cost = Dictionary[StringName, int]({
+&"scrap": 2,
+&"wood": 5
+})
+build_work = 2
+effects = Dictionary[StringName, float]({
+&"trap_damage": 30.0,
+&"trap_slow": 1.0
+})
+durability = 3
+defense_value = 2.0
+note = "밟으면 피해 30 + 둔화, 3회 (10 탭 방어 시설, 데모)"
