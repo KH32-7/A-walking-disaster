@@ -154,6 +154,7 @@ func _draw() -> void:
 			UiTokens.GOOD if t.ok else UiTokens.DANGER, 2.0)
 		var ghost := (_drag.entry as Dictionary).duplicate()
 		ghost.size = t.size
+		ghost.rotated = _drag.rotated
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		_draw_entry(ghost, Rect2(_mouse - Vector2(_drag.grab) * (CELL + GAP) - Vector2(CELL, CELL) * 0.5, r.size), true, 0.8)
 
@@ -187,17 +188,31 @@ func _draw_entry(e: Dictionary, r: Rect2, hot: bool, alpha := 1.0) -> void:
 		nm = nm.left(nm.length() - 1)
 	if nm != name:
 		nm = nm.left(maxi(1, nm.length() - 1)) + "…"
-	var big := minf(r.size.x, r.size.y) * 0.34
-	var glyph := name.left(1)
-	var gw := f.get_string_size(glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, int(big)).x
-	draw_string(f, Vector2(r.get_center().x - gw * 0.5, r.get_center().y + big * 0.25), glyph,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, int(big), Color(1, 1, 1, 0.35 * alpha))
+	var tex := ItemInfo.icon(StringName(info.get("icon", &"")))
+	if tex != null:
+		_draw_icon(tex, Rect2(r.position + Vector2(4, 4), r.size - Vector2(8, 20)), bool(e.get("rotated", false)), alpha)
+	else:
+		var big := minf(r.size.x, r.size.y) * 0.34
+		var glyph := name.left(1)
+		var gw := f.get_string_size(glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, int(big)).x
+		draw_string(f, Vector2(r.get_center().x - gw * 0.5, r.get_center().y + big * 0.25), glyph,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, int(big), Color(1, 1, 1, 0.35 * alpha))
 	draw_string(f, Vector2(r.position.x + 4, r.end.y - 6), nm, HORIZONTAL_ALIGNMENT_LEFT, w, fs, Color(UiTokens.TEXT, alpha))
 	var cnt := int(info.get("count", 1))
 	if cnt > 1:
 		var t := "×%d" % cnt
 		var tw := fn.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
 		draw_string(fn, Vector2(r.end.x - tw - 5, r.position.y + 18), t, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(UiTokens.TEXT, alpha))
+
+
+## Icon art is drawn for the unrotated footprint; a rotated entry turns it 90 degrees.
+func _draw_icon(tex: Texture2D, area: Rect2, rotated: bool, alpha: float) -> void:
+	var ts := tex.get_size()
+	var shown := Vector2(ts.y, ts.x) if rotated else ts
+	var s := minf(area.size.x / shown.x, area.size.y / shown.y)
+	draw_set_transform(area.get_center(), PI * 0.5 if rotated else 0.0, Vector2.ONE)
+	draw_texture_rect(tex, Rect2(-ts * s * 0.5, ts * s), false, Color(1, 1, 1, alpha))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _slot_box(r: Rect2, bg: Color, border: Color, bw: float) -> void:
