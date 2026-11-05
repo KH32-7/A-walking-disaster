@@ -96,7 +96,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if _player.is_downed:
 		return
-	step(delta, _read_input())
+	step(delta, {"aim": _player.is_aiming} if Player.input_blocked() else _read_input())
 
 
 ## One step. Split from input reading so tests can drive it.

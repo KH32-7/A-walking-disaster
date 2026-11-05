@@ -79,10 +79,16 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if is_downed:
 		return
-	step(delta, _read_input())
+	step(delta, {} if input_blocked() else _read_input())
 	move_and_slide()
-	if Input.is_action_just_pressed(&"interact"):
+	if Input.is_action_just_pressed(&"interact") and not input_blocked():
 		interact()
+
+
+## A menu is open over the field (pause, settings, journal ...). The field keeps running, but the
+## player stands still and does not act (user decision 2026-11-06: the field never pauses).
+static func input_blocked() -> bool:
+	return UI.blocks_play()
 
 
 ## Starts using the nearest interactable in reach (loot containers for now).
