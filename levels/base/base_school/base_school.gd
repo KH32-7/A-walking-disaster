@@ -12,6 +12,7 @@ const SPAWN_ID := &"main"
 @onready var player: Node3D = $Player
 @onready var build_mode: BuildMode = $BuildMode
 @onready var building_views: BuildingViews = $BuildingViews
+@onready var residents: ResidentCrowd = $Residents
 
 ## Placement rules for this map (C-03). Built from the layout's BuildArea / ZoneMarker / ResourceNode.
 var grid: BaseGrid
@@ -21,6 +22,10 @@ func _ready() -> void:
 	grid = BaseGrid.from_layout(layout)
 	build_mode.grid = grid
 	building_views.grid = grid
+	residents.grid = grid
+	residents.layout = layout
+	# Paths asked for before the navmesh exists come back empty: ask again once it is baked.
+	layout.navigation_ready.connect(residents.retarget)
 	if ResourceLoader.exists(DRESSING):
 		var dressing := (load(DRESSING) as PackedScene).instantiate()
 		dressing.name = "Dressing"
