@@ -34,6 +34,7 @@ Fx="*res://vfx/fx.gd"
 UI="*res://ui/ui.gd"
 SceneRouter="*res://core/scene_router.gd"
 DebugConsole="*res://core/debug/debug_console.gd"
+Quests="*res://systems/quests/quests.gd"
 
 [editor_plugins]
 

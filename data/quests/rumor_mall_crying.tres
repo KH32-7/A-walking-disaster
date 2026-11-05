@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="QuestDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://systems/defs/quest_def.gd" id="1_qdef"]
+[ext_resource type="Script" path="res://systems/defs/quest_objective.gd" id="2_qobj"]
+
+[sub_resource type="Resource" id="Resource_child"]
+script = ExtResource("2_qobj")
+id = &"find_voice"
+kind = 2
+text = "상가 2층에서 들린 목소리의 주인 찾기"
+region_id = &"flooded_mall"
+marker = &"mall_2f"
+
+[resource]
+script = ExtResource("1_qdef")
+id = &"rumor_mall_crying"
+type = 2
+title = "상가 2층의 울음소리"
+description = "상가 2층에서 아이 울음소리가 들린다는 소문이 있다. 사흘이 지나면 확인할 길이 없을지도 모른다."
+trigger = &"day"
+trigger_params = {
+"day": 2
+}
+objectives = Array[ExtResource("2_qobj")]([SubResource("Resource_child")])
+fail_condition = {
+"days": 3
+}
+radio_text = "상가 2층에서 아이 울음소리가 들린다고 합니다. 들러 보실 수 있을까요?"

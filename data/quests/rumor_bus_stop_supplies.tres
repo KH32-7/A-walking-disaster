@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="QuestDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://systems/defs/quest_def.gd" id="1_qdef"]
+[ext_resource type="Script" path="res://systems/defs/quest_objective.gd" id="2_qobj"]
+
+[sub_resource type="Resource" id="Resource_kits"]
+script = ExtResource("2_qobj")
+id = &"bring_kits"
+kind = 1
+text = "버스 정류장 구호품 상자에서 구급상자 2개 가져오기"
+region_id = &"flooded_mall"
+target_id = &"first_aid_kit"
+count = 2
+marker = &"bus_stop"
+
+[resource]
+script = ExtResource("1_qdef")
+id = &"rumor_bus_stop_supplies"
+type = 2
+title = "정류장의 구호품 상자"
+description = "대피 버스가 떠난 정류장 옆에 구호품 상자가 남아 있다는 무전이 잡혔다. 다른 생존자가 먼저 가져갈 수도 있다."
+trigger = &"day"
+trigger_params = {
+"day": 3
+}
+objectives = Array[ExtResource("2_qobj")]([SubResource("Resource_kits")])
+rewards = {
+"resources": {
+&"medicine": 2
+}
+}
+fail_condition = {
+"days": 2
+}
+radio_text = "상가 앞 버스 정류장에 구호품 상자가 남아 있다는 무전이 잡혔습니다. 오래 남아 있진 않을 겁니다."

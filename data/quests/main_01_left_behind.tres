@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="QuestDef" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://systems/defs/quest_def.gd" id="1_qdef"]
+[ext_resource type="Script" path="res://systems/defs/quest_objective.gd" id="2_qobj"]
+
+[sub_resource type="Resource" id="Resource_visit"]
+script = ExtResource("2_qobj")
+id = &"visit_mall"
+kind = 0
+text = "무전 기록에 나온 침수 상가에 다녀오기"
+region_id = &"flooded_mall"
+
+[sub_resource type="Resource" id="Resource_rescue"]
+script = ExtResource("2_qobj")
+id = &"rescue_one"
+kind = 2
+text = "침수 상가에서 생존자 한 명 데려오기"
+region_id = &"flooded_mall"
+
+[resource]
+script = ExtResource("1_qdef")
+id = &"main_01_left_behind"
+type = 0
+title = "남겨진 사람들"
+description = "방송실 지기가 대피 명단에 없던 사람들의 오래된 무전 기록을 건넸다. 기록 맨 위에 적힌 곳은 물에 잠긴 상가다."
+trigger = &"day"
+trigger_params = {
+"day": 1
+}
+giver_id = &"broadcaster"
+objectives = Array[ExtResource("2_qobj")]([SubResource("Resource_visit"), SubResource("Resource_rescue")])
+rewards = {
+"flags": [&"rescue_list_open"],
+"resources": {
+&"wood": 10
+}
+}
