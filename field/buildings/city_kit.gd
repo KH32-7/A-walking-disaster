@@ -820,6 +820,89 @@ static func _dark(mat: Material, cache: Dictionary) -> Material:
 	return cache[sm]
 
 
+## Pack walls paint their cut top face orange (it is meant to sit under a ceiling). From the top-down
+## camera every room got a bright orange rim that clashes with the yellow loot outline, so a thin
+## matte cap covers each wall top: house module walls, window and entrance walls, interior walls.
+## The cap covers the mesh's highest vertices (the top face), not its box: window frames stick out.
+const WALL_CAP_COLOR := Color(0.16, 0.17, 0.19)
+const WALL_CAP_H := 0.03
+const WALL_CAP_PIECES := ["_wall_", "_windows_", "_entrance_", "_interior_door_"]
+
+
+static func cap_walls(root: Node3D) -> void:
+	# Caps go next to their wall's roof holder when it has one (flat roof parapets), so they hide
+	# with the roof when the player walks in. holder -> caps in holder space.
+	var caps := {}
+	var tops := {}
+	for mi: MeshInstance3D in root.find_children("*", "MeshInstance3D", true, false):
+		if mi.mesh == null:
+			continue
+		var owner_scene: Node = mi
+		while owner_scene != null and owner_scene.scene_file_path.is_empty():
+			owner_scene = owner_scene.get_parent()
+		if owner_scene == null or not ("/%s/" % MODULES) in owner_scene.scene_file_path:
+			continue
+		var file := owner_scene.scene_file_path.get_file()
+		if not WALL_CAP_PIECES.any(func(k: String) -> bool: return k in file):
+			continue
+		if not tops.has(mi.mesh):
+			tops[mi.mesh] = _top_face(mi.mesh)
+		var face: AABB = tops[mi.mesh]
+		if face.size == Vector3.ZERO:
+			continue
+		var holder: Node3D = root
+		var up := mi.get_parent()
+		while up != null and up != root:
+			if up.is_in_group(ROOF_GROUP):
+				holder = up
+				break
+			up = up.get_parent()
+		var center := face.get_center() + Vector3(0.0, WALL_CAP_H * 0.5, 0.0)
+		var size := Vector3(face.size.x + 0.02, WALL_CAP_H, face.size.z + 0.02)
+		if not caps.has(holder):
+			caps[holder] = []
+		caps[holder].append(holder.global_transform.affine_inverse() * mi.global_transform
+			* Transform3D(Basis.from_scale(size), center))
+	if caps.is_empty():
+		return
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = WALL_CAP_COLOR
+	mat.roughness = 1.0
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3.ONE
+	mesh.material = mat
+	for holder: Node3D in caps:
+		var xfs: Array = caps[holder]
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = mesh
+		mm.instance_count = xfs.size()
+		for i in xfs.size():
+			mm.set_instance_transform(i, xfs[i])
+		var node := MultiMeshInstance3D.new()
+		node.name = "WallCaps"
+		node.multimesh = mm
+		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		holder.add_child(node)
+
+
+## Box of a mesh's top face: all vertices within 2 cm of its highest point. Zero box if none.
+static func _top_face(mesh: Mesh) -> AABB:
+	var high := mesh.get_aabb().end.y - 0.02
+	var face := AABB()
+	var found := false
+	for s in mesh.get_surface_count():
+		for v: Vector3 in mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]:
+			if v.y < high:
+				continue
+			if found:
+				face = face.expand(v)
+			else:
+				face = AABB(v, Vector3.ZERO)
+				found = true
+	return face
+
+
 ## Puts a region's pack dressing scene (layout_builder.gd out_kit) under region, next to its layout:
 ## pack meshes in, greybox (group kit_greybox) out, layout skins on, foliage tuned. Does nothing
 ## without the private packs (CI keeps the greybox). Returns the dressing root or null.
@@ -829,6 +912,7 @@ static func attach(region: Node3D, layout: Node3D, kit_path: String) -> Node3D:
 	var kit := (load(kit_path) as PackedScene).instantiate() as Node3D
 	region.add_child(kit)
 	tune_look(kit)
+	cap_walls(kit)
 	# Layout CSG that stays (stairs, ramps) gets pack textures; Lane D's toon skin leaves ShaderMaterials.
 	var skins: Dictionary = kit.get_meta(&"layout_skins", {})
 	for path: NodePath in skins:

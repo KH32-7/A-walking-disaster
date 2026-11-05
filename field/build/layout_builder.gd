@@ -49,6 +49,8 @@ const KIT_TERRAIN := {
 }
 const KIT_GROUND_LIFT := 0.01
 const ROAD_BRIGHT := 1.5
+## Plants keep this far (m) from kit building walls; nearer, big bushes poke through into the rooms.
+const KIT_PLANT_MARGIN := 0.9
 const KitGrass := preload("res://field/buildings/kit_grass.gd")
 ## Lights on lamp props: piece -> lamp height (m). Warm, no shadows (many of them).
 const LAMP_LIGHTS := {"parking_lot_light_pole_01": 6.4, "military_light_tower_big": 7.0, "mobile_light_tower": 2.3}
@@ -776,6 +778,13 @@ func _bake_splat() -> ImageTexture:
 	for i in n * n:
 		grass[i] = maxf(grass[i] - bare[i], 0.0)
 	_box_blur(grass, n, 2)
+	# The blur spreads grass back under walls; no blades inside buildings at all.
+	var walls := PackedFloat32Array()
+	walls.resize(n * n)
+	for poly: PackedVector2Array in _kit_blocked_polys():
+		_raster(walls, n, poly)
+	for i in n * n:
+		grass[i] *= 1.0 - walls[i]
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	for y in n:
 		for x in n:
@@ -1359,7 +1368,7 @@ func _kit_blocked_polys() -> Array:
 	for id: String in _kit:
 		var parts: Dictionary = _kit[id]
 		var porch: bool = kit_buildings[id][0].get("porch", false)
-		out.append(_rect_poly((parts.rect as Rect2).grow(0.3)))
+		out.append(_rect_poly((parts.rect as Rect2).grow(KIT_PLANT_MARGIN)))
 		for seg: Dictionary in parts.segments:
 			if seg.inner or seg.kind != "e":
 				continue
