@@ -22,7 +22,7 @@ look.apply(resident.appearance)   # {"preset", "hair", "hair_color", "outfit_col
    머티리얼 이름(`…_HAIR`, `…_SKIN`, `…_CLOTH`)은 그대로 둔다. `CharacterLook`이 이 이름으로 색을 칠한다.
 3. **넣을 곳**: `assets/characters/vroid/<이름>.vrm`(비공개 서브모듈). `assets/LICENSES.md`에 VRoid 이용 약관
    (상업 이용 가능, 아바타 사용 조건)을 적는다. 순서는 `art/pipeline/README.md`를 따른다.
-4. **가져오기**: `godot-vrm` 애드온이 필요하다. 애드온 추가와 활성화(`project.godot`)는 레인 A가 한다(요청 이슈).
+4. **가져오기**: `godot-vrm` 애드온이 필요하다(`addons/`에 들어 있고 `project.godot`에서 켜져 있다, A-52).
    MToon 셰이더는 애드온에 들어 있다. 툰 명암은 우리 `toon.gdshader`와 비슷하게 맞춘다(그림자 색 `#6B7F8C`).
 5. **프리셋 연결**: `data/ui/appearance/<id>.tres`의 `base_model`에 경로를 넣는다.
 
