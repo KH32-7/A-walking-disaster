@@ -12,8 +12,8 @@ extends MenuScreen
 ## marker_lines() / facility_choices() give the world tag and the [F] lines for the coming facility list.
 
 const STATE_WORDS := {
-	&"empty": "○ 비어 있음", &"building": "◐ 짓는 중", &"short": "△ 주둔 부족 · 멈춤",
-	&"damaged": "✕ 부서짐 · 멈춤", &"active": "◆ 가동 중",
+	&"empty": "비어 있음", &"building": "짓는 중", &"short": "주둔 부족 / 멈춤",
+	&"damaged": "부서짐 / 멈춤", &"active": "가동 중",
 }
 
 var _sel: StringName = &""
@@ -128,10 +128,10 @@ static func steps_for(n: Dictionary) -> Array:
 	var crew := "주둔 %d/%d" % [g, OutpostRules.GARRISON_SIZE]
 	match state_of(n):
 		&"empty":
-			return [{"label": "짓기 · %d일" % OutpostRules.BUILD_DAYS, "state": StepBand.NOW},
+			return [{"label": "짓기 / %d일" % OutpostRules.BUILD_DAYS, "state": StepBand.NOW},
 				{"label": crew, "state": StepBand.TODO}, {"label": "가동", "state": StepBand.TODO}]
 		&"building":
-			return [{"label": "짓는 중 · %d일차 완성" % int(n.get("ready_day", 0)), "state": StepBand.NOW},
+			return [{"label": "짓는 중 / %d일차 완성" % int(n.get("ready_day", 0)), "state": StepBand.NOW},
 				{"label": crew, "state": StepBand.TODO}, {"label": "가동", "state": StepBand.TODO}]
 		&"damaged":
 			return [{"label": "수리", "state": StepBand.NOW},
@@ -146,9 +146,9 @@ static func steps_for(n: Dictionary) -> Array:
 ## World tag text for a node: [small name, big state].
 static func marker_lines(n: Dictionary) -> Array[String]:
 	var g: int = (n.get("garrison", []) as Array).size()
-	var big: String = {&"empty": "빈 노드 · 지을 수 있음", &"building": "짓는 중 · %d일차" % int(n.get("ready_day", 0)),
-		&"damaged": "✕ 부서짐 · 수리 필요", &"short": "주둔 %d/%d" % [g, OutpostRules.GARRISON_SIZE],
-		&"active": "◆ 가동 중 · 주둔 %d/%d" % [g, OutpostRules.GARRISON_SIZE]}[state_of(n)]
+	var big: String = {&"empty": "빈 노드 / 지을 수 있음", &"building": "짓는 중 / %d일차" % int(n.get("ready_day", 0)),
+		&"damaged": "✕ 부서짐 / 수리 필요", &"short": "주둔 %d/%d" % [g, OutpostRules.GARRISON_SIZE],
+		&"active": "가동 중 / 주둔 %d/%d" % [g, OutpostRules.GARRISON_SIZE]}[state_of(n)]
 	return [node_name(n), big]
 
 
@@ -218,14 +218,14 @@ func _effect_card(n: Dictionary) -> Control:
 	var lines: PackedStringArray = []
 	lines.append("위협도 −%d/일" % roundi(RaidRules.THREAT_PER_OUTPOST))
 	if StringName(n.get("direction", &"")) != &"":
-		lines.append("이 방향 습격 강도 −%d%% · 하루 전 예고 + 규모·계열" % roundi(OutpostRules.DIRECTION_CUT * 100.0))
+		lines.append("이 방향 습격 강도 −%d%% / 하루 전 예고 + 규모, 계열" % roundi(OutpostRules.DIRECTION_CUT * 100.0))
 	var gather: PackedStringArray = []
 	for res: StringName in OutpostRules.GATHER:
 		gather.append("%s +%d" % [MenuScreen.resource_name(res), int(OutpostRules.GATHER[res])])
-	lines.append("주변 채집 %s /일" % " · ".join(gather))
+	lines.append("주변 채집 %s /일" % " / ".join(gather))
 	lines.append("유지비 %s /일" % MenuScreen.cost_text(OutpostRules.UPKEEP))
 	for t in lines:
-		var l := MenuScreen.label("·  " + t, &"LabelOnCream", 15)
+		var l := MenuScreen.label("- " + t, &"LabelOnCream", 15)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		v.add_child(l)
 	var warn := MenuScreen.label("습격의 일부는 전초기지를 노려요. 무너지면 주둔 주민이 다치고 멈춰요.", &"LabelOnCreamDim", 13)
@@ -335,7 +335,7 @@ func _candidate_row(node_id: StringName, rid: StringName, full: bool, may_be_pri
 	h.add_theme_constant_override(&"separation", 12)
 	h.add_child(FaceDot.new(LossText.display_name(rid), 36, why != "", LossText.face_mark(rid)))
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override(&"separation", -2)
+	v.add_theme_constant_override(&"separation", 2)
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.add_child(MenuScreen.label(LossText.display_name(rid), &"LabelHud", 16))
 	var job := BaseDB.get_job(Colony.job_of(rid))
@@ -344,7 +344,7 @@ func _candidate_row(node_id: StringName, rid: StringName, full: bool, may_be_pri
 		sub = "다른 전초기지에서 옮겨요"
 	var grief := LossText.grief_tag(r)
 	if grief != "":
-		sub += " · " + grief
+		sub += " / " + grief
 	v.add_child(MenuScreen.label(sub, &"LabelDim", 13))
 	if why != "":
 		var wl := MenuScreen.label("■ " + why, &"LabelDim", 13)

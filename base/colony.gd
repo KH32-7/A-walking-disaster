@@ -293,6 +293,9 @@ func remove_beds(bed_ids: Array[StringName]) -> void:
 
 # --- Buildings (Lane C) --------------------------------------------------------
 
+## Former job names for the "전직 … 주민 필요" reason (residents_screen has the full list).
+const _JOB_REASON_NAMES := {&"doctor": "의사", &"nurse": "간호사", &"electrician": "전기기사", &"carpenter": "목수"}
+
 ## Can `def_id` be built now? Checks tier, required buildings, flags (blueprints, first death),
 ## a resident with the required former job, and the Lv1 cost. Placement (cells, zone, paths)
 ## is checked by the grid (C-03). Returns {"ok": bool, "reasons": Array[String]} for the UI.
@@ -303,6 +306,8 @@ func can_build(def_id: StringName) -> Dictionary:
 		return {"ok": false, "reasons": ["알 수 없는 건물: %s" % def_id]}
 	if def.prebuilt:
 		reasons.append("처음부터 있는 시설")
+	if def.story_only:
+		reasons.append("이야기로만 생기는 건물")
 	if tier < def.tier_min:
 		reasons.append("기지 단계 %s 필요" % Enums.BaseTier.keys()[def.tier_min])
 	for req in def.requires:
@@ -313,7 +318,7 @@ func can_build(def_id: StringName) -> Dictionary:
 		if not GameState.has_flag(flag):
 			reasons.append("조건 필요: %s" % flag)
 	if def.requires_former_job != &"" and not _has_former_job(def.requires_former_job):
-		reasons.append("전직 %s 주민 필요" % def.requires_former_job)
+		reasons.append("전직 %s 주민 필요" % _JOB_REASON_NAMES.get(def.requires_former_job, String(def.requires_former_job)))
 	if not Economy.can_afford(def.cost_for_level(1)):
 		reasons.append("자원 부족")
 	return {"ok": reasons.is_empty(), "reasons": reasons}
@@ -754,7 +759,7 @@ func job_block_reason(resident_id: StringName, job_id: StringName, building_uid:
 			return access_block_reason(resident_id, building_uid)
 		var site: Dictionary = buildings.get(building_uid, {})
 		if site.is_empty():
-			return "건설 현장·수리할 건물·개간할 구역을 골라야 함"
+			return "건설 현장, 수리할 건물, 개간할 구역을 골라야 함"
 		if site["completed"] and not _needs_maintenance(building_uid):
 			return "할 일이 없는 건물 (파손되면 먼저 수리 시작, 벽은 내구도가 줄면)"
 		return access_block_reason(resident_id, site["zone_id"])
@@ -764,7 +769,7 @@ func job_block_reason(resident_id: StringName, job_id: StringName, building_uid:
 		if _free_workplace(job.workplace, resident_id) != &"":
 			return ""
 		if _free_workplace(job.workplace, resident_id, false) != &"":
-			return "갈 수 있는 %s 자리가 없음 (경사로·승강기 필요)" % _def_name(job.workplace)
+			return "갈 수 있는 %s 자리가 없음 (경사로, 승강기 필요)" % _def_name(job.workplace)
 		return "빈 %s 자리가 없음" % _def_name(job.workplace)
 	var b: Dictionary = buildings.get(building_uid, {})
 	if b.is_empty() or b["def_id"] != job.workplace or not b["completed"]:
@@ -1227,7 +1232,7 @@ func roll_raid(time: Enums.RaidTime, force: bool = false) -> Dictionary:
 		"strength": 0.0, "target": &"base", "warning_sec": 0.0, "family": Enums.Element.NONE, "notice": &"none"}
 	var small := false
 	if not force:
-		if day < RaidRules.FIRST_RAID_DAY or last_raid_day == day:
+		if not RaidRules.RAIDS or day < RaidRules.FIRST_RAID_DAY or last_raid_day == day:
 			return raid
 		var chance := RaidRules.raid_chance(time, threat)
 		if _rng.randf() >= float(chance["chance"]):
@@ -1564,6 +1569,10 @@ func direct_defense() -> Dictionary:
 ## Starts a played defence of `raid` (already started with start_raid). `on_done` runs after the result.
 ## A (night raids, SceneRouter) can call this instead of resolve_raid(AUTO) to let the player fight.
 func begin_direct_defense(raid: Dictionary, first_wave: int, on_done: Callable) -> void:
+	if not RaidRules.DIRECT_DEFENSE:
+		resolve_raid(raid, Enums.RaidMode.AUTO)  # 방어전 꺼짐: 자동 판정
+		on_done.call()
+		return
 	if defense_requested.get_connections().is_empty():
 		resolve_raid(raid, Enums.RaidMode.PLAYED)
 		on_done.call()
@@ -1575,6 +1584,8 @@ func begin_direct_defense(raid: Dictionary, first_wave: int, on_done: Callable) 
 ## D-14 경보 카드의 "직접 방어" (RaidFlow.choose). The battle is already set up for a raid Colony
 ## began (its prep waits while the card is open); otherwise this starts one. Returns true.
 func start_defense(raid: Dictionary) -> bool:
+	if not RaidRules.DIRECT_DEFENSE:
+		return false
 	if not _defense.is_empty() and StringName(_defense["raid"].get("raid_id", &"")) == StringName(raid.get("raid_id", &"")):
 		return true
 	if active_raid.is_empty():
@@ -1741,7 +1752,7 @@ func _roll_field_day_raid() -> void:
 	_field_raid = {}
 	_emergency_requested = false
 	var day := GameState.day
-	if day < RaidRules.FIRST_RAID_DAY or last_raid_day == day:
+	if not RaidRules.RAIDS or day < RaidRules.FIRST_RAID_DAY or last_raid_day == day:
 		return
 	if _rng.randf() >= float(RaidRules.raid_chance(Enums.RaidTime.DAY, threat)["chance"]):
 		return
@@ -1850,7 +1861,7 @@ static func _direction_text(directions: Array) -> String:
 	var parts := PackedStringArray()
 	for d in directions:
 		parts.append(names.get(StringName(d), String(d)))
-	return "·".join(parts) if not parts.is_empty() else "어딘가"
+	return ", ".join(parts) if not parts.is_empty() else "어딘가"
 
 
 # --- 참여 조건 and inclusion facilities (Lane C, C-11) --------------------------------
@@ -3824,23 +3835,23 @@ func load_data(data: Dictionary) -> void:
 
 func _register_debug_commands() -> void:
 	DebugConsole.register(&"resident", _cmd_resident,
-		"resident add [demo 1~3] | list | persuade <id> | set <id> <morale|trust|hunger|fatigue> <n> - 주민 추가·목록·붙잡기·값 설정")
+		"resident add [demo 1~3] | list | persuade <id> | set <id> <morale|trust|hunger|fatigue> <n> - 주민 추가, 목록, 붙잡기, 값 설정")
 	DebugConsole.register(&"job", _cmd_job,
 		"job <resident_id> <job_id> [building_uid] - 작업 배정 (job list: 직업 목록)")
 	DebugConsole.register(&"settle", _cmd_settle,
 		"settle - 하루 정산을 돌리고 Economy에 반영 (A-05 전 테스트용)")
 	DebugConsole.register(&"trust", _cmd_trust,
-		"trust <id> | trust talk|deep|add <id> [n] | trust gift <id> <resource_id> - 신뢰도·대화·선물")
+		"trust <id> | trust talk|deep|add <id> [n] | trust gift <id> <resource_id> - 신뢰도, 대화, 선물")
 	DebugConsole.register(&"outpost", _cmd_outpost,
 		"outpost | outpost build <node> | post <node> <id> | repair <node> | raid <node> - 전초기지")
 	DebugConsole.register(&"loss", _cmd_loss,
-		"loss | loss strand <id> [region] | loss day | loss kill <id> | loss visit <id> - 고립·실종·사망·추모")
+		"loss | loss strand <id> [region] | loss day | loss kill <id> | loss visit <id> - 고립, 실종, 사망, 추모")
 	DebugConsole.register(&"prejudice", _cmd_prejudice,
 		"prejudice | prejudice rumor <id> | choose <id> defend|watch|separate | incident <id> - 편견 이벤트 체인")
 	DebugConsole.register(&"child", _cmd_child,
-		"child | child wish <a> <b> | child now <a> <b> birth|adopt | child later <a> <b> - 아이 맞이 (조건·대화·답)")
+		"child | child wish <a> <b> | child now <a> <b> birth|adopt | child later <a> <b> - 아이 맞이 (조건, 대화, 답)")
 	DebugConsole.register(&"arrival", _cmd_arrival,
-		"arrival | arrival <id> nick <별명> | preset <id> | bed <bed_id|none> | done - 입주 의식 (목록·별명·외형·침상·첫 대화)")
+		"arrival | arrival <id> nick <별명> | preset <id> | bed <bed_id|none> | done - 입주 의식 (목록, 별명, 외형, 침상, 첫 대화)")
 	DebugConsole.register(&"rel", _cmd_rel,
 		"rel <id> | rel add <a> <b> <n> | rel night (오늘 밤 이벤트 뽑고 모두 진행) | rel wedding <a> <b> (결혼식 준비)")
 	DebugConsole.register(&"zone", _cmd_zone,
@@ -3869,9 +3880,9 @@ func _register_debug_commands() -> void:
 		return "%s → Lv%d (비용 %s)" % [args[0], get_building(StringName(args[0]))["level"], check["cost"]],
 		"upgrade <building_uid> - 시설 레벨업")
 	DebugConsole.register(&"raid", _cmd_raid,
-		"raid now [day|night] | raid threat <0~100> | raid info - 습격 강제·위협도 설정·방어력/예상")
+		"raid now [day|night] | raid threat <0~100> | raid info - 습격 강제, 위협도 설정, 방어력/예상")
 	DebugConsole.register(&"build", _cmd_build,
-		"build <building_id> | build list - 비용 없이 건물을 바로 완성 / 건물·전력·소음 목록")
+		"build <building_id> | build list - 비용 없이 건물을 바로 완성 / 건물, 전력, 소음 목록")
 
 
 func _cmd_outpost(args: PackedStringArray) -> String:
@@ -3879,7 +3890,7 @@ func _cmd_outpost(args: PackedStringArray) -> String:
 	if args.is_empty():
 		var lines := PackedStringArray()
 		for n in outpost_nodes():
-			lines.append("  %s %s%s · 주둔 %s" % [n["node_id"], "가동" if n["active"] else ("부서짐" if n["damaged"] else ("완성" if n["ready"] else ("건설 중(%d일)" % n["ready_day"] if n["built"] else "빈 노드"))),
+			lines.append("  %s %s%s / 주둔 %s" % [n["node_id"], "가동" if n["active"] else ("부서짐" if n["damaged"] else ("완성" if n["ready"] else ("건설 중(%d일)" % n["ready_day"] if n["built"] else "빈 노드"))),
 				"", n["garrison"]])
 		return "\n".join(lines)
 	if args.size() < 2:
@@ -3905,7 +3916,7 @@ func _cmd_outpost(args: PackedStringArray) -> String:
 func _cmd_loss(args: PackedStringArray) -> String:
 	var usage := "사용법: loss | loss strand <id> [region] | loss day | loss kill <id> | loss visit <id>"
 	if args.is_empty():
-		return "고립 %s · 추모비 %s · 장례 대기 %s" % [stranded_residents(), memorial_names(), pending_funeral()]
+		return "고립 %s / 추모비 %s / 장례 대기 %s" % [stranded_residents(), memorial_names(), pending_funeral()]
 	var events: Array = []
 	match args[0]:
 		"day":
@@ -3930,7 +3941,7 @@ func _cmd_loss(args: PackedStringArray) -> String:
 func _cmd_prejudice(args: PackedStringArray) -> String:
 	var usage := "사용법: prejudice | prejudice rumor <흔적 주민> | prejudice choose <흔적 주민> defend|watch|separate | prejudice incident <흔적 주민>"
 	if args.is_empty():
-		return "편견 체인: %s · 편견 가진 주민 %s" % [prejudice_chains_data if not prejudice_chains_data.is_empty() else "없음", _prejudice_holders()]
+		return "편견 체인: %s / 편견 가진 주민 %s" % [prejudice_chains_data if not prejudice_chains_data.is_empty() else "없음", _prejudice_holders()]
 	if args.size() < 2 or not residents.has(StringName(args[1])):
 		return usage
 	var target := StringName(args[1])
@@ -3959,9 +3970,9 @@ func _cmd_child(args: PackedStringArray) -> String:
 		var lines := PackedStringArray()
 		for pair in couples():
 			var status := child_arrival_status(pair[0], pair[1])
-			lines.append("%s+%s: %s · 아이 %s" % [pair[0], pair[1], "조건 충족" if status["ok"] else ", ".join(status["missing"]),
+			lines.append("%s+%s: %s / 아이 %s" % [pair[0], pair[1], "조건 충족" if status["ok"] else ", ".join(status["missing"]),
 				children_of(pair[0], pair[1])])
-		lines.append("대화 대기 %s · 보호자 없는 아이 %s" % [child_wishes(), orphans()])
+		lines.append("대화 대기 %s / 보호자 없는 아이 %s" % [child_wishes(), orphans()])
 		return "\n".join(lines)
 	if args.size() < 3 or not residents.has(StringName(args[1])) or not residents.has(StringName(args[2])):
 		return usage
@@ -3986,7 +3997,7 @@ func _cmd_arrival(args: PackedStringArray) -> String:
 	var usage := "사용법: arrival | arrival <id> nick <별명> | preset <id> | bed <bed_id|none> | done"
 	if args.is_empty():
 		var waiting := pending_arrivals()
-		return "입주 의식 대기: %s · 빈 침상 %s" % [waiting if not waiting.is_empty() else "없음", free_beds()]
+		return "입주 의식 대기: %s / 빈 침상 %s" % [waiting if not waiting.is_empty() else "없음", free_beds()]
 	var id := StringName(args[0])
 	if not residents.has(id):
 		return "없는 주민: %s" % id
@@ -4004,7 +4015,7 @@ func _cmd_arrival(args: PackedStringArray) -> String:
 			return "침상: %s" % residents[id]["bed_id"] if choose_bed(id, &"" if value == "none" else StringName(value)) else "그 침상은 쓸 수 없다"
 		"done":
 			var res := complete_arrival(id)
-			return "첫 대화 — %s / 좋아하는 것: %s" % [res["background"], res["like"]] if res["ok"] else "입주 의식 대기 중이 아님"
+			return "첫 대화: %s / 좋아하는 것: %s" % [res["background"], res["like"]] if res["ok"] else "입주 의식 대기 중이 아님"
 	return usage
 
 
@@ -4056,7 +4067,7 @@ func _cmd_trust(args: PackedStringArray) -> String:
 	var res := {}
 	match sub:
 		"show":
-			return "%s 신뢰 %d · %s · 열린 사연 %s · 오늘 가능 %s" % [id, residents[id]["trust"],
+			return "%s 신뢰 %d / %s / 열린 사연 %s / 오늘 가능 %s" % [id, residents[id]["trust"],
 				TrustRules.STAGE_NAMES[trust_stage(id)], unlocked_story(id), trust_actions(id)]
 		"talk":
 			res = talk(id)
@@ -4112,7 +4123,7 @@ func _cmd_settle(_args: PackedStringArray) -> String:
 		"생산 %s" % report["produced"], "소비 %s" % report["consumed"],
 		"변화 %s (반영 %s, 버림 %s)" % [report["changes"], applied["ok"], applied["discarded"]]])
 	for e in report["events"]:
-		lines.append("  · " + e["text"])
+		lines.append("  - " + e["text"])
 	return "\n".join(lines)
 
 
@@ -4171,10 +4182,10 @@ func _cmd_resident(args: PackedStringArray) -> String:
 			var lines := PackedStringArray(["주민 %d명, 침상 %d/%d" % [population(), bed_count() - free_beds().size(), bed_count()]])
 			for id: StringName in residents:
 				var r: Dictionary = residents[id]
-				lines.append("  %s %s (%s) 특성 %s 능력치 %s · 사기 %d 신뢰 %d 배고픔 %d 피로 %d %s%s" % [id, r["name"],
+				lines.append("  %s %s (%s) 특성 %s 능력치 %s / 사기 %d 신뢰 %d 배고픔 %d 피로 %d %s%s" % [id, r["name"],
 					"여성" if r["gender"] == ResidentData.GENDER_FEMALE else "남성",
 					r["traits"], r["stats"], r["morale"], r["trust"], r["hunger"], r["fatigue"],
-					Enums.HealthState.keys()[r["health"]], " · 떠나려 함" if r["leave_crisis"] else ""])
+					Enums.HealthState.keys()[r["health"]], " / 떠나려 함" if r["leave_crisis"] else ""])
 			return "\n".join(lines)
 		"persuade":
 			if args.size() < 2:

@@ -26,12 +26,31 @@ func close() -> void:
 	SceneRouter.confirm_evening()
 
 
+## SceneRouter enters EVENING before it settles the day, and UI opens this screen on the state
+## change: without a welcome first, the screen would draw the old report. It redraws once the
+## settlement arrives (기지 검사 2026-11-06: 벌목 +11이 정산 화면에 안 보이던 문제).
+func _on_evening_settled(r: Dictionary) -> void:
+	report = r
+	if _steps != null:
+		_steps.queue_free()
+		_steps = null
+	if body != null:
+		MenuScreen.clear(body)
+		_build_body(body)
+
+
+var _steps: Control
+
+
 func _build_body(b: Control) -> void:
+	if not EventBus.evening_settled.is_connected(_on_evening_settled):
+		EventBus.evening_settled.connect(_on_evening_settled)
 	if report.is_empty():
 		report = SceneRouter.last_evening_report
 	var steps := StepDots.new()
 	steps.steps = ["결과", "저녁 정산", "밤"]
 	steps.current = 1
+	_steps = steps
 	add_child(steps)
 	steps.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE)
 	steps.grow_horizontal = Control.GROW_DIRECTION_BEGIN
@@ -48,7 +67,7 @@ func _build_body(b: Control) -> void:
 	var g := GridContainer.new()
 	g.columns = 4
 	g.add_theme_constant_override(&"h_separation", 40)
-	g.add_theme_constant_override(&"v_separation", 4)
+	g.add_theme_constant_override(&"v_separation", 8)
 	for h in ["자원", "생산", "소비", "합계"]:
 		g.add_child(MenuScreen.label(h, &"LabelDim", 13))
 	var produced: Dictionary = report.get("produced", {})
@@ -63,8 +82,8 @@ func _build_body(b: Control) -> void:
 		var p := int(produced.get(id, 0))
 		var c := int(consumed.get(id, 0))
 		g.add_child(MenuScreen.label(MenuScreen.resource_name(id), &"LabelHud", 16))
-		g.add_child(MenuScreen.label("+%d" % p if p > 0 else "—", &"LabelNumber", 17))
-		g.add_child(MenuScreen.label("−%d" % c if c > 0 else "—", &"LabelNumber", 17))
+		g.add_child(MenuScreen.label("+%d" % p if p > 0 else "-", &"LabelNumber", 17))
+		g.add_child(MenuScreen.label("−%d" % c if c > 0 else "-", &"LabelNumber", 17))
 		var net := MenuScreen.label(("%+d" % (p - c)), &"LabelNumber", 18)
 		net.add_theme_color_override(&"font_color", UiTokens.GOOD if p - c > 0 else (UiTokens.DANGER if p - c < 0 else UiTokens.TEXT))
 		g.add_child(net)
@@ -83,7 +102,7 @@ func _build_body(b: Control) -> void:
 		tv.add_child(dl)
 	var food := Economy.get_amount(&"food")
 	var need := int(consumed.get(&"food", 0))
-	var fl := MenuScreen.label("남은 식량 %d%s" % [food, (" · 약 %d일치" % (food / need)) if need > 0 else ""], &"LabelHud", 15)
+	var fl := MenuScreen.label("남은 식량 %d%s" % [food, (" / 약 %d일치" % (food / need)) if need > 0 else ""], &"LabelHud", 15)
 	if need > 0 and food < need * 2:
 		fl.add_theme_color_override(&"font_color", UiTokens.WARN)
 	tv.add_child(fl)
@@ -112,7 +131,7 @@ func _build_body(b: Control) -> void:
 	var ev := MenuScreen.panel("오늘 있었던 일", "")
 	var evv: VBoxContainer = ev[1]
 	for e: Dictionary in report.get("events", []):
-		var l := MenuScreen.label("·  " + String(e.get("text", "")), &"LabelHud", 15)
+		var l := MenuScreen.label("- " + String(e.get("text", "")), &"LabelHud", 15)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.custom_minimum_size = Vector2(440, 0)
 		evv.add_child(l)

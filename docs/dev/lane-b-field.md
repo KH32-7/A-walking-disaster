@@ -140,3 +140,9 @@
 - 침수 상가: 모듈 건물 9채(집 6, 약국, 편의점, 정비실, 실내 가구), 상가와 마트 외벽, 특수 지역, 루팅 상자 팩 모양과 상태 테두리.
 - 나머지 지역(공원 등)은 같은 생성기로 켜기만 하면 된다. 생성 파일은 contracts.md "맵 파일과 마커"(`buildings.tscn`, `ground_splat.res`).
 - 참고: `02-field.md` "맵 꾸미기와 밀도", `16-art-sound.md` "아트 방향".
+
+### B-29 동행 주민 고유 스킬 · 해커톤 주제 강화
+- 주민마다 고유 스킬 하나(`ResidentTemplate.signature_skill`, `signature_line`). 동행 중 클래스 Q 대신 쓰고, 무기 종류·적성과 상관없다.
+- 실행은 기존 `CompanionSkill` id(`dash_slash`, `slam`, `precision_shot`)를 다시 쓰고, 수치·연출만 따로(`data/classes/skills/signature/`).
+- 쓸 때만 히트스톱·셰이크(`CombatFeel.STOP_SIGNATURE`, `SHAKE_SIGNATURE`)와 담담한 한 줄 말풍선(`FieldCompanion.called_out`).
+- 데모: 서하은(휠체어 정비공) 휠체어 돌진, 조순임(70대 농부) 마법서 광역.

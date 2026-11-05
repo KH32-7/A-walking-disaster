@@ -25,9 +25,6 @@ var _threat_label: Label
 var _threat: ThreatGauge
 var _notes: VBoxContainer
 var _menu_buttons: Dictionary = {}
-## "[F] 서하은와 이야기하기": what the player can use right here (UI_RULES §1.5).
-var _prompt: HBoxContainer
-var _prompt_label: Label
 
 
 func _ready() -> void:
@@ -43,14 +40,14 @@ func _ready() -> void:
 
 
 func refresh() -> void:
-	_day.text = "%d일차 · %s" % [GameState.day, SEASONS[int(GameState.season()) % 4]]
-	_phase.text = PHASES[clampi(int(GameState.phase), 0, 4)] + (" · 비" if GameState.is_raining() else "")
+	_day.text = "%d일차 / %s" % [GameState.day, SEASONS[int(GameState.season()) % 4]]
+	_phase.text = PHASES[clampi(int(GameState.phase), 0, 4)] + (" / 비" if GameState.is_raining() else "")
 	MenuScreen.clear(_res)
 	for id in RESOURCES:
 		var h := HBoxContainer.new()
-		h.add_theme_constant_override(&"separation", 6)
-		h.add_child(_lbl(MenuScreen.resource_name(id), &"LabelDim", 14))
-		var n := _lbl(str(Economy.get_amount(id)), &"LabelNumber", 21)
+		h.add_theme_constant_override(&"separation", 10)
+		h.add_child(_lbl(MenuScreen.resource_name(id), &"LabelHud", 17))
+		var n := _lbl(str(Economy.get_amount(id)), &"LabelNumber", 24)
 		h.add_child(n)
 		_res.add_child(h)
 	var cap := Economy.storage_cap()
@@ -108,7 +105,7 @@ func note_count() -> int:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not visible or not UI.stack_ids().is_empty():
+	if not is_visible_in_tree() or not UI.stack_ids().is_empty():
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var k := OS.get_keycode_string((event as InputEventKey).keycode)
@@ -148,7 +145,7 @@ func _build() -> void:
 	h.add_theme_constant_override(&"separation", 30)
 	top.add_child(h)
 	var dv := VBoxContainer.new()
-	dv.add_theme_constant_override(&"separation", -2)
+	dv.add_theme_constant_override(&"separation", 2)
 	_day = _lbl("", &"LabelSection", 22)
 	_phase = _lbl("", &"LabelDim", 14)
 	dv.add_child(_day)
@@ -167,7 +164,7 @@ func _build() -> void:
 		h.add_child(l)
 	h.add_child(_sep())
 	var tv := VBoxContainer.new()
-	tv.add_theme_constant_override(&"separation", 4)
+	tv.add_theme_constant_override(&"separation", 8)
 	var th := HBoxContainer.new()
 	th.add_child(_lbl("습격 위협도", &"LabelDim", 14))
 	_threat_label = _lbl("", &"LabelHud", 15)
@@ -188,7 +185,7 @@ func _build() -> void:
 	var mp := PanelContainer.new()
 	mp.theme_type_variation = &"PanelMenu"
 	var mh := HBoxContainer.new()
-	mh.add_theme_constant_override(&"separation", 6)
+	mh.add_theme_constant_override(&"separation", 10)
 	mp.add_child(mh)
 	for m: Array in MENU:
 		var b := Button.new()
@@ -203,29 +200,6 @@ func _build() -> void:
 	mp.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	mp.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	mp.position.y -= 28
-	_prompt = HBoxContainer.new()
-	_prompt.add_theme_constant_override(&"separation", 10)
-	_prompt.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_prompt.add_child(KeyChip.new("F"))
-	_prompt_label = _lbl("", &"LabelHud", 19)
-	_prompt_label.add_theme_color_override(&"font_shadow_color", UiTokens.SHADOW)
-	_prompt.add_child(_prompt_label)
-	add_child(_prompt)
-	_prompt.visible = false
-
-
-func _process(_delta: float) -> void:
-	if _prompt == null:
-		return
-	var p := get_tree().get_first_node_in_group(&"player")
-	var target: Node = p.call(&"interact_target") if p != null and p.has_method(&"interact_target") and UI.stack_ids().is_empty() else null
-	var text := String(target.call(&"interact_label")) if target != null and target.has_method(&"interact_label") else ""
-	_prompt.visible = text != ""
-	if _prompt.visible:
-		_prompt_label.text = text
-		var vp := get_viewport_rect().size
-		var sz := _prompt.get_combined_minimum_size()
-		_prompt.position = Vector2((vp.x - sz.x) * 0.5, vp.y - 150.0)
 
 
 func _sep() -> Control:
@@ -288,3 +262,8 @@ class ThreatGauge:
 			x += 7.0
 		var m := w * clampf(value / mx, 0.0, 1.0)
 		draw_rect(Rect2(m - 2, -3, 4, size.y + 6), UiTokens.TEXT)
+
+
+## Bottom dock button by its id (&"build", &"@sortie" …) for the tutorial spotlight. null = none.
+func menu_button(id: StringName) -> Button:
+	return _menu_buttons.get(id, null)

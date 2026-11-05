@@ -23,20 +23,76 @@ func run() -> bool:
 	surf.name = "Surface0"
 	surf.size = Vector3(10, 0.1, 10)
 	water_root.add_child(surf)
+	var far := MeshInstance3D.new()  # the layout builder's outskirts backdrop, built before FAR_GROUND_Y
+	far.name = "FarGround"
+	far.mesh = PlaneMesh.new()
+	map.add_child(far)
+	far.position.y = -0.05
+	var standing := _lamp_post(map, Vector3(5, 0, 5), false)
+	_lamp_post(map, Vector3(-5, 0, 5), true)
+	# The layout builder's own omni over each post (also over the fallen one) and a light tower's.
+	var builder_lamps: Array[OmniLight3D] = []
+	for at: Vector3 in [Vector3(5, 6.4, 5), Vector3(-5, 6.4, 5), Vector3(30, 7.0, 0)]:
+		var lamp := OmniLight3D.new()
+		lamp.name = "Lamp"
+		map.add_child(lamp, true)
+		lamp.position = at
+		builder_lamps.append(lamp)
 	var d: RegionDressing = load("res://levels/field/flooded_mall/dressing.tscn").instantiate()
+	d.night_fade_sec = 0.0
 	map.add_child(d)
 	await get_tree().process_frame
 	await get_tree().process_frame
+	ok = _expect(d.street_light_count() == 1, "only the standing lamp post lights up (%d)" % d.street_light_count()) and ok
+	ok = _expect(not builder_lamps[0].visible and not builder_lamps[1].visible and builder_lamps[2].visible,
+		"the builder's lamp-post omnis go off, a light tower's stays") and ok
+	var spot: SpotLight3D = null
+	for c in d.get_children():
+		if c is SpotLight3D:
+			spot = c
+	if spot != null:
+		ok = _expect(spot.global_position.distance_to(standing.global_position + Vector3(0, 6.5, 0)) < 0.2,
+			"the lamp hangs at the top of the post") and ok
+		ok = _expect((-spot.global_basis.z).dot(Vector3.DOWN) > 0.99, "the lamp shines straight down") and ok
+		ok = _expect(not spot.visible and not Fx.night_lights, "by day the lamps are off and muzzle flashes give no light") and ok
+		var day_sun: float = (d.get_node(^"Sun") as DirectionalLight3D).light_energy
+		FieldState.night_started.emit()
+		ok = _expect(spot.visible and is_equal_approx(spot.light_energy, d.street_light_energy),
+			"the lamps come on at night") and ok
+		ok = _expect(Fx.night_lights, "muzzle flashes light the ground at night") and ok
+		var night_sun: float = (d.get_node(^"Sun") as DirectionalLight3D).light_energy
+		ok = _expect(is_equal_approx(night_sun, d.night_sun_energy) and night_sun < day_sun, "the map goes dark at night") and ok
 	ok = _expect(d.get_node_or_null(^"DressingEnvironment") != null and d.get_node_or_null(^"Sun") != null,
 		"environment + sun added") and ok
 	ok = _expect(wall.material is ShaderMaterial, "greybox wall drawn with the toon shader") and ok
 	ok = _expect(gm.albedo_color == Color("c9ccc6"), "layout material resource itself untouched") and ok
-	ok = _expect((surf.material as ShaderMaterial).shader == preload("res://art/shaders/water_toon.gdshader"),
-		"deep-water surface gets the water shader") and ok
+	ok = _expect((surf.material as ShaderMaterial).shader == preload("res://art/shaders/realistic_water.gdshader"),
+		"deep-water surface gets the base lakes' water shader") and ok
+	ok = _expect(d.get_children().any(func(c: Node) -> bool: return c.name.begins_with("WaterBed")),
+		"deep water gets a bed under it") and ok
+	ok = _expect(far.position.y <= -2.9, "the builder's far backdrop goes under the deep water") and ok
 	ok = _expect(d.get_child_count() > 4, "vines / debris added") and ok
 	ok = _expect(ResourceLoader.exists("res://art/dressing/presets/base_school.tscn"), "base dressing preset exists") and ok
-	map.queue_free()
+	map.free()
+	ok = _expect(not Fx.night_lights, "leaving the map ends the night lights") and ok
 	return ok
+
+
+## A stand-in for the pack lamp post (6.8 m box) that the dressing recognises by its scene file.
+func _lamp_post(map: Node3D, at: Vector3, fallen: bool) -> Node3D:
+	var post := Node3D.new()
+	post.scene_file_path = "res://assets/environment/city/american_suburb/models/outdoor_environment/parking_lot_light_pole_01.fbx"
+	var mi := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = Vector3(0.3, 6.8, 0.3)
+	mi.mesh = box
+	mi.position = Vector3(0, 3.4, 0)
+	post.add_child(mi)
+	map.add_child(post)
+	post.position = at
+	if fallen:
+		post.rotation_degrees = Vector3(0, 0, 90)
+	return post
 
 
 func _expect(cond: bool, message: String) -> bool:

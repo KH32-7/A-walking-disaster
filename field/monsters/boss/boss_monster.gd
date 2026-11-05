@@ -124,6 +124,12 @@ func is_held() -> bool:
 	return _hold_left > 0.0
 
 
+## Drops the pattern in its windup without landing it (a stun from the mechanic).
+func cancel_cast() -> void:
+	_cast = null
+	_cast_area = {}
+
+
 ## Fighting: noticed someone, chasing, attacking or mid-pattern.
 func is_engaged() -> bool:
 	return not is_dead() and (_cast != null or state in FIGHT_STATES)

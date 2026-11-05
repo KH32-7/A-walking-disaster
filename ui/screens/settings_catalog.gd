@@ -79,7 +79,7 @@ const ROWS := {
 		{"heading": "키 배치"},
 		# Binding rows are added from ACTIONS by the screen.
 		{"key": &"bindings_reset", "kind": "button", "label": "모든 키를 기본값으로",
-			"desc": "키보드·마우스와 게임패드의 키 배치를 처음 상태로 되돌립니다.", "action": &"reset_bindings",
+			"desc": "키보드, 마우스와 게임패드의 키 배치를 처음 상태로 되돌립니다.", "action": &"reset_bindings",
 			"button": "되돌리기"},
 	],
 	&"access": [
@@ -93,21 +93,21 @@ const ROWS := {
 			"desc": "누가 말하는지 이름을 노란색 굵은 글자로 붙입니다."},
 		{"heading": "소리 시각화"},
 		{"key": &"noise_rings", "kind": "toggle", "label": "소음 링",
-			"desc": "내가 낸 소리를 크기에 따라 흰색·주황·빨강, 두께가 다른 링으로 보여 줍니다."},
+			"desc": "내가 낸 소리를 크기에 따라 흰색, 주황, 빨강, 두께가 다른 링으로 보여 줍니다."},
 		{"key": &"sound_arrows", "kind": "toggle", "label": "소리 방향 화살표",
 			"desc": "화면 밖에서 난 소리와 마물의 방향을 화면 가장자리 화살표로 알려 줍니다."},
 		{"key": &"sound_icons", "kind": "toggle", "label": "중요 효과음 아이콘",
 			"desc": "경보, 폭발 같은 중요한 소리가 나면 아이콘과 글로도 알려 줍니다."},
 		{"heading": "색"},
 		{"key": &"color_filter", "kind": "choice", "label": "색약 필터",
-			"desc": "화면 전체 색을 구분하기 쉽게 바꿉니다. 등급·속성은 필터와 상관없이 늘 모양으로도 구분합니다.",
+			"desc": "화면 전체 색을 구분하기 쉽게 바꿉니다. 등급, 속성은 필터와 상관없이 늘 모양으로도 구분합니다.",
 			"options": [[0, "끔"], [1, "적색약"], [2, "녹색약"], [3, "청색약"]]},
 		{"key": &"high_contrast", "kind": "toggle", "label": "고대비",
 			"desc": "판을 더 진하게, 선과 보조 글자를 더 밝게 합니다. HUD 글자에 검은 외곽선을 둘러요."},
 		{"heading": "화면"},
 		{"key": &"reduce_shake", "kind": "toggle", "label": "흔들림 줄이기",
 			"desc": "화면 흔들림과 카메라 회전 연출을 없애고 바로 바꿉니다."},
-		{"key": &"reduce_flash", "kind": "toggle", "label": "깜빡임·섬광 줄이기",
+		{"key": &"reduce_flash", "kind": "toggle", "label": "깜빡임, 섬광 줄이기",
 			"desc": "번쩍임과 무지개빛 효과를 끄고 부드러운 단색 표시로 바꿉니다. 메뉴 뒤 흐림도 줄입니다."},
 		{"key": &"camera_zoom", "kind": "choice", "label": "카메라 확대", "desc": "필드 카메라를 기본보다 가깝게 또는 멀리 둡니다."},
 		{"heading": "글"},
@@ -127,7 +127,7 @@ const ROWS := {
 
 ## Difficulty item names (Settings.DIFFICULTY_KEYS). Values come from Settings.PRESETS.
 const DIFFICULTY_ITEMS := {
-	&"monster_mult": {"label": "마물 체력·공격", "desc": "마물의 체력과 공격력 배율입니다."},
+	&"monster_mult": {"label": "마물 체력, 공격", "desc": "마물의 체력과 공격력 배율입니다."},
 	&"raid_mult": {"label": "습격 강도", "desc": "밤 습격에 오는 마물의 세기 배율입니다."},
 	&"permadeath": {"label": "영구 사망", "desc": "끄면 주민이 죽는 대신 7일 동안 중상으로 누워 있습니다.",
 		"options": [[true, "켬"], [false, "끔 (중상)"]]},
@@ -151,7 +151,7 @@ const PRESET_DESC := {
 ## Remappable actions in screen order (InputSetup.DEFAULTS ids) and their names.
 const ACTIONS := [
 	[&"move_up", "위로 이동"], [&"move_down", "아래로 이동"], [&"move_left", "왼쪽으로 이동"],
-	[&"move_right", "오른쪽으로 이동"], [&"attack", "공격·사격"], [&"aim", "조준·막기"],
+	[&"move_right", "오른쪽으로 이동"], [&"attack", "공격, 사격"], [&"aim", "조준, 막기"],
 	[&"aim_up", "조준 위"], [&"aim_down", "조준 아래"], [&"aim_left", "조준 왼쪽"], [&"aim_right", "조준 오른쪽"],
 	[&"dodge", "구르기"], [&"sprint", "달리기"], [&"reload", "재장전"], [&"interact", "상호작용"],
 	[&"weapon_1", "무기 1"], [&"weapon_2", "무기 2"], [&"weapon_swap", "무기 교체"],

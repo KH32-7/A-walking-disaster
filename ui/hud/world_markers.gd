@@ -13,7 +13,8 @@ extends Control
 ##   player's feet. Distance beside it.
 ## - Speech bubbles: a rescue target (group "field_rescue_targets") that hears the player calls
 ##   out (`called_out` signal, B-10). Cream bubble above the person for 3.5 s, also through walls;
-##   off screen, a cream edge arrow "목소리".
+##   off screen, a cream edge arrow "목소리". Companions (group "field_companions") use the same
+##   signal for their signature skill line (B-29).
 ## Computes no game rules: radius and states come from Lane B.
 
 const RING_SEC := 0.7
@@ -26,6 +27,7 @@ const RING_STEPS := 40
 ## Ping arrow: starts this far from the player's feet (m), 0.6 m long.
 const PING_ARROW_M := 1.4
 const RESCUE_GROUP := &"field_rescue_targets"
+const COMPANION_GROUP := &"field_companions"
 const BUBBLE_SEC := 3.5
 const BUBBLE_FADE_SEC := 0.4
 const BUBBLE_HEIGHT := 2.1
@@ -113,7 +115,7 @@ func _process(delta: float) -> void:
 		b.t += delta
 	_bubbles = _bubbles.filter(func(b: Dictionary) -> bool:
 		return b.t < BUBBLE_SEC and is_instance_valid(b.node) and (b.node as Node).is_inside_tree())
-	for r in get_tree().get_nodes_in_group(RESCUE_GROUP):
+	for r in get_tree().get_nodes_in_group(RESCUE_GROUP) + get_tree().get_nodes_in_group(COMPANION_GROUP):
 		var rid := r.get_instance_id()
 		if _voiced.has(rid) or not r is Node3D or not r.has_signal(&"called_out"):
 			continue

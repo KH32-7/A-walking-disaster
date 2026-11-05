@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AudioEventDef" format=3]
+
+[ext_resource type="Script" path="res://audio/defs/audio_event_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"gunshot_distant"
+stream = "res://assets/audio/sfx/cc0/free_firearm_sound_library/ak47_mid_distance.wav"
+synth = &"shot_heavy"
+bus = 0
+priority = 1
+positional = true
+max_distance = 120.0
+caption = "먼 총소리"

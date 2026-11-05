@@ -17,7 +17,9 @@ extends Control
 
 ## Metres from the centre to the rim.
 const RANGE_M := 32.0
-const RENDER_PX := 256
+const RENDER_PX := 320
+## Disc diameter (px). The region name sits under it. User request 2026-11-06: 220 read too small.
+const DISC_PX := 300.0
 ## Render layer (1-based) the map camera skips (same as MapScreen: B keeps monsters off the map).
 const MAP_HIDDEN_LAYER := 20
 const CAMERA_HEIGHT := 60.0
@@ -57,7 +59,7 @@ var _cam: Camera3D
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	custom_minimum_size = Vector2(220, 250)
+	custom_minimum_size = Vector2(DISC_PX, DISC_PX + 30.0)
 
 
 func _process(delta: float) -> void:
@@ -237,7 +239,13 @@ func _draw_mark(at: Vector2, kind: StringName) -> void:
 			draw_colored_polygon(PackedVector2Array([at + Vector2(0, -7), at + Vector2(7, 0),
 				at + Vector2(0, 7), at + Vector2(-7, 0)]), UiTokens.GOOD)
 		&"objective":
-			draw_rect(Rect2(at - Vector2(5, 5), Vector2(10, 10)), UiTokens.ACCENT)
+			# Double yellow diamond, same as the M map (MapView.draw_symbol).
+			var o := PackedVector2Array([at + Vector2(0, -9), at + Vector2(9, 0), at + Vector2(0, 9), at + Vector2(-9, 0)])
+			draw_colored_polygon(o, UiTokens.ACCENT)
+			var mid := PackedVector2Array([at + Vector2(0, -6.5), at + Vector2(6.5, 0), at + Vector2(0, 6.5), at + Vector2(-6.5, 0)])
+			draw_colored_polygon(mid, UiTokens.INK)
+			var core := PackedVector2Array([at + Vector2(0, -4.5), at + Vector2(4.5, 0), at + Vector2(0, 4.5), at + Vector2(-4.5, 0)])
+			draw_colored_polygon(core, UiTokens.ACCENT)
 		&"companion":
 			draw_circle(at, 5.0, UiTokens.INFO)
 		&"monster_heard":

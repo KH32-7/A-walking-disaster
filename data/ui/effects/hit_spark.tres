@@ -91,10 +91,60 @@ lifetime = 0.18
 color = Color(1.0, 1.0, 1.0, 0.85)
 flash = true
 
+[sub_resource type="Resource" id="layer_6"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/glowspiky2.png"
+when = {
+"shot": true
+}
+amount = 1
+size = Vector2(1.2, 1.2)
+speed = Vector2(0.0, 0.0)
+end_scale = 1.8
+spin = true
+lifetime = 0.1
+color = Color(1.0, 0.95, 0.8, 0.9)
+flash = true
+fade_out = 0.7
+
+[sub_resource type="Resource" id="layer_7"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/earth_spray.png"
+when = {
+"shot": true
+}
+blend = 1
+amount = 10
+size = Vector2(0.14, 0.26)
+speed = Vector2(2.5, 5.5)
+gravity = 9.0
+lifetime = 0.45
+end_scale = 0.6
+color = Color(0.85, 0.8, 0.7, 1.0)
+fade_out = 0.5
+
+[sub_resource type="Resource" id="layer_8"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/smoke02.png"
+when = {
+"shot": true
+}
+blend = 1
+amount = 4
+size = Vector2(0.45, 0.7)
+speed = Vector2(0.3, 0.9)
+end_scale = 2.2
+lifetime = 0.5
+color = Color(0.75, 0.75, 0.72, 0.4)
+fade_in = 0.1
+
 [resource]
 script = ExtResource("1_def")
 id = &"hit_spark"
 sound = &"hit_impact"
 sound_crit = &"hit_crit"
 max_alive = 24
-layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1"), SubResource("layer_2"), SubResource("layer_3"), SubResource("layer_4"), SubResource("layer_5")])
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1"), SubResource("layer_2"), SubResource("layer_3"), SubResource("layer_4"), SubResource("layer_5"), SubResource("layer_6"), SubResource("layer_7"), SubResource("layer_8")])

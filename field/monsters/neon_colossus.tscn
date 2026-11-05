@@ -1,0 +1,95 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://field/monsters/monster_base.tscn" id="1_base"]
+[ext_resource type="Script" path="res://field/monsters/boss/boss_monster.gd" id="2_boss"]
+[ext_resource type="Script" path="res://field/monsters/boss/mechanics/power_cable.gd" id="3_cable"]
+[ext_resource type="Material" path="res://art/materials/glow_light.tres" id="4_glow"]
+
+[sub_resource type="CapsuleShape3D" id="Shape_body"]
+radius = 1.6
+height = 6.0
+
+[sub_resource type="StandardMaterial3D" id="Mat_body"]
+albedo_color = Color(0.22, 0.22, 0.28, 1)
+roughness = 1.0
+
+[sub_resource type="CapsuleMesh" id="Mesh_body"]
+material = SubResource("Mat_body")
+radius = 1.6
+height = 6.0
+
+[sub_resource type="SphereShape3D" id="Shape_core"]
+radius = 0.55
+
+[sub_resource type="StandardMaterial3D" id="Mat_core"]
+albedo_color = Color(1, 0.3, 0.7, 1)
+emission_enabled = true
+emission = Color(1, 0.3, 0.7, 1)
+emission_energy_multiplier = 1.5
+
+[sub_resource type="BoxMesh" id="Mesh_core"]
+material = SubResource("Mat_core")
+size = Vector3(0.16, 0.5, 0.16)
+
+[sub_resource type="SphereShape3D" id="Shape_cable"]
+radius = 0.7
+
+[sub_resource type="CylinderMesh" id="Mesh_cable"]
+material = ExtResource("4_glow")
+top_radius = 0.16
+bottom_radius = 0.16
+height = 1.6
+
+[node name="NeonColossus" instance=ExtResource("1_base")]
+script = ExtResource("2_boss")
+
+[node name="CollisionShape3D" parent="." index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 0)
+shape = SubResource("Shape_body")
+
+[node name="Body" parent="." index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 0)
+mesh = SubResource("Mesh_body")
+
+[node name="WeakPoint" parent="." index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.4, -1.4)
+
+[node name="CollisionShape3D" parent="WeakPoint" index="0"]
+shape = SubResource("Shape_core")
+
+[node name="Core" parent="WeakPoint" index="1"]
+transform = Transform3D(0.906, 0.423, 0, -0.423, 0.906, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("Mesh_core")
+
+[node name="CableLeft" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.4, 0.8, 2.2)
+script = ExtResource("3_cable")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CableLeft"]
+shape = SubResource("Shape_cable")
+
+[node name="Mesh" type="MeshInstance3D" parent="CableLeft"]
+transform = Transform3D(1, 0, 0, 0, 0.5, -0.866, 0, 0.866, 0.5, 0, 0, 0)
+mesh = SubResource("Mesh_cable")
+
+[node name="CableBack" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 3.2)
+script = ExtResource("3_cable")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CableBack"]
+shape = SubResource("Shape_cable")
+
+[node name="Mesh" type="MeshInstance3D" parent="CableBack"]
+transform = Transform3D(1, 0, 0, 0, 0.5, -0.866, 0, 0.866, 0.5, 0, 0, 0)
+mesh = SubResource("Mesh_cable")
+
+[node name="CableRight" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.4, 0.8, 2.2)
+script = ExtResource("3_cable")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CableRight"]
+shape = SubResource("Shape_cable")
+
+[node name="Mesh" type="MeshInstance3D" parent="CableRight"]
+transform = Transform3D(1, 0, 0, 0, 0.5, -0.866, 0, 0.866, 0.5, 0, 0, 0)
+mesh = SubResource("Mesh_cable")

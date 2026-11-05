@@ -7,7 +7,19 @@ var _resolved: Array = []
 var _damaged: Array = []
 
 
+## Raids and the played defence are switched off in the game for now (RaidRules.RAIDS /
+## DIRECT_DEFENSE); these rules are still tested with them on.
 func run() -> bool:
+	var was := [RaidRules.RAIDS, RaidRules.DIRECT_DEFENSE]
+	RaidRules.RAIDS = true
+	RaidRules.DIRECT_DEFENSE = true
+	var ok: bool = _run_switched_on()
+	RaidRules.RAIDS = was[0]
+	RaidRules.DIRECT_DEFENSE = was[1]
+	return ok
+
+
+func _run_switched_on() -> bool:
 	var colony_snapshot := JSON.stringify(Colony.save_data())
 	var economy_snapshot := Economy.save_data().duplicate(true)
 	var game_snapshot := GameState.save_data().duplicate(true)

@@ -92,7 +92,7 @@ func _refresh_column() -> void:
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_list = VBoxContainer.new()
-	_list.add_theme_constant_override(&"separation", 4)
+	_list.add_theme_constant_override(&"separation", 8)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(_list)
 	(pn[1] as VBoxContainer).add_child(sc)
@@ -193,9 +193,9 @@ func give() -> Dictionary:
 	var line := "고마워. 잘 쓸게."
 	match StringName(res.reaction):
 		&"liked":
-			line = "이거… 내가 정말 좋아하는 거야. 고마워!"
+			line = "이거... 내가 정말 좋아하는 거야. 고마워!"
 		&"disliked":
-			line = "음… 마음은 고마운데, 이건 좀 별로야."
+			line = "음... 마음은 고마운데, 이건 좀 별로야."
 	var rc: Array = ResidentText.REACTIONS.get(StringName(res.reaction), ["●", ""])
 	var col: Color = {&"liked": UiTokens.ACCENT, &"disliked": UiTokens.WARN}.get(StringName(res.reaction), UiTokens.TEXT)
 	var notes: Array = [["%s %s" % [rc[0], rc[1]], col]]

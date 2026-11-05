@@ -8,7 +8,7 @@ extends MenuScreen
 const STAT_NAMES := {&"str": "힘", &"dex": "손재주", &"sense": "감각", &"heart": "마음"}
 const AGE_NAMES := ["아기", "어린이", "청소년", "성인", "노년"]
 const NEED_NAMES := ["이동 보조 필요", "말이 잘 안 통함", "듣기 어려움", "돌봄 필요"]
-const NEED_FIX := ["경사로·승강기 있는 곳에서 일함", "통역 무전기가 있으면 대화", "시각 신호가 있으면 일함", "돌봄 담당이 있으면 생활"]
+const NEED_FIX := ["경사로, 승강기 있는 곳에서 일함", "통역 무전기가 있으면 대화", "시각 신호가 있으면 일함", "돌봄 담당이 있으면 생활"]
 const HEALTH_NAMES := ["건강", "다침", "아픔"]
 const SLOT_NAMES := ["주무기", "보조", "머리", "몸", "다리", "장신구", "가방"]
 const FORMER_JOBS := {&"carpenter": "목수", &"nurse": "간호사", &"doctor": "의사", &"mechanic": "정비공",
@@ -47,7 +47,7 @@ func _build_body(b: Control) -> void:
 	row.add_child(left[0])
 	_count = (left[2] as HBoxContainer).get_child(1)
 	var sorts := HBoxContainer.new()
-	sorts.add_theme_constant_override(&"separation", 4)
+	sorts.add_theme_constant_override(&"separation", 8)
 	(left[2] as HBoxContainer).add_child(sorts)
 	if UI.has_screen(&"relations"):
 		var rel := MenuScreen.button("관계도", &"ButtonSoft")
@@ -71,7 +71,7 @@ func _build_body(b: Control) -> void:
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_list = VBoxContainer.new()
-	_list.add_theme_constant_override(&"separation", 6)
+	_list.add_theme_constant_override(&"separation", 10)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(_list)
 	(left[1] as VBoxContainer).add_child(sc)
@@ -108,7 +108,7 @@ func _ids() -> Array:
 func _fill() -> void:
 	MenuScreen.clear(_list)
 	var ids := _ids()
-	_count.text = "%d명 · 침상 %d" % [Colony.population(), Colony.bed_count()]
+	_count.text = "%d명 / 침상 %d" % [Colony.population(), Colony.bed_count()]
 	if (_sel == &"" or not _sel in ids) and not ids.is_empty():
 		_sel = ids[0]
 	for id: StringName in ids:
@@ -136,7 +136,7 @@ func _add_absent_rows() -> void:
 		h.add_theme_constant_override(&"separation", 14)
 		h.add_child(FaceDot.new(String(a.name), 44, true, LossText.face_mark(StringName(a.resident_id))))
 		var v := VBoxContainer.new()
-		v.add_theme_constant_override(&"separation", -2)
+		v.add_theme_constant_override(&"separation", 2)
 		v.add_child(MenuScreen.label(String(a.name), &"LabelSection", 18))
 		var t := MenuScreen.label(String(a.text), &"LabelHud", 13)
 		t.add_theme_color_override(&"font_color", UiTokens.WARN if a.kind == &"stranded" else UiTokens.TEXT_DIM)
@@ -158,25 +158,27 @@ func _row(id: StringName) -> Control:
 	box.set_corner_radius_all(UiTokens.SLOT_RADIUS)
 	for s in [&"normal", &"hover", &"pressed", &"focus"]:
 		b.add_theme_stylebox_override(s, box)
-	b.custom_minimum_size = Vector2(0, 68)
+	b.custom_minimum_size = Vector2(0, 92)
 	b.focus_mode = Control.FOCUS_NONE
 	var h := HBoxContainer.new()
 	h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	h.offset_left = 14
-	h.offset_right = -14
-	h.add_theme_constant_override(&"separation", 14)
+	h.offset_left = 20
+	h.offset_right = -20
+	h.add_theme_constant_override(&"separation", 20)
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	h.add_child(_avatar(String(r.get("name", "?")), 44))
 	var nv := VBoxContainer.new()
 	nv.alignment = BoxContainer.ALIGNMENT_CENTER
-	nv.add_theme_constant_override(&"separation", -2)
+	nv.add_theme_constant_override(&"separation", 8)
 	nv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	nv.add_child(MenuScreen.label(String(r.get("name", "")), &"LabelSection", 18))
 	nv.add_child(MenuScreen.label(_job_line(r), &"LabelDim", 13))
 	h.add_child(nv)
 	var needs := GridContainer.new()
 	needs.columns = 2
-	needs.add_theme_constant_override(&"v_separation", 2)
+	needs.add_theme_constant_override(&"v_separation", 6)
+	needs.add_theme_constant_override(&"h_separation", 10)
+	needs.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	for pair in [["배고픔", 100 - int(r.get("hunger", 50)), true], ["피로", int(r.get("fatigue", 0)), true],
 			["사기", int(r.get("morale", 50)), false]]:
 		needs.add_child(MenuScreen.label(String(pair[0]), &"LabelDim", 12))
@@ -187,7 +189,7 @@ func _row(id: StringName) -> Control:
 	h.add_child(needs)
 	var hs := int(r.get("health", 0))
 	var hl := MenuScreen.label(HEALTH_NAMES[clampi(hs, 0, 2)], &"LabelHud", 14)
-	hl.custom_minimum_size = Vector2(44, 0)
+	hl.custom_minimum_size = Vector2(52, 0)
 	if hs != 0:
 		hl.add_theme_color_override(&"font_color", UiTokens.DANGER)
 	h.add_child(hl)
@@ -202,7 +204,7 @@ func _job_line(r: Dictionary) -> String:
 	var a: Dictionary = r.get("assignment", {})
 	var job := BaseDB.get_job(StringName(a.get("job", &"")))
 	var age: String = AGE_NAMES[clampi(int(r.get("age_stage", 3)), 0, 4)]
-	var line := "%s · %s" % [age, job.display_name if job != null else "일 없음"]
+	var line := "%s / %s" % [age, job.display_name if job != null else "일 없음"]
 	var grief := LossText.grief_tag(r)  # #125 part 3
 	return line + ("  " + grief if grief != "" else "")
 
@@ -215,14 +217,18 @@ func _show_detail() -> void:
 	var r := Colony.get_resident(_sel)
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override(&"separation", 16)
-	head.add_child(_avatar(String(r.get("name", "?")), 76))
+	# The resident's own model (사용자 요청 2026-11-06), not a letter.
+	var face := ResidentPortrait.new(Vector2(110, 130))
+	face.set_resident(_sel)
+	head.add_child(face)
 	var hv := VBoxContainer.new()
+	hv.alignment = BoxContainer.ALIGNMENT_CENTER
 	var nick := String(r.get("nickname", ""))
 	hv.add_child(MenuScreen.label(String(r.get("name", "")) + ("  “%s”" % nick if nick != "" else ""), &"LabelTitle", 26))
-	hv.add_child(MenuScreen.label("%s · 전직 %s · %d일차에 합류" % [AGE_NAMES[clampi(int(r.get("age_stage", 3)), 0, 4)],
+	hv.add_child(MenuScreen.label("%s / 전직 %s / %d일차에 합류" % [AGE_NAMES[clampi(int(r.get("age_stage", 3)), 0, 4)],
 		String(FORMER_JOBS.get(StringName(r.get("former_job", &"")), r.get("former_job", ""))), int(r.get("joined_day", 1))], &"LabelDim", 14))
 	var trust := HBoxContainer.new()
-	trust.add_theme_constant_override(&"separation", 4)
+	trust.add_theme_constant_override(&"separation", 8)
 	trust.add_child(MenuScreen.label("신뢰", &"LabelDim", 13))
 	var t := int(r.get("trust", 0))
 	for i in 5:
@@ -268,7 +274,7 @@ func _show_detail() -> void:
 	if not needs.is_empty():
 		lc.add_child(MenuScreen.label("참여 조건", &"LabelSection", 16))
 		for n: int in needs:
-			var l := MenuScreen.label("◆  %s — %s" % [NEED_NAMES[clampi(n, 0, 3)], NEED_FIX[clampi(n, 0, 3)]], &"LabelHud", 14)
+			var l := MenuScreen.label("%s: %s" % [NEED_NAMES[clampi(n, 0, 3)], NEED_FIX[clampi(n, 0, 3)]], &"LabelHud", 14)
 			l.add_theme_color_override(&"font_color", UiTokens.INFO)
 			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			l.custom_minimum_size = Vector2(330, 0)
@@ -278,11 +284,11 @@ func _show_detail() -> void:
 	var rc := VBoxContainer.new()
 	rc.add_theme_constant_override(&"separation", 8)
 	rc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rc.add_child(MenuScreen.label("일·잠자리", &"LabelSection", 16))
+	rc.add_child(MenuScreen.label("일, 잠자리", &"LabelSection", 16))
 	var a: Dictionary = r.get("assignment", {})
 	var job := BaseDB.get_job(StringName(a.get("job", &"")))
 	var bed := StringName(r.get("bed_id", &""))
-	rc.add_child(MenuScreen.label("%s · %s" % [job.display_name if job != null else "일 없음",
+	rc.add_child(MenuScreen.label("%s / %s" % [job.display_name if job != null else "일 없음",
 		"침상 있음" if bed != &"" else "임시 거처"], &"LabelHud", 15))
 	for warn: String in _loss_lines(r):  # #125 part 3, 7
 		var wl := MenuScreen.label(warn, &"LabelHud", 14)
@@ -304,7 +310,7 @@ func _show_detail() -> void:
 	st.custom_minimum_size = Vector2(420, 0)
 	rc.add_child(st)
 	for f: String in story.get("fragments", []):
-		var fl := MenuScreen.label("·  " + f, &"LabelDim", 14)
+		var fl := MenuScreen.label("- " + f, &"LabelDim", 14)
 		fl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		fl.custom_minimum_size = Vector2(420, 0)
 		rc.add_child(fl)
@@ -317,7 +323,7 @@ func _show_detail() -> void:
 		var kl := PackedStringArray()
 		for like in known:
 			kl.append(ResidentText.tag_name(like))
-		_detail.add_child(MenuScreen.label("▲ 좋아하는 것  " + " · ".join(kl), &"LabelDim", 14))
+		_detail.add_child(MenuScreen.label("▲ 좋아하는 것  " + " / ".join(kl), &"LabelDim", 14))
 	# #125: 편견 소문 진행, 결혼 약속, 아이 맞이 조건 (ResidentEventFlow reads Colony).
 	for line: Array in ResidentEventFlow.detail_lines(_sel):
 		var ll := MenuScreen.label(String(line[0]), &"LabelHud", 14)
@@ -336,7 +342,7 @@ func _show_detail() -> void:
 	if ResidentEventFlow.is_family_child(_sel):
 		buttons.push_front(["이름 짓기", &"ButtonPrimary", &"child_naming", true, ""])
 	elif bool(r.get("arrival_pending", false)):
-		buttons.push_front(["입주 의식", &"ButtonPrimary", &"welcome", true, ""])
+		buttons.push_front(["맞이하기", &"ButtonPrimary", &"welcome", true, ""])
 	for pair: Array in buttons:
 		var bt := MenuScreen.button(String(pair[0]), pair[1])
 		var target: StringName = pair[2]
@@ -361,10 +367,10 @@ func _loss_lines(r: Dictionary) -> Array[String]:
 	var out: Array[String] = []
 	var grief := LossText.grief_tag(r)
 	if grief != "":
-		out.append("%s · 작업 효율 −%d%%" % [grief, roundi((1.0 - LossRules.GRIEF_WORK_MULT) * 100.0)])
+		out.append("%s / 작업 효율 −%d%%" % [grief, roundi((1.0 - LossRules.GRIEF_WORK_MULT) * 100.0)])
 	var block := LossText.sortie_block(_sel)
 	if block != "":
-		out.append(block + " · 출격에 데려갈 수 없어요")
+		out.append(block + " / 출격에 데려갈 수 없어요")
 	return out
 
 

@@ -16,6 +16,22 @@ const SUBURB_DIR := "res://assets/environment/city/american_suburb/models/"
 const NATURE_DIR := "res://assets/environment/nature/pure_nature_redwood/models/"
 const CELL := 2.0
 const FIT_MAX_SCALE := 1.6
+## Every building model is drawn this much larger than its footprint, scaled from the footprint's
+## centre (user feedback 2026-11-06: buildings looked small next to the forest). The grid footprint,
+## placement and collision are unchanged; only the look grows.
+const VISUAL_SCALE := 1.35
+## Buildings that give light at night (base night, ForestDressing turns them on): a warm circle on
+## the ground around them: color, energy, range (m) and height (m above the footprint). No shadows, so
+## the pool stays a clean circle (a shadowed light got cut square by its own model and the camera).
+## Buildings not listed give none, so a base without them just stays dark at night.
+const NIGHT_LIGHTS := {
+	&"bonfire": {"color": Color("ffaa5e"), "energy": 3.2, "range": 8.0, "height": 1.8, "flicker": true},
+	&"essence_lamp": {"color": Color("bfeeff"), "energy": 3.2, "range": 10.0, "height": 4.0},
+	&"light_tower": {"color": Color("fff2d6"), "energy": 4.0, "range": 13.0, "height": 4.5},
+	&"warning_light": {"color": Color("ff6a50"), "energy": 1.8, "range": 5.0, "height": 2.0},
+}
+## Group of those lights (BuildingViews adds them, ForestDressing switches them).
+const NIGHT_LIGHT_GROUP := &"base_night_light"
 
 ## Buildings with no grid size in data (prebuilt / attached) get a sandbox footprint here.
 const SIZE_OVERRIDE := {&"radio_room": Vector2i(3, 3)}
@@ -25,6 +41,8 @@ const MODELS := {
 	# 주거
 	&"bed": [["military_folding_cot", 0, -0.1, 0.9, 0.8, 0], ["rolled_sleeping_bag", 0.2, 0.35, 0.4, 0.2, 90]],
 	&"dormitory": [["concrete_patio_4x4m", 0, 0, 1, 1, 0, "fill"], ["exterior_only_house_01", 0, 0, 0.95, 0.95, 0]],
+	# Story house (intro): a big footprint so the suburb house stays near its real size (1:1 at 6×7).
+	&"old_house": [["concrete_patio_4x4m", 0, 0, 1, 1, 0, "fill"], ["exterior_only_house_01", 0, -0.02, 0.95, 0.95, 0], ["rural_mailbox_01", 0.44, 0.47, 0.06, 0.05, 0]],
 	&"family_house": [["concrete_patio_4x4m", 0, 0, 1, 1, 0, "fill"], ["exterior_only_house_04", 0, -0.05, 0.95, 0.85, 0], ["rural_mailbox_01", 0.42, 0.45, 0.1, 0.1, 0]],
 	# 생산
 	&"lumber_yard": [["firewood_rack", -0.15, -0.25, 0.7, 0.4, 0], ["redwood_hollow_log_0", 0.1, 0.25, 0.8, 0.35, 90], ["wheelbarrow", 0.38, -0.3, 0.25, 0.25, 0]],
@@ -180,6 +198,31 @@ static func fit_transform(model: String, at: Vector3, rot_deg: float, local_w: f
 	return Transform3D(basis, at - basis * anchor)
 
 
+## One model as a node: centred on `at` (its footprint centre, base on `at.y`), turned `rot_deg`.
+## w / d > 0 fit it into that footprint (as build() does); 0 keeps the model's own metres.
+## null when the model is missing (no assets/ submodule). Used by the intro house interior.
+static func prop(model: String, at: Vector3, rot_deg := 0.0, w := 0.0, d := 0.0, fill := false) -> Node3D:
+	var parts := mesh_parts(model)
+	if parts.is_empty():
+		return null
+	var xf: Transform3D
+	if w > 0.0 and d > 0.0:
+		xf = fit_transform(model, at, rot_deg, w, d, fill)
+	else:
+		var box := model_aabb(model)
+		var basis := Basis(Vector3.UP, deg_to_rad(rot_deg))
+		xf = Transform3D(basis, at - basis * Vector3(box.get_center().x, box.position.y, box.get_center().z))
+	var holder := Node3D.new()
+	holder.name = model
+	holder.transform = xf
+	for p: Dictionary in parts:
+		var mi := MeshInstance3D.new()
+		mi.mesh = p["mesh"]
+		mi.transform = p["xform"]
+		holder.add_child(mi)
+	return holder
+
+
 ## A node with every part of one building, centred on its footprint. Grey box if nothing loads.
 static func build(def_id: StringName, size_cells: Vector2i) -> Node3D:
 	var root := Node3D.new()
@@ -201,7 +244,7 @@ static func build(def_id: StringName, size_cells: Vector2i) -> Node3D:
 		var xf := fit_transform(model, at, rot, td if swapped else tw, tw if swapped else td, fill)
 		var holder := Node3D.new()
 		holder.name = "%s_%d" % [model, placed]
-		holder.transform = xf
+		holder.transform = Transform3D(Basis.from_scale(Vector3.ONE * VISUAL_SCALE)) * xf
 		for p: Dictionary in mesh_parts(model):
 			var mi := MeshInstance3D.new()
 			mi.mesh = p["mesh"]

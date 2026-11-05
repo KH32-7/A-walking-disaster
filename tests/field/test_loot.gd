@@ -26,6 +26,7 @@ func run() -> bool:
 	_test_key_opens_quietly()
 	_test_instant_loot()
 	_test_take()
+	_test_gear_and_blueprint()
 	_test_spawner()
 	Settings.values[&"instant_loot"] = instant_before
 	Bag.load_data(bag_before)
@@ -195,6 +196,43 @@ func _test_take() -> void:
 	_teardown(s)
 
 
+func _test_gear_and_blueprint() -> void:
+	var state_before := GameState.save_data()
+	var armory_before := Armory.save_data()
+	var table := LootTable.new()
+	table.roll_min = 0
+	table.roll_max = 0
+	table.gear_chance = 1.0
+	table.gear_rarity_weights = [0.0, 0.0, 1.0]
+	table.gear_pool = [&"pistol"]
+	table.blueprint_chance = 1.0
+	var s := _setup(_def(0.5), 0)
+	var c: LootContainer = s.container
+	c.loot_table = table
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	c.roll_contents(rng)
+	c.begin_open(s.looter)
+	_step(c, 1.6)
+	var slots := c.get_slots()
+	_check(slots.size() == 2, "gear + blueprint table gave %d slots, want 2" % slots.size())
+	if slots.size() == 2:
+		_check(slots[0].item_id == &"pistol" and slots[0].get("rarity", -1) == Enums.Rarity.RARE,
+			"gear slot is %s" % str(slots[0]))
+		var flag: StringName = slots[1].get("blueprint", &"")
+		_check(flag != &"" and not GameState.has_flag(flag), "blueprint slot not an unknown blueprint")
+		_check(c.take(0) == 1, "gear did not go into the bag")
+		var items := Bag.entries().filter(func(e: Dictionary) -> bool: return e.kind == Bag.KIND_ITEM)
+		_check(items.size() == 1 and Armory.get_item(items[0].ref).def_id == &"pistol"
+			and Armory.get_item(items[0].ref).rarity == Enums.Rarity.RARE, "bag has no rare pistol")
+		_check(c.take(1) == 1 and GameState.has_flag(flag), "taking the blueprint did not learn it")
+		_check(not LootTable.unknown_blueprints().any(func(b: Dictionary) -> bool: return b.flag == flag),
+			"learned blueprint still offered")
+	_teardown(s)
+	GameState.load_data(state_before)
+	Armory.load_data(armory_before)
+
+
 func _test_spawner() -> void:
 	var holder := Node3D.new()
 	_root.add_child(holder)
@@ -210,7 +248,10 @@ func _test_spawner() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 42
 	var first := spawner.spawn(rng).map(func(c: LootContainer) -> Vector3: return c.global_position)
-	_check(first.size() == 5, "spawned %d of 10 spots at ratio 0.5" % first.size())
+	# Spots 3 and 8 are supply crates: always there. Half of the other 8 are drawn.
+	_check(first.size() == 6, "spawned %d of 10 spots at ratio 0.5, want 2 supply crates + 4" % first.size())
+	_check(spawner.spawned.filter(func(c: LootContainer) -> bool:
+		return c.def.type == LootSpot.ContainerType.SUPPLY_CRATE).size() == 2, "a supply crate spot was skipped")
 	for c in spawner.spawned:
 		_check(c.collision_layer == 1 << (Enums.LAYER_INTERACTABLE - 1), "container not on interactable layer only")
 		_check(c.loot_table != null and c.def != null, "container missing def or table")

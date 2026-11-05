@@ -12,6 +12,8 @@ extends Node3D
 ##   stance     Blend2        free <-> aim, eased so switching weapons doesn't pop
 ##   reload     OneShot       upper body only, so legs keep walking
 ##   shoot      OneShot       upper body only
+##   swing_out  OneShot       full body, blunt combo hits 1 and 3 (outward slash)
+##   swing_in   OneShot       full body, blunt combo hit 2 (inward slash); out and in chain
 ##   dodge      OneShot       full body, time-scaled to the dodge length
 ##   life       Transition    alive / downed
 ##
@@ -25,7 +27,7 @@ extends Node3D
 ## Drawn larger than life so the hero reads from the top-down camera (user feedback 2026-11-06).
 ## Collision is the player's capsule and does not change.
 @export var model_scale := 1.3
-## Animation playback multipliers and limits (live-tunable with the \ key in debug builds).
+## Animation playback multipliers and limits.
 @export var anim_tuning: PlayerAnimTuning = preload("res://data/classes/player_anim_tuning.tres")
 ## Node shown when the model can't be loaded.
 @export var fallback: NodePath = ^"../Greybox"
@@ -49,6 +51,9 @@ const DODGE_FADE_IN := 0.05
 const DODGE_FADE_OUT := 0.15
 const UPPER_FADE := 0.12
 const DOWNED_FADE := 0.25
+## Blunt swings: each swing fades in over the previous one, so a combo reads as one motion.
+const SWING_FADE_IN := 0.1
+const SWING_FADE_OUT := 0.2
 ## A single shot keeps the firing pose this long before easing back.
 const SHOT_HOLD_SEC := 0.3
 ## Where shots are drawn from (muzzle flash, tracers): this hand bone, pushed this far along the aim.
@@ -56,11 +61,18 @@ const SHOT_HOLD_SEC := 0.3
 const MUZZLE_BONE := "mixamorig_RightHand"
 const MUZZLE_AHEAD := 0.3
 
+## A gun weapon shows its model (PlayerModelGuns) in the right hand: it follows MUZZLE_BONE every
+## time the skeleton is posed, with the barrel along the body's facing.
+
 var _model: Node3D
 var _tree: AnimationTree
+var _anim_player: AnimationPlayer
+## A cutscene clip played on the whole body instead of the tree (play_clip), &"" = none.
+var _clip_override := &""
 var _player: Player
 var _weapons: WeaponHolder
 var _native := {}  # clip name -> native_speed (m/s)
+var _cycle := {}  # clip name -> length (s), one walk cycle for the looping walks
 var _free_blend := 0.0
 var _aim_blend := Vector2.ZERO
 var _stance := 0.0
@@ -69,6 +81,11 @@ var _model_yaw := 0.0  # world yaw of the model, eased toward the player's
 var _was_dodging := false
 var _shot_left := 0.0
 var _hand := -2  # bone index of MUZZLE_BONE, -2 = not looked up yet, -1 = missing
+var _skeleton: Skeleton3D
+var _gun: Node3D  # the held gun model, null when the active weapon isn't a gun
+var _gun_id: StringName
+var _gun_spec := {}
+var _gun_units := 1.0  # the gun model's length along +X in its own units
 
 
 func _ready() -> void:
@@ -86,6 +103,7 @@ func _ready() -> void:
 	if fb != null:
 		fb.visible = false
 	_setup_animation()
+	_setup_gun()
 
 
 func _setup_animation() -> void:
@@ -96,9 +114,11 @@ func _setup_animation() -> void:
 	if lib == null or players.is_empty():
 		return
 	var anim_player := players[0] as AnimationPlayer
+	_anim_player = anim_player
 	anim_player.add_animation_library(LIB, lib)
 	for clip in lib.get_animation_list():
 		_native[String(clip)] = float(lib.get_animation(clip).get_meta(&"native_speed", 0.0))
+		_cycle[String(clip)] = lib.get_animation(clip).length
 	_tree = AnimationTree.new()
 	_tree.name = &"AnimationTree"
 	_model.add_child(_tree)
@@ -113,8 +133,34 @@ func _setup_animation() -> void:
 		_weapons.reload_started.connect(_on_reload_started)
 
 
+## Cutscenes (IntroCutscene): plays one library clip (&"run", &"cutscene_walk" …) on the whole body
+## instead of the locomotion tree; its speed follows the player's ground speed when the clip knows
+## its native speed. &"" gives the body back to the tree. False when the clip is missing.
+func play_clip(clip: StringName) -> bool:
+	if _tree == null or _anim_player == null:
+		return false
+	if clip == &"":
+		_clip_override = &""
+		_anim_player.speed_scale = 1.0
+		_tree.active = true
+		return true
+	var full := "%s/%s" % [LIB, clip]
+	if not _anim_player.has_animation(full):
+		return false
+	_clip_override = clip
+	_tree.active = false
+	_anim_player.play(full, 0.2)
+	return true
+
+
 func _process(delta: float) -> void:
 	if _tree == null:
+		return
+	if _clip_override != &"":
+		var native: float = _native.get(String(_clip_override), 0.0)
+		var v := Vector2(_player.velocity.x, _player.velocity.z).length()
+		_anim_player.speed_scale = clampf(v / native, 0.6, 1.6) if native > 0.01 and v > MOVE_EPSILON else 1.0
+		_step_turn(delta, Vector3.ZERO)
 		return
 	if _player.is_downed:
 		_tree.set(&"parameters/life/transition_request", "downed")
@@ -135,7 +181,7 @@ func _process(delta: float) -> void:
 	var dir := Vector2(local.x, -local.z).normalized() if speed > MOVE_EPSILON else Vector2.ZERO
 	_aim_blend = _aim_blend.lerp(dir * amount, k)
 	_stance = lerpf(_stance, 1.0 if gun else 0.0, 1.0 - exp(-STANCE_SHARPNESS * delta))
-	var want_scale := _walk_scale(speed, dir if gun else Vector2.UP) * _move_mult(gun)
+	var want_scale := _walk_scale(speed, dir if gun else Vector2.UP) * _move_mult()
 	if gun:
 		want_scale *= lerpf(1.0, anim_tuning.back_walk_mult, maxf(-dir.y, 0.0))
 	_speed_scale = lerpf(_speed_scale, want_scale, 1.0 - exp(-SPEED_SHARPNESS * delta))
@@ -172,38 +218,41 @@ func _step_turn(delta: float, override_dir: Vector3) -> void:
 	_model.rotation.y = _model_yaw - _player.global_rotation.y + PI
 
 
-## Playback scale so the feet roughly match the ground speed. dir: unit move direction in body
-## space (x right, y forward).
+## Playback scale before the tuning multiplier. dir: unit move direction in body space (x right,
+## y forward).
+## Bare hands and gun share one rule (user decision 2026-11-06): ground speed / the bare-hand walk's
+## own speed, clamped to min..max_playback. The gun walks are then rescaled by their cycle length so
+## they take steps at the same rate as the bare-hand walk (the rifle walk's cycle is ~1.37 s against
+## the crouched walk's ~1.03 s, so the same playback rate alone looked slower with a gun).
 func _walk_scale(speed: float, dir: Vector2) -> float:
 	if speed < MOVE_EPSILON:
 		return 1.0
-	var native: float
-	if _stance > 0.5:
-		var fb: float = _native.get("aim_walk_forward" if dir.y >= 0.0 else "aim_walk_back", 1.0)
-		var lr: float = _native.get("aim_strafe_right" if dir.x >= 0.0 else "aim_strafe_left", 1.0)
-		var wf := absf(dir.y)
-		var wr := absf(dir.x)
-		native = (fb * wf + lr * wr) / maxf(wf + wr, 0.001)
-	else:
-		native = _native.get("walk", 1.0)
+	var native: float = _native.get("walk", 0.0)
 	if native <= 0.0:
 		return 1.0
 	var top := anim_tuning.max_playback
 	if _player.move_state == Player.MoveState.SPRINT:
 		top = anim_tuning.sprint_max_playback
-	return clampf(speed / native, anim_tuning.min_playback, top)
+	var rate := clampf(speed / native, anim_tuning.min_playback, top)
+	if _stance > 0.5:
+		var fb: float = _cycle.get("aim_walk_forward" if dir.y >= 0.0 else "aim_walk_back", 0.0)
+		var lr: float = _cycle.get("aim_strafe_right" if dir.x >= 0.0 else "aim_strafe_left", 0.0)
+		var wf := absf(dir.y)
+		var wr := absf(dir.x)
+		var cycle := (fb * wf + lr * wr) / maxf(wf + wr, 0.001)
+		var walk_cycle: float = _cycle.get("walk", 0.0)
+		if cycle > 0.0 and walk_cycle > 0.0:
+			rate *= cycle / walk_cycle
+	return rate
 
 
-## The tuning multiplier for the current move: sprint, gun walk or plain walk.
-func _move_mult(gun: bool) -> float:
+## The tuning multiplier for the current move: sprint or walk, the same with or without a gun
+## (user decision 2026-11-06).
+func _move_mult() -> float:
 	if _player.move_state == Player.MoveState.SPRINT:
 		return anim_tuning.sprint_mult
-	return anim_tuning.aim_walk_mult if gun else anim_tuning.walk_mult
+	return anim_tuning.walk_mult
 
-
-## Current walk playback speed (1.0 = clip speed). For the debug panel (\ key).
-func walk_playback() -> float:
-	return _speed_scale
 
 
 func _clip_length(clip: String) -> float:
@@ -211,10 +260,13 @@ func _clip_length(clip: String) -> float:
 	return ap.get_animation(LIB + "/" + clip).length
 
 
-## World point the shot is drawn from (hand + MUZZLE_AHEAD along `forward`), or null without a model.
+## World point the shot is drawn from: the held gun's barrel tip, else the hand + MUZZLE_AHEAD
+## along `forward`, or null without a model.
 func muzzle_point(forward: Vector3) -> Variant:
 	if _model == null:
 		return null
+	if _gun != null and _gun.visible:
+		return _gun.global_transform * (_gun_spec["muzzle"] as Vector3)
 	var skeleton := _model.get_node_or_null(SKELETON) as Skeleton3D
 	if skeleton == null:
 		return null
@@ -232,11 +284,90 @@ func _holding_gun() -> bool:
 	return _weapons != null and WeaponHolder.is_gun(_weapons.current_stats())
 
 
-func _on_attacked(kind: StringName, _combo_step: int) -> void:
+# --- held gun -----------------------------------------------------------------------------------
+
+func _setup_gun() -> void:
+	_skeleton = _model.get_node_or_null(SKELETON) as Skeleton3D
+	if _skeleton == null or _player == null:
+		return
+	_skeleton.skeleton_updated.connect(_place_gun)
+	var weapons := _player.get_node_or_null(^"Weapons") as WeaponHolder
+	if weapons != null:
+		weapons.weapon_changed.connect(func(_slot: Enums.EquipSlot, uid: StringName) -> void: _hold(uid))
+		_hold.call_deferred(weapons.current_uid())
+
+
+## Shows the model for the item `uid` in the hand, or nothing when it isn't a gun.
+func _hold(uid: StringName) -> void:
+	var stats: Dictionary = Armory.get_item_stats(uid) if uid != &"" else {}
+	var id := &""
+	if WeaponHolder.is_gun(stats):
+		var item := Armory.get_item(uid)
+		id = PlayerModelGuns.id_for(item.def_id if item != null else &"")
+	if id == _gun_id and (_gun != null) == (id != &""):
+		return
+	if _gun != null:
+		_gun.queue_free()
+		_gun = null
+	_gun_id = id
+	if id == &"":
+		return
+	var scene := PlayerModelGuns.scene_of(id)
+	if scene == null:
+		return
+	_gun_spec = PlayerModelGuns.GUNS[id]
+	_gun_units = PlayerModelGuns.length_units(id)
+	_gun = scene.instantiate() as Node3D
+	_gun.name = &"HeldGun"
+	_gun.top_level = true  # placed in world space by _place_gun, so the hand's scale doesn't stack
+	add_child(_gun)
+	_place_gun()
+
+
+## Puts the gun's grip in the right hand with the barrel along the body's facing (level), after the
+## animation has posed the skeleton. Hidden while downed.
+func _place_gun() -> void:
+	if _gun == null or _skeleton == null or not is_inside_tree():
+		return  # out of the tree: the base map being swapped for the field
+	_gun.visible = not _player.is_downed
+	if not _gun.visible:
+		return
+	if _hand == -2:
+		_hand = _skeleton.find_bone(MUZZLE_BONE)
+	if _hand < 0:
+		return
+	var hand := _skeleton.global_transform * _skeleton.get_bone_global_pose(_hand).origin
+	# The model is imported facing +Z.
+	var forward := Vector3(_model.global_basis.z.x, 0.0, _model.global_basis.z.z).normalized()
+	if forward.length_squared() < 0.5:
+		return
+	var s: float = float(_gun_spec["length"]) * model_scale / _gun_units
+	var b := Basis(forward, Vector3.UP, forward.cross(Vector3.UP)).scaled(Vector3.ONE * s)
+	var grip := hand + (forward * PlayerModelGuns.HOLD_AHEAD - Vector3.UP * PlayerModelGuns.HOLD_DROP) * model_scale
+	_gun.global_transform = Transform3D(b, grip - b * (_gun_spec["grip"] as Vector3))
+
+
+func _on_attacked(kind: StringName, combo_step: int) -> void:
+	if kind == &"swing":
+		_swing(combo_step)
+		return
 	if kind != &"shot" or _tree == null or not _holding_gun():
 		return
 	_tree.set(&"parameters/shoot/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
 	_shot_left = SHOT_HOLD_SEC
+
+
+## Blunt weapons alternate the outward (odd combo steps) and inward (even) slash. The new swing
+## fades in while the other one fades out. Blades and bare hands have no swing clip yet.
+func _swing(combo_step: int) -> void:
+	if _tree == null or _weapons == null:
+		return
+	if int(_weapons.current_stats().get("combat_class", -1)) != Enums.CombatClass.BLUNT:
+		return
+	var play := &"swing_in" if combo_step % 2 == 0 else &"swing_out"
+	var other := &"swing_out" if play == &"swing_in" else &"swing_in"
+	_tree.set(StringName("parameters/%s/request" % other), AnimationNodeOneShot.ONE_SHOT_REQUEST_FADE_OUT)
+	_tree.set(StringName("parameters/%s/request" % play), AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
 
 
 func _on_reload_started(duration_sec: float) -> void:
@@ -314,6 +445,15 @@ func _build_tree(upper: Array[NodePath]) -> AnimationNodeBlendTree:
 		bt.add_node(node, one)
 		bt.connect_node(node, 0, last)
 		bt.connect_node(node, 1, speed_node)
+		last = node
+
+	for spec: Array in [["swing_out", "blunt_swing_out"], ["swing_in", "blunt_swing_in"]]:
+		var node := StringName(spec[0])
+		var clip_node := StringName(spec[0] + "_clip")
+		bt.add_node(clip_node, _clip(spec[1]))
+		bt.add_node(node, _one_shot(SWING_FADE_IN, SWING_FADE_OUT))
+		bt.connect_node(node, 0, last)
+		bt.connect_node(node, 1, clip_node)
 		last = node
 
 	bt.add_node(&"dodge_clip", _clip("dodge"))

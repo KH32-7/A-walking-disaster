@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="FxDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/fx_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://vfx/defs/fx_layer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+kind = 3
+texture = "res://assets/vfx/magic_arsenal/textures/lightbeam.png"
+grow = Vector2(0.25, 2.5)
+travel_speed = 40.0
+lifetime = 0.2
+color = Color(1.0, 0.96, 0.75, 1.0)
+flash = true
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/smallglow01.png"
+amount = 6
+align = 1
+stretch = 4.0
+size = Vector2(0.04, 0.07)
+speed = Vector2(2.0, 4.0)
+gravity = 6.0
+lifetime = 0.25
+delay = 0.3
+color = Color(1.0, 0.96, 0.75, 1.0)
+spin = false
+fade_out = 0.5
+
+[resource]
+script = ExtResource("1_def")
+id = &"boss_scalpels"
+max_alive = 12
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1")])

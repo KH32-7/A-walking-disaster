@@ -27,7 +27,7 @@ func in_field() -> bool:
 
 
 func _where() -> String:
-	return "%d일차 · %s" % [GameState.day, _region() if in_field() else "기지"]
+	return "%d일차 / %s" % [GameState.day, _region() if in_field() else "기지"]
 
 
 ## Field region name (FieldState.region_id, read only), "필드" when unknown.
@@ -64,7 +64,7 @@ func _build_body(b: Control) -> void:
 
 func _fill_card() -> void:
 	MenuScreen.clear(_card_box)
-	var head := MenuScreen.label("%d일차 · %s · %s" % [GameState.day, SEASONS[int(GameState.season()) % 4],
+	var head := MenuScreen.label("%d일차 / %s / %s" % [GameState.day, SEASONS[int(GameState.season()) % 4],
 		WEATHER[clampi(int(GameState.weather), 0, WEATHER.size() - 1)]], &"LabelSection", 22)
 	head.add_theme_color_override(&"font_color", UiTokens.TEXT_ON_CREAM)
 	_card_box.add_child(head)
@@ -82,7 +82,7 @@ func _fill_card() -> void:
 ## [[label, value], ...] for the cream card. Values come from GameState / SaveSystem / Settings.
 func info_rows() -> Array:
 	var rows: Array = []
-	rows.append(["장소", "%s — 출격 중" % _region() if in_field() else "기지"])
+	rows.append(["장소", "%s: 출격 중" % _region() if in_field() else "기지"])
 	var diff := String(Settings.get_value(&"difficulty"))
 	rows.append(["난이도", TitleScreen.DIFFICULTY_NAMES.get(StringName(diff), diff)])
 	rows.append(["저장 슬롯", "슬롯 %d" % (SaveSystem.current_slot + 1)])

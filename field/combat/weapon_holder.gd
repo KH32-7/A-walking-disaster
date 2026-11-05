@@ -96,7 +96,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if _player.is_downed:
 		return
-	step(delta, _read_input())
+	step(delta, {"aim": _player.is_aiming} if Player.input_blocked() else _read_input())
 
 
 ## One step. Split from input reading so tests can drive it.
@@ -366,9 +366,15 @@ func start_reload() -> bool:
 			* (1.0 - float(stats.get("reload_pct", 0)) / 100.0) * reload_mult
 	is_reloading = true
 	_reload_done_at = _clock + duration
-	Audio.play(&"reload", global_position)
+	Audio.play(reload_event(StringName(stats.get("def_id", &""))), global_position)
 	reload_started.emit(duration)
 	return true
+
+
+## Reload sound for a gun: `reload_<def_id>` (pump, bolt ...) when that event exists, else the shared `reload`.
+static func reload_event(def_id: StringName) -> StringName:
+	var id := StringName("reload_%s" % def_id)
+	return id if Audio.events.has(id) else &"reload"
 
 
 ## One melee swing at the active weapon. Hits every monster body in reach inside the arc.
@@ -571,6 +577,7 @@ func _deal(target: Node, amount: float, info: Dictionary) -> void:
 		"element": info.get("element", Enums.Element.NONE),
 		"weak_point": target is MonsterWeakPoint,
 		"crit": info.get("crit", false),
+		"shot": info.get("shot", false),  # bullet hits add a burst, chips and dust (hit_spark.tres)
 	})
 	_hit_stop(target, info)
 	hit_landed.emit(target, amount, info)
@@ -580,6 +587,7 @@ func _deal(target: Node, amount: float, info: Dictionary) -> void:
 func _shot_hit(target: Node, point: Vector3, amount: float, info: Dictionary, cover_points: Array) -> void:
 	var hit_info := info.duplicate()
 	hit_info["position"] = point
+	hit_info["shot"] = true
 	for cover_point: Vector3 in cover_points:
 		if cover_point.distance_to(point) <= tuning.cover_near_target_m:
 			amount *= tuning.cover_damage_mult

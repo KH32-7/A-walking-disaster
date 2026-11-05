@@ -22,7 +22,9 @@ const PREVIEW_HEIGHT := 0.6
 const LABEL_HEIGHT := 2.2
 ## Ground overlay (컬트 오브 더 램 배치 화면 + 덕코프 청록 격자): grid lines on cleared areas, a dark
 ## veil on uncleared ones, existing buildings' cells in red, the new footprint in green / red.
-const GRID_COLOR := Color(0.42, 0.78, 1.0, 0.42)
+const GRID_COLOR := Color(0.42, 0.78, 1.0, 0.55)
+## Line width on the ground (m): 1-pixel lines vanish in the grass from the base camera.
+const LINE_W := 0.07
 const UNCLEARED_COLOR := Color(0.05, 0.06, 0.1, 0.42)
 const TAKEN_FILL := Color(0.85, 0.27, 0.23, 0.16)
 const TAKEN_LINE := Color(1.0, 0.47, 0.43, 0.8)
@@ -34,6 +36,22 @@ const RING_COLOR := Color(0.34, 0.76, 0.79, 0.95)
 const Y_BOARD := 0.04
 const Y_CELLS := 0.07
 
+## Grid lines: how far (m) they are drawn toward the camera to stay above grass, not above houses.
+const GRID_PULL_M := 0.35
+const OVERLAY_SHADER := """
+shader_type spatial;
+render_mode unshaded, blend_mix, cull_disabled, depth_draw_never, shadows_disabled;
+uniform float pull = 0.35;
+void vertex() {
+	vec4 v = MODELVIEW_MATRIX * vec4(VERTEX, 1.0);
+	v.xyz += normalize(-v.xyz) * pull;
+	POSITION = PROJECTION_MATRIX * v;
+}
+void fragment() {
+	ALBEDO = COLOR.rgb;
+	ALPHA = COLOR.a;
+}
+"""
 var grid: BaseGrid
 var active := false
 var def_id: StringName = &""
@@ -47,7 +65,7 @@ var _label: Label3D
 ## Grid + taken cells (drawn when build mode starts) and the footprint + range ring (every preview).
 var _board: MeshInstance3D
 var _cells: MeshInstance3D
-var _overlay_material := StandardMaterial3D.new()
+var _overlay_material := ShaderMaterial.new()
 ## The in-world text label. Off when a UI card shows the same words (BuildPlaceHud).
 var show_label := false
 ## Whether the last cancel() came from the player (see cancel()).
@@ -65,10 +83,13 @@ func _ready() -> void:
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_ok_material.albedo_color = Color(0.3, 0.9, 0.4, 0.3)
 	_bad_material.albedo_color = Color(0.95, 0.3, 0.25, 0.3)
-	_overlay_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_overlay_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	_overlay_material.vertex_color_use_as_albedo = true
-	_overlay_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	# On the ground but seen (사용자 요청 2026-11-06): depth-tested, so houses and trees hide it, yet
+	# pulled GRID_PULL_M toward the camera so the clearing's grass and bumps never swallow it.
+	var sh := Shader.new()
+	sh.code = OVERLAY_SHADER
+	_overlay_material.shader = sh
+	_overlay_material.set_shader_parameter(&"pull", GRID_PULL_M)
+	_overlay_material.render_priority = 10
 	_box = MeshInstance3D.new()
 	_box.mesh = BoxMesh.new()
 	_box.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -242,6 +263,18 @@ func _outline(lines: Array, area: BuildArea, c: Vector2i, lift: float, col: Colo
 
 func _flush(im: ImmediateMesh, tris: Array, lines: Array) -> void:
 	im.clear_surfaces()
+	# Lines become thin ground quads (LINE_W wide) so they keep a real width at any zoom.
+	for i in range(0, lines.size() - 1, 2):
+		var a: Vector3 = lines[i][0]
+		var b: Vector3 = lines[i + 1][0]
+		var col: Color = lines[i][1]
+		var d := b - a
+		d.y = 0.0
+		if d.length() < 0.001:
+			continue
+		var side := Vector3(-d.z, 0.0, d.x).normalized() * (LINE_W * 0.5)
+		tris.append_array([[a - side, col], [a + side, col], [b + side, col], [a - side, col], [b + side, col], [b - side, col]])
+	lines = []
 	for pair: Array in [[Mesh.PRIMITIVE_TRIANGLES, tris], [Mesh.PRIMITIVE_LINES, lines]]:
 		var verts: Array = pair[1]
 		if verts.is_empty():

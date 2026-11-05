@@ -86,7 +86,9 @@ func state() -> Enums.FlowState:
 # --- Title ---
 
 ## New game in `slot` with a difficulty preset. Every save provider is reset to its defaults.
-func start_new_game(slot: int = 0, difficulty: StringName = &"normal") -> bool:
+## with_intro: the new-game intro (IntroCutscene: chase cutscene, the 낡은 집, the 권총 found in a case,
+## then the park doctor). Without it (tests) the starter pistol is equipped right away.
+func start_new_game(slot: int = 0, difficulty: StringName = &"normal", with_intro := true) -> bool:
 	if state() != S.TITLE:
 		return _refuse("start_new_game")
 	SaveSystem.reset_all()
@@ -94,7 +96,10 @@ func start_new_game(slot: int = 0, difficulty: StringName = &"normal") -> bool:
 	Settings.apply_preset(difficulty, true)
 	GameState.day = 1
 	GameState.roll_weather()
-	_give_starter_loadout()
+	if with_intro:
+		GameState.set_flag(IntroCutscene.FLAG_PENDING)
+	else:
+		_give_starter_loadout()
 	Economy.apply(STARTER_RESOURCES)
 	_begin_morning()
 	return true

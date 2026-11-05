@@ -20,6 +20,9 @@ instance uniform float fx_uv_length = 1.0;
 varying float v_age;
 
 void vertex() {
+	// The particle branch writes POSITION, and a shader that writes it anywhere uses it for every vertex:
+	// without this default the meshes (MESH / GROUND / BEAM) collapsed and were never drawn (issue #153).
+	POSITION = PROJECTION_MATRIX * MODELVIEW_MATRIX * vec4(VERTEX, 1.0);
 	if (particle) {
 		v_age = INSTANCE_CUSTOM.y;
 		vec3 center = MODEL_MATRIX[3].xyz;

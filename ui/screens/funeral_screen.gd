@@ -113,7 +113,7 @@ func _centered(l: Label) -> Label:
 
 
 func _show() -> void:
-	_kicker.text = "%d일차 아침 · 장례" % GameState.day
+	_kicker.text = "%d일차 아침 / 장례" % GameState.day
 	if ids.is_empty():
 		_portrait.visible = false
 		_name.text = "보낼 사람이 없어요"
@@ -130,7 +130,7 @@ func _show() -> void:
 	_name.text = LossText.display_name(id)
 	var mem := _memorial_entry(id)
 	_when.text = "%d일차에 합류%s" % [int(r.get("joined_day", 1)),
-		" · %s 떠남" % LossText.memorial_line(mem) if not mem.is_empty() else ""]
+		" / %s 떠남" % LossText.memorial_line(mem) if not mem.is_empty() else ""]
 	_story.text = "“%s”" % LossText.story_line(id)
 	_stone.text = "추모비에 이름을 새겼어요." if not mem.is_empty() else ""
 	_stone.visible = _stone.text != ""
@@ -155,7 +155,7 @@ func _mourner_line() -> String:
 			parts.append("%s %d일" % [LossText.display_name(id), d])
 	if parts.is_empty():
 		return "모두 조용히 자리를 지켰어요."
-	return "◇ 슬픔에 잠긴 사람   " + " · ".join(parts)
+	return "슬픔에 잠긴 사람   " + " / ".join(parts)
 
 
 func _advance() -> void:

@@ -4,6 +4,7 @@
 // Lighting is the Lane D toon model (art/shaders/toon_common.gdshaderinc). Keep light() in step with it.
 shader_type spatial;
 render_mode diffuse_toon, specular_disabled, cull_disabled;
+#include "res://art/shaders/toon_local_light.gdshaderinc"
 
 uniform sampler2D albedo_texture : source_color, filter_linear_mipmap, repeat_enable, hint_default_white;
 uniform vec4 albedo : source_color = vec4(1.0);
@@ -47,9 +48,13 @@ float band_step(float edge, float x) {
 
 void light() {
 	float ndl = dot(NORMAL, LIGHT);
-	float lit = band_step(shadow_threshold, ndl);
-	float level = mix(0.0, mix(0.6, 1.0, band_step(mid_threshold, ndl)), lit);
-	level *= band_step(0.5, ATTENUATION);
-	vec3 shade = mix(shade_color.rgb, vec3(1.0), level);
-	DIFFUSE_LIGHT += ALBEDO * shade * LIGHT_COLOR / PI;
+	if (!LIGHT_IS_DIRECTIONAL) {
+		DIFFUSE_LIGHT += ALBEDO * LIGHT_COLOR * toon_local_light(ATTENUATION, ndl) / PI;
+	} else {
+		float lit = band_step(shadow_threshold, ndl);
+		float level = mix(0.0, mix(0.6, 1.0, band_step(mid_threshold, ndl)), lit);
+		level *= band_step(0.5, ATTENUATION);
+		vec3 shade = mix(shade_color.rgb, vec3(1.0), level);
+		DIFFUSE_LIGHT += ALBEDO * shade * LIGHT_COLOR / PI;
+	}
 }

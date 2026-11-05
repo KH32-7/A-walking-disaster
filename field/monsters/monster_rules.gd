@@ -31,8 +31,12 @@ const LOSE_TARGET_SEC := 8.0
 const ATTACK_EXIT_MULT := 1.2
 ## Delay before the first hit after entering attack.
 const ATTACK_WINDUP_SEC := 0.4
-## Leash: farther than this from home returns to the nest.
+## Leash: farther than this from home returns to the nest, while searching (suspicious /
+## investigate). A chase is not cut off here (user feedback 2026-11-06: it read as an invisible
+## wall); it ends when the target is lost (LOSE_TARGET_SEC), then the search leashes.
 const RETURN_DISTANCE := 40.0
+## Hard leash while chasing / attacking, so a monster is not dragged across the whole map.
+const CHASE_RETURN_DISTANCE := 120.0
 ## Fraction of max hp healed per second while returning.
 const RETURN_REGEN_RATIO := 0.05
 
@@ -149,6 +153,15 @@ const TOUCH_SENSE_RANGE := 2.0
 const BOSS_WANDER_RADIUS := 6.0
 ## Player.hud_state()["boss"] is filled while the player is within the arena radius plus this.
 const BOSS_HUD_MARGIN := 10.0
+
+# --- Essence glow (elites and bosses, user feedback 2026-11-06). Not in the design yet. ---
+## Rim glow strength in the family colour (element_glow energy). The body centre stays unlit.
+const ESSENCE_GLOW_ENERGY := 1.2
+const ESSENCE_GLOW_FRESNEL := 2.0
+## Family-coloured light on the ground around the monster (local height, before its scale).
+const ESSENCE_LIGHT_ENERGY := 2.0
+const ESSENCE_LIGHT_RANGE := 3.0
+const ESSENCE_LIGHT_HEIGHT := 1.0
 
 # --- Elite (04 "정예") ---
 const ELITE_HP_MULT := 3.0

@@ -14,4 +14,4 @@ cost = Dictionary[StringName, int]({
 &"plank": 10
 })
 capacity = 2
-note = "방어구·가방 제작·강화"
+note = "방어구, 가방 제작, 강화"

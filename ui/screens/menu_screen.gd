@@ -73,7 +73,7 @@ func _build_header() -> void:
 	h.add_child(back)
 	var t := label(title_text, &"LabelTitle")
 	h.add_child(t)
-	_subtitle_label = label("—  " + subtitle_text, &"LabelSection")
+	_subtitle_label = label(subtitle_text, &"LabelSection")
 	_subtitle_label.add_theme_color_override(&"font_color", UiTokens.TEXT_DIM)
 	_subtitle_label.visible = not subtitle_text.is_empty()
 	h.add_child(_subtitle_label)
@@ -91,7 +91,7 @@ func _build_header() -> void:
 func set_subtitle(text: String) -> void:
 	subtitle_text = text
 	if _subtitle_label != null:
-		_subtitle_label.text = "—  " + text
+		_subtitle_label.text = text
 		_subtitle_label.visible = not text.is_empty()
 
 
@@ -126,8 +126,16 @@ static func label(text: String, variation: StringName = &"Label", size_px := 0) 
 	l.text = text
 	l.theme_type_variation = variation
 	if size_px > 0:
-		l.add_theme_font_size_override(&"font_size", size_px)
+		l.add_theme_font_size_override(&"font_size", readable(size_px))
 	return l
+
+
+## Hand-picked sizes in the screens were too small to read (사용자 피드백 2026-11-06): +10 %,
+## never under 14 px. Big display numbers (> 24) stay as they are.
+static func readable(size_px: int) -> int:
+	if size_px > 24:
+		return size_px
+	return maxi(roundi(size_px * 1.1), 14)
 
 
 ## Rounded menu panel with a band header (Duckov accent). Returns [panel, content VBox, band HBox].
@@ -136,7 +144,7 @@ static func panel(title: String, count := "", min_size := Vector2.ZERO) -> Array
 	p.theme_type_variation = &"PanelMenu"
 	p.custom_minimum_size = min_size
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override(&"separation", 12)
+	v.add_theme_constant_override(&"separation", 18)
 	p.add_child(v)
 	var band := PanelContainer.new()
 	band.theme_type_variation = &"PanelBand"
@@ -182,7 +190,7 @@ static func bar(value: float, color: Color, w := 120.0, h := 6.0) -> SegBar:
 
 static func resource_chip(id: StringName) -> Control:
 	var h := HBoxContainer.new()
-	h.add_theme_constant_override(&"separation", 6)
+	h.add_theme_constant_override(&"separation", 10)
 	var def: Variant = Economy.get_def(id)
 	var nm := label(String(def.name) if def != null else String(id), &"LabelDim", 15)
 	h.add_child(nm)
@@ -199,7 +207,7 @@ static func cost_text(cost: Dictionary) -> String:
 	var parts: PackedStringArray = []
 	for id in cost:
 		parts.append("%s %d" % [resource_name(id), int(cost[id])])
-	return " · ".join(parts)
+	return " / ".join(parts)
 
 
 static func clear(n: Node) -> void:

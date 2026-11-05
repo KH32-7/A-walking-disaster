@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_ess")
 id = &"essence_stone_low"
-name = "하급 석 정수"
+name = "하급 돌 정수"
 element = 2
 effect_params = {
 "stagger_bonus": 0.2,

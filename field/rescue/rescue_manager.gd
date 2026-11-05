@@ -49,7 +49,8 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	# Tap V. Holding it switches companion modes instead (B-17 CompanionManager).
-	if _press.update(Input.is_action_pressed(&"companion_command"), delta) == CommandPress.Result.TAP:
+	var held := Input.is_action_pressed(&"companion_command") and not Player.input_blocked()
+	if _press.update(held, delta) == CommandPress.Result.TAP:
 		toggle_command()
 
 
@@ -64,6 +65,8 @@ func spawn(rng: RandomNumberGenerator) -> Array[RescueTarget]:
 	for s in spawns:
 		if placed.size() >= max_per_sortie:
 			break
+		if s.required_flag != &"" and not GameState.has_flag(s.required_flag):
+			continue
 		var profile := profile_for(s)
 		if profile.is_empty() or (s.template_id != &"" and not Colony.get_resident(s.template_id).is_empty()):
 			continue

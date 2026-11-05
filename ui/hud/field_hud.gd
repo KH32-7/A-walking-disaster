@@ -7,7 +7,7 @@ extends Control
 ## The HUD computes no game rules. It draws a state Dictionary that it pulls every frame from the
 ## first node in group "player" that has `hud_state() -> Dictionary` (Lane B, B-03/B-06/B-13).
 ## Until that exists, ui/_preview/ feeds fake state through set_state(). Keys (all optional):
-##   hp, hp_max: float            armor: 0..1     armor_segments: int (4)
+##   hp, hp_max: float            armor: 0..1     armor_segments: int (4)  (armor is not drawn since 2026-11-06)
 ##   stamina: 0..1 (bar shows only while < 1)    xp: 0..1   level: int
 ##   player_name: String
 ##   weapons: [{name, ammo, reserve, melee: bool, rarity: int}]   weapon_index: int
@@ -26,6 +26,11 @@ extends Control
 const FEED_MAX := 4
 const FEED_SEC := 2.6
 const REGION_SEC := 3.8
+## Bottom-centre vitals width (px) and the hold bar over the head: width, metres above the feet.
+const VITALS_W := 440.0
+const GAUGE_LABEL_W := 52.0
+const HOLD_BAR_W := 150.0
+const HOLD_HEAD_M := 2.3
 const DUSK_WARN_SEC := 180.0
 
 var state: Dictionary = {}
@@ -49,7 +54,6 @@ var _region_l1: Label
 var _region_l2: Label
 var _mates: VBoxContainer
 var _name: Label
-var _armor: SegBar
 var _hp: SegBar
 ## Boss bar (#115): top centre, only while Player.hud_state() has "boss" (B-19).
 var _boss: VBoxContainer
@@ -159,6 +163,7 @@ func _process(delta: float) -> void:
 		var p := get_tree().get_first_node_in_group(&"player")
 		if p != null and p.has_method(&"hud_state"):
 			set_state(p.call(&"hud_state"))
+	_place_hold()
 	if not state.has("dusk_left_sec") and _dusk_local >= 0.0:
 		_dusk_local = maxf(0.0, _dusk_local - delta)
 		_set_timer(_dusk_local)
@@ -176,15 +181,12 @@ func _apply(s: Dictionary) -> void:
 	var hp_max := maxf(1.0, float(s.get("hp_max", 100.0)))
 	_hp.value = float(s.get("hp", hp_max)) / hp_max
 	_hp.fill_color = UiTokens.DANGER if _hp.value < 0.25 else UiTokens.TEXT
-	_armor.segments = int(s.get("armor_segments", 4))
-	_armor.value = float(s.get("armor", 0.0))
-	_armor.visible = s.has("armor")
 	_xp.value = float(s.get("xp", 0.0))
 	_level.text = "Lv %d" % int(s.get("level", 1))
 	_name.text = String(s.get("player_name", "구조대원"))
 	var sta := float(s.get("stamina", 1.0))
 	_stamina.value = sta
-	_stamina.visible = sta < 0.999
+	_stamina.fill_color = UiTokens.WARN if sta < 0.25 else UiTokens.TEXT
 	_mana.value = float(s.get("mana", 0.0))
 	_mana.fill_color = UiTokens.INFO if _mana.value < 1.0 else UiTokens.ACCENT
 	var mm: Dictionary = s.get("minimap", {})
@@ -246,8 +248,26 @@ func _apply_hold(h: Dictionary) -> void:
 		_hold_bar.value = float(h.get("progress", 0.0))
 
 
+## Keeps the hold bar just above the player's head on screen. Previews (no player or camera): above
+## the screen centre, where the character stands with the field camera.
+func _place_hold() -> void:
+	if not _hold.visible:
+		return
+	var vp := get_viewport_rect().size
+	var at := Vector2(vp.x * 0.5, vp.y * 0.5 - 90.0)
+	var cam := get_viewport().get_camera_3d()
+	var p := get_tree().get_first_node_in_group(&"player") as Node3D
+	if cam != null and p != null:
+		var head := p.global_position + Vector3.UP * HOLD_HEAD_M
+		if not cam.is_position_behind(head):
+			at = cam.unproject_position(head)
+	_hold.reset_size()
+	_hold.position = (at - Vector2(_hold.size.x * 0.5, _hold.size.y)).round()
+
+
 func _apply_prompt(p: Dictionary) -> void:
-	_prompt.visible = not p.is_empty() and not _hold.visible
+	# The [F] prompt now sits beside the thing itself (WorldPrompts); the bottom line stays off.
+	_prompt.visible = false and not p.is_empty() and not _hold.visible
 	if _prompt.visible:
 		_prompt_key.key_text = String(p.get("key", "F"))
 		_prompt_label.text = String(p.get("label", ""))
@@ -300,18 +320,20 @@ func _build() -> void:
 
 	_feed = VBoxContainer.new()
 	_feed.add_theme_constant_override(&"separation", 8)
-	_place(_feed, Control.PRESET_CENTER_LEFT, Vector2(m, -80))
+	# Under the minimap (300 px disc + name, 2026-11-06), so a full feed never reaches it.
+	_place(_feed, Control.PRESET_CENTER_LEFT, Vector2(m, 40))
 
 	_build_hint()
 	_build_region()
 
-	# bottom-left vitals
+	# bottom-centre vitals (user request 2026-11-06): name, armour, health, stamina, xp under the
+	# character, where the eye already is. Companions keep the bottom-left corner.
 	var vit := VBoxContainer.new()
-	vit.add_theme_constant_override(&"separation", 6)
-	vit.custom_minimum_size = Vector2(440, 0)
+	vit.add_theme_constant_override(&"separation", 5)
+	vit.custom_minimum_size = Vector2(VITALS_W, 0)
 	_mates = VBoxContainer.new()
 	_mates.add_theme_constant_override(&"separation", 4)
-	vit.add_child(_mates)
+	_place(_mates, Control.PRESET_BOTTOM_LEFT, Vector2(m, -m))
 	var nrow := HBoxContainer.new()
 	nrow.add_theme_constant_override(&"separation", 10)
 	var stripe := ColorRect.new()
@@ -324,21 +346,20 @@ func _build() -> void:
 	_level = _lbl("Lv 1", &"LabelNumber", 18)
 	nrow.add_child(_level)
 	vit.add_child(nrow)
-	_armor = SegBar.new()
-	_armor.segments = 4
-	_armor.fill_color = UiTokens.INFO
-	_armor.custom_minimum_size = Vector2(440, 22)
-	vit.add_child(_armor)
+	# Three gauges, each named on its left (user 2026-11-06: four unnamed bars read as noise; the
+	# armour bar is gone, armour shows in the bag's equipment panel).
 	_hp = SegBar.new()
-	_hp.custom_minimum_size = Vector2(440, 24)
-	vit.add_child(_hp)
+	vit.add_child(_gauge_row("체력", _hp, 22))
+	_stamina = SegBar.new()
+	_stamina.frame = false
+	_stamina.empty_color = Color(1, 1, 1, 0.15)
+	vit.add_child(_gauge_row("기력", _stamina, 10))
 	_xp = SegBar.new()
 	_xp.frame = false
 	_xp.fill_color = UiTokens.ACCENT
 	_xp.empty_color = Color(1, 1, 1, 0.15)
-	_xp.custom_minimum_size = Vector2(440, 4)
-	vit.add_child(_xp)
-	_place(vit, Control.PRESET_BOTTOM_LEFT, Vector2(m, -m))
+	vit.add_child(_gauge_row("경험치", _xp, 6))
+	_place(vit, Control.PRESET_CENTER_BOTTOM, Vector2(0, -m))
 
 	# bottom-right arms
 	var arms := VBoxContainer.new()
@@ -363,21 +384,21 @@ func _build() -> void:
 	mana_box.add_child(_mana)
 	mrow.add_child(mana_box)
 	arms.add_child(mrow)
-	var pack := HBoxContainer.new()
-	pack.alignment = BoxContainer.ALIGNMENT_END
-	pack.add_theme_constant_override(&"separation", 10)
+	# Quick slots stack above the weapon box (they used to sit beside it and reach the middle of the
+	# screen, where the vitals are now).
 	_quick = HBoxContainer.new()
+	_quick.alignment = BoxContainer.ALIGNMENT_END
 	_quick.add_theme_constant_override(&"separation", 8)
-	_quick.size_flags_vertical = Control.SIZE_SHRINK_END
-	pack.add_child(_quick)
+	_quick.size_flags_horizontal = Control.SIZE_SHRINK_END
+	arms.add_child(_quick)
 	_weapons = VBoxContainer.new()
 	_weapons.add_theme_constant_override(&"separation", 4)
 	_weapons.custom_minimum_size = Vector2(300, 0)
-	pack.add_child(_weapons)
-	arms.add_child(pack)
+	_weapons.size_flags_horizontal = Control.SIZE_SHRINK_END
+	arms.add_child(_weapons)
 	_place(arms, Control.PRESET_BOTTOM_RIGHT, Vector2(-m, -m))
 
-	# bottom-centre: stamina, hold bar, prompt
+	# bottom-centre prompt (off for now, world_prompts shows [F] beside the object)
 	var bc := VBoxContainer.new()
 	bc.alignment = BoxContainer.ALIGNMENT_END
 	bc.add_theme_constant_override(&"separation", 8)
@@ -389,23 +410,39 @@ func _build() -> void:
 	_prompt_label = _lbl("", &"LabelHud", 19)
 	_prompt.add_child(_prompt_label)
 	bc.add_child(_prompt)
+	_place(bc, Control.PRESET_CENTER_BOTTOM, Vector2(0, -170))
+	# Hold bar (탈출 대기, 뒤지기, 자물쇠 따기) over the character's head, not at the screen bottom
+	# (user request 2026-11-06: nobody looked down there). _place_hold() moves it every frame.
 	_hold = VBoxContainer.new()
 	_hold.alignment = BoxContainer.ALIGNMENT_CENTER
-	_hold_label = _lbl("", &"LabelHud", 18)
+	_hold.add_theme_constant_override(&"separation", 2)
+	_hold.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hold_label = _lbl("", &"LabelHud", 16)
 	_hold_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hold.add_child(_hold_label)
 	_hold_bar = SegBar.new()
 	_hold_bar.bracket = true
-	_hold_bar.custom_minimum_size = Vector2(320, 14)
+	_hold_bar.custom_minimum_size = Vector2(HOLD_BAR_W, 10)
 	_hold_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_hold.add_child(_hold_bar)
-	bc.add_child(_hold)
-	_stamina = SegBar.new()
-	_stamina.bracket = true
-	_stamina.custom_minimum_size = Vector2(300, 12)
-	_stamina.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	bc.add_child(_stamina)
-	_place(bc, Control.PRESET_CENTER_BOTTOM, Vector2(0, -56))
+	_hold.visible = false
+	add_child(_hold)
+
+
+## "체력 [=====]": a fixed-width name on the left, the bar filling the rest of the vitals width.
+func _gauge_row(title: String, bar: SegBar, height: float) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override(&"separation", 10)
+	var l := _lbl(title, &"LabelHud", 16)
+	l.custom_minimum_size = Vector2(GAUGE_LABEL_W, 0)
+	l.add_theme_color_override(&"font_color", UiTokens.TEXT_DIM)
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(l)
+	bar.custom_minimum_size = Vector2(0, height)
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(bar)
+	return row
 
 
 func _build_hint() -> void:
@@ -442,24 +479,21 @@ func _build_hint() -> void:
 	_place(_hint, Control.PRESET_CENTER_RIGHT, Vector2(-UiTokens.HUD_MARGIN, -160))
 
 
+## Region title card at sortie start: top centre, clear of the event feed on the left (it used to
+## sit on top of the feed, 2026-11-06 UI pass). The boss bar shares the top centre but only shows in
+## a boss fight, never in the first seconds of a sortie.
 func _build_region() -> void:
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override(&"separation", 16)
-	var pin := Label.new()
-	pin.text = "◉"
-	pin.theme_type_variation = &"LabelHud"
-	pin.add_theme_font_size_override(&"font_size", 34)
-	h.add_child(pin)
 	var v := VBoxContainer.new()
 	_region_l1 = _lbl("", &"LabelHud", 16)
 	_region_l1.add_theme_color_override(&"font_color", UiTokens.TEXT_DIM)
-	_region_l2 = _lbl("", &"LabelHud", 30)
+	_region_l1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_region_l2 = _lbl("", &"LabelHud", 34)
+	_region_l2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(_region_l1)
 	v.add_child(_region_l2)
-	h.add_child(v)
-	_region = h
+	_region = v
 	_region.visible = false
-	_place(_region, Control.PRESET_TOP_LEFT, Vector2(UiTokens.HUD_MARGIN, 330))
+	_place(_region, Control.PRESET_CENTER_TOP, Vector2(0, 110))
 
 
 func _build_weapons(list: Array, idx: int, reloading: bool) -> void:
@@ -501,7 +535,9 @@ func _build_weapons(list: Array, idx: int, reloading: bool) -> void:
 				big.add_theme_color_override(&"font_color",
 					UiTokens.ACCENT if reloading else (UiTokens.DANGER if low else UiTokens.TEXT))
 				col.add_child(big)
-				col.add_child(_lbl("≡ %d" % int(w.get("reserve", 0)), &"LabelNumber", 17))
+				# reserve -1 = infinite ammo (WeaponHolder); the user chose the ∞ sign for it (2026-11-06).
+				var reserve := int(w.get("reserve", 0))
+				col.add_child(_lbl("≡ ∞" if reserve < 0 else "≡ %d" % reserve, &"LabelNumber", 17))
 				ah.add_child(col)
 			var sp := Control.new()
 			sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -545,7 +581,7 @@ func _build_quick(list: Array) -> void:
 			c.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			bv.add_child(c)
 		else:
-			box.modulate.a = 0.5
+			box.visible = false  # empty slots are not drawn (2026-11-06 UI pass: less to watch)
 		body.add_child(bv)
 		box.add_child(body)
 		_quick.add_child(box)
@@ -561,7 +597,9 @@ func _build_skills(list: Array) -> void:
 		k.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		k.modulate.a = 0.5 if left > 0.0 else 1.0
 		b.add_child(k)
-		var t := _lbl("%d" % ceili(left) if left > 0.0 else "준비", &"LabelNumber", 15)
+		# Ready: the skill's name, so the key says what it does. Cooling down: seconds left.
+		var ready_text := String(sk.get("name", "")) if String(sk.get("name", "")) != "" else "준비"
+		var t := _lbl("%d" % ceili(left) if left > 0.0 else ready_text, &"LabelNumber" if left > 0.0 else &"LabelHud", 15)
 		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		b.add_child(t)
 		_skills.add_child(b)
@@ -572,7 +610,7 @@ func _build_mates(list: Array) -> void:
 	for m: Dictionary in list:
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override(&"separation", 10)
-		var l := _lbl("%s · %s" % [String(m.get("name", "")), String(m.get("command", ""))], &"LabelHud", 16)
+		var l := _lbl("%s / %s" % [String(m.get("name", "")), String(m.get("command", ""))], &"LabelHud", 16)
 		l.add_theme_color_override(&"font_color", UiTokens.TEXT_DIM)
 		h.add_child(l)
 		var bar := SegBar.new()
@@ -617,7 +655,7 @@ func _on_sortie_started(loadout: Dictionary) -> void:
 	_set_timer(_dusk_local)
 	var region := String(loadout.get("region_name", region_display_name(StringName(loadout.get("region_id", &"")))))
 	var wx := "비" if GameState.is_raining() else "맑음"
-	show_region("해솔시 · %d일차 · %s" % [GameState.day, wx], region)
+	show_region("해솔시 / %d일차 / %s" % [GameState.day, wx], region)
 
 
 func _on_notification(text: String, severity: StringName) -> void:

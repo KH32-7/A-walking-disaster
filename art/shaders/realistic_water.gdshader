@@ -16,6 +16,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 Changes in this port:
 - Godot 4 syntax (source_color, MODEL_MATRIX, NORMAL_MAP, screen/depth texture uniforms) and reverse-Z depth.
 - wave_height scales the Gerstner vertex offset (0 = calm lake, the waves still bend the normals).
+- max_depth caps the depth-buffer thickness (the field's deep water has nothing under it).
 - fake_depth: the base lakes sit on flat ground, so the water depth can come from UV2.x
   (0 at the shore, 1 in the middle) × fake_depth metres instead of the depth buffer. 0 = depth buffer.
 - Caustics come from two scrolling samples of uv_sampler instead of a 16-layer texture array.
@@ -53,6 +54,8 @@ uniform vec4 color_shallow : source_color = vec4(0.42, 0.62, 0.58, 1.0);
 uniform float beers_law = 2.0;
 uniform float depth_offset = -0.75;
 uniform float fake_depth = 0.0;
+// Depth-buffer water deeper than this (m) is drawn as this deep: field channels have no bottom under them.
+uniform float max_depth = 1000.0;
 
 // Caustics:
 uniform float caustic_strength = 1.0;
@@ -128,7 +131,7 @@ void fragment() {
 		float depth_raw = texture(depth_tex, ref_uv).r;
 		vec4 view = INV_PROJECTION_MATRIX * vec4(ref_uv * 2.0 - 1.0, depth_raw, 1.0);
 		float ground = -view.z / view.w;
-		thickness = ground + VERTEX.z;
+		thickness = min(ground + VERTEX.z, max_depth);
 	}
 
 	float depth_blend = exp((thickness + depth_offset) * -beers_law);

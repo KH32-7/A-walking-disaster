@@ -24,6 +24,8 @@ enum Move { WALK, SLOW, WHEELCHAIR, SUPPORTED, CHILD }
 @export var move_type := Move.WALK
 ## COMMUNICATION: the picture card rounds, in order (02: 3지선다 2회).
 @export var card_rounds: Array[PictureCardRound] = []
+## Spawns only once GameState has this flag (story rescues: the intro doctor needs intro_talked).
+@export var required_flag: StringName = &""
 
 
 ## Id used for the party (ExtractionManager) and rescue_completed.

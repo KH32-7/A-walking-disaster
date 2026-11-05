@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="SkillDef" format=3]
+
+[ext_resource type="Script" path="res://field/defs/skill_def.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+id = &"slam"
+cooldown_sec = 30.0
+damage_mult = 2.5
+radius = 6.0
+noise = &"blunt_attack"
+status_effects = Array[Dictionary]([{
+"duration": 3.0,
+"id": &"slow"
+}])
+fx = &"essence_release"
+fx_element = 1

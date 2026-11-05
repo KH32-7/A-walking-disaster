@@ -7,7 +7,7 @@ extends RefCounted
 ## skills (B-13: [{key, left, max}] of enabled class skills), mana (B-15: weapon in hand, 0..1).
 ## boss (B-19, only while a boss is fighting near the player): {name, hp, hp_max, phase, phase_count}.
 ## Later: armor (B-06 armor), consumables (B-16),
-## companions (B-17), objectives (A-13), minimap.
+## companions (B-17), minimap. objectives: Quests.active_field_objectives of this region.
 
 const PROMPT_KEY := "F"
 const EXTRACT_HOLD_LABEL := "탈출 대기 중"
@@ -33,10 +33,22 @@ static func build(player: Player) -> Dictionary:
 	state["companions"] = FieldCompanion.hud_list(player.get_tree())
 	state["consumables"] = player.consumables.hud_slots()
 	state["mana"] = MagicWeapon.hud_mana(player)
+	state["objectives"] = _objectives()
 	var boss := BossMonster.hud_for(player)
 	if not boss.is_empty():
 		state["boss"] = boss
 	return state
+
+
+## Field quest goals of this region (A-13 Quests): [{text, progress, main}] for the top-right list.
+static func _objectives() -> Array:
+	var out: Array = []
+	for o: Dictionary in Quests.active_field_objectives(FieldState.region_id):
+		var def := Quests.get_def(StringName(o.quest_id))
+		var done := int(o["count"]) - int(o["remaining"])
+		out.append({"text": String(o["text"]), "progress": "%d/%d" % [done, int(o["count"])],
+			"main": def != null and def.type == Enums.QuestType.MAIN})
+	return out
 
 
 static func _add_weapons(player: Player, state: Dictionary) -> void:

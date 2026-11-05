@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_7rhte")
 id = &"work_boots"
-name = "작업복·장화"
+name = "작업복과 장화"
 slot = 4
 base_stats = {
 "defense": 8,

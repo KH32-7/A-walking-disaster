@@ -5,5 +5,5 @@
 [resource]
 script = ExtResource("1_wmc8k")
 id = &"no_progress"
-lines = Array[String](["길을 잃으셨나요? {direction} 쪽을 살펴보세요.", "한참 같은 곳이네요. {direction} 방향에 뭔가 있을지도 몰라요.", "막혔다면 {direction} 쪽으로 돌아가 보세요.", "소문대로라면 {direction} 쪽입니다.", "잠깐 지도를 펼쳐 보세요. {direction} 쪽이 아직 비어 있어요."])
+lines = Array[String](["길을 잃으셨나요? {direction}을 살펴보세요.", "한참 같은 곳이네요. {direction} 방향에 뭔가 있을지도 몰라요.", "막혔다면 {direction}으로 돌아가 보세요.", "소문대로라면 {direction}입니다.", "잠깐 지도를 펼쳐 보세요. {direction}이 아직 비어 있어요."])
 cooldown_sec = 180.0

@@ -51,7 +51,7 @@ func _on_flow_state_changed(state: Enums.FlowState) -> void:
 		Enums.FlowState.TITLE:
 			_show_title()
 		Enums.FlowState.BASE_STAY:
-			_show_bar("기지에 머무는 중 · %d일차" % GameState.day, "하루 마치기", SceneRouter.end_stay)
+			_show_bar("기지에 머무는 중 / %d일차" % GameState.day, "하루 마치기", SceneRouter.end_stay)
 		Enums.FlowState.NIGHT:
 			_show_night()
 
@@ -59,6 +59,8 @@ func _on_flow_state_changed(state: Enums.FlowState) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed(&"pause"):
 		return
+	if UI.cinematic != null and (UI.cinematic.skippable or UI.cinematic.is_talking()):
+		return  # Esc is "hold to skip" in a cutscene
 	if _pause_open:
 		_close_pause()
 		get_viewport().set_input_as_handled()
@@ -104,7 +106,8 @@ func _show_night() -> void:
 
 func _show_pause() -> void:
 	_pause_open = true
-	get_tree().paused = true
+	# The field keeps running under the pause box (user decision 2026-11-06).
+	get_tree().paused = GameState.flow_state != Enums.FlowState.FIELD
 	var dim := ColorRect.new()
 	dim.name = &"Pause"
 	dim.color = Color(0, 0, 0, 0.5)

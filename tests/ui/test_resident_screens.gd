@@ -150,30 +150,17 @@ func _test_welcome() -> bool:
 	await get_tree().process_frame
 	var s := UI.get_screen(&"welcome")
 	var ok := _expect(s.get(&"resident_id") == n, "without an id the oldest pending arrival is taken")
-	ok = _expect(s.call(&"current_step") == &"welcome", "the ceremony starts at 도착") and ok
-	var next: Button = s.get(&"_next_button")
-	next.pressed.emit()
-	ok = _expect(s.call(&"current_step") == &"name", "then 이름") and ok
-	(s.get(&"_nick_edit") as LineEdit).text = "도토리"
-	(s.get(&"_next_button") as Button).pressed.emit()
-	ok = _expect(Colony.get_resident(n).nickname == "도토리" and s.call(&"current_step") == &"appearance",
-		"the nickname is saved through Colony.set_nickname") and ok
-	s.call(&"_set_look", {"preset": &"bob_teal", "hair_color": Color("7a4a2a")})
-	var look := Colony.appearance_for_look(n)
-	ok = _expect(look.get("preset") == &"bob_teal" and (look.get("hair_color") as Color).is_equal_approx(Color("7a4a2a")),
-		"look choices go through Colony.set_appearance") and ok
-	(s.get(&"_next_button") as Button).pressed.emit()
-	ok = _expect(s.call(&"current_step") == &"bed", "then 침상") and ok
-	Colony.choose_bed(n, &"")
-	s.call(&"_refresh")
-	ok = _expect(Colony.get_resident(n).bed_id == &"", "임시 거처 can be chosen") and ok
-	(s.get(&"_next_button") as Button).pressed.emit()
-	ok = _expect(s.call(&"current_step") == &"first_talk" and not Colony.get_resident(n).arrival_pending,
-		"첫 대화 completes the arrival in Colony") and ok
-	ok = _expect(&"tea" in Colony.known_likes(n), "the first talk tells one like") and ok
-	(s.get(&"_next_button") as Button).pressed.emit()
+	var box: DialogBox = s.get(&"dialog")
+	ok = _expect(box.line_label.text.begins_with("고마워요") and box.line_label.text.contains("테스트 새 식구"),
+		"one line: thanks and who they are (%s)" % box.line_label.text) and ok
+	var notes := box.note_box.find_children("*", "Label", true, false).map(func(l: Label) -> String: return l.text)
+	ok = _expect(notes.has("옥상에서 버팀") and notes.has("좋아하는 것: 차"), "story and the first like as notes: %s" % [notes]) and ok
+	ok = _expect(Colony.get_resident(n).arrival_pending, "nothing is decided before 반가워요") and ok
+	s.call(&"_on_choice", &"hello")
 	await get_tree().process_frame
-	return _expect(not UI.is_open(&"welcome"), "기지로 closes the ceremony") and ok
+	ok = _expect(not Colony.get_resident(n).arrival_pending and &"tea" in Colony.known_likes(n),
+		"반가워요 completes the arrival in Colony and tells the like") and ok
+	return _expect(not UI.is_open(&"welcome"), "the last newcomer's 반가워요 closes the screen") and ok
 
 
 func _test_residents_buttons() -> bool:

@@ -31,12 +31,15 @@ func _ready() -> void:
 		return
 	_register_builtins()
 	_build_ui()
-	# Live player animation speed sliders (debug builds only): \ key or `anim`.
-	var anim_panel: Node = preload("res://core/debug/anim_tuning_panel.gd").new()
-	add_child(anim_panel)
-	register(&"anim", func(_args: PackedStringArray) -> String:
-		anim_panel.call(&"toggle")
-		return "애니메이션 속도 패널 (\\ 키로도 열고 닫음)", "anim - 애니메이션 속도 패널 열기/닫기")
+	# Stylized look sliders (debug builds only): \ key or `look`; ] flips the look on/off.
+	var look_panel: Node = preload("res://core/debug/look_panel.gd").new()
+	add_child(look_panel)
+	register(&"look", func(args: PackedStringArray) -> String:
+		if args.size() > 0 and args[0] in ["on", "off"]:
+			Look.tuning.enabled = args[0] == "on"
+			return "화면 스타일 %s" % ("켬" if Look.tuning.enabled else "끔")
+		look_panel.call(&"toggle")
+		return "화면 스타일 패널 (\\ 키로도 열고 닫음, ] 키로 켜기/끄기)", "look [on|off] - 화면 스타일 패널 열기/닫기, 켜기/끄기")
 
 
 func is_open() -> bool:
@@ -263,7 +266,7 @@ func _cmd_radio(args: PackedStringArray) -> String:
 		return "아침 방송"
 	if not Radio.triggers.has(StringName(args[0])):
 		return "없는 무전: %s" % args[0]
-	return "보냄" if Radio.say(StringName(args[0]), {"direction": "북쪽", "minutes": 3, "region": "침수 상가", "range": "승리 쪽", "day": GameState.day}) else "막힘 (쿨다운·빈도·1회 제한)"
+	return "보냄" if Radio.say(StringName(args[0]), {"direction": "북쪽", "minutes": 3, "region": "침수 상가", "range": "승리 쪽", "day": GameState.day}) else "막힘 (쿨다운, 빈도, 1회 제한)"
 
 
 func _cmd_godmode(args: PackedStringArray) -> String:

@@ -1,6 +1,7 @@
 // Shared body of toon.gdshader and toon_double_sided.gdshader. Owner: Lane D (D-03).
 // Each wrapper declares shader_type and render_mode, then includes this file.
 
+#include "res://art/shaders/toon_local_light.gdshaderinc"
 uniform vec4 albedo : source_color = vec4(0.78, 0.79, 0.76, 1.0);
 uniform sampler2D albedo_texture : source_color, filter_linear_mipmap, hint_default_white;
 uniform vec4 shade_color : source_color = vec4(0.42, 0.50, 0.58, 1.0);   // shadow tint (cool blue)
@@ -39,23 +40,29 @@ float band_step(float edge, float x) {
 
 void light() {
 	float ndl = dot(NORMAL, LIGHT);
-	float lit = band_step(shadow_threshold, ndl);
-	float level = lit;
-	if (bands == 3) {
-		level = mix(0.0, mix(0.6, 1.0, band_step(mid_threshold, ndl)), lit);
-	}
-	float shadow_atten = band_step(0.5, ATTENUATION);
-	level *= shadow_atten;
-	vec3 shade = mix(shade_color.rgb, vec3(1.0), level);
-	DIFFUSE_LIGHT += ALBEDO * shade * LIGHT_COLOR / PI;
+	if (!LIGHT_IS_DIRECTIONAL) {
+		DIFFUSE_LIGHT += ALBEDO * LIGHT_COLOR * toon_local_light(ATTENUATION, ndl) / PI;
+	} else {
+		float lit = band_step(shadow_threshold, ndl);
+		float level = lit;
+		if (bands == 3) {
+			level = mix(0.0, mix(0.6, 1.0, band_step(mid_threshold, ndl)), lit);
+		}
+		float shadow_atten = band_step(0.5, ATTENUATION);
+		level *= shadow_atten;
+		vec3 shade = mix(shade_color.rgb, vec3(1.0), level);
+		// toon_amount 0 (global, see toon_local_light.gdshaderinc): plain smooth Lambert, no rim.
+		vec3 smooth_shade = vec3(clamp(ndl, 0.0, 1.0) * ATTENUATION);
+		DIFFUSE_LIGHT += ALBEDO * mix(smooth_shade, shade, toon_amount) * LIGHT_COLOR / PI;
 
-	float rim = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
-	rim = band_step(rim_width, rim) * clamp(ndl + 0.4, 0.0, 1.0);
-	DIFFUSE_LIGHT += rim_color.rgb * rim * rim_amount * LIGHT_COLOR / PI;
+		float rim = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
+		rim = band_step(rim_width, rim) * clamp(ndl + 0.4, 0.0, 1.0);
+		DIFFUSE_LIGHT += rim_color.rgb * rim * rim_amount * toon_amount * LIGHT_COLOR / PI;
 
-	if (specular_amount > 0.0) {
-		vec3 h = normalize(LIGHT + VIEW);
-		float spec = band_step(specular_size, dot(NORMAL, h));
-		SPECULAR_LIGHT += spec * specular_amount * LIGHT_COLOR * shadow_atten;
+		if (specular_amount > 0.0) {
+			vec3 h = normalize(LIGHT + VIEW);
+			float spec = band_step(specular_size, dot(NORMAL, h));
+			SPECULAR_LIGHT += spec * specular_amount * LIGHT_COLOR * shadow_atten;
+		}
 	}
 }

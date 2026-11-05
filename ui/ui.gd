@@ -35,6 +35,7 @@ var _defs: Dictionary = {}  # StringName -> ScreenDef
 var _scenes: Dictionary = {}  # StringName -> PackedScene (registered in code)
 var _stack: Array[Dictionary] = []  # [{id, node, def}], last = top
 var _paused_by_ui := false
+var _blocks_play := false
 
 
 func _ready() -> void:
@@ -81,21 +82,45 @@ func _ready() -> void:
 ## and the radio voice (TTS).
 var explore: FieldExplore
 var notice_toast: NoticeToast
-## First-day guide (방송실 지기 안내 카드).
-var tutorial: TutorialGuide
+## New-game tutorial (인트로 → 공원 의사 구출). Steps and spotlights.
+var tutorial: IntroTutorial
+## Dark screen with a hole over the thing to use now (tutorial).
+var spotlight: Spotlight
+## Letterbox, fades, title card, talk box (cutscenes). Its own layer (25).
+var cinematic: CinematicOverlay
+## [F] chip beside the usable thing + exit diamonds, in the world (field and base).
+var world_prompts: WorldPrompts
 var radio_voice: RadioVoice
+## The player's blind status (boss flash) as a dark screen. Its own layer between the HUD and screens.
+var blind_overlay: BlindOverlay
 
 
 func _add_d16_nodes() -> void:
+	var blind_layer := CanvasLayer.new()
+	blind_layer.name = &"BlindLayer"
+	blind_layer.layer = 15
+	add_child(blind_layer)
+	blind_overlay = BlindOverlay.new()
+	blind_overlay.name = &"BlindOverlay"
+	blind_layer.add_child(blind_overlay)
 	explore = FieldExplore.new()
 	explore.name = &"FieldExplore"
 	add_child(explore)
 	radio_voice = RadioVoice.new()
 	radio_voice.name = &"RadioVoice"
 	add_child(radio_voice)
-	tutorial = TutorialGuide.new()
-	tutorial.name = &"TutorialGuide"
-	overlay.add_child(tutorial)
+	world_prompts = WorldPrompts.new()
+	world_prompts.name = &"WorldPrompts"
+	hud.add_child(world_prompts)
+	cinematic = CinematicOverlay.new()
+	cinematic.name = &"Cinematic"
+	_make_layer(&"CinematicLayer", 25).add_child(cinematic)
+	spotlight = Spotlight.new()
+	spotlight.name = &"Spotlight"
+	overlay.add_child(spotlight)
+	tutorial = IntroTutorial.new()
+	tutorial.name = &"IntroTutorial"
+	add_child(tutorial)
 	notice_toast = NoticeToast.new()
 	notice_toast.name = &"NoticeToast"
 	overlay.add_child(notice_toast)
@@ -179,6 +204,11 @@ func _on_leave_behind(_point_id: StringName, people: Array, manager: Node) -> vo
 	manager.tree_exiting.connect(dialog.queue_free)
 
 
+## Subtitle line width over the world and while a menu is open (right of the key footer).
+const WORLD_SUBTITLE_W := 900.0
+const MENU_SUBTITLE_W := 720.0
+
+
 ## Subtitles sit low over the world; with a menu open they move up out of its buttons' way.
 func _place_subtitle() -> void:
 	if subtitle == null:
@@ -187,12 +217,21 @@ func _place_subtitle() -> void:
 	for e: Dictionary in _stack:
 		if not (e.def as ScreenDef).is_overlay:
 			menu = true
-	subtitle.offset_bottom = -20 if menu else -200  # menu: in the key-footer row, under the panels
+	# Menu: in the key-footer row, under the panels, but on the right half so it never covers the keys
+	# on the left (it hid "Enter 출격", 2026-11-06 UI pass). World: centred, low over the world.
+	subtitle.set_width(MENU_SUBTITLE_W if menu else WORLD_SUBTITLE_W)
+	subtitle.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT if menu else Control.PRESET_CENTER_BOTTOM)
+	subtitle.grow_horizontal = Control.GROW_DIRECTION_BEGIN if menu else Control.GROW_DIRECTION_BOTH
+	subtitle.offset_left = -52.0 if menu else 0.0
+	subtitle.offset_right = -52.0 if menu else 0.0
+	subtitle.offset_bottom = -20 if menu else -200  # world: above the bottom-centre vitals
+	subtitle.offset_top = subtitle.offset_bottom
 	# Toasts sit bottom right over the world; with a menu open that corner holds its buttons
 	# (출격, 맞이하기 …), so they move up under the header.
 	if notice_toast != null:
 		var h := get_viewport().get_visible_rect().size.y
-		notice_toast.offset_bottom = -(h - 330.0) if menu else -22.0
+		# Menu: right under the header line, above the panels (at 330 it sat on panel content).
+		notice_toast.offset_bottom = -(h - 108.0) if menu else -22.0
 
 
 
@@ -235,14 +274,15 @@ var _watched_container: Node = null
 
 
 func _process(_delta: float) -> void:
-	if GameState.flow_state != Enums.FlowState.FIELD:
+	# Field, or a walking player on the base map (the intro house's gun case).
+	if GameState.flow_state != Enums.FlowState.FIELD and get_tree().get_first_node_in_group(IntroCutscene.GROUP) == null:
 		return
 	var p := get_tree().get_first_node_in_group(&"player")
 	if p == null or not p.has_method(&"interacting"):
 		return
 	var c: Node = p.call(&"interacting")
 	if c != _watched_container:
-		if _watched_container != null and is_instance_valid(_watched_container) 				and _watched_container.is_connected(&"opened", _on_container_opened):
+		if _watched_container != null and is_instance_valid(_watched_container) 				and _watched_container.has_signal(&"opened") and _watched_container.is_connected(&"opened", _on_container_opened):
 			_watched_container.disconnect(&"opened", _on_container_opened)
 		_watched_container = c
 		if c != null and c.has_signal(&"opened"):
@@ -275,6 +315,9 @@ var _last_flow: Enums.FlowState = Enums.FlowState.TITLE
 
 
 func _on_flow_state_changed(state: Enums.FlowState) -> void:
+	# The field HUD shows notices itself: drop base toasts still fading, they sat on the ammo box.
+	if state == Enums.FlowState.FIELD and notice_toast != null:
+		MenuScreen.clear(notice_toast)
 	show_field_hud(state == Enums.FlowState.FIELD)
 	show_base_hud(state in BASE_STATES)
 	show_raid_hud(state in RAID_STATES)
@@ -323,7 +366,7 @@ func _on_funeral_ready(resident_ids: Array) -> void:
 
 func _on_resident_missing(resident_id: StringName) -> void:
 	LossText.note_missing(resident_id)
-	EventBus.notification_posted.emit("@residents ◆ %s을(를) 끝내 찾지 못했어요 · 실종" % LossText.display_name(resident_id), &"danger")
+	EventBus.notification_posted.emit("@residents %s을(를) 끝내 찾지 못했어요 / 실종" % LossText.display_name(resident_id), &"danger")
 
 
 func _on_loss_flow(state: Enums.FlowState) -> void:
@@ -403,6 +446,13 @@ func close_all() -> void:
 
 func is_open(screen_id: StringName) -> bool:
 	return _index_of(screen_id) >= 0
+
+
+## True while a screen that would pause the game is open (pause menu, settings, journal, dialog,
+## emergency return ...). In the field the game keeps running, so field input readers ignore
+## player input while this is true.
+func blocks_play() -> bool:
+	return _blocks_play
 
 
 func top() -> StringName:
@@ -536,6 +586,11 @@ func _refresh_visibility() -> void:
 		pause = pause or def.pauses_game
 		hide_hud = hide_hud or def.hides_hud
 	hud.visible = not hide_hud
+	_blocks_play = pause
+	# The field never stops for a screen (user decision 2026-11-06): monsters and time keep going.
+	# Field input readers check blocks_play() instead, so the player stands still under the menu.
+	if pause and GameState.flow_state == Enums.FlowState.FIELD:
+		pause = false
 	if pause != _paused_by_ui:
 		_paused_by_ui = pause
 		get_tree().paused = pause

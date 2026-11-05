@@ -53,6 +53,13 @@ extends Resource
 ## Where they are found, for the rescue scene / radio rumour ("멈춘 고층 승강기 안").
 @export var situation: String
 
+@export_group("Signature")
+## 고유 스킬 (07 신뢰도 "동행 시 고유 스킬"). As a companion it replaces the class Q:
+## any weapon, no 적성 rule. null = class Q as usual. FieldCompanion reads it from ResidentPool.
+@export var signature_skill: SkillDef
+## Said in a bubble right after the signature skill, 40 characters max.
+@export var signature_line: String
+
 @export_group("Pool")
 ## Region id where this person can be found. &"" = any region.
 @export var region_id: StringName
@@ -120,6 +127,8 @@ func texts() -> PackedStringArray:
 	var out := PackedStringArray([name, nickname, background, contribution, first_line, situation])
 	out.append_array(PackedStringArray(fragments))
 	out.append_array(PackedStringArray(rescue_lines))
+	if signature_line != "":
+		out.append(signature_line)
 	return out
 
 
@@ -193,6 +202,12 @@ func validate(banned: PackedStringArray = PackedStringArray()) -> PackedStringAr
 			errors.append("origin_tags '%s' is not lowercase snake case" % tag)
 	if region_id != &"" and not _snake.search(String(region_id)):
 		errors.append("region_id '%s' is not lowercase snake case" % region_id)
+	if signature_skill != null:
+		if signature_skill.id not in CompanionSkill.RUNNERS:
+			errors.append("signature_skill id '%s' is not one of %s" % [signature_skill.id, CompanionSkill.RUNNERS])
+		_check_text(errors, "signature_line", signature_line, LINE_MAX, true)
+	elif signature_line != "":
+		errors.append("signature_line without a signature_skill")
 
 	for word in find_banned_words(banned):
 		errors.append("banned word '%s'" % word)

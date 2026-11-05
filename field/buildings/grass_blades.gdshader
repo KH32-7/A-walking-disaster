@@ -4,6 +4,7 @@
 // carpet of blades lights like the ground under it instead of flickering blade by blade.
 shader_type spatial;
 render_mode cull_disabled, diffuse_toon, specular_disabled, shadows_disabled;
+#include "res://art/shaders/toon_local_light.gdshaderinc"
 
 uniform vec4 base_color : source_color = vec4(0.13, 0.22, 0.09, 1.0);
 uniform vec4 tip_color : source_color = vec4(0.33, 0.45, 0.18, 1.0);
@@ -28,7 +29,11 @@ void fragment() {
 
 void light() {
 	float ndl = dot(NORMAL, LIGHT);
-	float lit = smoothstep(0.0, 0.1, ndl) * smoothstep(0.45, 0.55, ATTENUATION);
-	vec3 shade = mix(shade_color.rgb, vec3(1.0), mix(0.35, 1.0, lit));
-	DIFFUSE_LIGHT += ALBEDO * shade * LIGHT_COLOR / PI;
+	if (!LIGHT_IS_DIRECTIONAL) {
+		DIFFUSE_LIGHT += ALBEDO * LIGHT_COLOR * toon_local_light(ATTENUATION, ndl) / PI;
+	} else {
+		float lit = smoothstep(0.0, 0.1, ndl) * smoothstep(0.45, 0.55, ATTENUATION);
+		vec3 shade = mix(shade_color.rgb, vec3(1.0), mix(0.35, 1.0, lit));
+		DIFFUSE_LIGHT += ALBEDO * shade * LIGHT_COLOR / PI;
+	}
 }

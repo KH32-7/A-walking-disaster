@@ -117,7 +117,7 @@ func show_bindings(pairs: Array) -> void:
 	MenuScreen.clear(_chips)
 	for p: Array in pairs:
 		var box := HBoxContainer.new()
-		box.add_theme_constant_override(&"separation", 6)
+		box.add_theme_constant_override(&"separation", 10)
 		box.custom_minimum_size = Vector2(190, 0)
 		box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -126,7 +126,7 @@ func show_bindings(pairs: Array) -> void:
 		box.add_child(dev)
 		var text := String(p[1])
 		if text.is_empty():
-			box.add_child(MenuScreen.label("—", &"LabelDim"))
+			box.add_child(MenuScreen.label("-", &"LabelDim"))
 		else:
 			var chip := KeyChip.new(text, KeyChip.Style.OUTLINE)
 			chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER

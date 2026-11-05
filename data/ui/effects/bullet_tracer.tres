@@ -7,13 +7,22 @@
 script = ExtResource("2_layer")
 kind = 3
 texture = "res://assets/vfx/magic_arsenal/textures/modular/verticalglow.png"
-grow = Vector2(0.12, 3.5)
-travel_speed = 120.0
+grow = Vector2(0.14, 2.6)
+travel_speed = 70.0
 lifetime = 0.06
-color = Color(1.0, 0.9, 0.6, 1.0)
+color = Color(1.4, 1.1, 0.6, 0.7)
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+kind = 3
+texture = "res://assets/vfx/magic_arsenal/textures/modular/glow01.png"
+grow = Vector2(0.2, 0.45)
+travel_speed = 70.0
+lifetime = 0.04
+color = Color(2.2, 1.9, 1.2, 1.0)
 
 [resource]
 script = ExtResource("1_def")
 id = &"bullet_tracer"
 max_alive = 32
-layers = Array[ExtResource("2_layer")]([SubResource("layer_0")])
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1")])

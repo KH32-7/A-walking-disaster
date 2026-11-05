@@ -2,7 +2,8 @@ extends Control
 ## Emergency return choice in the field (D-14). Owner: Lane D. Design 10 "출격 중 습격과 긴급 귀환",
 ## 02 "긴급 귀환", 14 "시간 제한이 있는 선택은 없습니다(긴급 귀환도 선택 전까지 게임이 멈춤)".
 ## Opened by RaidFlow when B-22's EmergencyReturn offers a return (return_offered / state OFFERED).
-## The game is paused (ScreenDef pauses_game). Answers with EmergencyReturn.answer(go_back), which
+## ScreenDef pauses_game: the base pauses, the field keeps running with player input blocked
+## (user decision 2026-11-06). Answers with EmergencyReturn.answer(go_back), which
 ## emits emergency_return_requested itself; the expected outcome comes from Colony.predict_raid().
 ## args: {"raid": raid_warning info, "node": EmergencyReturn (optional; looked up by group)}
 
@@ -60,7 +61,7 @@ func _ready() -> void:
 	iv.add_child(RaidWidgets.cream_row("방향", RaidFlow.directions_text(dirs), UiTokens.DANGER))
 	var strength := float(raid.get("strength", 0.0))
 	iv.add_child(RaidWidgets.cream_row("규모", "%s%s" % [RaidFlow.type_name(StringName(raid.get("type", &""))),
-		(" · 강도 %.0f" % strength) if strength > 0.0 else ""]))
+		(" / 강도 %.0f" % strength) if strength > 0.0 else ""]))
 	if not prediction.is_empty():
 		var likely := int(prediction.get("likely", Enums.RaidOutcome.WIN))
 		iv.add_child(RaidWidgets.cream_row("예상 결과", "%s %s (지금 방어력, 내가 없을 때)" % [
@@ -111,7 +112,7 @@ func _choice(text: String, key: String, variation: StringName, lines: Array) -> 
 	h.add_child(btn)
 	v.add_child(h)
 	for l: String in lines:
-		var n := MenuScreen.label("·  " + l, &"LabelOnCream", 15)
+		var n := MenuScreen.label("- " + l, &"LabelOnCream", 15)
 		n.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		n.custom_minimum_size = Vector2(380, 0)
 		v.add_child(n)

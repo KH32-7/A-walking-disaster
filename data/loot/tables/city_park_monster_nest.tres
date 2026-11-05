@@ -32,3 +32,7 @@ container_type = 4
 roll_min = 1
 roll_max = 3
 entries = Array[ExtResource("2_entry")]([SubResource("Entry_0"), SubResource("Entry_1"), SubResource("Entry_2")])
+gear_chance = 0.25
+gear_rarity_weights = Array[float]([0.0, 70.0, 30.0])
+gear_pool = Array[StringName]([&"club", &"dagger", &"pipe_wrench", &"baseball_bat", &"machete", &"pistol", &"cloth_hat", &"hoodie", &"sneakers", &"knee_guards", &"work_helmet", &"work_vest", &"work_boots"])
+blueprint_chance = 0.1

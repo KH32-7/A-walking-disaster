@@ -123,7 +123,9 @@ func _test_emergency() -> bool:
 	var ok := _expect(s != null, "a day raid in the field opens the emergency return card")
 	ok = _expect(not UI.is_open(&"raid_warning"), "no base warning card in the field") and ok
 	if s != null:
-		ok = _expect(get_tree().paused, "the emergency choice pauses the game (14: no timed choices)") and ok
+		# The field never pauses (user decision 2026-11-06); the player just stops acting under it.
+		ok = _expect(not get_tree().paused and UI.blocks_play(),
+				"the emergency choice keeps the field running but blocks play input") and ok
 		(s.get(&"_back_btn") as Button).pressed.emit()
 	ok = _expect(int(fake.get(&"answered")) == 1, "긴급 귀환 calls EmergencyReturn.answer(true)") and ok
 	ok = _expect(not UI.is_open(&"emergency_return"), "answering closes the card") and ok

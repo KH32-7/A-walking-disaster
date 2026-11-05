@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 id = &"gunshot_pistol"
+stream = "res://assets/audio/sfx/free/snake_gun_sounds/9mm_single_isolated.wav"
 synth = &"shot_light"
 bus = 0
 priority = 1

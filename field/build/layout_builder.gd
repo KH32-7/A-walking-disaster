@@ -121,6 +121,8 @@ const OUTSKIRT_BUILDINGS := ["motel", "roadside_fast_food", "sheriff_substation"
 	"exterior_only_house_04", "exterior_only_house_05", "exterior_only_house_06", "exterior_only_house_07",
 	"exterior_only_house_08"]
 const OUTSKIRT_FAR_COLOR := Color(0.1, 0.13, 0.11)
+## The far backdrop plane sits under the deep water (RegionDressing.FAR_GROUND_Y matches it).
+const FAR_GROUND_Y := -3.0
 const WATER_SHADER := preload("res://art/shaders/water_toon.gdshader")
 ## Roads: lane lines down the middle of straight roads, power poles with wires along long edges.
 ## No pack sidewalks: their straight slabs fought the crumbled splat road edge and broke at the
@@ -161,6 +163,9 @@ const FILL_MIN_CLEAR := 9.0
 const FILL_SPACING := 16.0
 const FILL_MAX := 24
 const FILL_RADIUS := 4.5
+## A filler's supply crate stays one only this close (m) to a nest or boss arena, else it becomes a
+## toolbox: supply crates always spawn, so they must sit where the risk is (user request 2026-11-06).
+const SUPPLY_DANGER_RADIUS := 20.0
 ## Junk along building walls (outside).
 const WALL_JUNK := ["trash_bag_01", "trash_bag_02", "barrel_01", "barrel_02", "pallet", "curbside_trash_bin_01",
 	"conditioner_07", "conditioner_08", "plastic_barrel_02", "pile_garbage_02", "firewood_rack", "wheelbarrow",
@@ -308,6 +313,9 @@ var out_kit := ""
 var out_splat := ""
 var kit_cover := {}
 var shop_fill := []
+## Pack holder for dressing on upper floors (floor > 0), e.g. "roof:shop_in": it hides with that
+## building's roof while the player is inside below, instead of floating overhead (2026-11-06).
+var upper_floor_holder := ""
 ## Roads whose zone id starts with this get lane lines and power poles ("" = every road).
 var kit_street_prefix := ""
 ## Path texture instead of the street asphalt (park paths), "" = KIT_TERRAIN.road.
@@ -693,7 +701,9 @@ func _save_buildings() -> Error:
 			fm.albedo_color = OUTSKIRT_FAR_COLOR
 			plane.material = fm
 			far.mesh = plane
-			far.position.y = -0.05
+			# Below the deep water and its bed (RegionDressing._water_bed): at -0.05 it covered every
+			# deep-water surface (WATER_SURFACE_Y) through the ground's water holes.
+			far.position.y = FAR_GROUND_Y
 			far.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			parent.add_child(far, true)
 		else:
@@ -1019,6 +1029,18 @@ func _build_clutter() -> void:
 				_kit_add(mesh, at, yaw + deg_to_rad(piece[6]) + dressed[i][3], 0.0, dressed[i][2])
 			pieces += 1
 	print("clutter: %d clusters, %d pieces" % [centers.size(), pieces])
+
+
+## Within SUPPLY_DANGER_RADIUS of a nest or boss arena (map file and extra nests), on the ground.
+func _near_danger(p: Vector2) -> bool:
+	for m: Dictionary in _map.markers:
+		if m["class"] in ["MonsterNest", "BossArena"] and p.distance_to(_xz(m.position)) < SUPPLY_DANGER_RADIUS:
+			return true
+	for m: Dictionary in _extra_markers:
+		if String(m.node_name).begins_with("MonsterNest_") \
+				and p.distance_to(Vector2(m.pos.x, m.pos.z)) < SUPPLY_DANGER_RADIUS:
+			return true
+	return false
 
 
 func _add_extra(scene: String, node_name: String, pos: Vector3, rot: float, props: Dictionary) -> void:
@@ -1625,8 +1647,11 @@ func _build_fillers() -> void:
 		if kit[1] != "":
 			var spot := site + Vector2(FILL_RADIUS * 0.8, 0.0).rotated(-yaw - 0.6)
 			if _open(spot, keep_out, routes, 1.0) and not _in_prop(spot, 0.8):
+				var kind: String = kit[1]
+				if kind == "SUPPLY_CRATE" and not _near_danger(spot):
+					kind = "TOOLBOX"
 				_add_extra(loot_scene, "LootSpot_fill_%d" % s, Vector3(spot.x, 0.0, spot.y), _kit_rng.randf() * TAU,
-					{"container_type": kit[1], "loot_table_id": ""})
+					{"container_type": kind, "loot_table_id": ""})
 				loot += 1
 	print("fillers: %d sites, %d pieces, %d loot spots" % [sites.size(), pieces, loot])
 
@@ -2269,11 +2294,12 @@ func _build_shop_fill() -> void:
 				blockers.add_child(_box("Shelves_%s_%d" % [zone.id, taken.size()], c, foot - Vector2(0.1, 0.1), y,
 					1.85, 0.0, "blocked"))
 			else:
-				_kit_add("table_02", c, 0.0, y)
+				var holder := "" if zone.floor == 0 else upper_floor_holder
+				_kit_add("table_02", c, 0.0, y, 1.0, holder)
 				for k in 4:
 					var dir := Vector2(1.0, 0.0).rotated(k * PI * 0.5)
 					# Chairs face the table: front (-X) toward the center.
-					_kit_add("chair_01", c + dir * 0.85, atan2(-dir.y, dir.x), y)
+					_kit_add("chair_01", c + dir * 0.85, atan2(-dir.y, dir.x), y, 1.0, holder)
 				cover.add_child(_box("Cafe_%s_%d" % [zone.id, taken.size()], c, Vector2(2.2, 2.2), y, 0.9, 0.0, "cover"))
 		total += taken.size()
 		if taken.size() < want:

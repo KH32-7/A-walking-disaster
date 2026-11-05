@@ -5,16 +5,26 @@ extends Node3D
 ##
 ## Reads the sibling Layout (read-only geometry) and adds Lane D visuals on top:
 ##   environment (sky, fog, sun, glow), toon skin (each greybox StandardMaterial3D colour is drawn
-##   with the toon shader instead - layout files are untouched), flood water shader on deep-water
+##   with the toon shader instead - layout files are untouched), the base lakes' water (RealisticWater) on water
 ##   surfaces, vines along wall tops, dead neon signs, warm lights in IndoorZones, floating debris,
-##   and for the base: laundry lines, a bonfire light, flower pots.
+##   street lights on the standing pack lamp posts and a darker night look (field, from
+##   FieldState.night_started), and for the base: laundry lines, a
+##   bonfire light, flower pots.
 ## Everything is seeded, so the same map always looks the same.
 ## Design 16 "아트 방향": 회백 콘크리트 + 청록 수면 + 초록 덩굴, 맑은 하늘, 꺼진 네온.
 
 const TOON := preload("res://art/materials/toon_default.tres")
 const FOLIAGE := preload("res://art/materials/toon_foliage.tres")
 const WOOD := preload("res://art/materials/toon_wood.tres")
-const WATER := preload("res://art/shaders/water_toon.gdshader")
+## Water meshes still made with this shader (field/build/layout_builder.gd) are redrawn with RealisticWater.
+const OLD_WATER := preload("res://art/shaders/water_toon.gdshader")
+const CityKit := preload("res://field/buildings/city_kit.gd")
+## Deep water gets a muddy bed this far (m) under its surface (_water_bed).
+const WATER_BED_DEPTH := 2.2
+const WATER_BED_TEXTURE := "res://assets/environment/nature/pure_nature_redwood/textures/terrain/mud_darker_a.png"
+const WATER_BED_TINT := Color(0.55, 0.6, 0.5)
+## The layout builder's far backdrop plane goes this low, under the water beds.
+const FAR_GROUND_Y := -3.0
 
 enum Kind { FIELD, BASE }
 
@@ -53,17 +63,58 @@ enum Kind { FIELD, BASE }
 @export var debris_count := 24
 @export var interior_lights := true
 @export var vine_color := Color("5e9a4a")
+@export_group("Street lights")
+## Standing pack lamp posts (STREET_LAMP_SCENES) get a downward spot light and a glowing bulb, so
+## the streets get pools of light and the map reads in depth. Fallen posts stay dark. The lamps are
+## off by day and come on with the field night (FieldState.night_started), user decision 2026-11-06.
+@export var street_lights := true
+@export var street_light_color := Color("ffd59a")
+@export var street_light_energy := 7.0
+@export var street_light_range := 14.0
+@export_range(10.0, 89.0) var street_light_angle := 55.0
+## Spots further than this from the camera stop casting shadows (and fade out at twice this).
+@export var street_light_shadow_distance := 45.0
+## About this share of the lamps flicker (seeded).
+@export_range(0.0, 1.0) var street_light_flicker := 0.15
+@export_group("Night")
+## Field only. At FieldState.night_started the map fades to this over night_fade_sec, the street lamps
+## come on and Fx.night_lights lets muzzle flashes light the ground (day: no muzzle light).
+@export var night_sun_color := Color("a8b8dc")
+@export var night_sun_energy := 0.7
+@export var night_ambient := Color("7a8aa8")
+@export var night_ambient_energy := 0.45
+@export var night_sky_top := Color("22345a")
+@export var night_sky_horizon := Color("465a80")
+@export var night_fog_color := Color("3a4a66")
+@export var night_fade_sec := 4.0
 
 var _rng := RandomNumberGenerator.new()
 var _toon_cache: Dictionary = {}
 var _bobbers: Array[Node3D] = []
 var _t := 0.0
 var _fire: OmniLight3D
+var _bed_mat: Material
+var _street_spots: Array[SpotLight3D] = []
+var _flicker_spots: Array[SpotLight3D] = []
+var _street_bulbs: Array[Node3D] = []
+var _night := false
+var _sun: DirectionalLight3D
+var _env: Environment
+var _sky: ProceduralSkyMaterial
+
+## Pack lamp posts that light up (CityKit places them into the region's buildings scene).
+const STREET_LAMP_SCENES := ["parking_lot_light_pole_01.fbx"]
+## The bulb hangs this far below the top of the post.
+const STREET_LAMP_DROP := 0.3
+## A builder "Lamp" light this close (m, on the ground) to a lamp post belongs to it.
+const BUILDER_LAMP_MATCH := 1.0
 
 
 func _ready() -> void:
 	_rng.seed = seed_value
 	_environment()
+	if kind == Kind.FIELD:
+		FieldState.night_started.connect(_start_night)
 	var layout := _find_layout()
 	if layout == null:
 		push_warning("RegionDressing: no sibling Layout found; only the environment is added")
@@ -79,8 +130,17 @@ func _ready() -> void:
 		_neon(walls)
 	if interior_lights:
 		_interior_lights(layout)
+	if street_lights and kind == Kind.FIELD:
+		_street_lights()
 	if kind == Kind.BASE:
 		_base_life(layout, walls)
+	if kind == Kind.FIELD and FieldState.is_night() and not _night:
+		_start_night(true)  # the map was loaded at night
+
+
+func _exit_tree() -> void:
+	if _night:
+		Fx.night_lights = false
 
 
 func _process(delta: float) -> void:
@@ -92,6 +152,12 @@ func _process(delta: float) -> void:
 			b.rotation.z = sin(_t * 0.9 + i * 2.0) * 0.06
 	if _fire != null:
 		_fire.light_energy = 1.4 + sin(_t * 9.0) * 0.12 + sin(_t * 23.0) * 0.08
+	for i in _flicker_spots.size():
+		var s := _flicker_spots[i]
+		if _night and is_instance_valid(s):
+			# Mostly on, with short dips (a bad contact, not a strobe: reduce_flash keeps it gentle).
+			var dip := 1.0 if sin(_t * 1.7 + i * 3.1) > -0.85 else 0.35
+			s.light_energy = street_light_energy * dip
 
 
 func _find_layout() -> Node3D:
@@ -111,6 +177,7 @@ func _environment() -> void:
 	e.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
 	var sm := ProceduralSkyMaterial.new()
+	_sky = sm
 	sm.sky_top_color = sky_top
 	sm.sky_horizon_color = sky_horizon
 	sm.ground_horizon_color = sky_horizon
@@ -142,7 +209,9 @@ func _environment() -> void:
 	e.fog_sky_affect = 0.3
 	env.environment = e
 	add_child(env)
+	_env = e
 	var sun := DirectionalLight3D.new()
+	_sun = sun
 	sun.name = &"Sun"
 	sun.rotation_degrees = sun_rotation
 	sun.light_color = sun_color
@@ -189,14 +258,12 @@ func _is_water(s: Node) -> bool:
 # ---------------- water ----------------
 
 func _water(layout: Node) -> void:
-	var mat := ShaderMaterial.new()
-	mat.shader = WATER
-	if bool(Settings.get_value(&"reduce_flash")):
-		mat.set_shader_parameter(&"sparkle_amount", 0.0)
+	# The base lakes' water (RealisticWater), with the real depth below each surface from the depth
+	# buffer: deep channels go dark blue, flooded floors stay see-through.
+	var mat := RealisticWater.material()
 	# Shallow overlays (a few cm over the ground) would read as foam everywhere: the foam is the depth
-	# difference to what is under the surface. They get a thin foam band only (B-26 feedback 2026-11-06).
-	var shallow_mat := mat.duplicate() as ShaderMaterial
-	shallow_mat.set_shader_parameter(&"foam_width", 0.005)
+	# difference to what is under the surface. They keep only a trace of it (B-26 feedback 2026-11-06).
+	var shallow_mat := RealisticWater.material(0.0, true)
 	for n in layout.find_children("*", "CSGShape3D", true, false):
 		if not _is_water(n):
 			continue
@@ -204,10 +271,42 @@ func _water(layout: Node) -> void:
 		(n as CSGShape3D).set(&"material", shallow_mat if is_shallow else mat)
 		var box := (n as CSGShape3D).get_aabb()
 		var xf := (n as Node3D).global_transform
+		if not is_shallow:
+			_water_bed(xf * box)
 		for i in int(debris_count / 2.0):
 			var local := Vector3(_rng.randf_range(box.position.x, box.end.x), box.end.y,
 				_rng.randf_range(box.position.z, box.end.z))
 			_float_debris(xf * local)
+	# The layout builder's far backdrop plane covered the deep water in scenes built before
+	# field/build/layout_builder.gd FAR_GROUND_Y: put it under the water beds.
+	for n in get_parent().find_children("FarGround", "MeshInstance3D", true, false):
+		(n as Node3D).global_position.y = minf((n as Node3D).global_position.y, FAR_GROUND_Y)
+	# The pack dressing (CityKit, the region's buildings scene) draws deep water as flat meshes made
+	# with the old toon water shader: they get the same water.
+	for n in get_parent().find_children("*", "MeshInstance3D", true, false):
+		var m := (n as MeshInstance3D).material_override as ShaderMaterial
+		if m != null and m.shader == OLD_WATER:
+			(n as MeshInstance3D).material_override = mat
+			_water_bed((n as MeshInstance3D).global_transform * (n as MeshInstance3D).get_aabb())
+
+
+## A muddy bed WATER_BED_DEPTH below a deep-water surface. The channels have nothing under them, and
+## the water shader refracts what is below: without a bed the surface reads as one flat colour.
+func _water_bed(surface: AABB) -> void:
+	if _bed_mat == null:
+		if ResourceLoader.exists(WATER_BED_TEXTURE):
+			_bed_mat = CityKit.ground_material(WATER_BED_TEXTURE, 4.0, WATER_BED_TINT)
+		else:
+			_bed_mat = _toon_for(WATER_BED_TINT)
+	var mi := MeshInstance3D.new()
+	mi.name = &"WaterBed"
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(surface.size.x, surface.size.z)
+	mi.mesh = plane
+	mi.material_override = _bed_mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+	mi.global_position = Vector3(surface.get_center().x, surface.end.y - WATER_BED_DEPTH, surface.get_center().z)
 
 
 func _float_debris(at: Vector3) -> void:
@@ -337,6 +436,145 @@ func _interior_lights(layout: Node) -> void:
 		l.shadow_enabled = false
 		add_child(l)
 		l.global_position = at + Vector3.UP * 2.4
+
+
+## Lights every standing lamp post of the region (its buildings scene is a sibling, put there by
+## CityKit before this node is added). Without the private assets/ there are no posts and no lights.
+func _street_lights() -> void:
+	var region := get_parent()
+	var no_flicker := bool(Settings.get_value(&"reduce_flash"))
+	var bulb_mat := StandardMaterial3D.new()
+	bulb_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	bulb_mat.albedo_color = street_light_color.lightened(0.3)
+	bulb_mat.emission_enabled = true
+	bulb_mat.emission = street_light_color
+	bulb_mat.emission_energy_multiplier = 3.0
+	var bulb_mesh := SphereMesh.new()
+	bulb_mesh.radius = 0.16
+	bulb_mesh.height = 0.32
+	var post_spots: Array[Vector2] = []  # the foot of every post, standing or fallen
+	for n in region.find_children("*", "Node3D", true, false):
+		if not _is_street_lamp(n):
+			continue
+		var mi := n as MeshInstance3D
+		if mi == null:
+			for c in n.find_children("*", "MeshInstance3D", true, false):
+				mi = c as MeshInstance3D
+				break
+		if mi == null or not mi.is_visible_in_tree():
+			continue
+		var xf := mi.global_transform
+		var box := mi.get_aabb()
+		# The pack FBX roots carry a stray offset (CityKit), so the post is located by its mesh.
+		var foot := xf * Vector3(box.get_center().x, box.position.y, box.get_center().z)
+		post_spots.append(Vector2(foot.x, foot.z))
+		if xf.basis.y.normalized().dot(Vector3.UP) < 0.9:
+			continue  # fallen post
+		var top := xf * Vector3(box.get_center().x, box.end.y, box.get_center().z)
+		var at := top - Vector3.UP * STREET_LAMP_DROP
+		var spot := SpotLight3D.new()
+		spot.name = &"StreetLight"
+		spot.light_color = street_light_color
+		spot.light_energy = street_light_energy
+		spot.spot_range = street_light_range
+		spot.spot_angle = street_light_angle
+		spot.spot_attenuation = 0.8
+		spot.shadow_enabled = true
+		spot.distance_fade_enabled = true
+		spot.distance_fade_begin = street_light_shadow_distance
+		spot.distance_fade_shadow = street_light_shadow_distance
+		spot.distance_fade_length = street_light_shadow_distance
+		add_child(spot)
+		spot.visible = _night
+		spot.global_position = at
+		spot.global_rotation = Vector3(-PI / 2.0, 0.0, 0.0)  # straight down
+		var bulb := MeshInstance3D.new()
+		bulb.mesh = bulb_mesh
+		bulb.material_override = bulb_mat
+		bulb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(bulb)
+		bulb.visible = _night
+		bulb.global_position = at
+		_street_bulbs.append(bulb)
+		_street_spots.append(spot)
+		if not no_flicker and _rng.randf() < street_light_flicker:
+			_flicker_spots.append(spot)
+	_hide_builder_lamps(region, post_spots)
+
+
+## The layout builder (field/build/layout_builder.gd LAMP_LIGHTS) also bakes a plain "Lamp" omni light
+## over each lamp post into the buildings scene, even over fallen ones. The posts' lights are the
+## spots above, so those omnis are switched off (light towers keep theirs).
+func _hide_builder_lamps(region: Node, post_spots: Array[Vector2]) -> void:
+	if post_spots.is_empty():
+		return
+	for n in region.find_children("Lamp*", "OmniLight3D", true, false):
+		var p := (n as Node3D).global_position
+		for s in post_spots:
+			if Vector2(p.x, p.z).distance_to(s) < BUILDER_LAMP_MATCH:
+				(n as OmniLight3D).visible = false
+				break
+
+
+func _is_street_lamp(n: Node) -> bool:
+	var path := n.scene_file_path
+	if path.is_empty():
+		return false
+	for file: String in STREET_LAMP_SCENES:
+		if path.ends_with("/" + file):
+			return true
+	return false
+
+
+func _set_lamps(on: bool) -> void:
+	for s in _street_spots:
+		if is_instance_valid(s):
+			s.visible = on
+			s.light_energy = street_light_energy
+	for b in _street_bulbs:
+		if is_instance_valid(b):
+			b.visible = on
+
+
+# ---------------- night ----------------
+
+## Field night: the map fades dark, the street lamps come on and muzzle flashes light the ground.
+func _start_night(instant := false) -> void:
+	if _night:
+		return
+	_night = true
+	Fx.night_lights = true
+	_set_lamps(true)
+	if _sun == null or _env == null:
+		return
+	if instant or night_fade_sec <= 0.0:
+		_sun.light_color = night_sun_color
+		_sun.light_energy = night_sun_energy
+		_env.ambient_light_color = night_ambient
+		_env.ambient_light_energy = night_ambient_energy
+		_env.fog_light_color = night_fog_color
+		_sky.sky_top_color = night_sky_top
+		_sky.sky_horizon_color = night_sky_horizon
+		_sky.ground_horizon_color = night_sky_horizon
+		return
+	var tw := create_tween().set_parallel().set_trans(Tween.TRANS_SINE)
+	tw.tween_property(_sun, ^"light_color", night_sun_color, night_fade_sec)
+	tw.tween_property(_sun, ^"light_energy", night_sun_energy, night_fade_sec)
+	tw.tween_property(_env, ^"ambient_light_color", night_ambient, night_fade_sec)
+	tw.tween_property(_env, ^"ambient_light_energy", night_ambient_energy, night_fade_sec)
+	tw.tween_property(_env, ^"fog_light_color", night_fog_color, night_fade_sec)
+	tw.tween_property(_sky, ^"sky_top_color", night_sky_top, night_fade_sec)
+	tw.tween_property(_sky, ^"sky_horizon_color", night_sky_horizon, night_fade_sec)
+	tw.tween_property(_sky, ^"ground_horizon_color", night_sky_horizon, night_fade_sec)
+
+
+func is_night_look() -> bool:
+	return _night
+
+
+## Standing lit lamp posts (tests and previews).
+func street_light_count() -> int:
+	return _street_spots.size()
 
 
 # ---------------- base ----------------

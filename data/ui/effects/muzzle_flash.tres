@@ -36,11 +36,13 @@ fade_out = 0.8
 [sub_resource type="Resource" id="layer_2"]
 script = ExtResource("2_layer")
 kind = 4
-light_energy = 2.0
-light_range = 5.0
-lifetime = 0.06
+night_only = true
+light_energy = 9.0
+light_range = 6.0
+lifetime = 0.12
 color = Color(1.0, 0.75, 0.45, 1.0)
 flash = true
+fade_out = 0.4
 
 [sub_resource type="Resource" id="layer_3"]
 script = ExtResource("2_layer")

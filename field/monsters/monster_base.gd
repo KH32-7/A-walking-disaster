@@ -18,11 +18,18 @@ signal died(monster: Monster)
 const GROUP := &"field_monsters"
 ## Lane D's model for def.id (D-17 MonsterVisual). Added as the "Visual" child; the grey-box meshes hide.
 const VISUAL_DIR := "res://art/monsters/"
-## Enemy outline around the model's silhouette (user feedback 2026-11-06). Red means enemy and nothing
-## else. Godot's stencil outline: only the outer edge, not every crease where parts overlap.
-const OUTLINE_COLOR := Color("e03a2f")
-## Outline width in metres (stencil outline grows the mesh in world space).
-const OUTLINE_THICKNESS := 0.05
+## Red enemy outline on the outer edge only (user feedback 2026-11-06): a stencil mask pass, then a
+## red ring outside it. Colour and widths live in the material. Red means enemy and nothing else.
+const OUTLINE_MATERIAL := preload("res://art/materials/enemy_outline.tres")
+## Essence glow of elites and bosses (user feedback 2026-11-06): the family's element glow, the same
+## colour as its core and its essence (06). Numbers in MonsterRules "Essence glow".
+const ESSENCE_GLOW := {
+	Enums.Element.GREEN: preload("res://art/materials/glow_green.tres"),
+	Enums.Element.STONE: preload("res://art/materials/glow_stone.tres"),
+	Enums.Element.WATER: preload("res://art/materials/glow_water.tres"),
+	Enums.Element.LIGHT: preload("res://art/materials/glow_light.tres"),
+}
+const ESSENCE_LIGHT_NAME := &"EssenceLight"
 ## B-03 puts the player in this group.
 const PLAYER_GROUP := &"player"
 ## MonsterDef.behaviors id -> MonsterBehavior script.
@@ -75,8 +82,8 @@ var raid_goal: Vector3 = Vector3.INF
 ## start true.
 var size_applied := false
 
-## One red outline material shared by every monster.
-static var _outline: StandardMaterial3D
+## Element -> outline material with the essence rim glow chained after it, shared by every monster.
+static var _glow_outlines := {}
 
 var _behaviors: Array[MonsterBehavior] = []
 var _dead := false
@@ -167,7 +174,7 @@ func tick(delta: float) -> void:
 		# A behavior holds it still (B-18), or staggered / knocked back (B-14).
 		_stop()
 		return
-	if not is_raider() and _is_leash_state() and _flat_distance(home) > MonsterRules.RETURN_DISTANCE:
+	if not is_raider() and _past_leash():
 		_set_state(Enums.AIState.RETURN)
 	match state:
 		Enums.AIState.SLEEP:
@@ -364,6 +371,8 @@ func make_elite() -> void:
 		hp *= MonsterRules.ELITE_HP_MULT
 		for id in def.elite_behaviors:
 			_add_behavior(id)
+		if not _dead:
+			_set_outline(true)
 
 
 ## The attached behavior for `id`, or null. Lets other B code reach one, for example a
@@ -527,24 +536,49 @@ static func _dependencies_present(path: String) -> bool:
 	return true
 
 
-## Red enemy outline on the model's meshes (the grey-box meshes without a model). The weak point core
-## keeps its own look. Turned off before `died` so the corpse the visual leaves has none.
+## Red enemy outline on the model's meshes (the grey-box meshes without a model), plus the essence
+## glow on elites and bosses. The weak point core keeps its own look. Turned off before `died` so the
+## corpse the visual leaves has neither.
 func _set_outline(on: bool) -> void:
+	var glow := on and has_essence_glow()
 	var mat: Material = null
 	if on:
-		if _outline == null:
-			# An invisible overlay that marks the body in the stencil buffer; its outline pass draws
-			# only outside the marked pixels.
-			_outline = StandardMaterial3D.new()
-			_outline.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			_outline.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-			_outline.albedo_color = Color(0.0, 0.0, 0.0, 0.0)
-			_outline.stencil_mode = BaseMaterial3D.STENCIL_MODE_OUTLINE
-			_outline.stencil_color = OUTLINE_COLOR
-			_outline.stencil_outline_thickness = OUTLINE_THICKNESS
-		mat = _outline
+		mat = _essence_outline(def.family) if glow else OUTLINE_MATERIAL
 	for look in outline_meshes():
 		look.material_overlay = mat
+	var light := get_node_or_null(NodePath(ESSENCE_LIGHT_NAME)) as OmniLight3D
+	if glow and light == null:
+		light = OmniLight3D.new()
+		light.name = ESSENCE_LIGHT_NAME
+		light.light_color = (ESSENCE_GLOW[def.family] as ShaderMaterial).get_shader_parameter(&"glow_color")
+		light.light_energy = MonsterRules.ESSENCE_LIGHT_ENERGY
+		light.omni_range = MonsterRules.ESSENCE_LIGHT_RANGE
+		light.shadow_enabled = false
+		light.position = Vector3.UP * MonsterRules.ESSENCE_LIGHT_HEIGHT
+		add_child(light)
+	elif not glow and light != null:
+		light.queue_free()
+
+
+## Elites and bosses glow with their family's essence colour.
+func has_essence_glow() -> bool:
+	return def != null and ESSENCE_GLOW.has(def.family) 			and (elite or def.tier == Enums.MonsterTier.BOSS)
+
+
+## The red outline with the family's rim glow as its last pass.
+static func _essence_outline(family: Enums.Element) -> Material:
+	if not _glow_outlines.has(family):
+		var outline := OUTLINE_MATERIAL.duplicate(true) as ShaderMaterial
+		var glow := (ESSENCE_GLOW[family] as ShaderMaterial).duplicate() as ShaderMaterial
+		glow.set_shader_parameter(&"core_amount", 0.0)  # rim only, the body stays readable
+		glow.set_shader_parameter(&"energy", MonsterRules.ESSENCE_GLOW_ENERGY)
+		glow.set_shader_parameter(&"fresnel_power", MonsterRules.ESSENCE_GLOW_FRESNEL)
+		if Settings.get_value(&"reduce_flash"):
+			glow.set_shader_parameter(&"pulse_amount", 0.0)
+		glow.render_priority = outline.next_pass.render_priority + 1
+		outline.next_pass.next_pass = glow
+		_glow_outlines[family] = outline
+	return _glow_outlines[family]
 
 
 ## The meshes that carry the enemy outline.
@@ -794,6 +828,16 @@ func _face(point: Vector3, delta: float) -> void:
 		return
 	var wanted := atan2(-to.x, -to.z)
 	rotation.y = rotate_toward(rotation.y, wanted, deg_to_rad(MonsterRules.TURN_SPEED_DEG) * delta)
+
+
+## Searching leashes at RETURN_DISTANCE; an active chase only at CHASE_RETURN_DISTANCE.
+func _past_leash() -> bool:
+	if not _is_leash_state():
+		return false
+	var limit := MonsterRules.RETURN_DISTANCE
+	if state in [Enums.AIState.CHASE, Enums.AIState.ATTACK]:
+		limit = MonsterRules.CHASE_RETURN_DISTANCE
+	return _flat_distance(home) > limit
 
 
 func _is_leash_state() -> bool:

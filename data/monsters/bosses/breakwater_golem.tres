@@ -1,0 +1,62 @@
+[gd_resource type="Resource" script_class="BossDef" format=3]
+
+[ext_resource type="Script" path="res://field/defs/boss_def.gd" id="1_boss"]
+[ext_resource type="Script" path="res://field/defs/boss_pattern.gd" id="2_pattern"]
+[ext_resource type="Script" path="res://field/monsters/boss/mechanics/golem_mechanic.gd" id="3_mech"]
+
+[sub_resource type="Resource" id="Pattern_wave_slam"]
+script = ExtResource("2_pattern")
+id = &"wave_slam"
+range_min = 0.0
+range_max = 8.0
+cooldown_sec = 5.0
+windup_sec = 1.2
+shape = &"line"
+anchor = 0
+length = 12.0
+width = 4.0
+kind = &"danger"
+damage_mult = 1.3
+status = Array[Dictionary]([{"id": &"knockback"}, {"id": &"wet"}])
+
+[sub_resource type="Resource" id="Pattern_rock_throw"]
+script = ExtResource("2_pattern")
+id = &"rock_throw"
+range_min = 6.0
+range_max = 20.0
+cooldown_sec = 7.0
+windup_sec = 1.4
+shape = &"circle"
+anchor = 2
+radius = 3.0
+kind = &"danger"
+damage_mult = 1.2
+status = Array[Dictionary]([{"id": &"stagger"}])
+
+[sub_resource type="Resource" id="Pattern_guard"]
+script = ExtResource("2_pattern")
+id = &"guard"
+action = &"guard"
+range_min = 0.0
+range_max = 20.0
+cooldown_sec = 16.0
+windup_sec = 0.6
+shape = &""
+params = {
+"break_stagger_sec": 2.0,
+"defense_mult": 2.0,
+"guard_sec": 8.0
+}
+
+[resource]
+script = ExtResource("1_boss")
+monster_id = &"breakwater_golem"
+phases = Array[float]([0.5])
+phase_speed = Array[float]([1.0, 1.5])
+patterns = Array[ExtResource("2_pattern")]([SubResource("Pattern_wave_slam"), SubResource("Pattern_rock_throw"), SubResource("Pattern_guard")])
+pattern_gap_sec = 1.0
+mechanic = ExtResource("3_mech")
+respawn_days = 3
+first_kill_flags = Array[StringName]([&"blueprint_radio_tower"])
+first_kill_text = "방파제 골렘을 쓰러뜨렸다. 발전기 코어 2개와 무전탑 설계도를 얻었다"
+first_kill_drop_table_id = &"boss_golem_first"

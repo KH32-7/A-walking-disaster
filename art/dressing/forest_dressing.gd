@@ -10,9 +10,9 @@ extends Node3D
 
 const Models := preload("res://base/building/building_models.gd")
 const TERRAIN := "res://assets/environment/nature/pure_nature_redwood/textures/terrain/"
-const WATER_SHADER := "res://art/shaders/realistic_water.gdshader"
 ## Water depth in the middle of a lake (m), from its smaller radius. The lakes sit on flat ground,
-## so realistic_water.gdshader reads this "fake depth" instead of the depth buffer.
+## so the water (RealisticWater, shared with the field) reads this "fake depth" instead of the
+## depth buffer.
 const WATER_DEPTH_PER_RADIUS := 0.3
 const WATER_RINGS := 12
 const WATER_SEGMENTS := 72
@@ -30,6 +30,18 @@ const LOGS := ["redwood_hollow_log_0", "redwood_hollow_log_1", "redwood_hollow_l
 	"redwood_hollow_log2_0", "redwood_hollow_log2_1", "redwood_hollow_log2_2"]
 const PEBBLES := ["rubble_sparse_1", "rubble_sparse_2", "rubble_sparse_3", "boulder_1", "boulder_3"]
 const CAMP_PROPS := ["food_supplies_crat", "water_canister", "hiking_backpack", "plastic_storage_bin", "cooler_box_water"]
+## Camp props fit this box (m) at up to this scale, this far apart (user feedback 2026-11-06: they
+## read tiny next to the buildings and the forest).
+const CAMP_PROP_SIZE := Vector2(1.9, 1.6)
+const CAMP_PROP_MAX_SCALE := 2.6
+const CAMP_PROP_SPACING := 2.3
+## Quarry rock piles on the rock ResourceNodes (halved, user feedback 2026-11-06).
+const RESOURCE_ROCK_SCALE := 0.5
+## Ground patches (clearing, its edge band, cleared zones) fade out over this many metres of their
+## edge, and noise moves that edge in and out by this much.
+const PATCH_SHADER := preload("res://art/shaders/ground_patch.gdshader")
+const PATCH_FEATHER := 4.0
+const PATCH_RAGGED := 2.5
 
 const MAP_MIN := Vector2(-110.0, -90.0)
 const MAP_MAX := Vector2(110.0, 82.0)
@@ -55,6 +67,18 @@ const ZONE_REFRESH_SEC := 1.0
 ## so the pack's cut (0.5) makes far trees look bare; a lower cut keeps the needles.
 @export_range(0.1, 1.0) var foliage_alpha_cut_scale := 0.45
 @export var fog_density := 0.0008
+@export_group("Night")
+## GameState.phase NIGHT at the base: the map fades to this (darker, but not black; user feedback
+## 2026-11-06) and the lights of lamps, fires and light towers come on (BuildingModels.NIGHT_LIGHTS).
+## By day it stays as it is.
+@export var night_sun_color := Color("9fb0d8")
+@export var night_sun_energy := 0.55
+@export var night_ambient := Color("6f80a0")
+@export var night_ambient_energy := 0.45
+@export var night_sky_top := Color("1e2f50")
+@export var night_sky_horizon := Color("3f5276")
+@export var night_fog_color := Color("34445e")
+@export var night_fade_sec := 3.0
 
 var _rng := RandomNumberGenerator.new()
 var _layout: Node3D
@@ -67,12 +91,20 @@ var _counts := {}
 var _refresh := 0.0
 var _fixed_meshes := {}     # pack mesh -> copy with lower leaf alpha_cut
 var _fixed_materials := {}
+var _sun: DirectionalLight3D
+var _env: Environment
+var _sky: ProceduralSkyMaterial
+var _day := {}  # the day look, restored in the morning
+var _night := false
+var _t := 0.0
 
 
 func _ready() -> void:
 	_rng.seed = seed_value
 	if with_environment:
 		_environment()
+		EventBus.phase_changed.connect(func(_p: Enums.Phase) -> void: _apply_phase(false))
+		_apply_phase(true)
 	_layout = _find_layout()
 	if _layout == null:
 		push_warning("forest_dressing: no sibling Layout; only the environment is added")
@@ -91,6 +123,13 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_t += delta
+	if _night:
+		var i := 0
+		for l in get_tree().get_nodes_in_group(Models.NIGHT_LIGHT_GROUP):
+			i += 1
+			if (l as Node).get_meta(&"flicker", false):
+				(l as OmniLight3D).light_energy = float(l.get_meta(&"energy", 1.0)) * (1.0 + sin(_t * 9.0 + i) * 0.06 + sin(_t * 23.0 + i * 2.0) * 0.04)
 	_refresh -= delta
 	if _refresh <= 0.0:
 		_refresh = ZONE_REFRESH_SEC
@@ -137,14 +176,8 @@ func _read_layout() -> void:
 		for body in water.get_children():
 			if body is Node3D and body.has_meta(&"radii"):
 				_waters.append({"centre": Vector2(body.global_position.x, body.global_position.z), "radii": body.get_meta(&"radii")})
-	# A dirt trail from the clearing to every raid spawn (raids come down these).
-	for node in _layout.find_children("*", "Marker3D", true, false):
-		if node is RaidSpawnPoint:
-			var to := Vector2(node.global_position.x, node.global_position.z)
-			var from := Vector2(clampf(to.x, _clearing.position.x + 6, _clearing.end.x - 6),
-				clampf(to.y, _clearing.position.y + 6, _clearing.end.y - 6))
-			var mid := (from + to) * 0.5 + (to - from).orthogonal().normalized() * _rng.randf_range(-3.0, 3.0)
-			_trails.append(PackedVector2Array([from, from.lerp(mid, 0.5), mid, mid.lerp(to, 0.5), to]))
+	# No dirt trails to the raid spawns any more (user feedback 2026-11-06: the brown strips read as
+	# boxes). _trails stays empty, so the forest also grows where they ran.
 
 
 func in_clearing(p: Vector2, pad := 0.0) -> bool:
@@ -216,6 +249,8 @@ func _environment() -> void:
 	we.name = "WorldEnvironment"
 	we.environment = env
 	add_child(we)
+	_env = env
+	_sky = sky_mat
 	var sun := DirectionalLight3D.new()
 	sun.name = "Sun"
 	sun.rotation_degrees = Vector3(-50.0, 40.0, 0.0)
@@ -224,6 +259,40 @@ func _environment() -> void:
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 160.0
 	add_child(sun)
+	_sun = sun
+	_day = {"sun_color": sun.light_color, "sun_energy": sun.light_energy, "ambient": env.ambient_light_color,
+		"ambient_energy": env.ambient_light_energy, "fog": env.fog_light_color, "sky_top": sky_mat.sky_top_color,
+		"sky_horizon": sky_mat.sky_horizon_color}
+
+
+# ---------------- night ----------------
+
+## Fades to the night look at GameState NIGHT and back by day; the building lights follow.
+func _apply_phase(instant: bool) -> void:
+	var night := GameState.phase == Enums.Phase.NIGHT
+	if night == _night and not instant:
+		return
+	_night = night
+	get_tree().call_group(Models.NIGHT_LIGHT_GROUP, &"set_visible", night)
+	if _sun == null:
+		return
+	var to := {"sun_color": night_sun_color, "sun_energy": night_sun_energy, "ambient": night_ambient,
+		"ambient_energy": night_ambient_energy, "fog": night_fog_color, "sky_top": night_sky_top,
+		"sky_horizon": night_sky_horizon} if night else _day
+	var sec := 0.0 if instant else night_fade_sec
+	var tw := create_tween().set_parallel().set_trans(Tween.TRANS_SINE)
+	tw.tween_property(_sun, ^"light_color", to["sun_color"], sec)
+	tw.tween_property(_sun, ^"light_energy", to["sun_energy"], sec)
+	tw.tween_property(_env, ^"ambient_light_color", to["ambient"], sec)
+	tw.tween_property(_env, ^"ambient_light_energy", to["ambient_energy"], sec)
+	tw.tween_property(_env, ^"fog_light_color", to["fog"], sec)
+	tw.tween_property(_sky, ^"sky_top_color", to["sky_top"], sec)
+	tw.tween_property(_sky, ^"sky_horizon_color", to["sky_horizon"], sec)
+	tw.tween_property(_sky, ^"ground_horizon_color", to["sky_horizon"], sec)
+
+
+func is_night_look() -> bool:
+	return _night
 
 
 func _terrain_material(file: String, fallback: Color, uv_metres: float) -> StandardMaterial3D:
@@ -241,16 +310,41 @@ func _terrain_material(file: String, fallback: Color, uv_metres: float) -> Stand
 	return m
 
 
+## A ground patch whose rounded-rectangle edge (half, radius: its mesh outline) fades into the ground
+## below with a noisy border. priority: drawing order among the overlapping patches (higher on top).
+func _patch_material(file: String, fallback: Color, uv_metres: float, half: Vector2, radius: float,
+		priority: int) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = PATCH_SHADER
+	m.render_priority = priority
+	var path := TERRAIN + file
+	m.set_shader_parameter(&"albedo", Color.WHITE if ResourceLoader.exists(path) else fallback)
+	if ResourceLoader.exists(path):
+		m.set_shader_parameter(&"albedo_texture", load(path))
+	m.set_shader_parameter(&"uv_metres", uv_metres)
+	m.set_shader_parameter(&"half_size", half)
+	m.set_shader_parameter(&"corner_radius", minf(radius, minf(half.x, half.y)))
+	m.set_shader_parameter(&"feather", PATCH_FEATHER)
+	m.set_shader_parameter(&"ragged", PATCH_RAGGED)
+	return m
+
+
 func _ground() -> void:
 	var soil := PlaneMesh.new()
 	soil.size = MAP_MAX - MAP_MIN
 	_add_mesh(self, "ForestFloor", soil, Vector3((MAP_MIN.x + MAP_MAX.x) * 0.5, 0.01, (MAP_MIN.y + MAP_MAX.y) * 0.5),
 		_terrain_material("soil_pine_a.png", Color("4a5a36"), 6.0))
-	var edge := _clearing.grow(5.0)
-	_add_mesh(self, "ClearingEdge", _rounded_rect(edge.size * 0.5, CLEARING_RADIUS + 5.0), _at(edge.get_center(), 0.03),
-		_terrain_material("grass_pine_a.png", Color("5f8a3a"), 5.0))
-	_add_mesh(self, "Clearing", _rounded_rect(_clearing.size * 0.5, CLEARING_RADIUS), _at(_clearing.get_center(), 0.05),
-		_terrain_material("grass01_a.png", Color("7fb84a"), 4.0))
+	# Grass patches over the soil whose edges crumble in (ground_patch.gdshader) instead of ending on a
+	# straight line (user feedback 2026-11-06). The edge band is wider so the clearing still reaches its
+	# old line once the fade eats into it.
+	var edge := _clearing.grow(5.0 + PATCH_FEATHER)
+	_add_mesh(self, "ClearingEdge", _rounded_rect(edge.size * 0.5, CLEARING_RADIUS + 5.0 + PATCH_FEATHER),
+		_at(edge.get_center(), 0.03), _patch_material("grass_pine_a.png", Color("5f8a3a"), 5.0, edge.size * 0.5,
+		CLEARING_RADIUS + 5.0 + PATCH_FEATHER, 0))
+	var inner := _clearing.grow(PATCH_FEATHER * 0.5)
+	_add_mesh(self, "Clearing", _rounded_rect(inner.size * 0.5, CLEARING_RADIUS + PATCH_FEATHER * 0.5),
+		_at(inner.get_center(), 0.05), _patch_material("grass01_a.png", Color("7fb84a"), 4.0, inner.size * 0.5,
+		CLEARING_RADIUS + PATCH_FEATHER * 0.5, 1))
 	var mud := _terrain_material("mud_a.png", Color("9a4e33"), 3.0)
 	for i in _trails.size():
 		_add_mesh(self, "Trail%d" % i, _strip(_trails[i], TRAIL_HALF_WIDTH), Vector3(0, 0.07, 0), mud)
@@ -264,58 +358,18 @@ func _ground() -> void:
 		grass.name = "Cleared_%s" % id
 		add_child(grass)
 		_add_mesh(grass, "Grass", _rounded_rect(rect.size * 0.5, 4.0), _at(rect.get_center(), 0.05),
-			_terrain_material("grass01_a.png", Color("7fb84a"), 4.0))
+			_patch_material("grass01_a.png", Color("7fb84a"), 4.0, rect.size * 0.5, 4.0, 1))
 		_groups[id] = {"forest": forest, "grass": grass}
 
 
 func _water() -> void:
 	var shore := _terrain_material("mud_darker_a.png", Color("6b4630"), 3.0)
-	var noise_uv := _noise_texture(11, 0.006, false)
-	var normal_a := _noise_texture(23, 0.02, true)
-	var normal_b := _noise_texture(37, 0.045, true)
-	var foam := _noise_texture(51, 0.03, false, true)
 	for i in _waters.size():
 		var w: Dictionary = _waters[i]
 		var radii: Vector2 = w["radii"]
-		var water: Material
-		if ResourceLoader.exists(WATER_SHADER):
-			var sm := ShaderMaterial.new()
-			sm.shader = load(WATER_SHADER)
-			sm.set_shader_parameter(&"uv_sampler", noise_uv)
-			sm.set_shader_parameter(&"normalmap_a_sampler", normal_a)
-			sm.set_shader_parameter(&"normalmap_b_sampler", normal_b)
-			sm.set_shader_parameter(&"foam_sampler", foam)
-			sm.set_shader_parameter(&"fake_depth", minf(radii.x, radii.y) * WATER_DEPTH_PER_RADIUS)
-			sm.set_shader_parameter(&"beers_law", 0.9)
-			sm.set_shader_parameter(&"depth_offset", -0.5)
-			sm.set_shader_parameter(&"refraction", 0.03)
-			sm.set_shader_parameter(&"color_shallow", Color(0.45, 0.62, 0.55))
-			sm.set_shader_parameter(&"color_deep", Color(0.04, 0.12, 0.26))
-			water = sm
-		else:
-			var std := StandardMaterial3D.new()
-			std.albedo_color = Color("2f5f7a")
-			water = std
+		var water := RealisticWater.material(minf(radii.x, radii.y) * WATER_DEPTH_PER_RADIUS)
 		_add_mesh(self, "Shore%d" % i, _ellipse(radii + Vector2(3.0, 3.0)), _at(w["centre"], 0.04), shore)
 		_add_mesh(self, "Water%d" % i, _water_mesh(radii), _at(w["centre"], 0.12), water)
-
-
-## Seamless noise for the water shader (made here, so no texture files are needed).
-func _noise_texture(seed: int, frequency: float, normal_map: bool, cellular := false) -> NoiseTexture2D:
-	var noise := FastNoiseLite.new()
-	noise.seed = seed
-	noise.frequency = frequency
-	if cellular:
-		noise.noise_type = FastNoiseLite.TYPE_CELLULAR
-	var tex := NoiseTexture2D.new()
-	tex.width = 512
-	tex.height = 512
-	tex.seamless = true
-	tex.generate_mipmaps = true
-	tex.as_normal_map = normal_map
-	tex.bump_strength = 6.0
-	tex.noise = noise
-	return tex
 
 
 ## Elliptic disc in rings; UV2.x = how deep (0 at the shore, 1 in the middle) for the fake depth.
@@ -333,9 +387,11 @@ func _water_mesh(radii: Vector2) -> ArrayMesh:
 			var p01 := Vector3(cos(a1) * radii.x * t0, 0, sin(a1) * radii.y * t0)
 			var p10 := Vector3(cos(a0) * radii.x * t1, 0, sin(a0) * radii.y * t1)
 			var p11 := Vector3(cos(a1) * radii.x * t1, 0, sin(a1) * radii.y * t1)
+			# The inner ring is a fan: p00 == p01 there, so only [p00, p10, p11] has an area. (It used to
+			# draw the empty one instead, leaving a hole in the middle that showed the mud shore below.)
+			_tri_depth(st, [p00, p10, p11], [t0, t1, t1])
 			if r > 0:
-				_tri_depth(st, [p00, p10, p11], [t0, t1, t1])
-			_tri_depth(st, [p00, p11, p01], [t0, t1, t0])
+				_tri_depth(st, [p00, p11, p01], [t0, t1, t0])
 	return st.commit()
 
 
@@ -566,9 +622,9 @@ func _pick_tree(p: Vector2) -> Array:
 func _pick_floor(_p: Vector2) -> Array:
 	var r := _rng.randf()
 	if r < 0.32:
-		return _pick(FERNS, 0.8, 1.3)
+		return _pick(FERNS, 0.4, 0.65)  # grass and ferns halved (user feedback 2026-11-06)
 	if r < 0.52:
-		return _pick(GRASS, 0.9, 1.3)
+		return _pick(GRASS, 0.45, 0.65)
 	if r < 0.62:
 		return _pick(["dead_leaves_1", "dead_leaves_2"], 0.8, 1.2)
 	if r < 0.67:
@@ -583,9 +639,9 @@ func _pick_floor(_p: Vector2) -> Array:
 func _pick_rock(_p: Vector2) -> Array:
 	var r := _rng.randf()
 	if r < 0.2:
-		return _pick(BIG_BOULDERS, 0.6, 1.0)
+		return _pick(BIG_BOULDERS, 0.15, 0.25)  # rocks halved twice (user feedback 2026-11-06)
 	if r < 0.5:
-		return _pick(BOULDERS, 0.7, 1.3)
+		return _pick(BOULDERS, 0.18, 0.33)
 	if r < 0.65:
 		return _pick(LOGS, 0.8, 1.1)
 	return []
@@ -593,13 +649,13 @@ func _pick_rock(_p: Vector2) -> Array:
 
 func _pick_pebble(_p: Vector2) -> Array:
 	if _rng.randf() < 0.5:
-		return _pick(PEBBLES, 0.4, 0.9)
+		return _pick(PEBBLES, 0.1, 0.22)
 	return []
 
 
 func _pick_trail_grass(_p: Vector2) -> Array:
 	if _rng.randf() < 0.6:
-		return _pick(GRASS + CLOVERS, 0.9, 1.3)
+		return _pick(GRASS + CLOVERS, 0.45, 0.65)
 	return []
 
 
@@ -615,11 +671,11 @@ func _clearing_ok(p: Vector2) -> bool:
 func _pick_clearing(p: Vector2) -> Array:
 	var r := _rng.randf()
 	if not in_clearing(p, 0.0):
-		return _pick(GRASS + ["thin_fern1", "thin_fern2"], 1.0, 1.4)
+		return _pick(GRASS + ["thin_fern1", "thin_fern2"], 0.5, 0.7)
 	if r < 0.3:
-		return _pick(GRASS, 0.6, 1.0)
+		return _pick(GRASS, 0.3, 0.5)
 	if r < 0.42:
-		return _pick(CLOVERS, 0.8, 1.2)
+		return _pick(CLOVERS, 0.4, 0.6)
 	return []
 
 
@@ -635,14 +691,14 @@ func _resource_props() -> void:
 			if (node as ResourceNode).kind == ResourceNode.Kind.TREE:
 				trees.append(t.scaled_local(Vector3.ONE * tree_scale))
 			else:
-				rocks.append(t)
+				rocks.append(t.scaled_local(Vector3.ONE * RESOURCE_ROCK_SCALE))
 	if not trees.is_empty():
 		_multimesh(self, "red_fir3", trees, true)
 	if not rocks.is_empty():
 		_multimesh(self, "big_boulders_2", rocks, true)
 		var rubble: Array = []
 		for t: Transform3D in rocks:
-			rubble.append(t.translated(Vector3(2.0, 0, 1.5)))
+			rubble.append(t.translated(Vector3(2.0, 0, 1.5) * RESOURCE_ROCK_SCALE))
 		_multimesh(self, "rubble_dense_1", rubble, false)
 
 
@@ -665,10 +721,11 @@ func _camp() -> void:
 	var gather := _layout.get_node_or_null(^"GatherPoint") as Node3D
 	if gather != null:
 		for i in CAMP_PROPS.size():
-			var at := gather.global_position + Vector3(-4.0 + i * 1.6, 0, -3.0)
+			var at := gather.global_position + Vector3(-5.0 + i * CAMP_PROP_SPACING, 0, -3.0)
 			var holder := Node3D.new()
 			holder.name = "Camp_%s" % CAMP_PROPS[i]
-			holder.transform = Models.fit_transform(CAMP_PROPS[i], at, _rng.randf_range(-20, 20), 1.2, 1.0)
+			holder.transform = Models.fit_transform(CAMP_PROPS[i], at, _rng.randf_range(-20, 20),
+					CAMP_PROP_SIZE.x, CAMP_PROP_SIZE.y, false, CAMP_PROP_MAX_SCALE)
 			for part: Dictionary in Models.mesh_parts(CAMP_PROPS[i]):
 				var mi := MeshInstance3D.new()
 				mi.mesh = part["mesh"]

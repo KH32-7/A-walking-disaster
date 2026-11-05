@@ -99,9 +99,10 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if _player.is_downed:
 		return
+	var blocked := Player.input_blocked()
 	step(delta, {
-		"skill_q": Input.is_action_just_pressed(&"skill_q"),
-		"skill_e": Input.is_action_just_pressed(&"skill_e"),
+		"skill_q": Input.is_action_just_pressed(&"skill_q") and not blocked,
+		"skill_e": Input.is_action_just_pressed(&"skill_e") and not blocked,
 	})
 
 
@@ -168,7 +169,7 @@ func hud_skills() -> Array:
 	for slot: StringName in SLOTS:
 		var skill := skill_for(slot)
 		if skill != null:
-			out.append({"key": HUD_KEYS[slot], "left": cooldown_left(slot),
+			out.append({"key": HUD_KEYS[slot], "name": skill.name, "left": cooldown_left(slot),
 				"max": _cooldown_max.get(skill.id, skill.cooldown_sec)})
 	return out
 

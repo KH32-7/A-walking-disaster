@@ -42,6 +42,7 @@ func run() -> bool:
 		_test_visual,
 		_test_size,
 		_test_outline,
+		_test_essence_glow,
 	]
 	for test in tests:
 		test.call()
@@ -221,6 +222,21 @@ func _test_leash() -> void:
 	m.global_position = Vector3(0.2, 0, 0)
 	_ticks(m, DT)
 	_check(m.state == Enums.AIState.WANDER, "reaching home goes back to wander")
+	_test_chase_past_leash()
+
+
+## A chase is not cut at the search leash (40 m); only past CHASE_RETURN_DISTANCE.
+func _test_chase_past_leash() -> void:
+	var x := MonsterRules.RETURN_DISTANCE + 20.0
+	var m := _spawn(_def(), Vector3(x, 0, 0))
+	m.home = Vector3.ZERO
+	var player := _player(Vector3(x + 3.0, 0, 0))
+	m.chase(player)
+	_ticks(m, DT)
+	_check(m.state in [Enums.AIState.CHASE, Enums.AIState.ATTACK], "chasing past 40 m keeps chasing")
+	m.global_position = Vector3(MonsterRules.CHASE_RETURN_DISTANCE + 5.0, 0, 0)
+	_ticks(m, DT)
+	_check(m.state == Enums.AIState.RETURN, "past the chase leash it goes home")
 
 
 func _test_spawner() -> void:
@@ -379,14 +395,38 @@ func _test_outline() -> void:
 		var m := _spawn(def, Vector3.ZERO)
 		var looks := m.outline_meshes()
 		_check(not looks.is_empty(), "%s has meshes to outline" % def.id)
-		var red := true
-		for look in looks:
-			var mat := look.material_overlay as BaseMaterial3D
-			red = red and mat != null and mat.stencil_mode == BaseMaterial3D.STENCIL_MODE_OUTLINE 					and mat.stencil_color == Monster.OUTLINE_COLOR
-		_check(red, "%s has the red outline" % def.id)
+		_check(looks.all(func(g: GeometryInstance3D) -> bool: return g.material_overlay == Monster.OUTLINE_MATERIAL),
+				"%s has the red outline" % def.id)
+		_check(not m.has_essence_glow() and not m.has_node(NodePath(Monster.ESSENCE_LIGHT_NAME)),
+				"%s (normal) has no essence glow" % def.id)
 		m.take_damage(1000000.0)
 		_check(looks.all(func(g: GeometryInstance3D) -> bool: return g.material_overlay == null),
 				"%s outline is off once dead" % def.id)
+	# The mask pass draws before every red ring, so the ring never lands inside a body.
+	var ring := Monster.OUTLINE_MATERIAL.next_pass
+	_check(ring != null and Monster.OUTLINE_MATERIAL.render_priority < ring.render_priority,
+			"outline mask renders before the red ring")
+
+
+## User feedback 2026-11-06: elites and bosses glow in their family's essence colour; dying turns it off.
+func _test_essence_glow() -> void:
+	var elite := _spawn(VINE, Vector3.ZERO)
+	elite.make_elite()  # after ready: the glow turns on right away
+	var boss_def := _def()
+	boss_def.tier = Enums.MonsterTier.BOSS
+	var boss := _spawn(boss_def, Vector3(6, 0, 0))
+	for m: Monster in [elite, boss]:
+		var looks := m.outline_meshes()
+		var overlay: ShaderMaterial = looks[0].material_overlay as ShaderMaterial if not looks.is_empty() else null
+		var glow: ShaderMaterial = overlay.next_pass.next_pass if overlay and overlay.next_pass else null
+		var want: Color = (Monster.ESSENCE_GLOW[m.def.family] as ShaderMaterial).get_shader_parameter(&"glow_color")
+		_check(m.has_essence_glow() and glow != null and glow.get_shader_parameter(&"glow_color") == want,
+				"%s has the family rim glow after the red outline" % m.def.id)
+		var light := m.get_node_or_null(NodePath(Monster.ESSENCE_LIGHT_NAME)) as OmniLight3D
+		_check(light != null and light.light_color == want, "%s lights the ground in its family colour" % m.def.id)
+		m.take_damage(1000000.0)
+		_check(looks.all(func(g: GeometryInstance3D) -> bool: return g.material_overlay == null)
+				and (light == null or light.is_queued_for_deletion()), "%s glow is off once dead" % m.def.id)
 
 
 # --- Helpers --------------------------------------------------------------

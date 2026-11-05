@@ -18,6 +18,7 @@ const FPS := 30.0
 const CLIPS := {
 	"idle": {"loop": true},
 	"walk": {"loop": true, "native_speed": 1.3},  # Mixamo "Crouched Walking", in place
+	"run": {"loop": true},  # Mixamo "Running": cutscenes only, sprint in play plays the walks faster
 	"aim_rifle": {"loop": true},
 	"aim_walk_forward": {"loop": true},
 	"aim_walk_back": {"loop": true},
@@ -27,9 +28,16 @@ const CLIPS := {
 	"reload": {},
 	"shoot_rifle": {},
 	"downed": {},
+	# Mixamo "Stable Sword Outward / Inward Slash", used for every blunt weapon. The cuts chain:
+	# the outward slash ends turned left, which is where the inward slash's wind-up is, so a combo
+	# alternates out, in, out with only a short crossfade (user decision 2026-11-06).
+	"sword_slash_out": {"trim": [0.45, 1.0]},
+	"sword_slash_in": {"trim": [0.9, 1.6]},
+	"cutscene_walk": {"loop": true},  # Mixamo "Walking", upright, in place. Cutscenes only.
 }
-## Library names for the strafes (the FBX names don't say which side).
-const RENAME := {"strafe_a": "aim_strafe_right", "strafe_b": "aim_strafe_left"}
+## Library names for the strafes (the FBX names don't say which side) and the melee swings.
+const RENAME := {"strafe_a": "aim_strafe_right", "strafe_b": "aim_strafe_left",
+	"sword_slash_out": "blunt_swing_out", "sword_slash_in": "blunt_swing_in"}
 
 
 func _init() -> void:

@@ -7,7 +7,7 @@ script = ExtResource("1_combo")
 id = &"photosynthesis"
 element_b = 4
 name = "광합성"
-description = "처치 시 반경 5m 아군·구조자 체력 +10"
+description = "처치 시 반경 5m 아군, 구조자 체력 +10"
 trigger = &"kill"
 effect_params = {
 "radius": 5.0,

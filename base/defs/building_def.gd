@@ -61,6 +61,8 @@ const POWER_PRIORITY_OTHER := 3
 @export var attach_to: StringName = &""
 ## Exists from the start (방송실, 공터 남쪽 야영지). Cannot be built or demolished.
 @export var prebuilt := false
+## Placed by the story only (the intro 낡은 집): never offered in the build list, cannot be built.
+@export var story_only := false
 ## Defense structures (10 탭): max durability and contribution to the automatic raid judgment.
 @export var durability := 0
 @export var defense_value := 0.0
