@@ -1,7 +1,7 @@
 class_name PlayerAnimTuning
 extends Resource
-## Player animation playback numbers. Values live in data/classes/player_anim_tuning.tres and can be
-## tuned live with the debug panel (\ key) (core/debug/anim_tuning_panel.gd).
+## Player animation playback numbers. Values live in data/classes/player_anim_tuning.tres (tuned by
+## the user in game, 2026-11-06; the live tuning panel has been removed).
 ##
 ## Walk clips play at (ground speed / the bare-hand walk's own speed 1.3 m/s), clamped to
 ## min..max_playback, then multiplied by the multiplier for the current move. Gun walks use the same
