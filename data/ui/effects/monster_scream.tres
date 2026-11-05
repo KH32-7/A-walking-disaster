@@ -1,0 +1,64 @@
+[gd_resource type="Resource" script_class="FxDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/fx_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://vfx/defs/fx_layer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/elemental_spells/textures/shockwave_1.png"
+grow = Vector2(0.6, 7.0)
+lifetime = 0.55
+color = Color(1.0, 1.0, 1.0, 0.75)
+fade_out = 0.7
+channel = 1
+tint_element = true
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/elemental_spells/textures/shockwave_1.png"
+grow = Vector2(0.6, 8.0)
+lifetime = 0.55
+color = Color(1.0, 1.0, 1.0, 0.55)
+fade_out = 0.7
+channel = 1
+tint_element = true
+delay = 0.15
+
+[sub_resource type="Resource" id="layer_2"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/glowring.png"
+amount = 1
+size = Vector2(0.4, 0.4)
+end_scale = 3.0
+speed = Vector2(0.0, 0.0)
+spin = false
+lifetime = 0.35
+color = Color(1.0, 1.0, 1.0, 0.85)
+flash = true
+tint_element = true
+offset = Vector3(0.0, 1.3, 0.0)
+
+[sub_resource type="Resource" id="layer_3"]
+script = ExtResource("2_layer")
+kind = 0
+texture = ""
+element_textures = PackedStringArray("", "res://assets/vfx/magic_arsenal/textures/life_drops.png", "res://assets/vfx/magic_arsenal/textures/earth_spray.png", "res://assets/vfx/magic_arsenal/textures/water_droplets.png", "res://assets/vfx/magic_arsenal/textures/storm_spark.png")
+blend = 1
+tint_element = true
+amount = 12
+size = Vector2(0.08, 0.15)
+speed = Vector2(1.0, 2.5)
+gravity = -0.3
+lifetime = 1.1
+end_scale = 1.0
+offset = Vector3(0.0, 1.3, 0.0)
+fade_in = 0.1
+
+[resource]
+script = ExtResource("1_def")
+id = &"monster_scream"
+max_alive = 6
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1"), SubResource("layer_2"), SubResource("layer_3")])

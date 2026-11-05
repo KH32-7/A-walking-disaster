@@ -1,0 +1,110 @@
+[gd_resource type="Resource" script_class="FxDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/fx_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://vfx/defs/fx_layer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/elemental_spells/textures/shockwave_1.png"
+grow = Vector2(0.5, 6.0)
+lifetime = 0.35
+color = Color(1.0, 0.9, 0.75, 0.7)
+fade_out = 0.7
+channel = 1
+tint_element = false
+follow_radius = true
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/elemental_spells/textures/shockwave_1.png"
+grow = Vector2(0.5, 5.0)
+lifetime = 0.4
+color = Color(1.0, 1.0, 1.0, 0.5)
+fade_out = 0.7
+channel = 1
+tint_element = true
+delay = 0.06
+follow_radius = true
+
+[sub_resource type="Resource" id="layer_2"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/elemental_spells/textures/crack_tex.png"
+grow = Vector2(4.0, 4.5)
+lifetime = 2.0
+color = Color(0.05, 0.04, 0.03, 0.55)
+fade_out = 0.4
+channel = 1
+blend = 1
+fade_in = 0.02
+follow_radius = true
+
+[sub_resource type="Resource" id="layer_3"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/earth_spray.png"
+blend = 1
+amount = 14
+size = Vector2(0.12, 0.25)
+speed = Vector2(3.0, 6.0)
+gravity = 12.0
+direction = Vector3(0.0, 1.0, 0.0)
+spread_deg = 60.0
+lifetime = 0.7
+color = Color(0.45, 0.4, 0.35, 1.0)
+offset = Vector3(0.0, 0.2, 0.0)
+follow_radius = true
+
+[sub_resource type="Resource" id="layer_4"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/dust02.png"
+blend = 1
+amount = 8
+size = Vector2(0.6, 1.0)
+end_scale = 2.0
+emit_radius = 1.0
+speed = Vector2(0.4, 1.2)
+lifetime = 1.0
+color = Color(0.55, 0.5, 0.45, 0.5)
+offset = Vector3(0.0, 0.3, 0.0)
+follow_radius = true
+
+[sub_resource type="Resource" id="layer_5"]
+script = ExtResource("2_layer")
+kind = 0
+texture = ""
+element_textures = PackedStringArray("", "res://assets/vfx/magic_arsenal/textures/life_drops.png", "res://assets/vfx/magic_arsenal/textures/earth_spray.png", "res://assets/vfx/magic_arsenal/textures/water_droplets.png", "res://assets/vfx/magic_arsenal/textures/storm_spark.png")
+blend = 1
+tint_element = true
+amount = 14
+size = Vector2(0.1, 0.22)
+speed = Vector2(2.5, 5.0)
+gravity = 6.0
+lifetime = 0.9
+end_scale = 0.5
+offset = Vector3(0.0, 0.3, 0.0)
+spread_deg = 70.0
+direction = Vector3(0.0, 1.0, 0.0)
+follow_radius = true
+
+[sub_resource type="Resource" id="layer_6"]
+script = ExtResource("2_layer")
+kind = 4
+light_energy = 2.0
+light_range = 6.0
+lifetime = 0.25
+color = Color(0.8, 1.0, 0.6, 1.0)
+flash = true
+tint_element = true
+offset = Vector3(0.0, 1.0, 0.0)
+follow_radius = true
+
+[resource]
+script = ExtResource("1_def")
+id = &"boss_slam"
+base_radius = 3.0
+max_alive = 4
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1"), SubResource("layer_2"), SubResource("layer_3"), SubResource("layer_4"), SubResource("layer_5"), SubResource("layer_6")])
