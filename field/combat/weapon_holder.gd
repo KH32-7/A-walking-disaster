@@ -571,6 +571,7 @@ func _deal(target: Node, amount: float, info: Dictionary) -> void:
 		"element": info.get("element", Enums.Element.NONE),
 		"weak_point": target is MonsterWeakPoint,
 		"crit": info.get("crit", false),
+		"shot": info.get("shot", false),  # bullet hits add a burst, chips and dust (hit_spark.tres)
 	})
 	_hit_stop(target, info)
 	hit_landed.emit(target, amount, info)
@@ -580,6 +581,7 @@ func _deal(target: Node, amount: float, info: Dictionary) -> void:
 func _shot_hit(target: Node, point: Vector3, amount: float, info: Dictionary, cover_points: Array) -> void:
 	var hit_info := info.duplicate()
 	hit_info["position"] = point
+	hit_info["shot"] = true
 	for cover_point: Vector3 in cover_points:
 		if cover_point.distance_to(point) <= tuning.cover_near_target_m:
 			amount *= tuning.cover_damage_mult

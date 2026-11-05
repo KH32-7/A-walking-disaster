@@ -5,7 +5,7 @@ extends Node
 
 ## Ids Lane B calls today (weapon_holder, companion, magic_weapon, magic_zone, thrown_consumable,
 ## self_destruct_behavior, class/companion skills).
-const GAMEPLAY_IDS := [&"hit_spark", &"muzzle_flash", &"bullet_tracer", &"bullet_impact", &"perfect_block",
+const GAMEPLAY_IDS := [&"hit_spark", &"muzzle_flash", &"bullet_tracer", &"bullet_impact", &"perfect_block", &"player_hit",
 	&"neon_moth_blast", &"essence_release", &"essence_chain", &"essence_combo",
 	&"consumable_grenade", &"consumable_flashbang", &"consumable_noise_lure",
 	&"brace", &"dash_slash", &"precision_shot", &"shadow_step", &"slam", &"suppressive_fire", &"boss_telegraph",

@@ -22,7 +22,7 @@ const VISUAL_DIR := "res://art/monsters/"
 ## else. Godot's stencil outline: only the outer edge, not every crease where parts overlap.
 const OUTLINE_COLOR := Color("e03a2f")
 ## Outline width in metres (stencil outline grows the mesh in world space).
-const OUTLINE_THICKNESS := 0.05
+const OUTLINE_THICKNESS := 0.025  # half of the first 0.05 (user feedback 2026-11-06)
 ## B-03 puts the player in this group.
 const PLAYER_GROUP := &"player"
 ## MonsterDef.behaviors id -> MonsterBehavior script.
