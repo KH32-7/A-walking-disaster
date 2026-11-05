@@ -28,6 +28,8 @@ signal prejudice_resolved(holder_id: StringName, target_id: StringName)
 signal resident_missing(resident_id: StringName)
 signal funeral_ready(resident_ids: Array)
 signal guardian_changed(child_id: StringName, guardian_id: StringName)
+## 전초기지 (C-19): built, garrison changed, damaged or repaired.
+signal outposts_changed
 ## Autoload `Colony`. Owner: Lane C.
 ## Residents, buildings, relationships, raids threat - everything that lives in the base.
 ## Other lanes read through the getters below; they never edit resident data directly.
@@ -83,6 +85,9 @@ var prejudice_chains_data: Dictionary = {}
 ## 추모비에 새긴 이름 [{resident_id, name, day, cause}] and the funerals for tomorrow morning (C-20).
 var memorials: Array = []
 var funerals: Array = []
+## 전초기지 (C-19): node_id -> outpost (see outpost_nodes()).
+var outposts: Dictionary = {}
+var _outpost_nodes_cache: Dictionary = {}
 
 var _next_resident_num := 1
 var _next_building_num := 1
@@ -898,6 +903,8 @@ func settle_day() -> Dictionary:
 		r["fatigue"] = clampi(int(r["fatigue"]) + WorkRules.fatigue_change(worked.has(id), rested, _sleep_recovery(id), r), 0, 100)
 	if not hungry.is_empty():
 		events.append(_event(&"food_short", &"", "식량이 모자라 %d명이 굶었다" % hungry.size()))
+	# 전초기지 유지비와 채집 (C-19).
+	_settle_outposts(produced, consumed, events)
 
 	# 3b. Health and morale (C-06): 07 "상태와 필요", 사기 요인 표, 떠날 위기.
 	_settle_health(consumed, events)
@@ -1188,8 +1195,8 @@ func _take_low_essences(count: int) -> Dictionary:
 func threat_delta() -> float:
 	var season := GameState.season()
 	var s := RaidRules.THREAT_SEASON if season == Enums.Season.SUMMER or season == Enums.Season.WINTER else 0.0
-	var outposts := 0  # TODO(C-19): active outposts
-	return RaidRules.THREAT_DAILY + base_noise() + s - RaidRules.THREAT_PER_OUTPOST * outposts - _scout_count()
+	var active := active_outposts().size()  # 가동 중인 전초기지 (C-19)
+	return RaidRules.THREAT_DAILY + base_noise() + s - RaidRules.THREAT_PER_OUTPOST * active - _scout_count()
 
 
 ## Rolls whether a raid comes now (A-05 at night, C-21 during the day). At most one raid a day,
@@ -1223,9 +1230,23 @@ func roll_raid(time: Enums.RaidTime, force: bool = false) -> Dictionary:
 	raid["strength"] = snappedf(strength, 0.1)
 	raid["family"] = RaidRules.TYPES[type]["family"]
 	raid["small"] = small
-	# TODO(C-19): 20% of raids target an outpost; outposts give a day-before notice.
+	# 전초기지 (C-19): 20% of raids go for an active outpost instead of the base.
+	var active := active_outposts()
+	if not active.is_empty() and _rng.randf() < OutpostRules.RAID_TARGET_CHANCE:
+		var node_id: StringName = active[_rng.randi_range(0, active.size() - 1)]
+		raid["target"] = node_id
+		if outposts[node_id]["direction"] != &"":
+			raid["directions"] = [outposts[node_id]["direction"]]
+	# An outpost facing the raid warns a day ahead with size and family (10 "예고").
+	var watched := false
+	for d in raid["directions"]:
+		if d in outpost_directions():
+			watched = true
+	raid["outpost_warned"] = watched
 	if time == Enums.RaidTime.DAY:
-		raid["warning_sec"] = RaidRules.DAY_WARNING_SEC if has_post else 0.0
+		raid["warning_sec"] = RaidRules.DAY_WARNING_SEC if has_post or watched else 0.0
+	elif watched:
+		raid["notice"] = &"day_before"
 	elif has_post:
 		raid["notice"] = &"day_before" if _keen_ear_guard() else &"morning"
 	last_raid_day = day
@@ -1290,6 +1311,8 @@ func predict_raid(raid: Dictionary) -> Dictionary:
 ## Applies damage (buildings, residents, storage loss / loot via Economy.apply) and emits raid_resolved.
 ## Returns {"raid_id", "day", "time", "mode", "ratio", "outcome", "damage", "casualties", "loot", "summary"}.
 func resolve_raid(raid: Dictionary, mode: Enums.RaidMode) -> Dictionary:
+	if outposts.has(StringName(raid.get("target", &"base"))):
+		return _resolve_outpost_raid(raid, mode)  # 전초기지 습격 (C-19)
 	var strength := maxf(float(raid.get("strength", 1.0)), 0.1)
 	strength *= raid_strength_mult(raid)
 	var defense := defense_breakdown()
@@ -1374,6 +1397,18 @@ func resolve_raid(raid: Dictionary, mode: Enums.RaidMode) -> Dictionary:
 ## Strength multiplier from defense facilities: 소음 미끼 −10% each (max −30%), and an unlit
 ## 안개 습격 (no working 조명탑) +20%.
 func raid_strength_mult(raid: Dictionary) -> float:
+	# 전초기지: −25% for the share of the raid's directions an active outpost faces (C-19).
+	var dirs: Array = raid.get("directions", [])
+	var covered := 0
+	for d in dirs:
+		if StringName(d) in outpost_directions():
+			covered += 1
+	var outpost_mult := 1.0 - OutpostRules.DIRECTION_CUT * (float(covered) / dirs.size()) if not dirs.is_empty() else 1.0
+	return outpost_mult * _facility_strength_mult(raid)
+
+
+## 소음 미끼 −10% each (max −30%), unlit 안개 습격 +20% (C-18).
+func _facility_strength_mult(raid: Dictionary) -> float:
 	var decoys := 0
 	for uid in working_building_ids(&"noise_decoy"):
 		decoys += 1
@@ -2456,6 +2491,198 @@ func _pregnancy_mult(resident_id: StringName, job: JobDef) -> float:
 	return ChildRules.PREGNANT_STR_MULT if job.main_stat_key() == &"str" and is_pregnant(resident_id) else 1.0
 
 
+# --- 전초기지 (C-19, 10 "전초기지") -----------------------------------------------------------
+## outposts[node_id] = {node_id, direction, region_id, ready_day, damaged, durability}. Garrison
+## residents have assignment {job: &"garrison", building_id: node_id}. 가동 = 완성 + 부서지지 않음 +
+## 주둔 2명. Active outposts lower the threat (−2 each), cut raids from their direction by 25%, warn a
+## day ahead with size and family, gather wood and scrap, and cost food. 20% of raids hit one.
+
+## Every node an outpost can stand on: [{node_id, direction, region_id, built, ready, active,
+## damaged, garrison, ready_day}] (4 directions + one per field region).
+func outpost_nodes() -> Array:
+	var out: Array = []
+	for node_id: StringName in _outpost_node_defs():
+		var def: Dictionary = _outpost_node_defs()[node_id]
+		var o: Dictionary = outposts.get(node_id, {})
+		out.append({"node_id": node_id, "direction": def["direction"], "region_id": def["region_id"],
+			"built": not o.is_empty(), "ready": _outpost_ready(node_id), "active": is_outpost_active(node_id),
+			"damaged": o.get("damaged", false), "garrison": garrison_of(node_id), "ready_day": o.get("ready_day", 0)})
+	return out
+
+
+## Active outposts (가동 중), in node order.
+func active_outposts() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for node_id: StringName in _outpost_node_defs():
+		if is_outpost_active(node_id):
+			out.append(node_id)
+	return out
+
+
+func is_outpost_active(node_id: StringName) -> bool:
+	return _outpost_ready(node_id) and not outposts[node_id]["damaged"] and garrison_of(node_id).size() >= OutpostRules.GARRISON_SIZE
+
+
+## Residents posted at an outpost.
+func garrison_of(node_id: StringName) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for id in active_resident_ids():
+		var a: Dictionary = residents[id]["assignment"]
+		if a["job"] == OutpostRules.GARRISON_JOB and a["building_id"] == node_id:
+			out.append(id)
+	return out
+
+
+## {"ok", "reasons": Array[String], "cost"} for building an outpost on `node_id`.
+func can_build_outpost(node_id: StringName) -> Dictionary:
+	var reasons: Array[String] = []
+	if not _outpost_node_defs().has(node_id):
+		reasons.append("없는 노드: %s" % node_id)
+	elif outposts.has(node_id):
+		reasons.append("이미 전초기지가 있음")
+	if not Economy.can_afford(OutpostRules.COST):
+		reasons.append("자원 부족 (나무 %d, 돌 %d, 고철 %d)" % [OutpostRules.COST[&"wood"], OutpostRules.COST[&"stone"], OutpostRules.COST[&"scrap"]])
+	return {"ok": reasons.is_empty(), "reasons": reasons, "cost": OutpostRules.COST.duplicate()}
+
+
+## Pays and starts the outpost; it is ready after OutpostRules.BUILD_DAYS evenings.
+func build_outpost(node_id: StringName) -> bool:
+	if not can_build_outpost(node_id)["ok"]:
+		return false
+	Economy.apply(_negated(OutpostRules.COST))
+	var def: Dictionary = _outpost_node_defs()[node_id]
+	outposts[node_id] = {"node_id": node_id, "direction": def["direction"], "region_id": def["region_id"],
+		"ready_day": GameState.day + OutpostRules.BUILD_DAYS, "damaged": false, "durability": OutpostRules.DURABILITY}
+	outposts_changed.emit()
+	return true
+
+
+## Posts a resident at a ready outpost (주둔 2명까지). Same limits as other combat roles.
+func assign_garrison(node_id: StringName, resident_id: StringName) -> bool:
+	if not _outpost_ready(node_id) or not residents.has(resident_id):
+		return false
+	if garrison_of(node_id).size() >= OutpostRules.GARRISON_SIZE and not resident_id in garrison_of(node_id):
+		return false
+	if job_block_reason(resident_id, OutpostRules.GARRISON_JOB) != "":
+		return false
+	unassign_job(resident_id)
+	residents[resident_id]["assignment"] = {"job": OutpostRules.GARRISON_JOB, "building_id": node_id}
+	outposts_changed.emit()
+	return true
+
+
+## Repair cost (30% of the build cost, rounded up) for a damaged outpost.
+func outpost_repair_cost(node_id: StringName) -> Dictionary:
+	var cost := {}
+	for res: StringName in OutpostRules.COST:
+		cost[res] = ceili(OutpostRules.COST[res] * OutpostRules.REPAIR_SHARE)
+	return cost
+
+
+func repair_outpost(node_id: StringName) -> bool:
+	if not outposts.has(node_id) or not outposts[node_id]["damaged"] or not Economy.can_afford(outpost_repair_cost(node_id)):
+		return false
+	Economy.apply(_negated(outpost_repair_cost(node_id)))
+	outposts[node_id]["damaged"] = false
+	outposts[node_id]["durability"] = OutpostRules.DURABILITY
+	outposts_changed.emit()
+	return true
+
+
+## Directions covered by active outposts.
+func outpost_directions() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for node_id in active_outposts():
+		var d: StringName = outposts[node_id]["direction"]
+		if d != &"" and not d in out:
+			out.append(d)
+	return out
+
+
+## Evening: finished outposts, upkeep (식량 2/곳) and gathering (나무·고철 +5/곳).
+func _settle_outposts(produced: Dictionary, consumed: Dictionary, events: Array) -> void:
+	for node_id: StringName in outposts:
+		var o: Dictionary = outposts[node_id]
+		if int(o["ready_day"]) == GameState.day:
+			events.append(_event(&"outpost_ready", &"", "전초기지 완성 (%s)" % _outpost_label(node_id)))
+		if not is_outpost_active(node_id):
+			continue
+		for res: StringName in OutpostRules.UPKEEP:
+			consumed[res] = consumed.get(res, 0.0) + OutpostRules.UPKEEP[res]
+		for res: StringName in OutpostRules.GATHER:
+			produced[res] = produced.get(res, 0.0) + OutpostRules.GATHER[res]
+
+
+## A raid aimed at an outpost: its garrison and walls against the raid. Lost → damaged (멈춤) and the
+## garrison is hurt. The base takes no damage. Same result format as resolve_raid().
+func _resolve_outpost_raid(raid: Dictionary, mode: Enums.RaidMode) -> Dictionary:
+	var node_id := StringName(raid["target"])
+	var strength := maxf(float(raid.get("strength", 1.0)), 0.1)
+	var garrison := garrison_of(node_id)
+	var defense := OutpostRules.BASE_DEFENSE if not outposts[node_id]["damaged"] else 0.0
+	for id in garrison:
+		var weapon := Armory.get_item_stats(Armory.get_equipped(id, Enums.EquipSlot.MAIN))
+		defense += RaidRules.guard_power(residents[id], weapon, float(Armory.get_owner_summary(id)["defense"]))
+	var ratio := defense / strength
+	if mode == Enums.RaidMode.PLAYED:
+		ratio *= RaidRules.PLAYED_BONUS
+	var outcome := RaidRules.outcome_for(ratio)
+	var casualties: Array = []
+	var summary: Array[String] = ["마물이 %s을(를) 덮쳤다 (강도 %.0f, 방어 %.1f)." % [_outpost_label(node_id), strength, defense]]
+	var damage := {"damaged": [], "durability_loss": {}, "resources_lost": {}}
+	if outcome == Enums.RaidOutcome.LOSS or outcome == Enums.RaidOutcome.NARROW:
+		outposts[node_id]["damaged"] = true
+		outposts[node_id]["durability"] = 0
+		damage["damaged"].append(node_id)
+		_hurt(garrison, OutpostRules.LOST_INJURY_CHANCE, 0.0, 0.0, casualties)
+		summary.append("전초기지가 무너졌다. 주둔 주민이 다쳤다.")
+	else:
+		summary.append("전초기지가 버텼다.")
+	threat = RaidRules.THREAT_AFTER_LOSS if outcome == Enums.RaidOutcome.LOSS else RaidRules.THREAT_AFTER_WIN
+	var result := {
+		"raid_id": raid.get("raid_id", &""), "day": GameState.day, "time": raid.get("time", Enums.RaidTime.NIGHT),
+		"mode": mode, "ratio": snappedf(ratio, 0.01), "outcome": outcome, "damage": damage, "used": {},
+		"casualties": casualties, "loot": {}, "summary": summary, "target": node_id,
+	}
+	active_raid = {}
+	outposts_changed.emit()
+	EventBus.raid_resolved.emit(result)
+	return result
+
+
+func _outpost_ready(node_id: StringName) -> bool:
+	return outposts.has(node_id) and GameState.day >= int(outposts[node_id]["ready_day"])
+
+
+func _outpost_label(node_id: StringName) -> String:
+	var o: Dictionary = outposts.get(node_id, _outpost_node_defs().get(node_id, {}))
+	if o.get("direction", &"") != &"":
+		return "%s 전초기지" % _direction_text([o["direction"]])
+	return "%s 입구 전초기지" % o.get("region_id", node_id)
+
+
+## node_id -> {direction, region_id}: the 4 direction nodes and one per data/regions entry.
+func _outpost_node_defs() -> Dictionary:
+	if _outpost_nodes_cache.is_empty():
+		for node_id: StringName in OutpostRules.DIRECTION_NODES:
+			_outpost_nodes_cache[node_id] = {"direction": OutpostRules.DIRECTION_NODES[node_id], "region_id": &""}
+		# Regions are data/regions/<id>.tres (RegionDef) and/or data/regions/<id>/ folders (rescues).
+		var regions: Array[String] = []
+		var dir := DirAccess.open(OutpostRules.REGIONS_DIR)
+		if dir != null:
+			for f in dir.get_files():
+				var file := f.trim_suffix(".remap")
+				if file.ends_with(".tres") and not file.get_basename() in regions:
+					regions.append(file.get_basename())
+			for d in dir.get_directories():
+				if not d in regions:
+					regions.append(d)
+		regions.sort()
+		for region in regions:
+			_outpost_nodes_cache[StringName(OutpostRules.REGION_NODE_PREFIX + region)] = {"direction": &"", "region_id": StringName(region)}
+	return _outpost_nodes_cache
+
+
 # --- 고립·실종·사망·추모 (C-20) ------------------------------------------------------------
 ## 고립: companion_stranded → status STRANDED with strand_days_left (Settings strand_days, -1 = 기한
 ## 없음). Each evening one day passes; at 0 the resident goes missing (MISSING, 장비 유실).
@@ -3176,6 +3403,7 @@ func _reset() -> void:
 	prejudice_chains_data = {}
 	memorials = []
 	funerals = []
+	outposts = {}
 	active_raid = {}
 	_rng.randomize()
 	_refresh_effects()
@@ -3199,6 +3427,7 @@ func save_data() -> Dictionary:
 		"prejudice_chains": prejudice_chains_data,
 		"memorials": memorials,
 		"funerals": funerals,
+		"outposts": outposts,
 		"cleared_zones": cleared_zones,
 		"clear_progress": clear_progress,
 		"clear_started": clear_started,
@@ -3242,6 +3471,13 @@ func load_data(data: Dictionary) -> void:
 	memorials = Array(data.get("memorials", [])).map(func(m): return {"resident_id": StringName(m.get("resident_id", "")),
 		"name": str(m.get("name", "")), "day": int(m.get("day", 0)), "cause": StringName(m.get("cause", ""))})
 	funerals = Array(data.get("funerals", [])).map(func(x): return StringName(x))
+	outposts = {}
+	var saved_outposts: Dictionary = data.get("outposts", {})
+	for key in saved_outposts:
+		var o: Dictionary = saved_outposts[key]
+		outposts[StringName(key)] = {"node_id": StringName(key), "direction": StringName(o.get("direction", "")),
+			"region_id": StringName(o.get("region_id", "")), "ready_day": int(o.get("ready_day", 0)),
+			"damaged": bool(o.get("damaged", false)), "durability": int(o.get("durability", OutpostRules.DURABILITY))}
 	var saved_chains: Dictionary = data.get("prejudice_chains", {})
 	for key in saved_chains:
 		var c: Dictionary = saved_chains[key]
@@ -3292,6 +3528,8 @@ func _register_debug_commands() -> void:
 		"settle - 하루 정산을 돌리고 Economy에 반영 (A-05 전 테스트용)")
 	DebugConsole.register(&"trust", _cmd_trust,
 		"trust <id> | trust talk|deep|add <id> [n] | trust gift <id> <resource_id> - 신뢰도·대화·선물")
+	DebugConsole.register(&"outpost", _cmd_outpost,
+		"outpost | outpost build <node> | post <node> <id> | repair <node> | raid <node> - 전초기지")
 	DebugConsole.register(&"loss", _cmd_loss,
 		"loss | loss strand <id> [region] | loss day | loss kill <id> | loss visit <id> - 고립·실종·사망·추모")
 	DebugConsole.register(&"prejudice", _cmd_prejudice,
@@ -3331,6 +3569,34 @@ func _register_debug_commands() -> void:
 		"raid now [day|night] | raid threat <0~100> | raid info - 습격 강제·위협도 설정·방어력/예상")
 	DebugConsole.register(&"build", _cmd_build,
 		"build <building_id> | build list - 비용 없이 건물을 바로 완성 / 건물·전력·소음 목록")
+
+
+func _cmd_outpost(args: PackedStringArray) -> String:
+	var usage := "사용법: outpost | outpost build <node> | outpost post <node> <id> | outpost repair <node> | outpost raid <node>"
+	if args.is_empty():
+		var lines := PackedStringArray()
+		for n in outpost_nodes():
+			lines.append("  %s %s%s · 주둔 %s" % [n["node_id"], "가동" if n["active"] else ("부서짐" if n["damaged"] else ("완성" if n["ready"] else ("건설 중(%d일)" % n["ready_day"] if n["built"] else "빈 노드"))),
+				"", n["garrison"]])
+		return "\n".join(lines)
+	if args.size() < 2:
+		return usage
+	var node_id := StringName(args[1])
+	match args[0]:
+		"build":
+			var check := can_build_outpost(node_id)
+			return "건설 시작 (%d일 뒤 완성)" % OutpostRules.BUILD_DAYS if build_outpost(node_id) else "실패: " + ", ".join(check["reasons"])
+		"post":
+			return "주둔: %s" % [garrison_of(node_id)] if args.size() > 2 and assign_garrison(node_id, StringName(args[2])) else "주둔시킬 수 없음"
+		"repair":
+			return "수리함" if repair_outpost(node_id) else "수리할 수 없음 (비용 %s)" % outpost_repair_cost(node_id)
+		"raid":
+			if not outposts.has(node_id):
+				return "전초기지가 없음"
+			var raid := roll_raid(Enums.RaidTime.NIGHT, true)
+			raid["target"] = node_id
+			return "\n".join(resolve_raid(raid, Enums.RaidMode.AUTO)["summary"])
+	return usage
 
 
 func _cmd_loss(args: PackedStringArray) -> String:
