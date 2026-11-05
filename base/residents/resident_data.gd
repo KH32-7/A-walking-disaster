@@ -21,6 +21,8 @@ class_name ResidentData
 ##   talked_day, gift_day: int — the day of the last talk / gift (하루 1번, C-12)
 ##   arrival_pending: bool — 입주 의식 not done yet (rescued survivors, C-13)
 ##   known_likes: Array[StringName] — likes the player has learned (첫 대화, 좋아한 선물)
+##   can_give_birth: bool — from the profile; 출산 is offered only when a partner has it (C-15)
+##   study_days: {job_id: days} — 교실에서 배운 날 (세대 간 전수, C-15)
 ##   health: Enums.HealthState, recover_days: int
 ##   relations: {resident_id: -100..100} (C-14)
 ##   assignment: {job: StringName, building_id: StringName}
@@ -94,6 +96,8 @@ static func create(profile: Dictionary, rng: RandomNumberGenerator) -> Dictionar
 		"gift_day": 0,
 		"arrival_pending": false,
 		"known_likes": [],
+		"can_give_birth": false,
+		"study_days": {},
 		"class_aptitude": roll_aptitude(rng),
 		"hunger": START_HUNGER,
 		"fatigue": START_FATIGUE,
@@ -156,6 +160,8 @@ static func normalize(src: Dictionary) -> Dictionary:
 	r["gift_day"] = int(r.get("gift_day", 0))
 	r["arrival_pending"] = bool(r.get("arrival_pending", false))
 	r["known_likes"] = _names(r.get("known_likes", []))
+	r["can_give_birth"] = bool(r.get("can_give_birth", false))
+	r["study_days"] = _int_map(r.get("study_days", {}), 0, 1 << 30)
 	var apt := {}
 	for key in CLASS_KEYS:
 		apt[key] = clampi(int(_read(r.get("class_aptitude", {}), key, Enums.Aptitude.MID)), 0, Enums.Aptitude.size() - 1)

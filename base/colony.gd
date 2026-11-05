@@ -14,6 +14,10 @@ signal arrival_ready(resident_id: StringName)
 signal arrival_completed(resident_id: StringName, result: Dictionary)
 ## Nickname or appearance changed (ResidentAgent redraws).
 signal resident_profile_changed(resident_id: StringName)
+## 아이 맞이 (C-15): a married couple wants a child (D asks "지금 / 나중에" and the method,
+## then calls answer_child_wish), and a child joined a family (methods: Enums.ArrivalMethod).
+signal child_wish(a: StringName, b: StringName, methods: Array)
+signal child_arrived(child_id: StringName, method: int, parents: Array)
 ## Autoload `Colony`. Owner: Lane C.
 ## Residents, buildings, relationships, raids threat - everything that lives in the base.
 ## Other lanes read through the getters below; they never edit resident data directly.
@@ -695,6 +699,8 @@ func job_block_reason(resident_id: StringName, job_id: StringName, building_uid:
 		return "주민 없음"
 	var job := BaseDB.get_job(job_id)
 	var reason := WorkRules.job_block_reason(r, job)
+	if reason == "" and job != null and job.combat_role and is_pregnant(resident_id):
+		reason = "출산을 기다리는 중 (경비 배정 불가)"
 	if reason != "":
 		return reason
 	# 언어 조건: 무전·외교는 통역 무전기가 있어야 (07 "참여 조건", C-11).
@@ -811,7 +817,7 @@ func settle_day() -> Dictionary:
 			continue  # workplace without power, or damaged by a raid, does not run
 		if access_block_reason(id, _work_zone(id)) != "":
 			continue  # 갈 수 없게 됨 (경사로가 부서지거나 철거됨)
-		var f := WorkRules.efficiency(r, job, _works_alone(id)) * access_multiplier(id) * _best_friend_mult(id)
+		var f := WorkRules.efficiency(r, job, _works_alone(id)) * access_multiplier(id) * _best_friend_mult(id) * _pregnancy_mult(id, job)
 		if stayed:
 			f *= WorkRules.STAY_OUTPUT_MULT
 		if after_festival:
@@ -880,6 +886,7 @@ func settle_day() -> Dictionary:
 	# 3b. Health and morale (C-06): 07 "상태와 필요", 사기 요인 표, 떠날 위기.
 	_settle_health(consumed, events)
 	_settle_relations(worked)
+	_settle_children(events)
 	var morale := _settle_morale(ids, ate_cooked, events)
 
 	# 4. Generator fuel (2/일, 겨울 3). No fuel → no power tomorrow.
@@ -1537,7 +1544,7 @@ func care_slots() -> int:
 func care_covered() -> Array[StringName]:
 	var guardians: Array[StringName] = []
 	for id in active_resident_ids():
-		if Enums.AccessNeed.CARE in residents[id]["access_needs"]:
+		if _needs_care(id):
 			guardians.append(id)
 	guardians.sort()
 	return guardians.slice(0, care_slots())
@@ -1552,7 +1559,7 @@ func access_map() -> Dictionary:
 		zones[zone_id] = zone_access(zone_id)
 	var guardians := 0
 	for id in active_resident_ids():
-		if Enums.AccessNeed.CARE in residents[id]["access_needs"]:
+		if _needs_care(id):
 			guardians += 1
 	return {
 		"zones": zones,
@@ -1583,7 +1590,7 @@ func access_multiplier(resident_id: StringName) -> float:
 	var needs: Array = r["access_needs"]
 	if Enums.AccessNeed.LANGUAGE in needs and not zone_access(_work_zone(resident_id))["language"]:
 		mult *= NeedsRules.LANGUAGE_UNMET_MULT
-	if Enums.AccessNeed.CARE in needs and not resident_id in care_covered():
+	if _needs_care(resident_id) and not resident_id in care_covered():
 		mult *= NeedsRules.CARE_UNMET_MULT
 	return mult
 
@@ -2108,6 +2115,315 @@ func _sortie_relations(back: Array[StringName]) -> void:
 		add_relation(pair[0], pair[1], RelationRules.SORTIE_TOGETHER, &"sortie")
 
 
+# --- 아이 맞이 + 성장 (C-15, 08 "아이 맞이", "성장") ----------------------------------------
+## Family data lives on the married couple's relation_meta entry: children, last_child_day,
+## wish_day (아이를 맞고 싶다 is waiting for an answer), carrier / due_day (출산), adoption_waiting.
+## Guardian links are relation_meta entries with the GUARDIAN flag (parent ↔ child).
+
+## Why a married couple cannot welcome a child now: {"ok", "missing": Array[String]}.
+func child_arrival_status(a: StringName, b: StringName) -> Dictionary:
+	var m: Dictionary = relation_meta.get(RelationRules.pair_key(a, b), {})
+	var missing: Array[String] = []
+	if m.is_empty() or not Enums.RelationFlag.MARRIED in m["flags"]:
+		missing.append("결혼한 두 사람이 아님")
+		return {"ok": false, "missing": missing}
+	if _family_free_bed(m) == &"":
+		missing.append("가족 숙소에 빈 침상 필요")
+	if not has_completed(ChildRules.INFIRMARY):
+		missing.append("의무실 필요")
+	if Economy.get_amount(&"food") < population() * ChildRules.FOOD_PER_RESIDENT:
+		missing.append("식량 %d 이상 필요" % (population() * ChildRules.FOOD_PER_RESIDENT))
+	for id in [a, b]:
+		if int(residents[id]["morale"]) < ChildRules.MORALE_AT:
+			missing.append("%s 사기 %d 이상 필요" % [residents[id]["name"], ChildRules.MORALE_AT])
+	var last := int(m.get("last_child_day", 0))
+	if last > 0 and GameState.day - last < ChildRules.FAMILY_INTERVAL_DAYS:
+		missing.append("지난 아이 맞이에서 %d일 필요" % ChildRules.FAMILY_INTERVAL_DAYS)
+	if int(m.get("due_day", 0)) > 0 or m.get("adoption_waiting", false):
+		missing.append("이미 아이를 기다리는 중")
+	return {"ok": missing.is_empty(), "missing": missing}
+
+
+## Ways this family can welcome a child (가족 구성에 따라 출산, 입양은 언제나).
+func child_methods(a: StringName, b: StringName) -> Array:
+	var methods: Array = [Enums.ArrivalMethod.ADOPTION]
+	if residents.has(a) and residents.has(b) and (residents[a]["can_give_birth"] or residents[b]["can_give_birth"]):
+		methods.push_front(Enums.ArrivalMethod.BIRTH)
+	return methods
+
+
+## "아이를 맞고 싶다" waiting for the family's answer: [{a, b, methods}].
+func child_wishes() -> Array:
+	var out: Array = []
+	for key: String in relation_meta:
+		var m: Dictionary = relation_meta[key]
+		if int(m.get("wish_day", 0)) > 0 and residents.has(m["a"]) and residents.has(m["b"]):
+			out.append({"a": m["a"], "b": m["b"], "methods": child_methods(m["a"], m["b"])})
+	return out
+
+
+## The family answers: choice &"now" (with a method) or &"later".
+## Returns {"ok", "reason", "child_id", "due_day", "waiting"}.
+func answer_child_wish(a: StringName, b: StringName, choice: StringName, method: int = Enums.ArrivalMethod.ADOPTION) -> Dictionary:
+	var out := {"ok": false, "reason": "", "child_id": &"", "due_day": 0, "waiting": false}
+	var m: Dictionary = relation_meta.get(RelationRules.pair_key(a, b), {})
+	if m.is_empty() or int(m.get("wish_day", 0)) == 0:
+		out["reason"] = "기다리는 대화가 없음"
+		return out
+	m["wish_day"] = 0
+	if choice != &"now":
+		out["ok"] = true
+		return out
+	if not method in child_methods(a, b):
+		out["reason"] = "이 가족은 고를 수 없는 방식"
+		return out
+	m["last_child_day"] = GameState.day
+	out["ok"] = true
+	if method == Enums.ArrivalMethod.BIRTH:
+		m["carrier"] = a if residents[a]["can_give_birth"] else b
+		m["due_day"] = GameState.day + ChildRules.BIRTH_DAYS
+		out["due_day"] = m["due_day"]
+		EventBus.notification_posted.emit("%s 가족에게 %d일 뒤 아기가 온다" % [_display_name(residents[a]), ChildRules.BIRTH_DAYS], &"info")
+		return out
+	var waiting := orphans()
+	if not waiting.is_empty():
+		out["child_id"] = waiting[0]
+		_adopt(m, waiting[0])
+		return out
+	# No child without a guardian in the base: the radio hears a rumor and a rescue target appears.
+	m["adoption_waiting"] = true
+	out["waiting"] = true
+	if Quests.get_def(ChildRules.LOST_CHILD_QUEST) != null:
+		Quests.start(ChildRules.LOST_CHILD_QUEST, a)
+	EventBus.notification_posted.emit("무전실: 보호자를 잊은 아이가 있다는 소문을 기다린다", &"info")
+	return out
+
+
+## Children in the base with no guardian (입양 대상).
+func orphans() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for id in active_resident_ids():
+		if ChildRules.is_minor(residents[id]) and guardians_of(id).is_empty():
+			out.append(id)
+	return out
+
+
+func guardians_of(child_id: StringName) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for key: String in relation_meta:
+		var m: Dictionary = relation_meta[key]
+		if not Enums.RelationFlag.GUARDIAN in m["flags"]:
+			continue
+		var other: StringName = m["b"] if m["a"] == child_id else (m["a"] if m["b"] == child_id else &"")
+		if other != &"" and residents.has(other) and not ChildRules.is_minor(residents[other]):
+			out.append(other)
+	return out
+
+
+## Children of a married couple (born or adopted here).
+func children_of(a: StringName, b: StringName) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for c in relation_meta.get(RelationRules.pair_key(a, b), {}).get("children", []):
+		if residents.has(c):
+			out.append(StringName(c))
+	return out
+
+
+func is_pregnant(resident_id: StringName) -> bool:
+	for key: String in relation_meta:
+		var m: Dictionary = relation_meta[key]
+		if int(m.get("due_day", 0)) > 0 and m.get("carrier", &"") == resident_id:
+			return true
+	return false
+
+
+## Why a resident cannot go on a sortie ("" = can). 출산을 기다리는 주민은 출격 불가.
+func sortie_block_reason(resident_id: StringName) -> String:
+	if not residents.has(resident_id):
+		return "없는 주민"
+	if is_pregnant(resident_id):
+		return "출산을 기다리는 중"
+	return ""
+
+
+## 이름 짓기 (입주 의식의 아이 판): a child still in the ceremony gets a name. {"ok", "reason"}.
+func name_child(child_id: StringName, child_name: String) -> Dictionary:
+	var r: Dictionary = residents.get(child_id, {})
+	if r.is_empty() or not ChildRules.is_minor(r) or not r["arrival_pending"]:
+		return {"ok": false, "reason": "이름을 지을 아이가 아님"}
+	var text := child_name.strip_edges()
+	if text == "" or text.length() > ChildRules.NAME_MAX:
+		return {"ok": false, "reason": "이름은 1~%d자" % ChildRules.NAME_MAX}
+	for word in ResidentTemplate.load_banned_words():
+		if word != "" and text.to_lower().contains(word.to_lower()):
+			return {"ok": false, "reason": "쓸 수 없는 말이 들어 있다"}
+	r["name"] = text
+	resident_profile_changed.emit(child_id)
+	return {"ok": true, "reason": ""}
+
+
+## Daily part of the settlement: growth, births, the 5% wish, classroom study.
+func _settle_children(events: Array) -> void:
+	for id in active_resident_ids():
+		_age_one_day(id, events)
+	var today := GameState.day
+	for key: String in relation_meta.keys():
+		var m: Dictionary = relation_meta[key]
+		if not Enums.RelationFlag.MARRIED in m["flags"]:
+			continue
+		if int(m.get("due_day", 0)) > 0 and today >= int(m["due_day"]):
+			var child := _birth(m)
+			events.append(_event(&"child_born", child, "%s 가족에게 아기가 태어났다" % _display_name(residents[m["a"]])))
+		elif int(m.get("wish_day", 0)) == 0 and child_arrival_status(m["a"], m["b"])["ok"] \
+				and _rng.randf() < ChildRules.WISH_CHANCE:
+			m["wish_day"] = today
+			events.append(_event(&"child_wish", m["a"], "%s 가족이 아이를 맞고 싶어 한다" % _display_name(residents[m["a"]])))
+			child_wish.emit(m["a"], m["b"], child_methods(m["a"], m["b"]))
+	_study(events)
+
+
+func _age_one_day(id: StringName, events: Array) -> void:
+	var r: Dictionary = residents[id]
+	var stage := int(r["age_stage"])
+	if stage >= Enums.AgeStage.ADULT:
+		return
+	# Rescued children start at the beginning of their stage (구조 당시 나이대에서 시작).
+	r["age_days"] = maxi(int(r["age_days"]), int(ChildRules.STAGE_START[stage])) + 1
+	var next := int(ChildRules.stage_for_days(int(r["age_days"])))
+	if next > stage:
+		r["age_stage"] = next
+		events.append(_event(&"grew_up", id, "%s이(가) %s" % [_display_name(r),
+			["아기가 되었다", "아이가 되었다", "청소년이 되었다", "어른이 되었다", ""][next]]))
+		resident_profile_changed.emit(id)
+
+
+func _birth(m: Dictionary) -> StringName:
+	var a: Dictionary = residents[m["a"]]
+	var b: Dictionary = residents[m["b"]]
+	var parents := [a, b]
+	var stats := {}
+	for key in ResidentData.STAT_KEYS:
+		stats[key] = _rng.randi_range(ChildRules.CHILD_STAT_RANGE.x, ChildRules.CHILD_STAT_RANGE.y)
+	var inherited: Array = []
+	var pool: Array = a["traits"] + b["traits"]
+	if not pool.is_empty():
+		inherited.append(pool[_rng.randi_range(0, pool.size() - 1)])
+	# 외형 혼합: each colour comes from one of the parents.
+	var look := {}
+	for key in ArrivalRules.COLOR_KEYS:
+		var p: Dictionary = parents[_rng.randi_range(0, 1)]
+		if p["appearance"].has(key):
+			look[key] = p["appearance"][key]
+	var id := add_resident({"name": ChildRules.CHILD_NAME, "age_stage": Enums.AgeStage.BABY, "age_days": 0,
+		"former_job": &"", "traits": inherited, "stats": stats, "appearance": look, "arrival_pending": true})
+	m["due_day"] = 0
+	m["carrier"] = &""
+	_adopt(m, id)
+	child_arrived.emit(id, Enums.ArrivalMethod.BIRTH, [m["a"], m["b"]])
+	return id
+
+
+## Makes the couple the child's guardians and moves the child into the family house.
+func _adopt(m: Dictionary, child_id: StringName) -> void:
+	m["adoption_waiting"] = false
+	if not m.has("children"):
+		m["children"] = []
+	if not child_id in m["children"]:
+		m["children"].append(child_id)
+	for parent in [m["a"], m["b"]]:
+		var g := _relation_meta(parent, child_id)
+		if not Enums.RelationFlag.GUARDIAN in g["flags"]:
+			g["flags"].append(Enums.RelationFlag.GUARDIAN)
+		if relation(parent, child_id) < ChildRules.START_RELATION:
+			add_relation(parent, child_id, ChildRules.START_RELATION - relation(parent, child_id), &"family")
+	var bed := _family_free_bed(m)
+	if bed != &"":
+		release_bed(child_id)
+		assign_bed(child_id, bed)
+	EventBus.notification_posted.emit("%s 가족이 %s을(를) 맞이했다" % [_display_name(residents[m["a"]]), _display_name(residents[child_id])], &"info")
+
+
+## A free bed in the couple's family house (&"" = none).
+func _family_free_bed(m: Dictionary) -> StringName:
+	var house: StringName = m.get("house_uid", &"")
+	if house == &"":
+		return &""
+	for bed_id: StringName in beds:
+		if String(bed_id).begins_with(String(house) + "_bed_") and beds[bed_id] == &"":
+			return bed_id
+	return &""
+
+
+## A rescued child joins while a family waits to adopt: they become that family's child.
+func _adopt_rescued(child_id: StringName) -> void:
+	if not ChildRules.is_minor(residents[child_id]):
+		return
+	for key: String in relation_meta:
+		var m: Dictionary = relation_meta[key]
+		if m.get("adoption_waiting", false) and residents.has(m["a"]) and residents.has(m["b"]):
+			_adopt(m, child_id)
+			child_arrived.emit(child_id, Enums.ArrivalMethod.ADOPTION, [m["a"], m["b"]])
+			return
+
+
+## 교실: each staffed classroom teaches up to its student count (아이·청소년). Stats grow ×2 and
+## after 20 days a child gets the teacher's former-job work at skill 1 (세대 간 전수).
+func _study(events: Array) -> void:
+	var students: Array[StringName] = []
+	for id in active_resident_ids():
+		if int(residents[id]["age_stage"]) in [Enums.AgeStage.CHILD, Enums.AgeStage.TEEN]:
+			students.append(id)
+	students.sort()
+	for uid in working_building_ids(ChildRules.CLASSROOM):
+		var workers: Array = buildings[uid]["workers"]
+		if workers.is_empty() or students.is_empty():
+			continue
+		var teacher: Dictionary = residents[workers[0]]
+		var work: StringName = ChildRules.FORMER_JOB_WORK.get(teacher["former_job"], &"")
+		var job := BaseDB.get_job(work)
+		var seats := roundi(building_effect(uid, &"students"))
+		var mult := roundi(building_effect(uid, &"study_speed_mult", 1.0))
+		for i in mini(seats, students.size()):
+			var id: StringName = students.pop_front()
+			var r: Dictionary = residents[id]
+			if job == null:
+				continue
+			var days := int(r["study_days"].get(work, 0)) + 1
+			r["study_days"][work] = days
+			var stat := job.main_stat_key()
+			if stat != &"":
+				var sd := int(r["stat_days"].get(stat, 0)) + mult
+				r["stat_days"][stat] = sd
+				if sd / WorkRules.DAYS_PER_STAT > (sd - mult) / WorkRules.DAYS_PER_STAT and int(r["stats"][stat]) < ResidentData.STAT_MAX:
+					r["stats"][stat] = int(r["stats"][stat]) + 1
+			if days == ChildRules.STUDY_DAYS and int(r["job_skill"].get(work, 0)) < ChildRules.TEACH_SKILL:
+				r["job_skill"][work] = ChildRules.TEACH_SKILL
+				events.append(_event(&"taught", id, "%s이(가) %s에게서 %s을(를) 배웠다" % [_display_name(r), _display_name(teacher), job.display_name]))
+
+
+## Guardians of a baby need care like the 돌봄 condition (돌봄방이 없으면 효율 0.5).
+func _needs_care(resident_id: StringName) -> bool:
+	var r: Dictionary = residents.get(resident_id, {})
+	if r.is_empty():
+		return false
+	if Enums.AccessNeed.CARE in r["access_needs"]:
+		return true
+	for key: String in relation_meta:
+		var m: Dictionary = relation_meta[key]
+		if not Enums.RelationFlag.GUARDIAN in m["flags"]:
+			continue
+		var other: StringName = m["b"] if m["a"] == resident_id else (m["a"] if m["b"] == resident_id else &"")
+		if other != &"" and residents.has(other) and int(residents[other]["age_stage"]) == Enums.AgeStage.BABY \
+				and int(residents[other]["status"]) == Enums.ResidentStatus.ACTIVE and not ChildRules.is_minor(r):
+			return true
+	return false
+
+
+## 출산을 기다리는 주민: 힘 작업 효율 ×0.7.
+func _pregnancy_mult(resident_id: StringName, job: JobDef) -> float:
+	return ChildRules.PREGNANT_STR_MULT if job.main_stat_key() == &"str" and is_pregnant(resident_id) else 1.0
+
+
 # --- 입주 의식 (C-13, 07 "입주 의식") ---------------------------------------------------
 ## A rescued survivor joins with arrival_pending = true. Lane D's ceremony screen (D-13) walks the
 ## steps (ArrivalRules.STEPS) with these calls and ends with complete_arrival(). Residents gather at
@@ -2402,6 +2718,10 @@ func _settle_morale(ids: Array[StringName], ate_cooked: Dictionary, events: Arra
 	var shared_bonus := 0
 	for v in shared.values():
 		shared_bonus += roundi(v)
+	for id in ids:
+		if residents.has(id) and int(residents[id]["age_stage"]) == Enums.AgeStage.CHILD:
+			shared_bonus += ChildRules.PLAY_MORALE  # 아이 놀이 (08 "성장")
+			break
 	if is_festival_today():
 		shared_bonus += RelationRules.FESTIVAL_MORALE
 	var deltas := {}
@@ -2461,6 +2781,7 @@ func _on_rescue_completed(rescued: Dictionary) -> void:
 	var new_id := add_resident(rescued.merged({"arrival_pending": true}, true))
 	if new_id != &"":
 		arrival_ready.emit(new_id)
+		_adopt_rescued(new_id)
 
 
 func _new_resident_id() -> StringName:
@@ -2574,7 +2895,12 @@ func load_data(data: Dictionary) -> void:
 		relation_meta[String(key)] = {"a": StringName(m.get("a", "")), "b": StringName(m.get("b", "")), "flags": flags,
 			"since_day": int(m.get("since_day", 0)), "last_day": int(m.get("last_day", 0)), "low_days": int(m.get("low_days", 0)),
 			"engaged": bool(m.get("engaged", false)), "wedding_ready": bool(m.get("wedding_ready", false)),
-			"house_uid": StringName(m.get("house_uid", ""))}
+			"house_uid": StringName(m.get("house_uid", "")),
+			# 아이 맞이 (C-15)
+			"children": Array(m.get("children", [])).map(func(c): return StringName(c)),
+			"last_child_day": int(m.get("last_child_day", 0)), "wish_day": int(m.get("wish_day", 0)),
+			"carrier": StringName(m.get("carrier", "")), "due_day": int(m.get("due_day", 0)),
+			"adoption_waiting": bool(m.get("adoption_waiting", false))}
 	cleared_zones = {}
 	for zone_id in data.get("cleared_zones", {}):
 		cleared_zones[StringName(zone_id)] = true
@@ -2602,6 +2928,8 @@ func _register_debug_commands() -> void:
 		"settle - 하루 정산을 돌리고 Economy에 반영 (A-05 전 테스트용)")
 	DebugConsole.register(&"trust", _cmd_trust,
 		"trust <id> | trust talk|deep|add <id> [n] | trust gift <id> <resource_id> - 신뢰도·대화·선물")
+	DebugConsole.register(&"child", _cmd_child,
+		"child | child wish <a> <b> | child now <a> <b> birth|adopt | child later <a> <b> - 아이 맞이 (조건·대화·답)")
 	DebugConsole.register(&"arrival", _cmd_arrival,
 		"arrival | arrival <id> nick <별명> | preset <id> | bed <bed_id|none> | done - 입주 의식 (목록·별명·외형·침상·첫 대화)")
 	DebugConsole.register(&"rel", _cmd_rel,
@@ -2635,6 +2963,35 @@ func _register_debug_commands() -> void:
 		"raid now [day|night] | raid threat <0~100> | raid info - 습격 강제·위협도 설정·방어력/예상")
 	DebugConsole.register(&"build", _cmd_build,
 		"build <building_id> | build list - 비용 없이 건물을 바로 완성 / 건물·전력·소음 목록")
+
+
+func _cmd_child(args: PackedStringArray) -> String:
+	var usage := "사용법: child | child wish <a> <b> | child now <a> <b> birth|adopt | child later <a> <b>"
+	if args.is_empty():
+		var lines := PackedStringArray()
+		for pair in couples():
+			var status := child_arrival_status(pair[0], pair[1])
+			lines.append("%s+%s: %s · 아이 %s" % [pair[0], pair[1], "조건 충족" if status["ok"] else ", ".join(status["missing"]),
+				children_of(pair[0], pair[1])])
+		lines.append("대화 대기 %s · 보호자 없는 아이 %s" % [child_wishes(), orphans()])
+		return "\n".join(lines)
+	if args.size() < 3 or not residents.has(StringName(args[1])) or not residents.has(StringName(args[2])):
+		return usage
+	var a := StringName(args[1])
+	var b := StringName(args[2])
+	var m: Dictionary = relation_meta.get(RelationRules.pair_key(a, b), {})
+	match args[0]:
+		"wish":
+			if m.is_empty() or not Enums.RelationFlag.MARRIED in m["flags"]:
+				return "결혼한 두 사람이 아님"
+			m["wish_day"] = GameState.day
+			child_wish.emit(a, b, child_methods(a, b))
+			return "아이를 맞고 싶다는 대화를 띄움 (방식 %s)" % [child_methods(a, b)]
+		"now", "later":
+			var method := Enums.ArrivalMethod.BIRTH if args.size() > 3 and args[3] == "birth" else Enums.ArrivalMethod.ADOPTION
+			var res := answer_child_wish(a, b, StringName(args[0]), method)
+			return "%s" % res if res["ok"] else "실패: " + String(res["reason"])
+	return usage
 
 
 func _cmd_arrival(args: PackedStringArray) -> String:
