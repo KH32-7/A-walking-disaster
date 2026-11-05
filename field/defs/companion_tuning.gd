@@ -32,10 +32,8 @@ extends Resource
 ## 07: 적성 상만 스킬 사용 가능. Enums.Aptitude.
 @export var skill_min_aptitude := 2
 ## 03: 클래스 스킬 1(Q)만 쓰며 쿨타임은 x1.5.
+## The base cooldown is the class's skill_q (data/classes/).
 @export var skill_cooldown_mult := 1.5
-## Base Q cooldown per Enums.CombatClass (03: 정조준 10 / 돌진 베기 8 / 내려찍기 10).
-## TODO(B-13): read ClassDef.skill_q cooldown instead once class skills exist.
-@export var skill_q_cooldown_sec := PackedFloat32Array([10.0, 8.0, 10.0])
 
 @export_group("AI")
 ## 공격적: attacks visible monsters this close to itself (m).

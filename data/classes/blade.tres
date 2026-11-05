@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ClassDef" format=3]
+
+[ext_resource type="Script" path="res://field/defs/class_def.gd" id="1_class"]
+[ext_resource type="Resource" path="res://data/classes/skills/dash_slash.tres" id="2_q"]
+[ext_resource type="Resource" path="res://data/classes/skills/shadow_step.tres" id="3_e"]
+
+[resource]
+script = ExtResource("1_class")
+id = 1
+skill_q = ExtResource("2_q")
+skill_e = ExtResource("3_e")
+passive_5 = &"backstab_bonus"
+passive_10 = &"bleed_stacks"
+weapon_types = Array[StringName]([&"dagger", &"machete", &"longsword", &"spear"])
+passive_5_value = 0.5
+passive_10_value = 2.0
+hit_status = Array[Dictionary]([{
+"id": &"bleed"
+}])

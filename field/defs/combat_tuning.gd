@@ -7,7 +7,8 @@ extends Resource
 ## Design reference: docs/design/03-combat-classes.md (가안)
 
 @export_group("Damage formula")
-## (1 + mastery_per_level x M). TODO(A-11): M comes from class mastery; 1 until then.
+## (1 + mastery_per_level x M). M = Progression class mastery (B-13); default_mastery is the
+## fallback for a weapon without a family.
 @export var mastery_per_level: float = 0.03
 @export var default_mastery: int = 1
 @export var crit_rate: float = 0.05

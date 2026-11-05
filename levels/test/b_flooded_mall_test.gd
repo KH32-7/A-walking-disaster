@@ -8,7 +8,7 @@ extends Node3D
 ##   T   take every identified slot of the container you opened (stand-in for D-08)
 ##   K   kill monsters within KILL_RADIUS
 ##   F8  teleport to the next rescue target     F9  teleport to the next active extraction point
-##   F1..F6 weapons, F7 ammo (WeaponDebug)
+##   F1..F6 weapons, F7 ammo (WeaponDebug)   Q / E class skills (B-13, game input)
 ##   F10 sortie clock +3 min (dusk at 12, night at 15 if night is on)
 ##   F11 fake day raid warning (B-22 emergency return), then Y go back / N stay
 ##   F12 spawn the next roster monster in front of you, Shift+F12 as an elite
@@ -83,6 +83,7 @@ func _process(_delta: float) -> void:
 		"Rescue: %s" % _rescue_text(),
 		"Clock: %s  %s" % [_clock_text(), _night_text()],
 		"Player status: %s" % _status_text(_player.status),
+		"Class: %s" % _class_text(),
 		"Nearest monster: %s" % _nearest_monster_text(),
 		"Emergency: %s" % _emergency_text(),
 		"Container: %s" % _container_text(),
@@ -314,6 +315,21 @@ func _night_text() -> String:
 	if FieldState.is_dusk():
 		return "DUSK"
 	return "dusk in %ds" % int(FieldState.dusk_left_sec())
+
+
+## B-13: class, mastery, Q / E cooldowns and lasting skill effects.
+func _class_text() -> String:
+	var skills := _player.skills
+	var combat_class := skills.combat_class()
+	if combat_class < 0:
+		return "no main weapon"
+	var parts: PackedStringArray = ["%s M%d (xp %d)" % [Enums.CombatClass.keys()[combat_class],
+		Progression.mastery_level(combat_class), Progression.mastery_xp(combat_class)]]
+	for entry: Dictionary in skills.hud_skills():
+		parts.append("%s %.1fs" % [entry["key"], entry["left"]])
+	for effect in skills.active():
+		parts.append("%s %.1fs" % [effect["id"], effect["time_left"]])
+	return ", ".join(parts)
 
 
 func _status_text(holder: StatusHolder) -> String:

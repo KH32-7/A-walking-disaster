@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ClassDef" format=3]
+
+[ext_resource type="Script" path="res://field/defs/class_def.gd" id="1_class"]
+[ext_resource type="Resource" path="res://data/classes/skills/slam.tres" id="2_q"]
+[ext_resource type="Resource" path="res://data/classes/skills/brace.tres" id="3_e"]
+
+[resource]
+script = ExtResource("1_class")
+id = 2
+skill_q = ExtResource("2_q")
+skill_e = ExtResource("3_e")
+passive_5 = &"stagger_longer"
+passive_10 = &"armor_broken_bonus"
+weapon_types = Array[StringName]([&"club", &"pipe_wrench", &"baseball_bat", &"hammer", &"sledgehammer", &"shield_club"])
+passive_5_value = 0.3
+passive_10_value = 0.15
+finisher_status = Array[Dictionary]([{
+"id": &"stagger"
+}, {
+"id": &"armor_break"
+}])

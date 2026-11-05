@@ -234,6 +234,8 @@ func pack_alert(point: Vector3) -> void:
 func can_see(node: Node3D, use_cone: bool = true) -> bool:
 	if node == null or not node.is_inside_tree() or sight_range() <= 0.0:
 		return false
+	if node.is_in_group(ClassSkills.STEALTH_GROUP):
+		return false  # B-13 그림자 걸음
 	var to := node.global_position - global_position
 	if to.length() > sight_range():
 		return false

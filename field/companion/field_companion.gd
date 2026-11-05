@@ -10,7 +10,7 @@ extends CharacterBody3D
 ## - Modes (hold V, CompanionManager): 공격적 = nearest visible monster, 신중 = only monsters the
 ##   player hit (or that hit this companion: it fights back, never starts), quieter footsteps, 엄호 = stays by the nearest rescued
 ##   person and fights what comes close to them (no rescued person: guards the player).
-## - Q skill only with 적성 상, cooldown x1.5. The skill itself waits for B-13 (skill_used hook).
+## - Q skill only with 적성 상, cooldown x1.5. The effect is B-13's CompanionSkill.
 ## - 겁이 많음 (flee_hp_ratio) stops fighting and keeps to the player at low health, 용감함 never does.
 ## - Downed at 0 health: 30 s to help up (Player.interact() -> begin_open, 3 s hold), else stranded.
 ##
@@ -27,7 +27,7 @@ signal downed()
 signal revived()
 ## Not helped up in time, or left behind (player down, "두고 갈까요?").
 signal stranded()
-## Q skill used. TODO(B-13): the class skill effect itself (정조준 / 돌진 베기 / 내려찍기).
+## Q skill used (CompanionSkill runs the effect: 정조준 / 돌진 베기 / 내려찍기).
 signal skill_used(combat_class: int)
 signal attacked(target: Node3D)
 
@@ -290,24 +290,25 @@ func spread_deg(stats: Dictionary) -> float:
 	return maxf(spread * (1.0 - tuning.spread_per_sense * _stat(&"sense")), 0.0)
 
 
-func skill_cooldown(combat_class: int) -> float:
-	if combat_class < 0 or combat_class >= tuning.skill_q_cooldown_sec.size():
-		return 0.0
-	return tuning.skill_q_cooldown_sec[combat_class] * tuning.skill_cooldown_mult
+## The class Q cooldown (ClassDef data, sniper rifle -50%) x skill_cooldown_mult. 0 = no Q skill.
+func skill_cooldown(combat_class: int, stats: Dictionary = {}) -> float:
+	var skill := ClassDef.skill_q_for(combat_class)
+	return skill.cooldown_for(stats) * tuning.skill_cooldown_mult if skill != null else 0.0
 
 
 func can_use_skill(combat_class: int) -> bool:
-	return combat_class >= 0 and aptitude(combat_class) >= tuning.skill_min_aptitude and _skill_left <= 0.0
+	return ClassDef.skill_q_for(combat_class) != null \
+			and aptitude(combat_class) >= tuning.skill_min_aptitude and _skill_left <= 0.0
 
 
-## Q skill if 적성 상 and off cooldown. Returns true when used.
+## Q skill if 적성 상 and off cooldown, run by CompanionSkill (B-13). Returns true when used.
 func try_skill(stats: Dictionary) -> bool:
 	var combat_class := int(stats.get("combat_class", -1))
 	if not can_use_skill(combat_class):
 		return false
-	_skill_left = skill_cooldown(combat_class)
+	_skill_left = skill_cooldown(combat_class, stats)
 	skill_used.emit(combat_class)
-	# TODO(B-13): run the class Q skill with this companion as the user (needs B-13's skill runner).
+	CompanionSkill.run(self, stats, target, _deal)
 	return true
 
 
@@ -555,6 +556,7 @@ func _shoot_ray(origin: Vector3, direction: Vector3, max_range: float, amount: f
 
 
 func _deal(victim: Node, amount: float, info: Dictionary) -> void:
+	amount *= ClassSkills.party_damage_mult(victim, get_tree())  # B-13 둔기 숙련 10
 	victim.take_damage(amount, info)
 	Fx.spawn(&"hit_spark", info.get("position", global_position), {
 		"element": info.get("element", Enums.Element.NONE), "crit": info.get("crit", false)})
