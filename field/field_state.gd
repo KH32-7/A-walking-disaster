@@ -16,8 +16,12 @@ var downs_by_region: Dictionary = {}
 var region_id: StringName = &""
 ## Companions still with the player this sortie (stranded ones are removed).
 var companions: Array[StringName] = []
+## loadout["seed"] of the current sortie (SceneRouter sets it), -1 when the scene runs without
+## the router. ExtractionManager picks the active extraction points from it (issue #44).
+var sortie_seed := -1
 
 var _down_result: Dictionary = {}
+var _sortie_result: Dictionary = {}
 
 
 func _ready() -> void:
@@ -39,6 +43,17 @@ func in_sortie() -> bool:
 ## Lane A puts this into the sortie_ended result. Cleared when the next sortie starts.
 func down_result() -> Dictionary:
 	return _down_result
+
+
+## Result of the finished sortie for SceneRouter's sortie_ended ({} until extraction or downing).
+## Format: docs/dev/contracts.md "출격 결과" (issue #27, #44).
+func last_sortie_result() -> Dictionary:
+	return _sortie_result
+
+
+## ExtractionManager stores its result here: before extraction_completed, and on player_downed.
+func set_sortie_result(result: Dictionary) -> void:
+	_sortie_result = result.duplicate(true)
 
 
 func down_count(region: StringName) -> int:
@@ -79,7 +94,10 @@ func strand_companion(resident_id: StringName) -> void:
 func _on_sortie_started(loadout: Dictionary) -> void:
 	region_id = loadout.get("region_id", &"")
 	companions.assign(loadout.get("companions", []))
+	sortie_seed = int(loadout.get("seed", -1))
 	_down_result = {}
+	# A stale result would leak into this sortie's sortie_ended (issue #44).
+	_sortie_result = {}
 	# Gear from another region is gone at once; gear from this region gets its one chance now.
 	_drop_lost_gear(func(e: Dictionary) -> bool:
 		return e.get("offered", false) or e["region_id"] != region_id)

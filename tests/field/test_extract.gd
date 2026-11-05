@@ -31,7 +31,9 @@ func run() -> bool:
 	_test_leave_behind_leave()
 	_test_wait_multiplier_zero()
 	_test_downed()
+	_test_sortie_seed_and_reset()
 
+	FieldState.set_sortie_result({})
 	EventBus.extraction_completed.disconnect(_on_completed)
 	Bag.load_data(_bag_backup)
 	Economy.load_data(_economy_backup)
@@ -129,6 +131,10 @@ func _test_normal() -> void:
 	_force_active([&"ex_a"])
 	var started := []
 	_manager.extraction_started.connect(func(id: StringName, wait: float) -> void: started.append([id, wait]))
+	# SceneRouter reads FieldState.last_sortie_result() when extraction_completed fires (#44).
+	var at_signal := [{}]
+	var grab := func(_id: StringName) -> void: at_signal[0] = FieldState.last_sortie_result()
+	EventBus.extraction_completed.connect(grab)
 	_stand_at(&"ex_a")
 	_manager.tick(0.0)
 	_expect_eq(started, [[&"ex_a", 5.0]], "normal countdown starts at 5s")
@@ -139,7 +145,24 @@ func _test_normal() -> void:
 	var result := _manager.get_result()
 	_expect_eq(result.get("extracted"), true, "result.extracted")
 	_expect_eq(result.get("point_id"), &"ex_a", "result.point_id")
+	EventBus.extraction_completed.disconnect(grab)
+	_expect_eq(at_signal[0].get("point_id"), &"ex_a", "FieldState has the result before extraction_completed")
 	_teardown()
+
+
+## Issue #44: loadout seed picks the points, sortie_started clears the last result.
+func _test_sortie_seed_and_reset() -> void:
+	var saved_seed := FieldState.sortie_seed
+	FieldState.set_sortie_result({"extracted": true})
+	FieldState._on_sortie_started({"region_id": &"test_region", "seed": 4242})
+	_expect_eq(FieldState.sortie_seed, 4242, "sortie_started stores loadout seed")
+	_expect(FieldState.last_sortie_result().is_empty(), "sortie_started clears the last result")
+	_setup()
+	_expect_eq(_manager.pick_seed(), 4242, "manager uses the loadout seed")
+	_manager.sortie_seed = 7
+	_expect_eq(_manager.pick_seed(), 7, "an explicit sortie_seed wins")
+	_teardown()
+	FieldState.sortie_seed = saved_seed
 
 
 func _test_leave_zone_cancels() -> void:
@@ -267,6 +290,7 @@ func _test_downed() -> void:
 	_expect_eq(result.get("downed"), true, "downed flag")
 	_expect_eq(result.get("kills"), 2, "kill count")
 	_expect_eq(result.get("kills_by_monster"), {&"vine_tendril": 2}, "kills by monster")
+	_expect_eq(FieldState.last_sortie_result().get("downed"), true, "FieldState has the downed result")
 	_manager.tick(10.0)
 	_expect(_completed.is_empty(), "no extraction after going down")
 	_teardown()
