@@ -29,6 +29,13 @@ const EXTRACT_TYPES := ["탈출", "탈출 · 발전기", "탈출 · 열쇠 필�
 const LEGEND := [[&"player", "나"], [&"companion", "일행"], [&"extract", "탈출 지점"], [&"objective", "목표"],
 	[&"route", "숨은 경로"], [&"recording", "녹음기"], [&"lost_gear", "유실물"]]
 const REFRESH_SEC := 0.5
+## Painted region maps (art/maps/README.md): region id -> [picture, world x/z rectangle it covers].
+## The flooded mall art covers the 150 m map file, which the layout builds at x1.5
+## (levels/field/flooded_mall/build/build_layout.gd MAP_SCALE), so 225 m centred on the origin.
+## Regions without art keep the top-down render with the explored fog.
+const OVERVIEWS := {
+	&"flooded_mall": ["res://art/maps/flooded_mall_overview_2k.webp", Rect2(-112.5, -112.5, 225.0, 225.0)],
+}
 
 var region_id: StringName = &""
 var _revealed_override: Array = []
@@ -115,17 +122,26 @@ func _build_body(b: Control) -> void:
 
 	map = MapView.new()
 	b.add_child(map)
-	map.set_anchors_preset(Control.PRESET_CENTER)
-	var side := minf(1080.0 - 110.0 - 90.0, 1920.0 - 104.0 - SIDE_W - LEGEND_W - 48.0)
-	map.custom_minimum_size = Vector2(side, side)
-	map.size = Vector2(side, side)
-	# centre the map between the two side panels
-	var free_left := SIDE_W + 24.0
-	var free_w := (1920.0 - 104.0) - SIDE_W - LEGEND_W - 48.0
 	map.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	map.position = Vector2(free_left + (free_w - side) * 0.5, 0)
+	b.resized.connect(_fit_map.bind(b))
+	_fit_map(b)
+	var art: Array = OVERVIEWS.get(region_id, [])
+	if not art.is_empty() and ResourceLoader.exists(art[0]):
+		map.set_art(load(art[0]) as Texture2D, art[1])
 	_collect()
-	_capture()
+	if not map.art_mode:
+		_capture()
+
+
+## Largest square that fits between the two side panels, centred (any window size).
+func _fit_map(b: Control) -> void:
+	var free_left := SIDE_W + 24.0
+	var free_w := b.size.x - SIDE_W - LEGEND_W - 48.0
+	var side := maxf(120.0, minf(free_w, b.size.y))
+	map.custom_minimum_size = Vector2.ZERO
+	map.size = Vector2(side, side)
+	map.position = Vector2(free_left + (free_w - side) * 0.5, (b.size.y - side) * 0.5)
+	map.queue_redraw_all()
 
 
 ## Region display name. Journal keeps the only Korean region names for now (TODO(B): RegionDef name).
@@ -188,7 +204,8 @@ func _extraction() -> Node:
 func _collect() -> void:
 	if map == null:
 		return
-	map.bounds = _bounds()
+	if not map.art_mode:
+		map.bounds = _bounds()
 	var marks: Array = []
 	var exits: Array = []
 	var em := _extraction()
@@ -302,7 +319,10 @@ func _fill_side(objectives: Array, exits: Array, routes: int) -> void:
 			row.add_child(MenuScreen.label("%dm" % roundi(d), &"LabelNumber", 20))
 		_exits.add_child(row)
 	var seen := _explore.cells.size() if _explore != null else 0
-	_seen_label.text = "어두운 곳은 아직 가 보지 않은 곳이에요.\n밝힌 칸 %d · 숨은 경로 %d" % [seen, routes]
+	if map.art_mode:
+		_seen_label.text = "지역 전체 지도예요.\n숨은 경로 %d" % routes
+	else:
+		_seen_label.text = "어두운 곳은 아직 가 보지 않은 곳이에요.\n밝힌 칸 %d · 숨은 경로 %d" % [seen, routes]
 
 
 static func _wrap(l: Label) -> Label:
