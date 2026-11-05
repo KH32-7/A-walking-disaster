@@ -1,0 +1,16 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://art/shaders/enemy_mask.gdshader" id="1_mask"]
+[ext_resource type="Shader" path="res://art/shaders/enemy_outline.gdshader" id="2_ring"]
+
+[sub_resource type="ShaderMaterial" id="Mat_ring"]
+render_priority = 10
+shader = ExtResource("2_ring")
+shader_parameter/outline_color = Color(0.8784314, 0.22745098, 0.18431373, 1)
+shader_parameter/outline_px = 4.5
+
+[resource]
+render_priority = -10
+next_pass = SubResource("Mat_ring")
+shader = ExtResource("1_mask")
+shader_parameter/grow_px = 2.5
