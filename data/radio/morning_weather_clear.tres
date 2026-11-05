@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="RadioTrigger" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/radio_trigger.gd" id="1_c8rbg"]
+
+[resource]
+script = ExtResource("1_c8rbg")
+id = &"morning_weather_clear"
+lines = Array[String](["오늘은 맑겠습니다. 발소리가 멀리 가는 날이니 걸음 조심하세요.", "하늘은 갰습니다. 시야는 좋지만 그만큼 소리도 잘 퍼집니다.", "맑은 날입니다. 빨래 널기 좋고, 마물 귀에도 좋은 날이에요.", "날씨는 맑음. 조용히 다니면 오늘 하루 무사할 겁니다.", "구름 한 점 없네요. 그늘 따라 움직이세요."])
+cooldown_sec = 0.0
+guidance = false
+once_per = &"day"

@@ -57,7 +57,10 @@
   `can_place(size, pos, rotated, area)`, `is_cell(cell, area)`, `unload_to_base()`(탈출: 자원→Economy, 장비→무기고),
   `lose_contents()`(쓰러짐: 안전 주머니 제외 소실. 보호 모드 `keep_bag_on_down`이면 B가 호출하지 않음).
   영역은 `Bag.AREA_BAG` / `Bag.AREA_POCKET`(2칸). 가방 속 장비의 Armory 소유자는 `Armory.BAG_ID`.
-- **Radio**: `say(template_id, context, priority)`
+- **Radio**: `say(trigger_id, context, priority) -> bool`(쿨다운·빈도·1회 제한에 막히면 false), `set_combat(active)`(B: 전투 중 한 줄),
+  `morning_broadcast()`. 트리거 id는 `data/radio/`: B가 부르는 것 `low_ammo`, `low_health`, `noise_high`, `rescuee_low_health`,
+  `no_progress {direction}`, `dusk {minutes}`. 아침 방송·습격 징후·60초 경보·낮 습격 예상(`Colony.predict_raid`)·같은 지역 3번 쓰러짐은
+  Radio가 신호(`day_started`, `raid_warning`, `sortie_started`, `player_downed`)를 듣고 알아서 말한다. LLM 없음.
 - **Settings**: `get_value(key)`, `set_value(key, value) -> bool`(모르는 키·틀린 타입 거부), `apply_preset(id, new_game)`, `matching_preset()`,
   `reset_to_defaults(include_difficulty)`. 키 목록은 `Settings.DEFAULTS`. 난이도 프리셋은 `story`·`normal`·`hard`·`hardcore`
   (`Settings.PRESETS`), 항목을 따로 바꾸면 `difficulty`가 `custom`이 된다. 하드코어는 새 게임에서만 고른다.
@@ -125,7 +128,7 @@
 ## 저장
 
 각 레인은 provider 하나만 등록한다(`save_data() -> Dictionary`, `load_data(Dictionary)`). 값은 JSON으로 쓸 수 있는 것만
-(Object·Resource 대신 id). 키: `game`(A), `difficulty`(A, Settings의 난이도 항목), `economy`(A), `armory`(A), `bag`(A), `field`(B), `colony`(C). D는 저장할 게임 상태가 없다
+(Object·Resource 대신 id). 키: `game`(A), `difficulty`(A, Settings의 난이도 항목), `economy`(A), `armory`(A), `bag`(A), `radio`(A), `field`(B), `colony`(C). D는 저장할 게임 상태가 없다
 (설정은 `Settings`가 따로 저장).
 
 - 파일은 Godot 타입 JSON(`JSON.from_native`)이라 `int`/`float`, `StringName`, `Vector3` 등이 그대로 돌아온다. Object·Resource는 안 된다.

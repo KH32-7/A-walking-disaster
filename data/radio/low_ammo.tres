@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="RadioTrigger" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/radio_trigger.gd" id="1_sue1q"]
+
+[resource]
+script = ExtResource("1_sue1q")
+id = &"low_ammo"
+lines = Array[String](["탄약이 얼마 안 남았습니다. 아껴 쓰거나 근접 무기로 바꾸세요.", "총알이 바닥나 갑니다. 무리하지 말고 탈출을 생각해 보세요.", "탄창이 가볍죠? 서랍이나 사물함을 뒤져 보세요.", "탄약 부족입니다. 싸우기보다 피하는 게 낫겠어요.", "탄이 거의 없습니다. 오늘은 여기서 돌아오는 것도 용기예요."])
+priority = 2
