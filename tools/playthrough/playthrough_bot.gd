@@ -366,7 +366,7 @@ func _rescue_and_extract() -> bool:
 		who.global_position = point.global_position + Vector3(20, 0.1, 0)
 	print("[bot] rescue target state=", who.state, " in_party=", who.is_in_group(ExtractionManager.PARTY_GROUP),
 		" dist=", who.global_position.distance_to(player.global_position), " template=", who.spawn.template_id)
-	var asked := await _until(func() -> bool: return _confirm_dialog() != null, "구조한 사람이 멀면 '두고 갈까요?'를 물음", 20.0)
+	var asked := await _until(func() -> bool: return _confirm_dialog() != null, "구조한 사람이 멀면 '두고 갈까요?'를 물음", 30.0)  # the generator exit waits 20 s
 	if asked:
 		await _shot("leave_behind_dialog")
 		_button(_confirm_dialog(), "취소").pressed.emit()

@@ -116,6 +116,9 @@ func _update_chip(cam: Camera3D, player: Node3D) -> void:
 	_chip.position = Vector2(p.x + 18.0, p.y - sz.y * 0.5)  # just right of the thing, at its height
 
 
+## Closer than this (m) the player is on the exit: its marker would sit on the hold bar, so it hides.
+const ON_EXIT_M := 3.0
+
 func _draw() -> void:
 	var cam := get_viewport().get_camera_3d()
 	var player := get_tree().get_first_node_in_group(&"player") as Node3D
@@ -131,6 +134,8 @@ func _draw() -> void:
 			need = ""  # the bag has it now
 		var dist := Vector2(point.global_position.x - player.global_position.x,
 			point.global_position.z - player.global_position.z).length()
+		if dist < ON_EXIT_M:
+			continue  # standing on it: the hold bar over the head says 탈출 대기 중 (2026-11-06)
 		var label := "%s / %dm" % [need if need != "" else "탈출", roundi(dist)]
 		var at := point.global_position + Vector3.UP * EXIT_HEIGHT
 		var behind := cam.is_position_behind(at)
