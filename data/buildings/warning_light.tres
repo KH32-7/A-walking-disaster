@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_rh754"]
+
+[resource]
+script = ExtResource("1_rh754")
+id = &"warning_light"
+display_name = "경광등"
+category = 5
+cost = Dictionary[StringName, int]({
+&"parts": 2,
+&"scrap": 5
+})
+effects = Dictionary[StringName, float]({
+&"access_hearing": 1.0,
+&"visual_alarm": 1.0
+})
+power_use = Array[int]([1, 1, 1])
+power_priority = 0

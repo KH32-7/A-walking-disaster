@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_v47su"]
+
+[resource]
+script = ExtResource("1_v47su")
+id = &"family_house"
+display_name = "가족 숙소"
+category = 0
+size = Vector2i(3, 3)
+cost = Dictionary[StringName, int]({
+&"cloth": 5,
+&"plank": 20,
+&"stone": 30
+})
+effects = Dictionary[StringName, float]({
+&"beds": 4.0,
+&"family_only": 1.0,
+&"fatigue_recovery": 50.0
+})
+tier_min = 1
+note = "부부 1쌍 + 아이 2"

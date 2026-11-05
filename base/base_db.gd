@@ -4,9 +4,11 @@ class_name BaseDB
 
 const TRAITS_DIR := "res://data/traits"
 const JOBS_DIR := "res://data/jobs"
+const BUILDINGS_DIR := "res://data/buildings"
 
 static var _traits: Dictionary = {}
 static var _jobs: Dictionary = {}
+static var _buildings: Dictionary = {}
 
 
 static func traits() -> Dictionary:
@@ -19,6 +21,16 @@ static func jobs() -> Dictionary:
 	if _jobs.is_empty():
 		_jobs = _load_dir(JOBS_DIR)
 	return _jobs
+
+
+static func buildings() -> Dictionary:
+	if _buildings.is_empty():
+		_buildings = _load_dir(BUILDINGS_DIR)
+	return _buildings
+
+
+static func get_building(def_id: StringName) -> BuildingDef:
+	return buildings().get(def_id)
 
 
 static func get_trait(trait_id: StringName) -> TraitDef:

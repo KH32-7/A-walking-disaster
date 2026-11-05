@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_a78ak"]
+
+[resource]
+script = ExtResource("1_a78ak")
+id = &"sewing_room"
+display_name = "재봉실"
+category = 4
+size = Vector2i(3, 3)
+cost = Dictionary[StringName, int]({
+&"cloth": 10,
+&"plank": 10
+})
+capacity = 2
+note = "방어구·가방 제작·강화"

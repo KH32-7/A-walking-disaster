@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_fl7rs"]
+
+[resource]
+script = ExtResource("1_fl7rs")
+id = &"infirmary"
+display_name = "의무실"
+size = Vector2i(3, 3)
+cost = Dictionary[StringName, int]({
+&"medicine": 5,
+&"plank": 20,
+&"scrap": 10
+})
+capacity = 1
+power_use = Array[int]([0, 2, 2])
+power_priority = 1
+note = "치료, 구급상자, 아이 맞이 조건"

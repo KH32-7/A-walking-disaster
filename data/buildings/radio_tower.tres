@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_ejbga"]
+
+[resource]
+script = ExtResource("1_ejbga")
+id = &"radio_tower"
+display_name = "무전탑"
+category = 8
+size = Vector2i(3, 3)
+cost = Dictionary[StringName, int]({
+&"electronics": 10,
+&"scrap": 50
+})
+capacity = 1
+requires_flags = Array[StringName]([&"blueprint_radio_tower"])
+tier_min = 2
+zone_only = &"roof"
+note = "도시 밖과 연결, 엔딩 조건"

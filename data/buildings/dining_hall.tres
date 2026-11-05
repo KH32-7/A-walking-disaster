@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_wy35i"]
+
+[resource]
+script = ExtResource("1_wy35i")
+id = &"dining_hall"
+display_name = "식당"
+size = Vector2i(4, 4)
+cost = Dictionary[StringName, int]({
+&"plank": 20,
+&"stone": 20
+})
+effects = Dictionary[StringName, float]({
+&"morale_daily": 2.0,
+&"night_talk": 1.0
+})
+requires = Array[StringName]([&"kitchen"])

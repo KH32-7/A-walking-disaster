@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_4tlcg"]
+
+[resource]
+script = ExtResource("1_4tlcg")
+id = &"quarry"
+display_name = "채석장"
+category = 1
+size = Vector2i(2, 2)
+cost = Dictionary[StringName, int]({
+&"stone": 10,
+&"wood": 20
+})
+capacity = 2
+effects = Dictionary[StringName, float]({
+&"resource_node_radius": 10.0
+})
+note = "잔해 더미 반경 10m"
