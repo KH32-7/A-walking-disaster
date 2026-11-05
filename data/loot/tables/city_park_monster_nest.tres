@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="LootTable" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://field/defs/loot_table.gd" id="1_table"]
+[ext_resource type="Script" path="res://field/defs/loot_entry.gd" id="2_entry"]
+
+[sub_resource type="Resource" id="Entry_0"]
+script = ExtResource("2_entry")
+item_id = &"essence_green_low"
+weight = 50.0
+min_count = 1
+max_count = 2
+
+[sub_resource type="Resource" id="Entry_1"]
+script = ExtResource("2_entry")
+item_id = &"vine_fiber"
+weight = 30.0
+min_count = 1
+max_count = 2
+
+[sub_resource type="Resource" id="Entry_2"]
+script = ExtResource("2_entry")
+item_id = &"herbs"
+weight = 20.0
+min_count = 1
+max_count = 2
+
+[resource]
+script = ExtResource("1_table")
+id = &"city_park_monster_nest"
+region_id = &"city_park"
+container_type = 4
+roll_min = 1
+roll_max = 3
+entries = Array[ExtResource("2_entry")]([SubResource("Entry_0"), SubResource("Entry_1"), SubResource("Entry_2")])

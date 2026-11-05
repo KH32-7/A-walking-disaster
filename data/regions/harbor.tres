@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="RegionDef" format=3]
+
+[ext_resource type="Script" path="res://field/defs/region_def.gd" id="1_region"]
+
+[resource]
+script = ExtResource("1_region")
+id = &"harbor"
+name = "항구"
+danger = 5
+map_scene = "res://levels/field/harbor/harbor.tscn"
+monster_families = Array[int]([2, 3])
+family_shares = Array[float]([0.6, 0.4])
+resources = Array[StringName]([&"fuel", &"generator_core"])
+loot_table_id = &"harbor"
+boss_id = &"breakwater_golem"
+extract_candidates = Array[StringName]([])
+hidden_routes = Array[StringName]([])
+unlock_text = "무전실 Lv2에서 항구 신호 수신"
+unlock_facility = &"radio_room"
+unlock_facility_level = 2

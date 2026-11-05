@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="RegionDef" format=3]
+
+[ext_resource type="Script" path="res://field/defs/region_def.gd" id="1_region"]
+
+[resource]
+script = ExtResource("1_region")
+id = &"hospital"
+name = "병원"
+danger = 3
+map_scene = "res://levels/field/hospital/hospital.tscn"
+monster_families = Array[int]([3, 4])
+family_shares = Array[float]([0.5, 0.5])
+resources = Array[StringName]([&"medicine"])
+loot_table_id = &"hospital"
+boss_id = &"surgical_lamp_wraith"
+extract_candidates = Array[StringName]([])
+hidden_routes = Array[StringName]([])
+unlock_text = "기지 단계 정착지"
+unlock_tier = 1

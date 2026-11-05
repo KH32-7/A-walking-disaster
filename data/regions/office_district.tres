@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="RegionDef" format=3]
+
+[ext_resource type="Script" path="res://field/defs/region_def.gd" id="1_region"]
+
+[resource]
+script = ExtResource("1_region")
+id = &"office_district"
+name = "고층 업무지구"
+danger = 4
+map_scene = "res://levels/field/office_district/office_district.tscn"
+monster_families = Array[int]([4, 2])
+family_shares = Array[float]([0.6, 0.4])
+resources = Array[StringName]([&"electronics", &"motor", &"radio_parts"])
+loot_table_id = &"office_district"
+boss_id = &"neon_colossus"
+extract_candidates = Array[StringName]([])
+hidden_routes = Array[StringName]([])
+unlock_text = "정착지, 승강기 열쇠 퀘스트"
+unlock_tier = 1
+unlock_quest = &"elevator_key"
