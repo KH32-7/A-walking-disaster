@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="NightEventDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/night_event_def.gd" id="1_night"]
+
+[resource]
+script = ExtResource("1_night")
+id = &"date"
+display_name = "데이트"
+description = "연인이 함께 시간을 보낸다. 관계 +5, 사기 +5"
+weight = 20
+priority = false
+choices = Array[StringName]([&"watch"])

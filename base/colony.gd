@@ -5,6 +5,9 @@ signal buildings_changed
 ## Emitted when a resident's trust changes (C-12). stage = TrustRules stage 0..4,
 ## reason = &"talk", &"gift", &"deep_talk", &"sortie_return", &"rescued" or the caller's tag.
 signal trust_changed(resident_id: StringName, trust: int, stage: int, reason: StringName)
+## Emitted when tonight's events are picked (C-14). Each: {event_id, participants, choices, night_day}.
+## Lane D plays them with next_night_event() / resolve_night_event(choice).
+signal night_events_ready(events: Array)
 ## Autoload `Colony`. Owner: Lane C.
 ## Residents, buildings, relationships, raids threat - everything that lives in the base.
 ## Other lanes read through the getters below; they never edit resident data directly.
@@ -43,6 +46,18 @@ var clear_progress: Dictionary = {}
 var clear_started: Dictionary = {}
 ## Day of the stay-day deep talk (하루 1번, C-12). 0 = none.
 var deep_talk_day := 0
+## Relation flags and days (C-14). RelationRules.pair_key(a, b) -> {a, b, flags: Array[int]
+## (Enums.RelationFlag), since_day (연인이 된 날), last_day (마지막 교류), low_days (이별 카운트),
+## engaged, wedding_ready, house_uid}.
+var relation_meta: Dictionary = {}
+## Day of the festival after a wedding (0 = none).
+var festival_day := 0
+## Night events: picked tonight, the one playing, and what happened (for the morning screen).
+var night_queue: Array = []
+var current_night_event: Dictionary = {}
+var last_night_results: Array = []
+var last_night_raid_day := 0
+var _night_rolled_day := 0
 
 var _next_resident_num := 1
 var _next_building_num := 1
@@ -770,10 +785,17 @@ func settle_day() -> Dictionary:
 	var ids := active_resident_ids()
 	var stayed := SceneRouter.stayed_today
 	var crafters: Array = []  # [resident_id, efficiency, workplace def id]
+	# 결혼식 다음 날 축제 (C-14): no work today, ×1.1 the day after.
+	var festival := is_festival_today()
+	var after_festival := festival_day > 0 and festival_day + 1 == GameState.day
+	if festival:
+		events.append(_event(&"festival", &"", "결혼 축제: 오늘은 모두 쉬며 즐겼다"))
 
 	# 1. Work: output, build progress, skill and stat growth.
 	var worked := {}
 	for id in ids:
+		if festival:
+			break
 		var r: Dictionary = residents[id]
 		var job := BaseDB.get_job(job_of(id))
 		if job == null or job.id == WorkRules.REST_JOB or not WorkRules.can_work(r):
@@ -783,9 +805,11 @@ func settle_day() -> Dictionary:
 			continue  # workplace without power, or damaged by a raid, does not run
 		if access_block_reason(id, _work_zone(id)) != "":
 			continue  # 갈 수 없게 됨 (경사로가 부서지거나 철거됨)
-		var f := WorkRules.efficiency(r, job, _works_alone(id)) * access_multiplier(id)
+		var f := WorkRules.efficiency(r, job, _works_alone(id)) * access_multiplier(id) * _best_friend_mult(id)
 		if stayed:
 			f *= WorkRules.STAY_OUTPUT_MULT
+		if after_festival:
+			f *= RelationRules.FESTIVAL_NEXT_DAY_MULT
 		var out := {}
 		if job.workplace != &"" and not Armory.list_recipes(job.workplace, 1).is_empty():
 			crafters.append([id, f, job.workplace])
@@ -809,7 +833,7 @@ func settle_day() -> Dictionary:
 		_grow(id, job, events)
 
 	# Stay day: the player builds too (09 "건설 규칙": 기지에 머무르면 +20) on the oldest site.
-	if stayed:
+	if stayed and not festival:
 		var site := _oldest_site()
 		if site != &"" and add_build_progress(site, WorkRules.STAY_BUILD_PROGRESS):
 			events.append(_event(&"building_completed", &"", "%s 완성" % _def_name(buildings[site]["def_id"])))
@@ -849,6 +873,7 @@ func settle_day() -> Dictionary:
 
 	# 3b. Health and morale (C-06): 07 "상태와 필요", 사기 요인 표, 떠날 위기.
 	_settle_health(consumed, events)
+	_settle_relations(worked)
 	var morale := _settle_morale(ids, ate_cooked, events)
 
 	# 4. Generator fuel (2/일, 겨울 3). No fuel → no power tomorrow.
@@ -1173,6 +1198,8 @@ func roll_raid(time: Enums.RaidTime, force: bool = false) -> Dictionary:
 	elif has_post:
 		raid["notice"] = &"day_before" if _keen_ear_guard() else &"morning"
 	last_raid_day = day
+	if time == Enums.RaidTime.NIGHT:
+		last_night_raid_day = day
 	EventBus.raid_warning.emit(raid)
 	return raid
 
@@ -1400,6 +1427,11 @@ func _on_flow_state_changed(state: Enums.FlowState) -> void:
 	if state == Enums.FlowState.BASE_STAY:
 		# Deferred: SceneRouter is still inside its own transition when this signal fires.
 		_roll_stay_day_raid.call_deferred()
+	elif state == Enums.FlowState.NIGHT:
+		# Deferred: the router rolls the night raid right after entering NIGHT.
+		_roll_tonight.call_deferred()
+	elif state == Enums.FlowState.BASE_MORNING:
+		_finish_night()
 
 
 ## Stay day raid (10 "발생 규칙": 낮, 기지에 머무는 중, 위협도 70 이상 20%), issue #45.
@@ -1597,6 +1629,478 @@ func persuade_to_stay(resident_id: StringName) -> Dictionary:
 	return {"ok": true, "reason": ""}
 
 
+# --- Relations and night events (C-14, 08 "관계 수치", "밤 이벤트") ---------------------
+## Values live in residents[id]["relations"] (kept the same on both sides). Flags and days live in
+## relation_meta. Night events: rolled when the night starts (no raid tonight), played one by one by
+## Lane D (next_night_event → scene → resolve_night_event), and any left over are resolved with
+## their first choice in the morning, so the rules also run without a screen.
+
+func relation(a: StringName, b: StringName) -> int:
+	if not residents.has(a):
+		return 0
+	return int(residents[a]["relations"].get(b, 0))
+
+
+## Enums.RelationFlag values for the pair.
+func relation_flags(a: StringName, b: StringName) -> Array:
+	return relation_meta.get(RelationRules.pair_key(a, b), {}).get("flags", [])
+
+
+## &"rival", &"awkward", &"acquainted", &"friend", &"best_friend", &"lovers", &"married"
+## (names: RelationRules.STAGE_NAMES).
+func relation_stage(a: StringName, b: StringName) -> StringName:
+	return RelationRules.stage_of(relation(a, b), relation_flags(a, b))
+
+
+## other_id -> {"value": int, "stage": StringName} for residents still in the base.
+func relations_of(resident_id: StringName) -> Dictionary:
+	var out := {}
+	if not residents.has(resident_id):
+		return out
+	for other: StringName in residents[resident_id]["relations"]:
+		if residents.has(other):
+			out[other] = {"value": relation(resident_id, other), "stage": relation_stage(resident_id, other)}
+	return out
+
+
+## The lover or spouse of `resident_id` (&"" = none).
+func partner_of(resident_id: StringName) -> StringName:
+	for key: String in relation_meta:
+		var m: Dictionary = relation_meta[key]
+		var flags: Array = m["flags"]
+		if not (Enums.RelationFlag.LOVERS in flags or Enums.RelationFlag.MARRIED in flags):
+			continue
+		if m["a"] == resident_id and residents.has(m["b"]):
+			return m["b"]
+		if m["b"] == resident_id and residents.has(m["a"]):
+			return m["a"]
+	return &""
+
+
+## Married couples [[a, b], ...] (아이 맞이 C-15 reads this).
+func couples() -> Array:
+	var out := []
+	for key: String in relation_meta:
+		var m: Dictionary = relation_meta[key]
+		if Enums.RelationFlag.MARRIED in m["flags"] and residents.has(m["a"]) and residents.has(m["b"]):
+			out.append([m["a"], m["b"]])
+	return out
+
+
+## Changes the relation between two residents and returns the new value. Positive changes get the
+## trait multipliers (혼자가 편함, 편견, 연애에 관심 없음). Counts as an interaction (감소가 멈춤).
+## Emits relationship_changed when the stage changes. B / C-17 call this for 상대를 구해줌 (+15).
+func add_relation(a: StringName, b: StringName, amount: int, _reason: StringName = &"") -> int:
+	if a == b or not residents.has(a) or not residents.has(b):
+		return 0
+	var before := relation_stage(a, b)
+	var d := float(amount)
+	if d > 0.0:
+		var flags := relation_flags(a, b)
+		var romantic := Enums.RelationFlag.LOVERS in flags or Enums.RelationFlag.MARRIED in flags
+		d *= RelationRules.gain_mult(residents[a], residents[b], romantic)
+	var value := clampi(relation(a, b) + roundi(d), RelationRules.MIN, RelationRules.MAX)
+	residents[a]["relations"][b] = value
+	residents[b]["relations"][a] = value
+	_relation_meta(a, b)["last_day"] = GameState.day
+	_emit_stage(a, b, before)
+	return value
+
+
+## 결혼식 준비 (청혼 뒤): {"ok", "missing": Array[String], "cost", "house_uid"}.
+func wedding_status(a: StringName, b: StringName) -> Dictionary:
+	var m: Dictionary = relation_meta.get(RelationRules.pair_key(a, b), {})
+	var missing: Array[String] = []
+	if not m.get("engaged", false):
+		missing.append("청혼 전")
+	elif m.get("wedding_ready", false):
+		missing.append("이미 준비됨")
+	var cost: Dictionary = RelationRules.WEDDING_COST.duplicate()
+	for res: StringName in cost:
+		if Economy.get_amount(res) < int(cost[res]):
+			missing.append("%s %d 필요" % [res, cost[res]])
+	var house := _free_family_house()
+	if house == &"":
+		missing.append("빈 가족 숙소 필요")
+	return {"ok": missing.is_empty(), "missing": missing, "cost": cost, "house_uid": house}
+
+
+## Pays the wedding cost and keeps a family house for the pair. The wedding is the next night.
+func prepare_wedding(a: StringName, b: StringName) -> bool:
+	var status := wedding_status(a, b)
+	if not status["ok"]:
+		return false
+	var pay := {}
+	for res: StringName in status["cost"]:
+		pay[res] = -int(status["cost"][res])
+	Economy.apply(pay)
+	var m := _relation_meta(a, b)
+	m["wedding_ready"] = true
+	m["house_uid"] = status["house_uid"]
+	return true
+
+
+## Festival day after a wedding: no production, everyone +15 morale; the day after, work ×1.1.
+func is_festival_today() -> bool:
+	return festival_day > 0 and festival_day == GameState.day
+
+
+## Tonight's events still waiting to be played ([{event_id, participants, choices, night_day}]).
+func pending_night_events() -> Array:
+	return night_queue.duplicate(true)
+
+
+## Lane D: start the next event's scene. Returns the event ({} = none). The router goes to NIGHT_EVENT
+## and emits night_event_started(event_id, participants).
+func next_night_event() -> Dictionary:
+	if night_queue.is_empty() or not current_night_event.is_empty():
+		return {}
+	current_night_event = night_queue.pop_front()
+	if GameState.flow_state == Enums.FlowState.NIGHT:
+		SceneRouter.start_night_event(current_night_event["event_id"], current_night_event["participants"])
+	return current_night_event.duplicate(true)
+
+
+## Lane D: the scene ended with `choice` (one of the event's choices; &"" = the first).
+## Applies the outcome, returns {event_id, participants, choice, text, ...} and goes back to NIGHT.
+func resolve_night_event(choice: StringName = &"") -> Dictionary:
+	if current_night_event.is_empty():
+		return {}
+	var ev := current_night_event
+	current_night_event = {}
+	var result := _apply_night_event(ev, choice)
+	if GameState.flow_state == Enums.FlowState.NIGHT_EVENT:
+		SceneRouter.end_night_event()
+	return result
+
+
+## Picks tonight's events (priority ones, then 1~2 by weight). Used by the night hook and tests.
+func roll_night_events() -> Array:
+	var picked: Array = []
+	var weighted: Array = []
+	for event_id: StringName in BaseDB.night_events():
+		var def := BaseDB.get_night_event(event_id)
+		var groups := _night_candidates(event_id)
+		if groups.is_empty():
+			continue
+		if def.priority:
+			for g in groups:
+				picked.append(_night_event(def, g))
+		else:
+			weighted.append([def, groups])
+	var want := 1 + (1 if _rng.randf() < RelationRules.NIGHT_SECOND_EVENT_CHANCE else 0)
+	while picked.size() < want and not weighted.is_empty():
+		var total := 0
+		for w: Array in weighted:
+			total += (w[0] as NightEventDef).weight
+		var roll := _rng.randi_range(1, maxi(total, 1))
+		for i in weighted.size():
+			roll -= (weighted[i][0] as NightEventDef).weight
+			if roll <= 0:
+				var groups: Array = weighted[i][1]
+				picked.append(_night_event(weighted[i][0], groups[_rng.randi_range(0, groups.size() - 1)]))
+				weighted.remove_at(i)
+				break
+	return picked
+
+
+func _night_event(def: NightEventDef, participants: Array) -> Dictionary:
+	var ids: Array[StringName] = []
+	for p in participants:
+		ids.append(StringName(p))
+	return {"event_id": def.id, "participants": ids, "choices": def.choices.duplicate(), "night_day": GameState.day}
+
+
+## Participant groups that meet `event_id`'s condition tonight.
+func _night_candidates(event_id: StringName) -> Array:
+	var ids := _adults_and_teens()
+	var out: Array = []
+	match event_id:
+		&"bonfire":
+			if ids.size() >= RelationRules.BONFIRE_PARTICIPANTS.x:
+				var pool := ids.duplicate()
+				var group: Array = []
+				for i in mini(_rng.randi_range(RelationRules.BONFIRE_PARTICIPANTS.x, RelationRules.BONFIRE_PARTICIPANTS.y), pool.size()):
+					group.append(pool.pop_at(_rng.randi_range(0, pool.size() - 1)))
+				out.append(group)
+		&"quarrel":
+			for pair in _pairs(ids):
+				var a: Dictionary = residents[pair[0]]
+				var b: Dictionary = residents[pair[1]]
+				var tired := int(a["fatigue"]) >= RelationRules.QUARREL_FATIGUE_AT or int(b["fatigue"]) >= RelationRules.QUARREL_FATIGUE_AT
+				var prejudice := RelationRules.prejudiced_against(a, b) or RelationRules.prejudiced_against(b, a)
+				if relation(pair[0], pair[1]) <= RelationRules.QUARREL_BELOW and (tired or prejudice):
+					out.append(pair)
+		&"confession":
+			for pair in _pairs(ids):
+				if RelationRules.romance_ok(residents[pair[0]]) and RelationRules.romance_ok(residents[pair[1]]) \
+						and partner_of(pair[0]) == &"" and partner_of(pair[1]) == &"" \
+						and relation(pair[0], pair[1]) >= RelationRules.CONFESS_AT:
+					out.append(pair)
+		_:
+			for key: String in relation_meta:
+				var m: Dictionary = relation_meta[key]
+				var pair := [m["a"], m["b"]]
+				if not (pair[0] in ids and pair[1] in ids):
+					continue
+				var flags: Array = m["flags"]
+				var lovers := Enums.RelationFlag.LOVERS in flags
+				var value := relation(pair[0], pair[1])
+				match event_id:
+					&"date":
+						if lovers:
+							out.append(pair)
+					&"proposal":
+						if lovers and not m["engaged"] and value >= RelationRules.PROPOSE_AT \
+								and GameState.day - int(m["since_day"]) >= RelationRules.PROPOSE_LOVERS_DAYS \
+								and int(residents[pair[0]]["morale"]) >= RelationRules.PROPOSE_MORALE_AT \
+								and int(residents[pair[1]]["morale"]) >= RelationRules.PROPOSE_MORALE_AT:
+							out.append(pair)
+					&"wedding":
+						if m["wedding_ready"]:
+							out.append(pair)
+					&"breakup":
+						if (lovers or Enums.RelationFlag.MARRIED in flags) and int(m["low_days"]) >= RelationRules.BREAKUP_DAYS:
+							out.append(pair)
+	return out
+
+
+func _apply_night_event(ev: Dictionary, choice: StringName) -> Dictionary:
+	var choices: Array = ev.get("choices", [])
+	if not choice in choices:
+		choice = StringName(choices[0]) if not choices.is_empty() else &"watch"
+	var who: Array = ev["participants"]
+	for id in who:
+		if not residents.has(id):
+			return {"event_id": ev["event_id"], "participants": who, "choice": choice, "text": "", "skipped": true}
+	var a: StringName = who[0]
+	var b: StringName = who[1] if who.size() > 1 else &""
+	var names := ", ".join(who.map(func(id): return String(residents[id]["name"])))
+	var result := {"event_id": ev["event_id"], "participants": who, "choice": choice, "text": ""}
+	match ev["event_id"]:
+		&"bonfire":
+			for pair in _pairs(who):
+				var ra: Dictionary = residents[pair[0]]
+				var rb: Dictionary = residents[pair[1]]
+				var amount := roundi(_rng.randi_range(RelationRules.BONFIRE.x, RelationRules.BONFIRE.y) * RelationRules.bonfire_mult(ra, rb))
+				if RelationRules.shared_like(ra, rb):
+					amount += RelationRules.SHARED_LIKE_BONUS
+				add_relation(pair[0], pair[1], amount, &"bonfire")
+			for id in who:
+				var story := unlocked_story(id)
+				if not story.is_empty():
+					result["fragment"] = {"resident_id": id, "text": story[_rng.randi_range(0, story.size() - 1)]}
+					break
+			result["text"] = "%s이(가) 모닥불가에서 이야기했다" % names
+		&"quarrel":
+			var trust_avg := (int(residents[a]["trust"]) + int(residents[b]["trust"])) / 2.0
+			if choice == &"mediate" and _rng.randf() * 100.0 < trust_avg:
+				add_relation(a, b, RelationRules.MEDIATE_SUCCESS_GAIN, &"mediated")
+				result["mediated"] = true
+				result["text"] = "%s의 다툼을 말려 화해시켰다" % names
+			else:
+				add_relation(a, b, _rng.randi_range(RelationRules.QUARREL.x, RelationRules.QUARREL.y), &"quarrel")
+				result["mediated"] = false
+				result["text"] = "%s이(가) 다퉜다" % names
+		&"confession":
+			_set_lovers(a, b, int(ev["night_day"]))
+			if choice == &"cheer":
+				for id in who:
+					residents[id]["morale"] = NeedsRules.apply_morale(residents[id], RelationRules.CHEER_MORALE)
+			result["text"] = "%s이(가) 연인이 되었다" % names
+		&"date":
+			add_relation(a, b, RelationRules.DATE_RELATION, &"date")
+			for id in who:
+				residents[id]["morale"] = NeedsRules.apply_morale(residents[id], RelationRules.DATE_MORALE)
+			result["text"] = "%s이(가) 데이트를 했다" % names
+		&"proposal":
+			_relation_meta(a, b)["engaged"] = true
+			result["text"] = "%s이(가) 결혼을 약속했다. 결혼식 준비: 식량 %d, 천 %d, 빈 가족 숙소" % [names,
+				RelationRules.WEDDING_COST[&"food"], RelationRules.WEDDING_COST[&"cloth"]]
+		&"wedding":
+			var before := relation_stage(a, b)
+			var m := _relation_meta(a, b)
+			m["flags"] = [Enums.RelationFlag.MARRIED]
+			m["engaged"] = false
+			m["wedding_ready"] = false
+			_move_into_house(who, m["house_uid"])
+			festival_day = int(ev["night_day"]) + 1
+			_emit_stage(a, b, before)
+			result["text"] = "%s이(가) 결혼했다. 내일은 축제" % names
+		&"breakup":
+			var before := relation_stage(a, b)
+			var m := _relation_meta(a, b)
+			m["flags"] = []
+			m["engaged"] = false
+			m["wedding_ready"] = false
+			m["house_uid"] = &""
+			m["low_days"] = 0
+			for id in who:
+				residents[id]["morale"] = NeedsRules.apply_morale(residents[id], RelationRules.BREAKUP_MORALE)
+			_emit_stage(a, b, before)
+			result["text"] = "%s이(가) 헤어졌다" % names
+	last_night_results.append(result)
+	if ev["event_id"] in [&"confession", &"proposal", &"wedding", &"breakup"]:
+		EventBus.notification_posted.emit(result["text"], &"info")
+	return result
+
+
+func _set_lovers(a: StringName, b: StringName, day: int) -> void:
+	var before := relation_stage(a, b)
+	var m := _relation_meta(a, b)
+	m["flags"] = [Enums.RelationFlag.LOVERS]
+	m["since_day"] = day
+	m["low_days"] = 0
+	_emit_stage(a, b, before)
+
+
+## Daily part of the settlement: 같은 작업장 +1, 10일 교류 없으면 감소, 이별 카운트.
+func _settle_relations(worked: Dictionary) -> void:
+	var done := {}
+	for id: StringName in worked:
+		for other in _coworker_ids(id):
+			var key := RelationRules.pair_key(id, other)
+			if worked.has(other) and not done.has(key):
+				done[key] = true
+				add_relation(id, other, RelationRules.SAME_WORKPLACE, &"workplace")
+	var today := GameState.day
+	for id: StringName in residents:
+		for other: StringName in residents[id]["relations"]:
+			if String(id) > String(other) or not residents.has(other):
+				continue
+			var value := relation(id, other)
+			var m: Dictionary = relation_meta.get(RelationRules.pair_key(id, other), {})
+			var last := int(m.get("last_day", 0))
+			if value > RelationRules.DECAY_FROM and today - last >= RelationRules.DECAY_AFTER_DAYS:
+				var before := relation_stage(id, other)
+				value = maxi(value - RelationRules.DECAY_PER_DAY, RelationRules.DECAY_FROM)
+				residents[id]["relations"][other] = value
+				residents[other]["relations"][id] = value
+				_emit_stage(id, other, before)
+			if not m.is_empty():
+				var flags: Array = m["flags"]
+				if (Enums.RelationFlag.LOVERS in flags or Enums.RelationFlag.MARRIED in flags) and value < RelationRules.BREAKUP_BELOW:
+					m["low_days"] = int(m["low_days"]) + 1
+				else:
+					m["low_days"] = 0
+
+
+## Residents at the same workplace: the same building / zone / node, or the same job with no place.
+func _coworker_ids(resident_id: StringName) -> Array[StringName]:
+	var out: Array[StringName] = []
+	var r: Dictionary = residents.get(resident_id, {})
+	if r.is_empty():
+		return out
+	var job := job_of(resident_id)
+	var place: StringName = r["assignment"]["building_id"]
+	if job == &"" or job == WorkRules.REST_JOB:
+		return out
+	for other in active_resident_ids():
+		if other == resident_id:
+			continue
+		var o: Dictionary = residents[other]
+		if job_of(other) == job and StringName(o["assignment"]["building_id"]) == place:
+			out.append(other)
+		elif place != &"" and StringName(o["assignment"]["building_id"]) == place:
+			out.append(other)
+	return out
+
+
+## 절친과 같은 작업장 효율 +10%.
+func _best_friend_mult(resident_id: StringName) -> float:
+	for other in _coworker_ids(resident_id):
+		if relation(resident_id, other) >= RelationRules.BEST_FRIEND_AT:
+			return RelationRules.BEST_FRIEND_WORK_MULT
+	return 1.0
+
+
+func _relation_meta(a: StringName, b: StringName) -> Dictionary:
+	var key := RelationRules.pair_key(a, b)
+	if not relation_meta.has(key):
+		var first := a if String(a) < String(b) else b
+		relation_meta[key] = {"a": first, "b": b if first == a else a, "flags": [], "since_day": 0,
+			"last_day": GameState.day, "low_days": 0, "engaged": false, "wedding_ready": false, "house_uid": &""}
+	return relation_meta[key]
+
+
+func _emit_stage(a: StringName, b: StringName, before: StringName) -> void:
+	var stage := relation_stage(a, b)
+	if stage != before:
+		EventBus.relationship_changed.emit(a, b, stage)
+
+
+func _adults_and_teens() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for id in active_resident_ids():
+		if int(residents[id]["age_stage"]) >= Enums.AgeStage.TEEN:
+			out.append(id)
+	return out
+
+
+func _pairs(ids: Array) -> Array:
+	var out: Array = []
+	for i in ids.size():
+		for j in range(i + 1, ids.size()):
+			out.append([ids[i], ids[j]])
+	return out
+
+
+func _free_family_house() -> StringName:
+	var taken := {}
+	for key: String in relation_meta:
+		var uid: StringName = relation_meta[key].get("house_uid", &"")
+		if uid != &"":
+			taken[uid] = true
+	for uid in building_ids(RelationRules.FAMILY_HOUSE):
+		if not taken.has(uid):
+			return uid
+	return &""
+
+
+## The couple moves into their family house beds (when free).
+func _move_into_house(who: Array, house_uid: StringName) -> void:
+	if house_uid == &"" or not buildings.has(house_uid):
+		return
+	var house_beds: Array[StringName] = []
+	for bed_id: StringName in beds:
+		if String(bed_id).begins_with(String(house_uid) + "_bed_") and beds[bed_id] == &"":
+			house_beds.append(bed_id)
+	for id in who:
+		if house_beds.is_empty():
+			return
+		release_bed(id)
+		assign_bed(id, house_beds.pop_front())
+
+
+func _roll_tonight() -> void:
+	var day := GameState.day
+	if GameState.flow_state != Enums.FlowState.NIGHT or _night_rolled_day == day:
+		return
+	_night_rolled_day = day
+	last_night_results = []
+	if last_night_raid_day == day:
+		return  # 습격이 있는 밤에는 이벤트가 없다
+	night_queue = roll_night_events()
+	if not night_queue.is_empty():
+		night_events_ready.emit(pending_night_events())
+
+
+## Morning: events nobody played are resolved with their first choice.
+func _finish_night() -> void:
+	if not current_night_event.is_empty():
+		var ev := current_night_event
+		current_night_event = {}
+		_apply_night_event(ev, &"")
+	while not night_queue.is_empty():
+		_apply_night_event(night_queue.pop_front(), &"")
+
+
+## 함께 출격해 살아 돌아옴: relation +5 between the companions who came back.
+func _sortie_relations(back: Array[StringName]) -> void:
+	for pair in _pairs(back):
+		add_relation(pair[0], pair[1], RelationRules.SORTIE_TOGETHER, &"sortie")
+
+
 # --- Trust, talk, gifts (C-12, 07 "신뢰도") ---------------------------------------
 ## Lines come from Lane A (Radio / AI 대화); the resident screen is D-13. Colony only keeps the numbers.
 
@@ -1691,10 +2195,13 @@ func give_gift(resident_id: StringName, resource_id: StringName) -> Dictionary:
 ## 함께 출격해 살아 돌아옴 +5 (companions who are not stranded).
 func _on_sortie_ended(result: Dictionary) -> void:
 	var stranded: Array = result.get("stranded", [])
+	var back: Array[StringName] = []
 	for c in result.get("companions", []):
 		var id := StringName(c)
 		if not id in stranded and residents.has(id) and int(residents[id]["status"]) == Enums.ResidentStatus.ACTIVE:
 			add_trust(id, TrustRules.SORTIE_RETURN, &"sortie_return")
+			back.append(id)
+	_sortie_relations(back)
 
 
 ## Injury countdown (의무실이 있으면 1일), sickness (겨울·배고픔), contagion, medicine cures.
@@ -1761,17 +2268,16 @@ func _settle_morale(ids: Array[StringName], ate_cooked: Dictionary, events: Arra
 	var shared_bonus := 0
 	for v in shared.values():
 		shared_bonus += roundi(v)
+	if is_festival_today():
+		shared_bonus += RelationRules.FESTIVAL_MORALE
 	var deltas := {}
 	for id in ids:
 		if not residents.has(id) or int(residents[id]["status"]) != Enums.ResidentStatus.ACTIVE:
 			continue
 		var r: Dictionary = residents[id]
-		var uid: StringName = r["assignment"]["building_id"]
 		var coworkers: Array = []
-		if buildings.has(uid):
-			for w: StringName in buildings[uid]["workers"]:
-				if w != id and residents.has(w):
-					coworkers.append(residents[w])
+		for w in _coworker_ids(id):
+			coworkers.append(residents[w])
 		var bed := String(r["bed_id"])
 		var home_bonus := 0
 		if bed != "" and not bed.begins_with(START_BED_PREFIX):
@@ -1855,6 +2361,13 @@ func _reset() -> void:
 	_next_resident_num = 1
 	last_raid_day = 0
 	deep_talk_day = 0
+	relation_meta = {}
+	festival_day = 0
+	night_queue = []
+	current_night_event = {}
+	last_night_results = []
+	last_night_raid_day = 0
+	_night_rolled_day = 0
 	active_raid = {}
 	_rng.randomize()
 	_refresh_effects()
@@ -1873,6 +2386,8 @@ func save_data() -> Dictionary:
 		"next_building_num": _next_building_num,
 		"last_raid_day": last_raid_day,
 		"deep_talk_day": deep_talk_day,
+		"relation_meta": relation_meta,
+		"festival_day": festival_day,
 		"cleared_zones": cleared_zones,
 		"clear_progress": clear_progress,
 		"clear_started": clear_started,
@@ -1911,6 +2426,18 @@ func load_data(data: Dictionary) -> void:
 	_next_building_num = maxi(int(data.get("next_building_num", 1)), 1)
 	last_raid_day = int(data.get("last_raid_day", 0))
 	deep_talk_day = int(data.get("deep_talk_day", 0))
+	festival_day = int(data.get("festival_day", 0))
+	relation_meta = {}
+	var saved_meta: Dictionary = data.get("relation_meta", {})
+	for key in saved_meta:
+		var m: Dictionary = saved_meta[key]
+		var flags: Array = []
+		for f in m.get("flags", []):
+			flags.append(int(f))
+		relation_meta[String(key)] = {"a": StringName(m.get("a", "")), "b": StringName(m.get("b", "")), "flags": flags,
+			"since_day": int(m.get("since_day", 0)), "last_day": int(m.get("last_day", 0)), "low_days": int(m.get("low_days", 0)),
+			"engaged": bool(m.get("engaged", false)), "wedding_ready": bool(m.get("wedding_ready", false)),
+			"house_uid": StringName(m.get("house_uid", ""))}
 	cleared_zones = {}
 	for zone_id in data.get("cleared_zones", {}):
 		cleared_zones[StringName(zone_id)] = true
@@ -1938,6 +2465,8 @@ func _register_debug_commands() -> void:
 		"settle - 하루 정산을 돌리고 Economy에 반영 (A-05 전 테스트용)")
 	DebugConsole.register(&"trust", _cmd_trust,
 		"trust <id> | trust talk|deep|add <id> [n] | trust gift <id> <resource_id> - 신뢰도·대화·선물")
+	DebugConsole.register(&"rel", _cmd_rel,
+		"rel <id> | rel add <a> <b> <n> | rel night (오늘 밤 이벤트 뽑고 모두 진행) | rel wedding <a> <b> (결혼식 준비)")
 	DebugConsole.register(&"zone", _cmd_zone,
 		"zone list | zone clear <id> (즉시 개간) | job <주민> construction <zone_id> 로 개간 배정")
 	DebugConsole.register(&"tier", func(_args: PackedStringArray) -> String:
@@ -1967,6 +2496,40 @@ func _register_debug_commands() -> void:
 		"raid now [day|night] | raid threat <0~100> | raid info - 습격 강제·위협도 설정·방어력/예상")
 	DebugConsole.register(&"build", _cmd_build,
 		"build <building_id> | build list - 비용 없이 건물을 바로 완성 / 건물·전력·소음 목록")
+
+
+func _cmd_rel(args: PackedStringArray) -> String:
+	var usage := "사용법: rel <id> | rel add <a> <b> <n> | rel night | rel wedding <a> <b>"
+	if args.is_empty():
+		return usage
+	match args[0]:
+		"add":
+			if args.size() < 4 or not residents.has(StringName(args[1])) or not residents.has(StringName(args[2])):
+				return usage
+			var v := add_relation(StringName(args[1]), StringName(args[2]), int(args[3]), &"debug")
+			return "%s↔%s %d (%s)" % [args[1], args[2], v, RelationRules.STAGE_NAMES[relation_stage(StringName(args[1]), StringName(args[2]))]]
+		"night":
+			if night_queue.is_empty():
+				night_queue = roll_night_events()
+			var lines := PackedStringArray()
+			while not night_queue.is_empty():
+				lines.append(String(_apply_night_event(night_queue.pop_front(), &"")["text"]))
+			return "\n".join(lines) if not lines.is_empty() else "오늘 밤 일어날 이벤트가 없다"
+		"wedding":
+			if args.size() < 3:
+				return usage
+			var status := wedding_status(StringName(args[1]), StringName(args[2]))
+			if not prepare_wedding(StringName(args[1]), StringName(args[2])):
+				return "준비 못 함: %s" % ", ".join(status["missing"])
+			return "결혼식 준비 완료 (가족 숙소 %s). 다음 밤 결혼식" % status["house_uid"]
+	var id := StringName(args[0])
+	if not residents.has(id):
+		return "없는 주민: %s" % id
+	var lines := PackedStringArray(["%s %s의 관계" % [id, residents[id]["name"]]])
+	var rels := relations_of(id)
+	for other: StringName in rels:
+		lines.append("  %s %s %d %s" % [other, residents[other]["name"], rels[other]["value"], RelationRules.STAGE_NAMES[rels[other]["stage"]]])
+	return "\n".join(lines)
 
 
 func _cmd_trust(args: PackedStringArray) -> String:

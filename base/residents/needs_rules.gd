@@ -14,7 +14,7 @@ const STRANDED_COMPANION := -5  # 동료가 고립 중 (전원, 고립된 사람
 const KIND_COWORKER := 1        # 같은 작업장에 마음 7 이상인 동료
 const KIND_HEART_AT := 7
 ## Relation value that counts as a friend for the workplace bonus (C-14 sets relations).
-const FRIEND_RELATION := 40
+const FRIEND_RELATION := RelationRules.FRIEND_AT  # 08 "관계 수치": 친구 30 이상
 
 ## 떠날 위기: 사기 20 미만이 3일 이어지면 "떠나려 한다". Unresolved by the next evening → leaves (가안).
 const CRISIS_MORALE := 20
@@ -56,13 +56,19 @@ static func daily_morale(resident: Dictionary, ctx: Dictionary) -> int:
 	delta += STRANDED_COMPANION * int(ctx.get("stranded_count", 0))
 	var friend := false
 	var kind := false
+	var rival := false
 	for other: Dictionary in ctx.get("coworkers", []):
-		if int(resident["relations"].get(other["id"], 0)) >= FRIEND_RELATION:
+		var value := int(resident["relations"].get(other["id"], 0))
+		if value >= FRIEND_RELATION:
 			friend = true
+		if value <= RelationRules.RIVAL_AT:
+			rival = true
 		if int(other["stats"].get(&"heart", 0)) >= KIND_HEART_AT:
 			kind = true
 	if friend:
 		delta += FRIEND_SAME_WORKPLACE
+	if rival:
+		delta += RelationRules.RIVAL_SAME_WORKPLACE_MORALE  # 앙숙과 같은 작업장 −5 (08)
 	if kind:
 		delta += KIND_COWORKER
 	return delta

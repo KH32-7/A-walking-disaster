@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="NightEventDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/night_event_def.gd" id="1_night"]
+
+[resource]
+script = ExtResource("1_night")
+id = &"bonfire"
+display_name = "모닥불 이야기"
+description = "무작위 2~3명이 모닥불가에서 이야기한다. 관계 +, 사연 조각"
+weight = 40
+priority = false
+choices = Array[StringName]([&"watch"])

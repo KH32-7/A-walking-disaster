@@ -6,11 +6,13 @@ const TRAITS_DIR := "res://data/traits"
 const JOBS_DIR := "res://data/jobs"
 const BUILDINGS_DIR := "res://data/buildings"
 const ZONES_DIR := "res://data/buildings/zones"
+const NIGHT_EVENTS_DIR := "res://data/events/night"
 
 static var _traits: Dictionary = {}
 static var _jobs: Dictionary = {}
 static var _buildings: Dictionary = {}
 static var _zones: Dictionary = {}
+static var _night_events: Dictionary = {}
 
 
 static func zones() -> Dictionary:
@@ -21,6 +23,16 @@ static func zones() -> Dictionary:
 
 static func get_zone(zone_id: StringName) -> ZoneDef:
 	return zones().get(zone_id)
+
+
+static func night_events() -> Dictionary:
+	if _night_events.is_empty():
+		_night_events = _load_dir(NIGHT_EVENTS_DIR)
+	return _night_events
+
+
+static func get_night_event(event_id: StringName) -> NightEventDef:
+	return night_events().get(event_id)
 
 
 static func traits() -> Dictionary:
