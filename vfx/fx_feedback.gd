@@ -3,8 +3,11 @@ extends Node
 ## Hit feel that gameplay does not call (D-18). Owner: Lane D. Child of the Fx autoload.
 ## - Monster.damaged(amount, info): damage number at info.position (else above the monster) and a short
 ##   white flash on its meshes. Status ticks (info.status_tick): small number in the element colour, no flash.
-## - Player.health_changed(current, maximum): a drop shows a red "-N", a red flash, the player_hit burst and the player_hurt
+## - Player.health_changed(current, maximum): a drop shows a red "-N", a white flash, the player_hit burst and the player_hurt
 ##   sound; a rise shows a green "+N".
+## - FieldCompanion.damaged / RescueTarget.damaged (amount, info), ResidentAgent.hurt(id): a white flash and the
+##   player_hit burst, no number. Status ticks get no flash.
+## White on a body means "it was hit" and nothing else.
 ## Amounts are Lane B's final numbers; nothing is computed here.
 
 const NUMBER_SEC := 0.7
@@ -19,9 +22,10 @@ const NUMBER_OUTLINE := 14
 ## Big numbers (crits) start this much larger and snap down to size: they "pop".
 const NUMBER_POP := 1.7
 const NUMBER_POP_SEC := 0.12
-const FLASH_SEC := 0.12
-const MONSTER_FLASH := Color(1.0, 1.0, 1.0, 0.8)
-const PLAYER_FLASH := Color(1.0, 0.3, 0.25, 0.7)
+## Hit flash: full white for FLASH_HOLD_SEC, then gone over FLASH_FADE_SEC (0.12 s in all).
+const FLASH_HOLD_SEC := 0.05
+const FLASH_FADE_SEC := 0.07
+const HIT_FLASH := Color(1.0, 1.0, 1.0, 1.0)
 
 var _player_hp: Dictionary = {}  # instance_id -> last health
 var _flashes: Dictionary = {}  # instance_id -> Tween
@@ -37,11 +41,16 @@ func _ready() -> void:
 
 
 func _on_node_added(node: Node) -> void:
-	if not (node is Monster or node is Player) or node.has_meta(&"fx_feedback"):
+	if not (node is Monster or node is Player or node is FieldCompanion or node is RescueTarget \
+			or node is ResidentAgent) or node.has_meta(&"fx_feedback"):
 		return  # a node moved to another parent is "added" again
 	node.set_meta(&"fx_feedback", true)
 	if node is Monster:
 		node.damaged.connect(_on_monster_damaged.bind(node))
+	elif node is FieldCompanion or node is RescueTarget:
+		node.damaged.connect(_on_ally_damaged.bind(node))
+	elif node is ResidentAgent:
+		node.hurt.connect(_on_ally_hit.bind(node).unbind(1))
 	elif node is Player:
 		node.health_changed.connect(_on_player_health.bind(node))
 		# health is set in the player's _ready, after node_added.
@@ -78,7 +87,19 @@ func _on_monster_damaged(amount: float, info: Dictionary, monster: Node3D) -> vo
 		size = 1.25
 	show_number(at, text, color, size)
 	if not tick:
-		flash(monster, MONSTER_FLASH)
+		flash(monster, HIT_FLASH)
+
+
+func _on_ally_damaged(amount: float, info: Dictionary, ally: Node3D) -> void:
+	if amount > 0.0 and not StatusHolder.is_tick(info):
+		_on_ally_hit(ally)
+
+
+func _on_ally_hit(ally: Node3D) -> void:
+	if not is_instance_valid(ally):
+		return
+	flash(ally, HIT_FLASH)
+	Fx.spawn(&"player_hit", ally.global_position + Vector3.UP * PLAYER_HIT_HEIGHT, {"silent": true})
 
 
 func _on_player_health(current: float, _maximum: float, player: Node3D) -> void:
@@ -91,7 +112,7 @@ func _on_player_health(current: float, _maximum: float, player: Node3D) -> void:
 	var at := player.global_position + Vector3.UP * NUMBER_HEIGHT
 	if diff < 0.0:
 		show_number(at, "-%d" % roundi(-diff), UiTokens.DANGER, 1.0)
-		flash(player, PLAYER_FLASH)
+		flash(player, HIT_FLASH)
 		Audio.play(&"player_hurt", player.global_position)
 		Fx.spawn(&"player_hit", player.global_position + Vector3.UP * PLAYER_HIT_HEIGHT, {"silent": true})
 	else:
@@ -126,34 +147,48 @@ func show_number(at: Vector3, text: String, color: Color, size := 1.0) -> Label3
 	return label
 
 
-## Briefly overlays `color` on every mesh under `target` that has no overlay of its own.
-func flash(target: Node, color: Color) -> void:
+## Briefly overlays `color` on every mesh under `target`. A mesh that already has an overlay
+## (the red enemy outline, a hover outline) keeps it: the flash chains it as next_pass and
+## puts it back when done. Returns the fade (null when nothing to flash) for tests.
+func flash(target: Node, color: Color) -> Tween:
 	var id := target.get_instance_id()
 	var old: Tween = _flashes.get(id)
 	if old != null and old.is_valid():
 		old.kill()
+	var peak := color
+	if Fx.reduced_flash():
+		peak.a *= 0.35
+	var mats := {}  # overlay underneath (or null) -> its flash material
+	var meshes: Array[MeshInstance3D] = []
+	for m in target.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		var under := mi.material_overlay
+		if under != null and under.has_meta(&"fx_flash"):
+			under = under.next_pass  # an earlier flash that was cut short
+		if not mats.has(under):
+			mats[under] = _flash_material(peak, under)
+		mi.material_overlay = mats[under]
+		meshes.append(mi)
+	if meshes.is_empty():
+		return null
+	var tw := create_tween().set_parallel()
+	for mat in mats.values():
+		tw.tween_property(mat, ^"albedo_color:a", 0.0, FLASH_FADE_SEC).set_delay(FLASH_HOLD_SEC)
+	tw.chain().tween_callback(func() -> void:
+		for mi in meshes:
+			if is_instance_valid(mi) and mi.material_overlay != null 					and mi.material_overlay.has_meta(&"fx_flash"):
+				mi.material_overlay = mi.material_overlay.next_pass
+		_flashes.erase(id))
+	_flashes[id] = tw
+	return tw
+
+
+func _flash_material(color: Color, under: Material) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	var peak := color
-	if Fx.reduced_flash():
-		peak.a *= 0.35
-	mat.albedo_color = peak
-	var meshes: Array[MeshInstance3D] = []
-	for m in target.find_children("*", "MeshInstance3D", true, false):
-		var mi := m as MeshInstance3D
-		if mi.material_overlay == null or mi.material_overlay.has_meta(&"fx_flash"):
-			mat.set_meta(&"fx_flash", true)
-			mi.material_overlay = mat
-			meshes.append(mi)
-	if meshes.is_empty():
-		return
-	var tw := create_tween()
-	tw.tween_property(mat, ^"albedo_color:a", 0.0, FLASH_SEC)
-	tw.tween_callback(func() -> void:
-		for mi in meshes:
-			if is_instance_valid(mi) and mi.material_overlay == mat:
-				mi.material_overlay = null
-		_flashes.erase(id))
-	_flashes[id] = tw
+	mat.albedo_color = color
+	mat.next_pass = under
+	mat.set_meta(&"fx_flash", true)
+	return mat

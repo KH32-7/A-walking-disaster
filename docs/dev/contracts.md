@@ -147,6 +147,9 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   보스 모델(`MonsterVisual`)은 `play_once(clip)`, `sink(on, sec, rise)`를 mechanic에 내준다.
 - **Audio**: `play(event_id, position)`, `set_music_state(state)`
 - **Fx**: `spawn(effect_id, position, params)`. 이펙트 id 표는 [vfx/README.md](../../vfx/README.md)(D).
+  피격 흰 번쩍임과 피해 숫자는 `FxFeedback`이 신호를 듣고 띄운다(게임플레이가 부르지 않음): `Monster.damaged`, `Player.health_changed`,
+  `FieldCompanion.damaged(amount, info)`, `RescueTarget.damaged(amount, info)`(`Monster.damaged`와 같은 모양, 상태 틱은 번쩍임 없음), `ResidentAgent.hurt`.
+  몸이 하얗게 번쩍이면 "맞았다" 한 가지 뜻이다. 번쩍임은 기존 `material_overlay`(적 외곽선 등)를 `next_pass`로 걸었다가 되돌린다.
 - **마물 모델과 이펙트 (D-17, 이슈 #148)**:
   - 신호 `Monster.attack_started(info)`(B): 공격이 맞기 `MonsterRules.ATTACK_WINDUP_SEC`(0.4초) 전마다 한 번. info 키 `monster_id`, `target`.
     D의 `MonsterVisual`이 여기서 공격 클립을 시작한다.
