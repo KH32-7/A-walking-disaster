@@ -270,6 +270,7 @@ func _step_move(delta: float, dir: Vector3, aim: bool, sprint: bool) -> void:
 		_spend_stamina(stats.sprint_stamina_per_sec * delta)
 		if stamina <= 0.0:
 			_sprint_toggled = false
+	speed *= _backpedal_mult(dir)
 	var target := dir * speed * move_speed_mult * status.move_mult()
 	var flat := Vector3(velocity.x, 0.0, velocity.z).move_toward(target, stats.acceleration * delta)
 	velocity.x = flat.x
@@ -282,6 +283,14 @@ func _step_move(delta: float, dir: Vector3, aim: bool, sprint: bool) -> void:
 		_set_move_state(MoveState.SPRINT)
 	else:
 		_set_move_state(MoveState.WALK)
+
+
+## Slower when walking away from where the body faces (only while it faces the cursor).
+func _backpedal_mult(dir: Vector3) -> float:
+	if not faces_cursor() or dir.length_squared() < 0.0001:
+		return 1.0
+	var back := maxf(-dir.normalized().dot(_facing), 0.0)
+	return lerpf(1.0, stats.backpedal_speed_mult, back)
 
 
 func _start_dodge(dir: Vector3) -> void:

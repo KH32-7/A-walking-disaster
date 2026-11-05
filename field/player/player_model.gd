@@ -25,6 +25,8 @@ extends Node3D
 ## Drawn larger than life so the hero reads from the top-down camera (user feedback 2026-11-06).
 ## Collision is the player's capsule and does not change.
 @export var model_scale := 1.3
+## Animation playback multipliers and limits (live-tunable with the \ key in debug builds).
+@export var anim_tuning: PlayerAnimTuning = preload("res://data/classes/player_anim_tuning.tres")
 ## Node shown when the model can't be loaded.
 @export var fallback: NodePath = ^"../Greybox"
 
@@ -37,9 +39,6 @@ const UPPER_ROOT := "mixamorig_Spine"
 const MOVE_EPSILON := 0.3
 ## Ground speed at which the locomotion blend reaches the full walk.
 const FULL_WALK_SPEED := 0.9
-## Playback speed limits when matching the walks to the player's speed (sprint uses the top).
-const MIN_SCALE := 0.7
-const MAX_SCALE := 2.4
 ## Exponential easing rates (higher = snappier).
 const BLEND_SHARPNESS := 12.0
 const STANCE_SHARPNESS := 8.0
@@ -131,7 +130,9 @@ func _process(delta: float) -> void:
 	var dir := Vector2(local.x, -local.z).normalized() if speed > MOVE_EPSILON else Vector2.ZERO
 	_aim_blend = _aim_blend.lerp(dir * amount, k)
 	_stance = lerpf(_stance, 1.0 if gun else 0.0, 1.0 - exp(-STANCE_SHARPNESS * delta))
-	var want_scale := _walk_scale(speed, dir if gun else Vector2.UP)
+	var want_scale := _walk_scale(speed, dir if gun else Vector2.UP) * _move_mult(gun)
+	if gun:
+		want_scale *= lerpf(1.0, anim_tuning.back_walk_mult, maxf(-dir.y, 0.0))
 	_speed_scale = lerpf(_speed_scale, want_scale, 1.0 - exp(-SPEED_SHARPNESS * delta))
 
 	_tree.set(&"parameters/free_loco/blend_position", _free_blend)
@@ -149,7 +150,8 @@ func _process(delta: float) -> void:
 func _step_dodge(dodging: bool) -> void:
 	if dodging and not _was_dodging:
 		var length := _clip_length("dodge")
-		_tree.set(&"parameters/dodge_speed/scale", length / maxf(_player.stats.dodge_duration_sec, 0.05))
+		_tree.set(&"parameters/dodge_speed/scale",
+				length / maxf(_player.stats.dodge_duration_sec, 0.05) * anim_tuning.dodge_mult)
 		_tree.set(&"parameters/dodge/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
 	_was_dodging = dodging
 
@@ -181,7 +183,22 @@ func _walk_scale(speed: float, dir: Vector2) -> float:
 		native = _native.get("walk", 1.0)
 	if native <= 0.0:
 		return 1.0
-	return clampf(speed / native, MIN_SCALE, MAX_SCALE)
+	var top := anim_tuning.max_playback
+	if _player.move_state == Player.MoveState.SPRINT:
+		top = anim_tuning.sprint_max_playback
+	return clampf(speed / native, anim_tuning.min_playback, top)
+
+
+## The tuning multiplier for the current move: sprint, gun walk or plain walk.
+func _move_mult(gun: bool) -> float:
+	if _player.move_state == Player.MoveState.SPRINT:
+		return anim_tuning.sprint_mult
+	return anim_tuning.aim_walk_mult if gun else anim_tuning.walk_mult
+
+
+## Current walk playback speed (1.0 = clip speed). For the debug panel (\ key).
+func walk_playback() -> float:
+	return _speed_scale
 
 
 func _clip_length(clip: String) -> float:

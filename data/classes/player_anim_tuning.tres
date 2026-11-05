@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PlayerAnimTuning" format=3]
+
+[ext_resource type="Script" path="res://field/defs/player_anim_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+walk_mult = 0.35
+sprint_mult = 0.95
+aim_walk_mult = 1.0
+back_walk_mult = 1.3
+dodge_mult = 1.0
+min_playback = 0.7
+max_playback = 2.4
+sprint_max_playback = 3.65

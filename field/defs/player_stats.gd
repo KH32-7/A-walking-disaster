@@ -18,6 +18,9 @@ extends Resource
 @export var walk_speed: float = 4.5
 @export var sprint_speed: float = 7.0
 @export var aim_move_speed: float = 2.5
+## While the body faces the cursor (gun or aiming), walking straight away from where it faces is
+## this much slower; sideways is unchanged, in between eases. User feedback 2026-11-06 (가안).
+@export_range(0.1, 1.0, 0.05) var backpedal_speed_mult: float = 0.6
 ## How fast velocity reaches the target speed.
 @export var acceleration: float = 30.0
 
