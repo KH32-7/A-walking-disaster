@@ -8,6 +8,9 @@ extends Node
 # --- Day flow (emitted by Lane A: GameState / SceneRouter) ---
 signal day_started(day: int)
 signal phase_changed(phase: Enums.Phase)
+## Fine-grained flow (title, sortie prep, result, day raid, night raid/event ...).
+## Lane D opens screens from this. Emitted once per change by GameState.set_flow_state().
+signal flow_state_changed(state: Enums.FlowState)
 ## loadout: {"region_id": StringName, "companions": Array[StringName], "gear": Dictionary}
 signal sortie_started(loadout: Dictionary)
 ## result: {"extracted": bool, "loot": Array, "rescued": Array, "stranded": Array, "xp": int}

@@ -26,6 +26,34 @@ enum AIState { SLEEP, WANDER, SUSPICIOUS, INVESTIGATE, CHASE, ATTACK, RETURN }
 enum BaseTier { CAMP, SETTLEMENT, FORTRESS }
 enum RaidOutcome { FLAWLESS, WIN, NARROW, LOSS }
 
+## Fine-grained game flow driven by SceneRouter (design 01 "게임 상태").
+## `Phase` is the coarse day phase saved with the game; each FlowState maps to one Phase
+## (see GameState.PHASE_OF_FLOW). TITLE has no phase.
+enum FlowState {
+	TITLE,
+	BASE_MORNING,
+	SORTIE_PREP,
+	FIELD,
+	RESULT,
+	BASE_STAY,
+	BASE_DAY_RAID,
+	EVENING,
+	NIGHT,
+	NIGHT_RAID,
+	NIGHT_EVENT,
+}
+
+## Data enums from the design "데이터 정의" tables, shared because more than one lane reads them.
+enum ResourceCategory { BASIC, PROCESSED, FIELD, MONSTER, SPECIAL }  # 11 ResourceDef
+enum ExtractType { NORMAL, GENERATOR, KEY, BATTERY }  # 02 ExtractPoint
+enum RelationFlag { LOVERS, MARRIED, RIVAL, GUARDIAN }  # 08 Relation
+enum ArrivalMethod { BIRTH, ADOPTION }  # 08 Arrival
+enum RaidTime { DAY, NIGHT }  # 10 RaidResult
+enum RaidMode { AUTO, PLAYED }  # 10 RaidResult
+enum QuestType { MAIN, PERSONAL, RUMOR, COMMUNITY, TRADE }  # 13 QuestDef
+enum RequestType { FIND, ESCORT, CRAFT, PROTECT }  # 07/13 personal requests
+enum EndingChoice { LEAVE, STAY }  # 13 EndingState
+
 ## Physics layer bit numbers (1-based, matches project.godot [layer_names]).
 const LAYER_WORLD := 1
 const LAYER_PLAYER := 2

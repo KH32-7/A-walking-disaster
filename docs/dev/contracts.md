@@ -30,7 +30,7 @@
 
 | 신호 | 쏘는 레인 | 주로 듣는 레인 |
 |---|---|---|
-| `day_started`, `phase_changed`, `sortie_started`, `sortie_ended`, `evening_settled` | A | 전부 |
+| `day_started`, `phase_changed`, `flow_state_changed`, `sortie_started`, `sortie_ended`, `evening_settled` | A | 전부 |
 | `noise_emitted`, `monster_killed`, `player_downed`, `rescue_completed`, `companion_stranded`, `extraction_completed`, `emergency_return_requested` | B | A·C·D |
 | `resident_joined/left/died`, `building_completed/damaged`, `relationship_changed`, `night_event_started`, `raid_warning/started/resolved` | C | A·B·D |
 | `resources_changed`, `item_added/removed`, `equipment_changed` | A | D |
@@ -42,7 +42,7 @@
 
 시그니처는 각 오토로드 파일에 있다. 아직 구현 전인 것은 `TODO(태스크ID)`로 표시돼 있고, 시그니처는 그대로 유지한다.
 
-- **GameState**: `day`, `phase`, `season()`, `has_flag()`, `set_flag()`, `start_next_day()`, `set_phase()`
+- **GameState**: `day`, `phase`, `flow_state`, `season()`, `has_flag()`, `set_flag()`, `start_next_day()`, `set_phase()`, `set_flow_state()` (SceneRouter 전용)
 - **Economy**: `get_amount(id)`, `can_afford(cost)`, `apply(changes)`
 - **Armory**: `get_equipped(owner_id, slot)`, `get_item_stats(item_uid)` (+ A-07에서 추가하는 장착/해제 함수)
 - **Radio**: `say(template_id, context, priority)`
@@ -56,6 +56,19 @@
 - **UI**: `open(screen_id, args)`, `close(screen_id)`
 
 새 공개 함수가 필요하면 그 오토로드의 소유 레인이 추가하고 여기에 한 줄 적는다.
+
+## 하루 단계와 흐름 상태
+
+- `Enums.Phase`(5개)는 기획 01 "데이터 정의"의 큰 단계이고 저장된다. 게임 규칙(생산, 습격 판정 등)은 이것만 본다.
+- `Enums.FlowState`는 기획 01 "게임 상태" 표의 세부 상태다(출격 준비, 결과, 낮 습격, 밤 습격·이벤트 등).
+  UI가 화면을 고를 때 쓴다. 바꾸는 쪽은 `SceneRouter`뿐이고, 각 FlowState가 어느 Phase에 속하는지는
+  `GameState.PHASE_OF_FLOW`에 있다. 바뀔 때 `flow_state_changed`가 먼저, Phase가 바뀌면 `phase_changed`가 뒤따른다.
+
+## 공용 enum
+
+`core/enums.gd`에 기획 "데이터 정의" 표의 enum 중 여러 레인이 읽는 것을 모아 둔다:
+`ResourceCategory`, `ExtractType`, `RelationFlag`, `ArrivalMethod`, `RaidTime`, `RaidMode`, `QuestType`,
+`RequestType`, `EndingChoice` 등. 한 레인 안에서만 쓰는 enum은 그 레인의 `defs/` 스크립트에 둬도 된다.
 
 ## 저장
 
