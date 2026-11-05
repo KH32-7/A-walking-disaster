@@ -1,0 +1,25 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://field/loot/monster_drop_pile.gd" id="1_pile"]
+
+[sub_resource type="BoxShape3D" id="Shape_pile"]
+size = Vector3(0.6, 0.3, 0.6)
+
+[sub_resource type="StandardMaterial3D" id="Mat_pile"]
+albedo_color = Color(0.55, 0.5, 0.42, 1)
+roughness = 1.0
+
+[sub_resource type="BoxMesh" id="Mesh_pile"]
+material = SubResource("Mat_pile")
+size = Vector3(0.5, 0.2, 0.5)
+
+[node name="MonsterDropPile" type="StaticBody3D"]
+script = ExtResource("1_pile")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+shape = SubResource("Shape_pile")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
+mesh = SubResource("Mesh_pile")

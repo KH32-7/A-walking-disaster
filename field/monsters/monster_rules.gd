@@ -75,6 +75,42 @@ const SPLIT_SIZE_RATIO := 0.75
 ## Children appear this far from the parent.
 const SPLIT_SPREAD := 0.8
 
+# --- B-18 behaviors (04 "마물 목록" 특징). Not in the design yet unless noted. ---
+## &"noise_only" (statue): stands still once nothing was heard for this long.
+const STATUE_QUIET_SEC := 3.0
+## &"mist": seen only within 3 m (design). A flash reveals it for MIST_FLASH_SEC.
+const MIST_REVEAL_RANGE := 3.0
+const MIST_FLASH_SEC := 5.0
+## &"slow_touch" (mist contact): slow put on the hit info.
+## TODO(B-14): the status system decides how hit info carries slow.
+const TOUCH_SLOW_SEC := 2.0
+const TOUCH_SLOW_MULT := 0.7
+## &"self_destruct" (neon moth): self-destruct noise radius (design 15 m).
+const SELF_DESTRUCT_NOISE := 15.0
+## &"shock_orb" (signal wraith): ranged orb, 3 s shock field where it lands (design 3 s).
+const ORB_SPEED := 12.0
+const ORB_MAX_RANGE := 16.0
+const SHOCK_FIELD_SEC := 3.0
+const SHOCK_FIELD_RADIUS := 1.5
+const SHOCK_FIELD_TICK_SEC := 0.5
+const SHOCK_FIELD_TICK_DAMAGE := 3.0
+## TODO(B-14): the status system decides how hit info carries shock.
+const SHOCK_SEC := 1.0
+## &"orb_fan" (elite signal wraith): orbs per attack and the angle between them.
+const ORB_FAN_COUNT := 3
+const ORB_FAN_ANGLE_DEG := 20.0
+## &"rally" (elite pattern, 04 example "주변 덩굴손을 불러모음"): on spotting a target,
+## same-family monsters this close start chasing it too.
+const RALLY_RADIUS := 15.0
+
+## Any monster notices a target this close even without sight (blind statue attacks).
+const TOUCH_SENSE_RANGE := 2.0
+
+# --- Elite (04 "정예") ---
+const ELITE_HP_MULT := 3.0
+const ELITE_ATTACK_MULT := 1.5
+const ELITE_SIZE_MULT := 1.3
+
 
 ## Target-side defense factor from the 03 damage formula: 100 / (100 + R).
 static func defense_factor(defense: float) -> float:

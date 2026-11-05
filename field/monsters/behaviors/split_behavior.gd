@@ -28,6 +28,10 @@ func make_children() -> Array[Monster]:
 		child.def = monster.def
 		child.split_generation = monster.split_generation + 1
 		child.hp_scale = monster.hp_scale * MonsterRules.SPLIT_HP_RATIO
+		# Night and elite multipliers carry over; children are not elites themselves.
+		child.attack_mult = monster.attack_mult
+		child.drop_mult = monster.drop_mult
+		child.sight_mult = monster.sight_mult
 		child.home = monster.home
 		child.wander_radius = monster.wander_radius
 		child.transform = monster.transform

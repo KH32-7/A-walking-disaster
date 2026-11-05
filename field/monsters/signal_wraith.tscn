@@ -1,0 +1,38 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://field/monsters/monster_base.tscn" id="1_base"]
+
+[sub_resource type="StandardMaterial3D" id="Mat_body"]
+albedo_color = Color(0.25, 0.27, 0.3, 1)
+roughness = 1.0
+
+[sub_resource type="BoxMesh" id="Mesh_body"]
+material = SubResource("Mat_body")
+size = Vector3(0.45, 2.2, 0.35)
+
+[sub_resource type="StandardMaterial3D" id="Mat_core"]
+albedo_color = Color(1, 0.3, 0.7, 1)
+emission_enabled = true
+emission = Color(1, 0.3, 0.7, 1)
+emission_energy_multiplier = 1.5
+
+[sub_resource type="BoxMesh" id="Mesh_core"]
+material = SubResource("Mat_core")
+size = Vector3(0.06, 0.2, 0.06)
+
+[node name="SignalWraith" instance=ExtResource("1_base")]
+
+[node name="Body" parent="." index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+mesh = SubResource("Mesh_body")
+
+[node name="WeakPoint" parent="." index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9, -0.2)
+
+[node name="Core" parent="WeakPoint" index="1"]
+transform = Transform3D(0.906, 0.423, 0, -0.423, 0.906, 0, 0, 0, 1, 0.03, 0.08, 0)
+mesh = SubResource("Mesh_core")
+
+[node name="BoltLower" type="MeshInstance3D" parent="WeakPoint/Core"]
+transform = Transform3D(0.643, -0.766, 0, 0.766, 0.643, 0, 0, 0, 1, -0.03, -0.17, 0)
+mesh = SubResource("Mesh_core")
