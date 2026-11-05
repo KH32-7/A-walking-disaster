@@ -42,6 +42,8 @@ const RESOURCE_ROCK_SCALE := 0.5
 const PATCH_SHADER := preload("res://art/shaders/ground_patch.gdshader")
 const PATCH_FEATHER := 4.0
 const PATCH_RAGGED := 2.5
+## Patches draw before every other see-through thing (render_priority -100 .. -99).
+const PATCH_PRIORITY_BASE := -100
 
 const MAP_MIN := Vector2(-110.0, -90.0)
 const MAP_MAX := Vector2(110.0, 82.0)
@@ -316,7 +318,10 @@ func _patch_material(file: String, fallback: Color, uv_metres: float, half: Vect
 		priority: int) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = PATCH_SHADER
-	m.render_priority = priority
+	# The patches are see-through, so they are drawn in the transparent pass. Keep them first in it:
+	# with a higher priority they were drawn over construction sites, labels and other see-through
+	# things standing on them, which then vanished (user report 2026-11-06).
+	m.render_priority = PATCH_PRIORITY_BASE + priority
 	var path := TERRAIN + file
 	m.set_shader_parameter(&"albedo", Color.WHITE if ResourceLoader.exists(path) else fallback)
 	if ResourceLoader.exists(path):
