@@ -1,0 +1,72 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://levels/field/city_park/city_park.gd" id="1_park"]
+[ext_resource type="PackedScene" path="res://levels/field/city_park/layout.tscn" id="2_layout"]
+[ext_resource type="Script" path="res://field/monsters/monster_spawner.gd" id="3_monster_spawner"]
+[ext_resource type="Resource" path="res://data/monsters/vine_tendril.tres" id="4_vine"]
+[ext_resource type="Resource" path="res://data/monsters/spore_pod.tres" id="5_pod"]
+[ext_resource type="Script" path="res://field/loot/loot_spawner.gd" id="7_loot_spawner"]
+[ext_resource type="Script" path="res://field/extract/extraction_manager.gd" id="8_extraction"]
+[ext_resource type="Script" path="res://field/downed/lost_gear_spawner.gd" id="9_lost_gear"]
+[ext_resource type="PackedScene" path="res://field/camera/field_camera.tscn" id="10_camera"]
+[ext_resource type="Script" path="res://field/rescue/rescue_manager.gd" id="11_rescue"]
+[ext_resource type="Script" path="res://field/companion/companion_manager.gd" id="15_companions"]
+[ext_resource type="Script" path="res://field/monsters/roaming_spawner.gd" id="16_roaming"]
+[ext_resource type="Script" path="res://field/routes/hidden_route_manager.gd" id="90_hidden_routes"]
+
+[sub_resource type="Environment" id="Env_greybox"]
+background_mode = 1
+background_color = Color(0.62, 0.68, 0.72, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.75, 0.75, 0.78, 1)
+ambient_light_energy = 0.6
+
+[node name="CityPark" type="Node3D"]
+script = ExtResource("1_park")
+
+[node name="Layout" parent="." instance=ExtResource("2_layout")]
+
+[node name="MonsterSpawner" type="Node3D" parent="."]
+script = ExtResource("3_monster_spawner")
+monster_defs = Array[Resource]([ExtResource("4_vine"), ExtResource("5_pod")])
+region_id = &"city_park"
+
+[node name="RoamingSpawner" type="Node3D" parent="."]
+script = ExtResource("16_roaming")
+monster_defs = Array[Resource]([ExtResource("4_vine"), ExtResource("5_pod")])
+region_id = &"city_park"
+
+[node name="LootSpawner" type="Node3D" parent="."]
+script = ExtResource("7_loot_spawner")
+region_id = &"city_park"
+spawn_ratio = 0.7
+spots_root = NodePath("../Layout")
+
+[node name="GreyboxLighting" type="Node3D" parent="."]
+
+[node name="Sun" type="DirectionalLight3D" parent="GreyboxLighting"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 30, 0)
+rotation_degrees = Vector3(-50, 30, 0)
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="GreyboxLighting"]
+environment = SubResource("Env_greybox")
+
+[node name="ExtractionManager" type="Node" parent="."]
+script = ExtResource("8_extraction")
+region_id = &"city_park"
+
+[node name="LostGearSpawner" type="Node3D" parent="."]
+script = ExtResource("9_lost_gear")
+
+[node name="RescueManager" type="Node" parent="."]
+script = ExtResource("11_rescue")
+
+[node name="CompanionManager" type="Node" parent="."]
+script = ExtResource("15_companions")
+
+[node name="HiddenRouteManager" type="Node" parent="."]
+script = ExtResource("90_hidden_routes")
+gate_width = 6.5
+
+[node name="FieldCamera" parent="." instance=ExtResource("10_camera")]
