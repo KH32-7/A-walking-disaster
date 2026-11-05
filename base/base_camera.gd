@@ -123,7 +123,7 @@ func _pick(screen: Vector2) -> Dictionary:
 		var r := Colony.get_resident(agent.resident_id)
 		if not r.is_empty():
 			return {"kind": &"resident", "id": agent.resident_id, "pos": agent.global_position,
-				"text": "%s · 이야기하기" % String(r.get("name", "")), "sub": ""}
+				"text": "%s / 이야기하기" % String(r.get("name", "")), "sub": ""}
 	if grid == null:
 		return {}
 	var ground = null
@@ -151,13 +151,13 @@ func _pick(screen: Vector2) -> Dictionary:
 	var sub := def.description.get_slice("
 ", 0).strip_edges()
 	if not b["completed"]:
-		text += " · 건설 현장 %d/%d" % [int(b["progress"]), def.build_work_needed()]
+		text += " / 건설 현장 %d/%d" % [int(b["progress"]), def.build_work_needed()]
 		var workers := (b["workers"] as Array).size()
 		sub = "일손 %d명이 짓는 중" % workers if workers > 0 else "일손을 보내야 지어져요"
 	else:
 		text += " Lv%d" % int(b["level"])
 		if b.get("damaged", false):
-			sub = "파손 · 클릭해서 수리"
+			sub = "파손 / 클릭해서 수리"
 	var view_pos := grid.footprint_center(cell["zone_id"], Vector2i(b["cell"][0], b["cell"][1]),
 		BaseGrid.footprint(def, int(b["rotation"])))
 	return {"kind": &"building", "id": uid, "pos": view_pos, "text": text, "sub": sub}

@@ -60,8 +60,8 @@ func _start() -> void:
 	methods = w.get("methods", [])
 	set_subtitle("%s 가족" % ResidentText.call_name(Colony.get_resident(a)))
 	draw_people([a, b])
-	dialog.say(ResidentText.call_name(Colony.get_resident(a)), "우리… 아이를 맞이하면 어떨까? 여기라면 함께 키울 수 있을 것 같아.", a)
-	dialog.set_notes([["◆ 아이를 맞고 싶어 해요", UiTokens.TEXT]])
+	dialog.say(ResidentText.call_name(Colony.get_resident(a)), "우리... 아이를 맞이하면 어떨까? 여기라면 함께 키울 수 있을 것 같아.", a)
+	dialog.set_notes([["아이를 맞고 싶어 해요", UiTokens.TEXT]])
 	dialog.set_choices([[&"now", "지금 맞이한다"], [&"later", "나중에 생각한다", false, "다시 이야기해요"]])
 	_refresh_column()
 
@@ -127,18 +127,18 @@ func _answer(choice: StringName, method: int) -> void:
 		notes.append(["● 나중에 다시 이야기해요", UiTokens.TEXT_DIM])
 	elif method == Enums.ArrivalMethod.BIRTH:
 		dialog.say(ResidentText.call_name(rb), "열흘이면 우리 아기를 만나겠네.", b)
-		notes.append(["◆ %d일차에 아기가 와요" % int(res.get("due_day", 0)), UiTokens.TEXT])
+		notes.append(["%d일차에 아기가 와요" % int(res.get("due_day", 0)), UiTokens.TEXT])
 		for id in [a, b]:
 			var why := Colony.sortie_block_reason(id)
 			if why != "":
-				notes.append(["▲ %s — %s, 출격을 쉬어요" % [ResidentText.call_name(Colony.get_resident(id)), why], UiTokens.WARN])
+				notes.append(["▲ %s: %s, 출격을 쉬어요" % [ResidentText.call_name(Colony.get_resident(id)), why], UiTokens.WARN])
 	elif StringName(res.get("child_id", &"")) != &"":
 		var child := Colony.get_resident(StringName(res.child_id))
 		dialog.say(ResidentText.call_name(ra), "오늘부터 우리 가족이야, %s." % ResidentText.call_name(child), a)
 		notes.append(["● %s을(를) 맞이했어요" % ResidentText.call_name(child), UiTokens.GOOD])
 	elif res.get("waiting", false):
 		dialog.say(ResidentText.call_name(rb), "기다려 보자. 어딘가에 우리를 기다리는 아이가 있을 거야.", b)
-		notes.append(["◆ 방송실이 보호자를 잊은 아이 소문을 기다려요", UiTokens.INFO])
+		notes.append(["방송실이 보호자를 잊은 아이 소문을 기다려요", UiTokens.INFO])
 	dialog.set_notes(notes)
 	if Colony.child_wishes().is_empty():
 		dialog.set_choices([[&"close", "돌아간다"]])
@@ -157,12 +157,12 @@ func _refresh_column() -> void:
 		v.add_child(card_text("결혼한 가족이 조건을 갖추면, 가족이 먼저 아이 이야기를 꺼내요.", true))
 		return
 	v.add_child(card_text("가족", true, 14))
-	v.add_child(card_title("%s · %s" % [ResidentText.call_name(Colony.get_resident(a)), ResidentText.call_name(Colony.get_resident(b))]))
+	v.add_child(card_title("%s / %s" % [ResidentText.call_name(Colony.get_resident(a)), ResidentText.call_name(Colony.get_resident(b))]))
 	v.add_child(card_text("고를 수 있는 방식", true, 14))
 	for m: int in methods:
-		var detail := "%d일 뒤 태어나요. 그동안 아기를 품은 사람은 출격·경비를 쉬어요." % ChildRules.BIRTH_DAYS \
+		var detail := "%d일 뒤 태어나요. 그동안 아기를 품은 사람은 출격, 경비를 쉬어요." % ChildRules.BIRTH_DAYS \
 			if m == Enums.ArrivalMethod.BIRTH else "기지에 보호자 없는 아이가 있으면 바로, 없으면 방송실이 소문을 기다려요."
-		v.add_child(ResidentEventScreen.mark_row("●", "%s — %s" % [ResidentEventFlow.METHOD_NAMES.get(m, str(m)), detail]))
+		v.add_child(ResidentEventScreen.mark_row("●", "%s: %s" % [ResidentEventFlow.METHOD_NAMES.get(m, str(m)), detail]))
 	if _stage == &"done":
 		return  # answered: the conditions now only say "already waiting"
 	var st := Colony.child_arrival_status(a, b)

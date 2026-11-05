@@ -366,7 +366,7 @@ func _rescue_and_extract() -> bool:
 		who.global_position = point.global_position + Vector3(20, 0.1, 0)
 	print("[bot] rescue target state=", who.state, " in_party=", who.is_in_group(ExtractionManager.PARTY_GROUP),
 		" dist=", who.global_position.distance_to(player.global_position), " template=", who.spawn.template_id)
-	var asked := await _until(func() -> bool: return _confirm_dialog() != null, "구조한 사람이 멀면 '두고 갈까요?'를 물음", 20.0)
+	var asked := await _until(func() -> bool: return _confirm_dialog() != null, "구조한 사람이 멀면 '두고 갈까요?'를 물음", 30.0)  # the generator exit waits 20 s
 	if asked:
 		await _shot("leave_behind_dialog")
 		_button(_confirm_dialog(), "취소").pressed.emit()
@@ -864,15 +864,14 @@ func _back_home_and_sleep(next_day: int) -> bool:
 	if not await _until(func() -> bool: return GameState.flow_state == Enums.FlowState.EVENING, "결과 → 저녁"):
 		return false
 	await _frames(20)
-	# 입주 의식 for anyone rescued
+	# 새 식구 인사 for anyone rescued
 	var guard := 0
 	while UI.is_open(&"welcome") and guard < 40:
 		guard += 1
 		var w: Node = UI.get_screen(&"welcome")
 		if guard == 1:
 			await _shot("welcome")
-		if w._next_button != null:
-			w._next_button.pressed.emit()
+		w._on_choice(&"hello")  # 새 식구 인사: one line, "반가워요" (2026-11-06)
 		await _frames(4)
 	return await _evening_night(next_day)
 
@@ -884,8 +883,7 @@ func _evening_night(next_day: int) -> bool:
 		var w: Node = UI.get_screen(&"welcome")
 		if guard == 1:
 			await _shot("welcome")
-		if w._next_button != null:
-			w._next_button.pressed.emit()
+		w._on_choice(&"hello")  # 새 식구 인사: one line, "반가워요" (2026-11-06)
 		await _frames(4)
 	await _until(func() -> bool: return UI.is_open(&"evening"), "저녁 정산 화면이 열림")
 	await _frames(10)

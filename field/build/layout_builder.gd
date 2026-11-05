@@ -161,6 +161,9 @@ const FILL_MIN_CLEAR := 9.0
 const FILL_SPACING := 16.0
 const FILL_MAX := 24
 const FILL_RADIUS := 4.5
+## A filler's supply crate stays one only this close (m) to a nest or boss arena, else it becomes a
+## toolbox: supply crates always spawn, so they must sit where the risk is (user request 2026-11-06).
+const SUPPLY_DANGER_RADIUS := 20.0
 ## Junk along building walls (outside).
 const WALL_JUNK := ["trash_bag_01", "trash_bag_02", "barrel_01", "barrel_02", "pallet", "curbside_trash_bin_01",
 	"conditioner_07", "conditioner_08", "plastic_barrel_02", "pile_garbage_02", "firewood_rack", "wheelbarrow",
@@ -1019,6 +1022,18 @@ func _build_clutter() -> void:
 	print("clutter: %d clusters, %d pieces" % [centers.size(), pieces])
 
 
+## Within SUPPLY_DANGER_RADIUS of a nest or boss arena (map file and extra nests), on the ground.
+func _near_danger(p: Vector2) -> bool:
+	for m: Dictionary in _map.markers:
+		if m["class"] in ["MonsterNest", "BossArena"] and p.distance_to(_xz(m.position)) < SUPPLY_DANGER_RADIUS:
+			return true
+	for m: Dictionary in _extra_markers:
+		if String(m.node_name).begins_with("MonsterNest_") \
+				and p.distance_to(Vector2(m.pos.x, m.pos.z)) < SUPPLY_DANGER_RADIUS:
+			return true
+	return false
+
+
 func _add_extra(scene: String, node_name: String, pos: Vector3, rot: float, props: Dictionary) -> void:
 	_extra_markers.append({"scene": scene, "node_name": node_name, "pos": pos, "rot": rot, "props": props})
 	_taken.append(Vector3(pos.x, pos.z, CLEAR_MARKER))
@@ -1623,8 +1638,11 @@ func _build_fillers() -> void:
 		if kit[1] != "":
 			var spot := site + Vector2(FILL_RADIUS * 0.8, 0.0).rotated(-yaw - 0.6)
 			if _open(spot, keep_out, routes, 1.0) and not _in_prop(spot, 0.8):
+				var kind: String = kit[1]
+				if kind == "SUPPLY_CRATE" and not _near_danger(spot):
+					kind = "TOOLBOX"
 				_add_extra(loot_scene, "LootSpot_fill_%d" % s, Vector3(spot.x, 0.0, spot.y), _kit_rng.randf() * TAU,
-					{"container_type": kit[1], "loot_table_id": ""})
+					{"container_type": kind, "loot_table_id": ""})
 				loot += 1
 	print("fillers: %d sites, %d pieces, %d loot spots" % [sites.size(), pieces, loot])
 

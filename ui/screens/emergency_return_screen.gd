@@ -61,7 +61,7 @@ func _ready() -> void:
 	iv.add_child(RaidWidgets.cream_row("방향", RaidFlow.directions_text(dirs), UiTokens.DANGER))
 	var strength := float(raid.get("strength", 0.0))
 	iv.add_child(RaidWidgets.cream_row("규모", "%s%s" % [RaidFlow.type_name(StringName(raid.get("type", &""))),
-		(" · 강도 %.0f" % strength) if strength > 0.0 else ""]))
+		(" / 강도 %.0f" % strength) if strength > 0.0 else ""]))
 	if not prediction.is_empty():
 		var likely := int(prediction.get("likely", Enums.RaidOutcome.WIN))
 		iv.add_child(RaidWidgets.cream_row("예상 결과", "%s %s (지금 방어력, 내가 없을 때)" % [
@@ -112,7 +112,7 @@ func _choice(text: String, key: String, variation: StringName, lines: Array) -> 
 	h.add_child(btn)
 	v.add_child(h)
 	for l: String in lines:
-		var n := MenuScreen.label("·  " + l, &"LabelOnCream", 15)
+		var n := MenuScreen.label("- " + l, &"LabelOnCream", 15)
 		n.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		n.custom_minimum_size = Vector2(380, 0)
 		v.add_child(n)

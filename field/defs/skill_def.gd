@@ -6,6 +6,8 @@ extends Resource
 ## All numbers are 가안.
 
 @export var id: StringName = &""
+## Shown under the skill key on the field HUD while it is ready (design 03 "스킬").
+@export var name: String = ""
 @export var cooldown_sec: float = 10.0
 ## precision_shot: focus time / suppressive_fire, shadow_step, brace: how long it lasts.
 @export var duration_sec: float = 0.0

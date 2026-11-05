@@ -137,7 +137,7 @@ func set_choices(choices: Array) -> void:
 		b.text = "        " + String(ch[1])
 		b.disabled = ch.size() > 2 and bool(ch[2])
 		if ch.size() > 3 and String(ch[3]) != "":
-			b.text += "  ·  " + String(ch[3])
+			b.text += "  /  " + String(ch[3])
 		b.focus_mode = Control.FOCUS_ALL
 		var chip := KeyChip.new(str(i + 1), KeyChip.Style.DARK)
 		chip.position = Vector2(18, 16)
@@ -290,9 +290,9 @@ func _set_center_choices(choices: Array) -> void:
 		var b := Button.new()
 		b.focus_mode = Control.FOCUS_ALL
 		b.custom_minimum_size = Vector2(0, 60)
-		b.text = "%d · %s" % [i + 1, String(ch[1])]
+		b.text = "%d  %s" % [i + 1, String(ch[1])]
 		if ch.size() > 3 and String(ch[3]) != "":
-			b.text += "  —  " + String(ch[3])
+			b.text += ": " + String(ch[3])
 		b.disabled = off
 		b.add_theme_font_override(&"font", UiThemeBuilder.font_kr(700))
 		b.add_theme_font_size_override(&"font_size", 19)

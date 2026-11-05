@@ -49,8 +49,8 @@ func _add(name_text: String) -> StringName:
 
 func _test_words() -> bool:
 	var ok := _expect(LossText.strand_days(-1) == "기한 없음" and LossText.strand_days(2) == "남은 기한 2일", "stranded days words")
-	ok = _expect(LossText.grief_tag({"grief_days": 3}) == "◇ 슬픔 3일" and LossText.grief_tag({"grief_days": 0}) == "", "grief tag") and ok
-	ok = _expect(LossText.memorial_line({"day": 9, "cause": &"raid"}) == "9일차 · 습격으로", "memorial line") and ok
+	ok = _expect(LossText.grief_tag({"grief_days": 3}) == "슬픔 3일" and LossText.grief_tag({"grief_days": 0}) == "", "grief tag") and ok
+	ok = _expect(LossText.memorial_line({"day": 9, "cause": &"raid"}) == "9일차 / 습격으로", "memorial line") and ok
 	return ok
 
 
@@ -135,7 +135,7 @@ func _test_absent() -> bool:
 	UI.open(&"residents")
 	var s = UI.get_screen(&"residents")
 	var labels: Array = s._list.find_children("*", "Label", true, false).map(func(l: Label) -> String: return l.text)
-	ok = _expect(labels.any(func(t: String) -> bool: return t.contains("△ 고립")) and labels.any(func(t: String) -> bool: return t.contains("◆ 실종")),
+	ok = _expect(labels.any(func(t: String) -> bool: return t.contains("고립 / ")) and labels.any(func(t: String) -> bool: return t.contains("실종 / ")),
 		"residents list shows who is away as one-line card states") and ok
 	UI.close(&"residents")
 	return ok

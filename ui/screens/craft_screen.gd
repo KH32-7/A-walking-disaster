@@ -326,7 +326,7 @@ func _fill_place() -> void:
 	var names: PackedStringArray = []
 	for id in Colony.facility_workers(_facility):
 		names.append(_resident_name(id))
-	_place.text = _facility_name() + ("  ·  " + ", ".join(names) if not names.is_empty() else "  ·  담당 없음")
+	_place.text = _facility_name() + ("  /  " + ", ".join(names) if not names.is_empty() else " / 담당 없음")
 
 
 func _fill_strip() -> void:
@@ -556,7 +556,7 @@ func _title_item(uid: StringName) -> void:
 	_title_badge.kind = ShapeBadge.Kind.RARITY
 	_title_badge.value = int(it.rarity)
 	_title_badge.visible = true
-	_title_sub.text = "%s · %s" % [UiTokens.RARITY_NAMES[clampi(int(it.rarity), 0, 4)], _owner_name(it.owner)]
+	_title_sub.text = "%s / %s" % [UiTokens.RARITY_NAMES[clampi(int(it.rarity), 0, 4)], _owner_name(it.owner)]
 
 
 func _detail_craft() -> void:
@@ -576,7 +576,7 @@ func _detail_craft() -> void:
 		_title_sub.text = "창고로"
 		_detail.add_child(_dim("%s ×%d을(를) 만들어 창고에 넣어요." % [_output_name(r.output_id), r.output_qty]))
 	if r.blueprint_required:
-		_detail.add_child(_info_line("설계도", "있음" if p.reason != &"blueprint" else "없음 — 루팅·보스·퀘스트에서 얻어요",
+		_detail.add_child(_info_line("설계도", "있음" if p.reason != &"blueprint" else "없음: 루팅, 보스, 퀘스트에서 얻어요",
 			p.reason == &"blueprint"))
 	if r.by_worker:
 		_card_reason(&"worker_only")
@@ -620,7 +620,7 @@ func _detail_upgrade() -> void:
 	_card_cost(p)
 	var reason_arg := 0
 	if p.reason == &"facility_level":
-		_card_line("⚠  %s Lv %d은(는) +%d까지예요. 시설을 올려 주세요." % [_facility_name(), int(p.facility_level),
+		_card_line("주의: %s Lv %d은(는) +%d까지예요. 시설을 올려 주세요." % [_facility_name(), int(p.facility_level),
 			int(p.max_level)], UiTokens.DANGER)
 	else:
 		_card_reason(p.reason, reason_arg)
@@ -653,7 +653,7 @@ func _detail_transfer() -> void:
 		if _target == &"" and Armory.preview_transfer(_sel, uid).reason != &"no_gain":
 			_target = uid
 		var st := Armory.get_item_stats(uid)
-		var label := "%s%s · %s" % [String(st.get("display_name", "")), "  +%d" % it.upgrade_level if it.upgrade_level > 0 else "",
+		var label := "%s%s / %s" % [String(st.get("display_name", "")), "  +%d" % it.upgrade_level if it.upgrade_level > 0 else "",
 			_owner_name(it.owner)]
 		var pick := _pick_button(label, uid == _target, ShapeBadge.Kind.RARITY, int(it.rarity), func() -> void:
 			_target = uid
@@ -712,7 +712,7 @@ func _detail_repair() -> void:
 		_detail.add_child(_dim("내구도가 0이면 성능이 절반으로 떨어져요. 고치면 원래대로 돌아와요."))
 	# Auto repair toggle (design 05 "자동 수리", saved by Armory).
 	var auto := CheckButton.new()
-	auto.text = "자동 수리 — 저녁 정산 때 담당 주민이 고쳐요"
+	auto.text = "자동 수리: 저녁 정산 때 담당 주민이 고쳐요"
 	auto.button_pressed = Armory.auto_repair_enabled
 	auto.add_theme_font_size_override(&"font_size", 15)
 	auto.toggled.connect(func(on: bool) -> void: Armory.set_auto_repair(on))
@@ -755,7 +755,7 @@ func _detail_engrave() -> void:
 	row.add_theme_constant_override(&"separation", 8)
 	for i in slots.size():
 		var e: EssenceDef = EssenceRules.get_essence(slots[i]) if slots[i] != &"" else null
-		var label := "%d번 칸 · %s" % [i + 1, e.name if e != null else "비어 있음"]
+		var label := "%d번 칸 / %s" % [i + 1, e.name if e != null else "비어 있음"]
 		if i == 0 and slots.size() > 1:
 			label += " (주 속성)"
 		row.add_child(_pick_button(label, i == _slot, ShapeBadge.Kind.ELEMENT, int(e.element) if e != null else 0,
@@ -809,7 +809,7 @@ func _detail_engrave() -> void:
 	_card_cost(p)
 	_card_reason(p.reason)
 	if StringName(p.get("replaces", &"")) != &"" and p.reason != &"same_essence":
-		_card_line("⚠  %s이(가) 사라지고 새 정수로 바뀌어요." % EssenceRules.get_essence(p.replaces).name, UiTokens.WARN.darkened(0.35))
+		_card_line("주의: %s이(가) 사라지고 새 정수로 바뀌어요." % EssenceRules.get_essence(p.replaces).name, UiTokens.WARN.darkened(0.35))
 	_card_worker(p)
 	_card_action("각인", p.ok, func() -> void:
 		var go := func() -> void:
@@ -836,9 +836,9 @@ func _detail_refine() -> void:
 	_title_sub.text = "보유 %d" % Economy.get_amount(_sel)
 	var p := Armory.preview_refine(_sel, _times)
 	_section("정제")
-	var out_name := EssenceRules.get_essence(p.output_id).name if p.output_id != &"" else "—"
+	var out_name := EssenceRules.get_essence(p.output_id).name if p.output_id != &"" else "-"
 	var take := "%s ×%d" % [e.name, int(p.input_qty) * _times]
-	var give := "%s ×%d" % [out_name, _times] if p.output_id != &"" else "—"
+	var give := "%s ×%d" % [out_name, _times] if p.output_id != &"" else "-"
 	_rows([["넣는 정수", take, take, ""], ["나오는 정수", give, give, ""]])
 	_detail.add_child(_dim("같은 속성 %d개를 한 단계 높은 정수 1개로 바꿔요." % int(p.input_qty)))
 	if bool(p.get("mark", false)):
@@ -863,7 +863,7 @@ func _detail_refine() -> void:
 	_detail.add_child(step)
 	_card_cost(p)
 	if p.reason == &"facility_level":
-		_card_line("⚠  정제는 %s Lv %d부터 할 수 있어요." % [_facility_name(), EssenceRules.REFINE_FACILITY_LEVEL], UiTokens.DANGER)
+		_card_line("주의: 정제는 %s Lv %d부터 할 수 있어요." % [_facility_name(), EssenceRules.REFINE_FACILITY_LEVEL], UiTokens.DANGER)
 	else:
 		_card_reason(p.reason)
 	_card_worker(p)
@@ -954,7 +954,7 @@ func _card_reason(reason: StringName, level_needed := 0) -> void:
 		text = text % _facility_name()
 	elif reason == &"facility_level":
 		text = "%s Lv %d이(가) 필요해요." % [_facility_name(), level_needed] if level_needed > 0 else text % _facility_name()
-	_card_line("⚠  " + text, UiTokens.DANGER)
+	_card_line("주의: " + text, UiTokens.DANGER)
 
 
 func _card_line(text: String, color: Color) -> void:

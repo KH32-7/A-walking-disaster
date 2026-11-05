@@ -120,7 +120,7 @@ func _next() -> void:
 	_index += 1
 	_total = maxi(_total, _index + queued.size() - 1)
 	var def := BaseDB.get_night_event(StringName(_ev.event_id))
-	_day_label.text = "%d일차 밤  ·  %d / %d" % [GameState.day, _index, _total]
+	_day_label.text = "%d일차 밤 / %d / %d" % [GameState.day, _index, _total]
 	_title.text = def.display_name if def != null else String(_ev.event_id)
 	_desc.text = def.description if def != null else ""
 	_before = {}
@@ -221,7 +221,7 @@ func _show_result() -> void:
 		return
 	if not frag.is_empty():
 		notes.append([text, UiTokens.TEXT])
-		notes.append(["◆ 사연 한 조각", UiTokens.ACCENT])
+		notes.append(["사연 한 조각", UiTokens.ACCENT])
 		var r := Colony.get_resident(StringName(frag.resident_id))
 		dialog.say(ResidentText.call_name(r), String(frag.text), StringName(frag.resident_id))
 	else:
@@ -249,7 +249,7 @@ func _show_fragment() -> void:
 	var target := StringName(who[1])
 	var i := clampi(_fragment_i, 0, _fragments.size() - 1)
 	dialog.say(ResidentText.call_name(Colony.get_resident(target)), String(_fragments[i]), target)
-	dialog.set_notes([[String(_result.get("text", "")), UiTokens.TEXT], ["◆ 사연이 드러났어요  %d / %d" % [i + 1, _fragments.size()], UiTokens.ACCENT]])
+	dialog.set_notes([[String(_result.get("text", "")), UiTokens.TEXT], ["사연이 드러났어요  %d / %d" % [i + 1, _fragments.size()], UiTokens.ACCENT]])
 	_end_choices([[&"more", "이야기를 더 듣는다"]] if i + 1 < _fragments.size() else [])
 
 

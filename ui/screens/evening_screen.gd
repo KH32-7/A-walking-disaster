@@ -82,8 +82,8 @@ func _build_body(b: Control) -> void:
 		var p := int(produced.get(id, 0))
 		var c := int(consumed.get(id, 0))
 		g.add_child(MenuScreen.label(MenuScreen.resource_name(id), &"LabelHud", 16))
-		g.add_child(MenuScreen.label("+%d" % p if p > 0 else "—", &"LabelNumber", 17))
-		g.add_child(MenuScreen.label("−%d" % c if c > 0 else "—", &"LabelNumber", 17))
+		g.add_child(MenuScreen.label("+%d" % p if p > 0 else "-", &"LabelNumber", 17))
+		g.add_child(MenuScreen.label("−%d" % c if c > 0 else "-", &"LabelNumber", 17))
 		var net := MenuScreen.label(("%+d" % (p - c)), &"LabelNumber", 18)
 		net.add_theme_color_override(&"font_color", UiTokens.GOOD if p - c > 0 else (UiTokens.DANGER if p - c < 0 else UiTokens.TEXT))
 		g.add_child(net)
@@ -102,7 +102,7 @@ func _build_body(b: Control) -> void:
 		tv.add_child(dl)
 	var food := Economy.get_amount(&"food")
 	var need := int(consumed.get(&"food", 0))
-	var fl := MenuScreen.label("남은 식량 %d%s" % [food, (" · 약 %d일치" % (food / need)) if need > 0 else ""], &"LabelHud", 15)
+	var fl := MenuScreen.label("남은 식량 %d%s" % [food, (" / 약 %d일치" % (food / need)) if need > 0 else ""], &"LabelHud", 15)
 	if need > 0 and food < need * 2:
 		fl.add_theme_color_override(&"font_color", UiTokens.WARN)
 	tv.add_child(fl)
@@ -131,7 +131,7 @@ func _build_body(b: Control) -> void:
 	var ev := MenuScreen.panel("오늘 있었던 일", "")
 	var evv: VBoxContainer = ev[1]
 	for e: Dictionary in report.get("events", []):
-		var l := MenuScreen.label("·  " + String(e.get("text", "")), &"LabelHud", 15)
+		var l := MenuScreen.label("- " + String(e.get("text", "")), &"LabelHud", 15)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.custom_minimum_size = Vector2(440, 0)
 		evv.add_child(l)

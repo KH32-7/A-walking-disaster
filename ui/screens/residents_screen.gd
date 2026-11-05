@@ -8,7 +8,7 @@ extends MenuScreen
 const STAT_NAMES := {&"str": "힘", &"dex": "손재주", &"sense": "감각", &"heart": "마음"}
 const AGE_NAMES := ["아기", "어린이", "청소년", "성인", "노년"]
 const NEED_NAMES := ["이동 보조 필요", "말이 잘 안 통함", "듣기 어려움", "돌봄 필요"]
-const NEED_FIX := ["경사로·승강기 있는 곳에서 일함", "통역 무전기가 있으면 대화", "시각 신호가 있으면 일함", "돌봄 담당이 있으면 생활"]
+const NEED_FIX := ["경사로, 승강기 있는 곳에서 일함", "통역 무전기가 있으면 대화", "시각 신호가 있으면 일함", "돌봄 담당이 있으면 생활"]
 const HEALTH_NAMES := ["건강", "다침", "아픔"]
 const SLOT_NAMES := ["주무기", "보조", "머리", "몸", "다리", "장신구", "가방"]
 const FORMER_JOBS := {&"carpenter": "목수", &"nurse": "간호사", &"doctor": "의사", &"mechanic": "정비공",
@@ -108,7 +108,7 @@ func _ids() -> Array:
 func _fill() -> void:
 	MenuScreen.clear(_list)
 	var ids := _ids()
-	_count.text = "%d명 · 침상 %d" % [Colony.population(), Colony.bed_count()]
+	_count.text = "%d명 / 침상 %d" % [Colony.population(), Colony.bed_count()]
 	if (_sel == &"" or not _sel in ids) and not ids.is_empty():
 		_sel = ids[0]
 	for id: StringName in ids:
@@ -204,7 +204,7 @@ func _job_line(r: Dictionary) -> String:
 	var a: Dictionary = r.get("assignment", {})
 	var job := BaseDB.get_job(StringName(a.get("job", &"")))
 	var age: String = AGE_NAMES[clampi(int(r.get("age_stage", 3)), 0, 4)]
-	var line := "%s · %s" % [age, job.display_name if job != null else "일 없음"]
+	var line := "%s / %s" % [age, job.display_name if job != null else "일 없음"]
 	var grief := LossText.grief_tag(r)  # #125 part 3
 	return line + ("  " + grief if grief != "" else "")
 
@@ -225,7 +225,7 @@ func _show_detail() -> void:
 	hv.alignment = BoxContainer.ALIGNMENT_CENTER
 	var nick := String(r.get("nickname", ""))
 	hv.add_child(MenuScreen.label(String(r.get("name", "")) + ("  “%s”" % nick if nick != "" else ""), &"LabelTitle", 26))
-	hv.add_child(MenuScreen.label("%s · 전직 %s · %d일차에 합류" % [AGE_NAMES[clampi(int(r.get("age_stage", 3)), 0, 4)],
+	hv.add_child(MenuScreen.label("%s / 전직 %s / %d일차에 합류" % [AGE_NAMES[clampi(int(r.get("age_stage", 3)), 0, 4)],
 		String(FORMER_JOBS.get(StringName(r.get("former_job", &"")), r.get("former_job", ""))), int(r.get("joined_day", 1))], &"LabelDim", 14))
 	var trust := HBoxContainer.new()
 	trust.add_theme_constant_override(&"separation", 8)
@@ -274,7 +274,7 @@ func _show_detail() -> void:
 	if not needs.is_empty():
 		lc.add_child(MenuScreen.label("참여 조건", &"LabelSection", 16))
 		for n: int in needs:
-			var l := MenuScreen.label("◆  %s — %s" % [NEED_NAMES[clampi(n, 0, 3)], NEED_FIX[clampi(n, 0, 3)]], &"LabelHud", 14)
+			var l := MenuScreen.label("%s: %s" % [NEED_NAMES[clampi(n, 0, 3)], NEED_FIX[clampi(n, 0, 3)]], &"LabelHud", 14)
 			l.add_theme_color_override(&"font_color", UiTokens.INFO)
 			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			l.custom_minimum_size = Vector2(330, 0)
@@ -284,11 +284,11 @@ func _show_detail() -> void:
 	var rc := VBoxContainer.new()
 	rc.add_theme_constant_override(&"separation", 8)
 	rc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rc.add_child(MenuScreen.label("일·잠자리", &"LabelSection", 16))
+	rc.add_child(MenuScreen.label("일, 잠자리", &"LabelSection", 16))
 	var a: Dictionary = r.get("assignment", {})
 	var job := BaseDB.get_job(StringName(a.get("job", &"")))
 	var bed := StringName(r.get("bed_id", &""))
-	rc.add_child(MenuScreen.label("%s · %s" % [job.display_name if job != null else "일 없음",
+	rc.add_child(MenuScreen.label("%s / %s" % [job.display_name if job != null else "일 없음",
 		"침상 있음" if bed != &"" else "임시 거처"], &"LabelHud", 15))
 	for warn: String in _loss_lines(r):  # #125 part 3, 7
 		var wl := MenuScreen.label(warn, &"LabelHud", 14)
@@ -310,7 +310,7 @@ func _show_detail() -> void:
 	st.custom_minimum_size = Vector2(420, 0)
 	rc.add_child(st)
 	for f: String in story.get("fragments", []):
-		var fl := MenuScreen.label("·  " + f, &"LabelDim", 14)
+		var fl := MenuScreen.label("- " + f, &"LabelDim", 14)
 		fl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		fl.custom_minimum_size = Vector2(420, 0)
 		rc.add_child(fl)
@@ -323,7 +323,7 @@ func _show_detail() -> void:
 		var kl := PackedStringArray()
 		for like in known:
 			kl.append(ResidentText.tag_name(like))
-		_detail.add_child(MenuScreen.label("▲ 좋아하는 것  " + " · ".join(kl), &"LabelDim", 14))
+		_detail.add_child(MenuScreen.label("▲ 좋아하는 것  " + " / ".join(kl), &"LabelDim", 14))
 	# #125: 편견 소문 진행, 결혼 약속, 아이 맞이 조건 (ResidentEventFlow reads Colony).
 	for line: Array in ResidentEventFlow.detail_lines(_sel):
 		var ll := MenuScreen.label(String(line[0]), &"LabelHud", 14)
@@ -342,7 +342,7 @@ func _show_detail() -> void:
 	if ResidentEventFlow.is_family_child(_sel):
 		buttons.push_front(["이름 짓기", &"ButtonPrimary", &"child_naming", true, ""])
 	elif bool(r.get("arrival_pending", false)):
-		buttons.push_front(["입주 의식", &"ButtonPrimary", &"welcome", true, ""])
+		buttons.push_front(["맞이하기", &"ButtonPrimary", &"welcome", true, ""])
 	for pair: Array in buttons:
 		var bt := MenuScreen.button(String(pair[0]), pair[1])
 		var target: StringName = pair[2]
@@ -367,10 +367,10 @@ func _loss_lines(r: Dictionary) -> Array[String]:
 	var out: Array[String] = []
 	var grief := LossText.grief_tag(r)
 	if grief != "":
-		out.append("%s · 작업 효율 −%d%%" % [grief, roundi((1.0 - LossRules.GRIEF_WORK_MULT) * 100.0)])
+		out.append("%s / 작업 효율 −%d%%" % [grief, roundi((1.0 - LossRules.GRIEF_WORK_MULT) * 100.0)])
 	var block := LossText.sortie_block(_sel)
 	if block != "":
-		out.append(block + " · 출격에 데려갈 수 없어요")
+		out.append(block + " / 출격에 데려갈 수 없어요")
 	return out
 
 

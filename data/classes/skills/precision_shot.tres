@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_skill")
 id = &"precision_shot"
+name = "정조준"
 cooldown_sec = 10.0
 duration_sec = 2.0
 damage_mult = 2.5

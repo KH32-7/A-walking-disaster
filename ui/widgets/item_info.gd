@@ -131,7 +131,7 @@ static func essence_lines(stats: Dictionary) -> Array:
 			parts.append("%s 피해 저항 %d%%" % [UiTokens.ELEMENT_NAMES[clampi(int(e.get("element", 0)), 0, 4)],
 				_pct(p["resist_ratio"])])
 		if p.has("root_chance"):
-			parts.append("속박 %d%% · %s초" % [_pct(p["root_chance"]), _num(p.get("root_sec", 0.0))])
+			parts.append("속박 %d%% / %s초" % [_pct(p["root_chance"]), _num(p.get("root_sec", 0.0))])
 		if p.has("lifesteal_ratio"):
 			parts.append("흡수 %d%%" % _pct(p["lifesteal_ratio"]))
 		if p.has("stagger_bonus"):
@@ -141,14 +141,14 @@ static func essence_lines(stats: Dictionary) -> Array:
 		if p.has("slow_chance") or p.has("slow_ratio"):
 			var slow := "둔화 %s초" % _num(p.get("slow_sec", 0.0))
 			if p.has("slow_chance"):
-				slow = "둔화 %d%% · %s초" % [_pct(p["slow_chance"]), _num(p.get("slow_sec", 0.0))]
+				slow = "둔화 %d%% / %s초" % [_pct(p["slow_chance"]), _num(p.get("slow_sec", 0.0))]
 			if p.has("slow_ratio"):
-				slow += " · 이동 −%d%%" % _pct(p["slow_ratio"])
+				slow += " / 이동 −%d%%" % _pct(p["slow_ratio"])
 			parts.append(slow)
 		if p.has("wet_sec"):
 			parts.append("젖음 %s초 (번개 피해 +%d%%)" % [_num(p["wet_sec"]), _pct(p.get("wet_light_bonus", 0.0))])
 		if p.has("chain_chance"):
-			parts.append("감전 %d%% · %d마리에게 %d%%" % [_pct(p["chain_chance"]), int(p.get("chain_targets", 0)),
+			parts.append("감전 %d%% / %d마리에게 %d%%" % [_pct(p["chain_chance"]), int(p.get("chain_targets", 0)),
 				_pct(p.get("chain_damage_ratio", 0.0))])
 		var text := ", ".join(parts)
 		if float(e.get("mult", 1.0)) > 1.0:
@@ -172,7 +172,7 @@ static func _resist_text(resist: Dictionary) -> String:
 	var parts: PackedStringArray = []
 	for e: int in resist:
 		parts.append("%s %d%%" % [UiTokens.ELEMENT_NAMES[clampi(e, 0, 4)], roundi(float(resist[e]) * 100.0)])
-	return " · ".join(parts)
+	return " / ".join(parts)
 
 
 static func _fmt(k: String, v: float) -> String:

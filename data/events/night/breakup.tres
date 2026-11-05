@@ -6,7 +6,7 @@
 script = ExtResource("1_night")
 id = &"breakup"
 display_name = "이별"
-description = "관계가 30 미만으로 7일 이어진 연인·배우자가 헤어진다. 둘 다 사기 −15"
+description = "관계가 30 미만으로 7일 이어진 연인, 배우자가 헤어진다. 둘 다 사기 −15"
 weight = 100
 priority = true
 choices = Array[StringName]([&"watch"])
