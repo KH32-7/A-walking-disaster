@@ -63,7 +63,7 @@ func _check_weather() -> bool:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 3
 	var rain := {Enums.Season.SPRING: 0, Enums.Season.SUMMER: 0}
-	for d in [1, 16]:
+	for d in [3, 16]:  # day 1·2 are always clear (GameState.CLEAR_DAYS)
 		GameState.day = d
 		for i in 400:
 			GameState.roll_weather(rng)
