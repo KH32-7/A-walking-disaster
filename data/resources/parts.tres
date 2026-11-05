@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="ResourceDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/resource_def.gd" id="1_dxd8f"]
+
+[resource]
+script = ExtResource("1_dxd8f")
+id = &"parts"
+name = "부품"
+category = 2
+uses_storage_cap = false

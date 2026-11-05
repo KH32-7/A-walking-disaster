@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="ResourceDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/resource_def.gd" id="1_biba6"]
+
+[resource]
+script = ExtResource("1_biba6")
+id = &"cloth"
+name = "천"
+category = 2
+uses_storage_cap = false

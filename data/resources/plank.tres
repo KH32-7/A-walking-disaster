@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ResourceDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/resource_def.gd" id="1_fhfhj"]
+
+[resource]
+script = ExtResource("1_fhfhj")
+id = &"plank"
+name = "목재판"
+category = 1
+bag_size = Vector2i(1, 2)
+stack_max = 20

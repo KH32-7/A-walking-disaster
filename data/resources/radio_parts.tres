@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ResourceDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/resource_def.gd" id="1_mnqic"]
+
+[resource]
+script = ExtResource("1_mnqic")
+id = &"radio_parts"
+name = "무전 부품"
+category = 2
+uses_storage_cap = false
+stack_max = 5

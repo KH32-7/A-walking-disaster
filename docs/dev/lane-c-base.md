@@ -49,7 +49,7 @@ UI는 D, 자원 저장은 A(`Economy`), 장비는 A(`Armory`), 전투 동작은 
 - 참고: `docs/design/09-base-building.md` "건설 규칙"
 
 ### C-04 건물 데이터 + 효과 · M1
-- 만들 것: `base/defs/building_def.gd`, `data/buildings/`(09 탭 목록 전부, 데모 8종 먼저), 효과: 인구 상한, 창고 한도(`Economy.storage_cap`에 반영), 전력 수급·우선순위, 소음도.
+- 만들 것: `base/defs/building_def.gd`, `data/buildings/`(09 탭 목록 전부, 데모 8종 먼저), 효과: 인구 상한, 창고 한도(`Economy.set_cap_bonus(창고 보너스 합)`로 반영), 전력 수급·우선순위, 소음도.
 - 참고: `docs/design/09-base-building.md` "건물 목록", "전력", "기지 소음도"
 
 ### C-05 작업 배정 + 하루 정산 · M1 (A-05가 기다림)

@@ -44,7 +44,7 @@
 시그니처는 각 오토로드 파일에 있다. 아직 구현 전인 것은 `TODO(태스크ID)`로 표시돼 있고, 시그니처는 그대로 유지한다.
 
 - **GameState**: `day`, `phase`, `flow_state`, `season()`, `has_flag()`, `set_flag()`, `start_next_day()`, `set_phase()`, `set_flow_state()` (SceneRouter 전용)
-- **Economy**: `get_amount(id)`, `can_afford(cost)`, `apply(changes)`
+- **Economy**: `get_amount(id)`, `can_afford(cost)`, `apply(changes)`, `apply_detailed(changes)`(버려진 양 보고), `get_def(id)`, `storage_cap()`, `capped_total()`, `free_space()`, `uses_cap(id)`, `set_cap_bonus(bonus)`(C: 창고 건물)
 - **Armory**: `get_equipped(owner_id, slot)`, `get_item_stats(item_uid)` (+ A-07에서 추가하는 장착/해제 함수)
 - **Radio**: `say(template_id, context, priority)`
 - **Settings**: `get_value(key)`, `set_value(key, value)`

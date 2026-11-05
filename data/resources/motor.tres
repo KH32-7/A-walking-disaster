@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ResourceDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/resource_def.gd" id="1_s8qnr"]
+
+[resource]
+script = ExtResource("1_s8qnr")
+id = &"motor"
+name = "모터"
+category = 2
+uses_storage_cap = false
+bag_size = Vector2i(2, 2)
+stack_max = 1

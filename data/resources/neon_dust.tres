@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ResourceDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/resource_def.gd" id="1_nxsq5"]
+
+[resource]
+script = ExtResource("1_nxsq5")
+id = &"neon_dust"
+name = "네온 가루"
+category = 3
+uses_storage_cap = false
+stack_max = 20
