@@ -39,6 +39,25 @@ extends Resource
 @export var loud_noise_radius := 10.0
 @export var startle_sec := 2.0
 
+@export_group("Call out")
+## A waiting person hears the player this close (m, through walls) and calls out (Lane D bubble).
+@export var callout_far_m := 16.0
+## Closer than this they beg for help instead (near lines).
+@export var callout_near_m := 7.0
+## Seconds between call outs. Coming from far into near calls out at once.
+@export var callout_interval_sec := 5.0
+## Lines per RescueSpawn.Type (0 갇힘, 1 부상, 2 소통). Said in turn, never the same one twice in a row.
+@export var callout_far_lines: Dictionary[int, PackedStringArray] = {
+	0: PackedStringArray(["저기요! 거기 누구 있어요?", "발소리... 맞죠? 사람이죠?"]),
+	1: PackedStringArray(["어어... 사람 소리다...", "누구... 누구 있어요?"]),
+	2: PackedStringArray(["흐윽... 흑...", "...누구?"]),
+}
+@export var callout_near_lines: Dictionary[int, PackedStringArray] = {
+	0: PackedStringArray(["문이 꽉 끼었어요. 밖에서 좀 열어 줄래요?", "아, 진짜 왔다... 여기요, 이 문!"]),
+	1: PackedStringArray(["으... 제발 살려주세요", "다리가... 말을 안 들어요..."]),
+	2: PackedStringArray(["무서워... 무서워요...", "가지 마... 가지 마요..."]),
+}
+
 @export_group("Health")
 @export var max_health := 50.0
 ## 02: 30초 안에 일으키기, else stranded on the spot.

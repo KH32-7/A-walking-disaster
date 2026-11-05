@@ -262,8 +262,8 @@ func _test_spawner() -> void:
 	_check(spawner.alive_count(nest) == 6, "nest stops at max_alive")
 
 	nest.max_alive = 100
-	spawner.tick(180.0 * 40)
-	_check(spawner.region_alive_count() == MonsterRules.REGION_MAX_ALIVE, "region cap 40")
+	spawner.tick(180.0 * MonsterRules.REGION_MAX_ALIVE)
+	_check(spawner.region_alive_count() == MonsterRules.REGION_MAX_ALIVE, "region cap (%d)" % spawner.region_alive_count())
 
 
 func _test_demo_data() -> void:

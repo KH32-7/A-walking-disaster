@@ -1,0 +1,80 @@
+[gd_resource type="Resource" script_class="FxDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/fx_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://vfx/defs/fx_layer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/elemental_spells/textures/shockwave_1.png"
+grow = Vector2(0.6, 12.0)
+lifetime = 0.5
+color = Color(0.55, 0.85, 1.0, 0.85)
+fade_out = 0.7
+channel = 1
+tint_element = false
+follow_radius = true
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/elemental_spells/textures/shockwave_1.png"
+grow = Vector2(0.6, 10.0)
+lifetime = 0.5
+color = Color(1.0, 1.0, 1.0, 0.5)
+fade_out = 0.7
+channel = 1
+tint_element = false
+delay = 0.08
+follow_radius = true
+
+[sub_resource type="Resource" id="layer_2"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/magic_arsenal/textures/ground_water.png"
+grow = Vector2(6.0, 11.0)
+lifetime = 1.2
+color = Color(0.6, 0.85, 1.0, 0.6)
+fade_in = 0.05
+fade_out = 0.6
+follow_radius = true
+
+[sub_resource type="Resource" id="layer_3"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/water_droplets.png"
+blend = 1
+amount = 40
+align = 1
+stretch = 2.0
+size = Vector2(0.12, 0.25)
+speed = Vector2(4.0, 8.0)
+gravity = 14.0
+emit_radius = 2.5
+direction = Vector3(0.0, 1.0, 0.0)
+spread_deg = 35.0
+lifetime = 0.9
+color = Color(0.7, 0.9, 1.0, 1.0)
+offset = Vector3(0.0, 0.2, 0.0)
+follow_radius = true
+
+[sub_resource type="Resource" id="layer_4"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/water_bubble.png"
+amount = 12
+size = Vector2(0.15, 0.3)
+speed = Vector2(0.3, 1.0)
+gravity = -0.4
+emit_radius = 4.0
+lifetime = 1.2
+color = Color(0.8, 0.95, 1.0, 0.8)
+offset = Vector3(0.0, 0.2, 0.0)
+follow_radius = true
+
+[resource]
+script = ExtResource("1_def")
+id = &"boss_splash"
+base_radius = 6.0
+max_alive = 4
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1"), SubResource("layer_2"), SubResource("layer_3"), SubResource("layer_4")])

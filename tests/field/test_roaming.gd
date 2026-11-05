@@ -106,7 +106,7 @@ func _test_caps() -> void:
 		others.append(m)
 	var got := spawner.spawn_group(Vector3(-100.0, 0.0, 0.0), 3, VINE)
 	_expect(got.size() == 1, "region cap counts nest and roaming monsters (%d)" % got.size())
-	_expect(get_tree().get_nodes_in_group(Monster.GROUP).size() == MonsterRules.REGION_MAX_ALIVE, "40 in all")
+	_expect(get_tree().get_nodes_in_group(Monster.GROUP).size() == MonsterRules.REGION_MAX_ALIVE, "region cap in all")
 	for m in others:
 		m.free()
 	spawner.free()

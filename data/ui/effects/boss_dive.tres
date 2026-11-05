@@ -1,0 +1,96 @@
+[gd_resource type="Resource" script_class="FxDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/fx_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://vfx/defs/fx_layer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+kind = 3
+texture = "res://assets/vfx/magic_arsenal/textures/waterbeam.png"
+grow = Vector2(2.2, 5.0)
+travel_speed = 34.0
+lifetime = 0.35
+color = Color(0.7, 0.9, 1.0, 0.95)
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+kind = 3
+texture = "res://assets/vfx/elemental_spells/textures/shockwave_1.png"
+grow = Vector2(2.6, 1.0)
+lifetime = 0.8
+delay = 0.05
+channel = 1
+color = Color(0.55, 0.85, 1.0, 0.5)
+fade_out = 0.6
+
+[sub_resource type="Resource" id="layer_2"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/elemental_spells/textures/shockwave_1.png"
+grow = Vector2(0.4, 3.0)
+lifetime = 0.45
+delay = 0.03
+channel = 1
+color = Color(0.55, 0.85, 1.0, 0.85)
+align = 3
+offset = Vector3(0.0, 0.0, -2.0)
+
+[sub_resource type="Resource" id="layer_3"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/elemental_spells/textures/shockwave_1.png"
+grow = Vector2(0.4, 3.0)
+lifetime = 0.45
+delay = 0.11
+channel = 1
+color = Color(0.55, 0.85, 1.0, 0.85)
+align = 3
+offset = Vector3(0.0, 0.0, -5.0)
+
+[sub_resource type="Resource" id="layer_4"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/elemental_spells/textures/shockwave_1.png"
+grow = Vector2(0.4, 3.0)
+lifetime = 0.45
+delay = 0.19
+channel = 1
+color = Color(0.55, 0.85, 1.0, 0.85)
+align = 3
+offset = Vector3(0.0, 0.0, -8.0)
+
+[sub_resource type="Resource" id="layer_5"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/elemental_spells/textures/shockwave_1.png"
+grow = Vector2(0.4, 3.0)
+lifetime = 0.45
+delay = 0.27
+channel = 1
+color = Color(0.55, 0.85, 1.0, 0.85)
+align = 3
+offset = Vector3(0.0, 0.0, -11.0)
+
+[sub_resource type="Resource" id="layer_6"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/water_droplets.png"
+blend = 1
+amount = 26
+align = 1
+stretch = 2.0
+size = Vector2(0.1, 0.2)
+speed = Vector2(3.0, 9.0)
+gravity = 12.0
+follow_direction = true
+direction = Vector3(0.0, 1.0, -1.4)
+spread_deg = 25.0
+lifetime = 0.8
+color = Color(0.7, 0.9, 1.0, 1.0)
+offset = Vector3(0.0, 0.4, 0.0)
+
+[resource]
+script = ExtResource("1_def")
+id = &"boss_dive"
+max_alive = 4
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1"), SubResource("layer_2"), SubResource("layer_3"), SubResource("layer_4"), SubResource("layer_5"), SubResource("layer_6")])

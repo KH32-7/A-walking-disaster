@@ -13085,8 +13085,8 @@ container_type = 2
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -76.5, 0, -36)
 gizmo_extents = 0.5
 script = ExtResource("9_k7ga2")
-spawn_interval_sec = 120.0
-max_alive = 9
+spawn_interval_sec = 60.0
+max_alive = 18
 wander_radius = 12.0
 
 [node name="MonsterNest_nest_chan" type="Marker3D" parent="Markers" unique_id=1576492410 instance=ExtResource("8_h1708")]
@@ -13094,16 +13094,16 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 0, 61.5)
 gizmo_extents = 0.5
 script = ExtResource("9_k7ga2")
 family = 3
-spawn_interval_sec = 120.0
-max_alive = 8
+spawn_interval_sec = 60.0
+max_alive = 15
 wander_radius = 14.0
 
 [node name="MonsterNest_nest_sw" type="Marker3D" parent="Markers" unique_id=195016929 instance=ExtResource("8_h1708")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -91.5, 0, 67.5)
 gizmo_extents = 0.5
 script = ExtResource("9_k7ga2")
-spawn_interval_sec = 120.0
-max_alive = 8
+spawn_interval_sec = 60.0
+max_alive = 15
 wander_radius = 14.0
 
 [node name="PlayerSpawn_east" type="Marker3D" parent="Markers" unique_id=542234971 instance=ExtResource("10_q0pft")]
@@ -13157,7 +13157,8 @@ spawn_tags = Array[StringName]([&"elevator"])
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42, 0, -85.5)
 gizmo_extents = 0.5
 script = ExtResource("9_k7ga2")
-spawn_interval_sec = 120.0
+spawn_interval_sec = 60.0
+max_alive = 12
 wander_radius = 10.0
 
 [node name="LootSpot_loot_nest_depot" type="Marker3D" parent="Markers" unique_id=1903335305 instance=ExtResource("6_w5ipb")]
@@ -13170,8 +13171,8 @@ container_type = 4
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 0, -108)
 gizmo_extents = 0.5
 script = ExtResource("9_k7ga2")
-spawn_interval_sec = 120.0
-max_alive = 5
+spawn_interval_sec = 60.0
+max_alive = 9
 wander_radius = 8.0
 
 [node name="LootSpot_loot_nest_ne" type="Marker3D" parent="Markers" unique_id=902359505 instance=ExtResource("6_w5ipb")]
@@ -13185,8 +13186,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90, 0, 42)
 gizmo_extents = 0.5
 script = ExtResource("9_k7ga2")
 family = 3
-spawn_interval_sec = 120.0
-max_alive = 5
+spawn_interval_sec = 60.0
+max_alive = 9
 wander_radius = 8.0
 
 [node name="LootSpot_loot_nest_pier" type="Marker3D" parent="Markers" unique_id=433892489 instance=ExtResource("6_w5ipb")]

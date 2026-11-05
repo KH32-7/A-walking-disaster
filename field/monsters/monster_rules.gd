@@ -68,23 +68,23 @@ const RAID_BLOCK_RAY_HEIGHT := 0.5
 const WEAK_POINT_MULT := 2.0
 
 # --- Spawning (04 "등장") ---
-## Region-wide cap on alive monsters.
-const REGION_MAX_ALIVE := 40
+## Region-wide cap on alive monsters. 80 since user feedback 2026-11-06 (was 40, more monsters).
+const REGION_MAX_ALIVE := 80
 ## Monsters added per nest spawn tick.
 const NEST_SPAWN_MIN := 1
 const NEST_SPAWN_MAX := 2
 ## Spawned monsters appear inside this radius around the nest.
 const SPAWN_SCATTER_RADIUS := 2.0 * SIZE_MULT
 
-# --- Roaming packs (RoamingSpawner). Not in the design yet (user request 2026-11-05). ---
+# --- Roaming packs (RoamingSpawner). User request 2026-11-05, x2 on 2026-11-06 (more monsters). ---
 ## Packs scattered over outdoor navmesh when the region loads.
-const ROAM_START_GROUPS := 5
+const ROAM_START_GROUPS := 10
 ## One more pack this often (night: FieldState.night.spawn_mult faster, like the nests).
-const ROAM_INTERVAL_SEC := 90.0
+const ROAM_INTERVAL_SEC := 45.0
 const ROAM_GROUP_MIN := 1
 const ROAM_GROUP_MAX := 3
 ## Roaming monsters alive at once. They also count toward REGION_MAX_ALIVE.
-const ROAM_MAX_ALIVE := 12
+const ROAM_MAX_ALIVE := 24
 ## New packs appear at least this far from the player and off camera.
 const ROAM_MIN_PLAYER_DIST := 40.0
 ## Packs placed at load keep this far from the player.

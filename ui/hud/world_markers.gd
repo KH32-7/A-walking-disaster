@@ -11,6 +11,9 @@ extends Control
 ##   (Settings.sound_arrows). Shape + colour + a short label, never colour alone.
 ## - Map ping (FieldState.ping): pin on the spot when on screen, else a ground arrow at the
 ##   player's feet. Distance beside it.
+## - Speech bubbles: a rescue target (group "field_rescue_targets") that hears the player calls
+##   out (`called_out` signal, B-10). Cream bubble above the person for 3.5 s, also through walls;
+##   off screen, a cream edge arrow "목소리".
 ## Computes no game rules: radius and states come from Lane B.
 
 const RING_SEC := 0.7
@@ -22,17 +25,32 @@ const MARK_HEIGHT := 2.3
 const RING_STEPS := 40
 ## Ping arrow: starts this far from the player's feet (m), 0.6 m long.
 const PING_ARROW_M := 1.4
+const RESCUE_GROUP := &"field_rescue_targets"
+const BUBBLE_SEC := 3.5
+const BUBBLE_FADE_SEC := 0.4
+const BUBBLE_HEIGHT := 2.1
+const BUBBLE_FS := 17
+const BUBBLE_PAD := Vector2(12.0, 7.0)
+const BUBBLE_TAIL := 10.0
+const VOICE_LABEL := "목소리"
 
 var _rings: Array[Dictionary] = []  # {pos: Vector3, radius: float, t: float}
 var _arrows: Array[Dictionary] = []  # {pos: Vector3, t: float, kind: StringName, label: String}
 var _states: Dictionary = {}  # instance_id -> Enums.AIState
+var _bubbles: Array[Dictionary] = []  # {node: Node3D, text: String, t: float}
+var _voiced: Dictionary = {}  # instance_id of rescue targets already connected
 var _font: Font
+var _font_kr: Font
+var _bubble_box := StyleBoxFlat.new()
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_font = UiThemeBuilder.font_num()
+	_font_kr = UiThemeBuilder.font_kr(500)
+	_bubble_box.set_corner_radius_all(UiTokens.BAND_RADIUS)
+	_bubble_box.set_border_width_all(2)
 	EventBus.noise_emitted.connect(_on_noise)
 
 
@@ -43,6 +61,19 @@ func add_noise(pos: Vector3, radius: float) -> void:
 
 func ring_count() -> int:
 	return _rings.size()
+
+
+## Public for previews/tests: same as `node` emitting called_out(text). One bubble per person.
+func add_bubble(node: Node3D, text: String) -> void:
+	_bubbles = _bubbles.filter(func(b: Dictionary) -> bool: return b.node != node)
+	_bubbles.append({"node": node, "text": text, "t": 0.0})
+
+
+func bubble_texts() -> Array[String]:
+	var out: Array[String] = []
+	for b in _bubbles:
+		out.append(String(b.text))
+	return out
 
 
 static func ring_style(radius: float) -> Array:
@@ -78,6 +109,17 @@ func _process(delta: float) -> void:
 	for a in _arrows:
 		a.t += delta
 	_arrows = _arrows.filter(func(a: Dictionary) -> bool: return a.t < ARROW_SEC)
+	for b in _bubbles:
+		b.t += delta
+	_bubbles = _bubbles.filter(func(b: Dictionary) -> bool:
+		return b.t < BUBBLE_SEC and is_instance_valid(b.node) and (b.node as Node).is_inside_tree())
+	for r in get_tree().get_nodes_in_group(RESCUE_GROUP):
+		var rid := r.get_instance_id()
+		if _voiced.has(rid) or not r is Node3D or not r.has_signal(&"called_out"):
+			continue
+		_voiced[rid] = true
+		r.connect(&"called_out", func(text: String, _near: bool) -> void: add_bubble(r, text))
+		r.tree_exiting.connect(func() -> void: _voiced.erase(rid))
 	for m in get_tree().get_nodes_in_group(&"field_monsters"):
 		var id := m.get_instance_id()
 		if _states.has(id):
@@ -110,6 +152,34 @@ func _draw() -> void:
 		var p: Vector3 = a.pos
 		if cam.is_position_behind(p) or not view.grow(-EDGE_PAD).has_point(cam.unproject_position(p)):
 			_draw_edge_arrow(cam, p, a.kind, a.label, 1.0 - a.t / ARROW_SEC)
+	for b in _bubbles:
+		var wp: Vector3 = (b.node as Node3D).global_position + Vector3.UP * BUBBLE_HEIGHT
+		var alpha := clampf((BUBBLE_SEC - float(b.t)) / BUBBLE_FADE_SEC, 0.0, 1.0)
+		if not cam.is_position_behind(wp) and view.grow(-EDGE_PAD).has_point(cam.unproject_position(wp)):
+			_draw_bubble(cam.unproject_position(wp), String(b.text), alpha)
+		else:
+			_draw_edge_arrow(cam, wp, &"voice", VOICE_LABEL, alpha)
+
+
+## Cream bubble whose tail points down at `at` (above the person's head).
+func _draw_bubble(at: Vector2, text: String, alpha: float) -> void:
+	var text_size := Vector2(_font_kr.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, BUBBLE_FS).x,
+		_font_kr.get_height(BUBBLE_FS))
+	var box_size := text_size + BUBBLE_PAD * 2.0
+	var rect := Rect2(at - Vector2(box_size.x * 0.5, box_size.y + BUBBLE_TAIL), box_size)
+	var bg := UiTokens.CREAM
+	bg.a = alpha
+	var edge := Color(0, 0, 0, 0.8 * alpha)
+	var tail := PackedVector2Array([Vector2(at.x - 8.0, rect.end.y - 1.0), at, Vector2(at.x + 8.0, rect.end.y - 1.0)])
+	draw_polyline(tail, edge, 4.0, true)
+	_bubble_box.bg_color = bg
+	_bubble_box.border_color = edge
+	draw_style_box(_bubble_box, rect)
+	draw_colored_polygon(tail, bg)
+	var ink := UiTokens.TEXT_ON_CREAM
+	ink.a = alpha
+	draw_string(_font_kr, rect.position + BUBBLE_PAD + Vector2(0.0, _font_kr.get_ascent(BUBBLE_FS)), text,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, BUBBLE_FS, ink)
 
 
 func _draw_ring(cam: Camera3D, r: Dictionary) -> void:
@@ -192,6 +262,8 @@ func _draw_edge_arrow(cam: Camera3D, wp: Vector3, kind: StringName, label: Strin
 	var t := minf(half.x / maxf(absf(dir.x), 0.001), half.y / maxf(absf(dir.y), 0.001))
 	var at := c + dir * t
 	var col := Color("ff5b4d") if kind == &"alert" else (Color("ffc35a") if kind == &"suspicious" else Color("ffaa46"))
+	if kind == &"voice":
+		col = UiTokens.CREAM
 	col.a *= alpha
 	var side := Vector2(-dir.y, dir.x)
 	var tri := PackedVector2Array([at + dir * 18.0, at - dir * 10.0 + side * 14.0, at - dir * 10.0 - side * 14.0])

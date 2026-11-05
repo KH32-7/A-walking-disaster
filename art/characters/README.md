@@ -15,6 +15,13 @@ look.apply(resident.appearance)   # {"preset", "hair", "hair_color", "outfit_col
 - 지금은 VRoid 모델이 없어서 툰 머티리얼로 만든 임시 인형이 나온다. 키는 약 1.6m이고, 나이대에 따라 크기가 바뀐다.
   프리셋의 `base_model`에 모델 경로를 넣으면 그 모델로 바뀐다.
 
+## 팩 모델 (`ResidentModel`)
+
+구조 대상, 동행, 기지 주민은 `art/characters/resident_model.gd`(`ResidentModel`)가 City People Free Samples와
+People with Disabilities 팩 모델을 고른다. 주민 데이터(나이, 성별, 이동 조건, 전직)와 필드의 걷는 방식(휠체어, 부축)으로 고르고,
+장애 모델은 그 조건이 데이터에 있는 사람에게만 입힌다. 에셋이 없으면 아무것도 안 하고 원래 그레이박스나 `CharacterLook` 인형이 보인다.
+팩 텍스처는 팔레트 한 장을 같이 써서 입주 의식에서 고른 색은 팩 모델에 안 칠해진다.
+
 ## VRoid → Godot
 
 1. **VRoid Studio**에서 만든다. 머리·옷 색은 흰색이나 연한 기본색으로 두고, 게임에서 칠한다.

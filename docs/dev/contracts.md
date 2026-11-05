@@ -136,7 +136,8 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   훅: `on_added`, `on_tick`, `can_use(pattern)`, `on_pattern_started(pattern, area)`, `land_pattern(pattern, area)`(true면 공통 범위 타격·소환 생략),
   `filter_damage(amount, info)`(0이면 무시), `on_phase_changed`, `on_reset`, `on_died`. `BossPattern.action`이 있는 패턴은 mechanic이 직접 처리하고
   숫자는 `BossPattern.params`에 둔다. mechanic이 쓰는 BossMonster 공개 함수: `hold(sec)`(AI와 패턴 정지, mechanic이 몸을 움직임), `is_held()`,
-  `area_for(pattern, target_pos)`, `hit_area(pattern, area)`, `summon(pattern)`.
+  `area_for(pattern, target_pos)`, `area_targets(area)`, `hit_area(pattern, area)`, `summon(pattern)`.
+  보스 모델(`MonsterVisual`)은 `play_once(clip)`, `sink(on, sec, rise)`를 mechanic에 내준다.
 - **Audio**: `play(event_id, position)`, `set_music_state(state)`
 - **Fx**: `spawn(effect_id, position, params)`. 이펙트 id 표는 [vfx/README.md](../../vfx/README.md)(D).
 - **마물 모델과 이펙트 (D-17, 이슈 #148)**:

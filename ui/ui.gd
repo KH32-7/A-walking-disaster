@@ -168,17 +168,20 @@ func _on_node_added(node: Node) -> void:
 
 
 ## 탈출 지점에 섰는데 동행·구조한 사람이 멀리 있으면 묻는다. 취소 = 다 모일 때까지 기다림.
+## The question goes away with the field (manager leaves the tree), so it never follows to the base.
 func _on_leave_behind(_point_id: StringName, people: Array, manager: Node) -> void:
 	var names: PackedStringArray = []
 	for p: Dictionary in people:
 		names.append(String(p.get("name", "")))
-	ConfirmDialog.ask(overlay, "%d명을 두고 갈까요?" % people.size(),
+	var dialog := ConfirmDialog.ask(overlay, "%d명을 두고 갈까요?" % people.size(),
 		"아직 탈출 지점에 오지 못했어요: %s. 두고 가면 그 자리에 남고, 다시 데리러 갈 수 있어요. 취소하면 다 모일 때까지 기다려요." % ", ".join(names),
 		"두고 가기", func() -> void:
 			if is_instance_valid(manager):
-				manager.answer_leave_behind(true)).decided.connect(func(ok: bool) -> void:
+				manager.answer_leave_behind(true))
+	dialog.decided.connect(func(ok: bool) -> void:
 		if not ok and is_instance_valid(manager):
 			manager.answer_leave_behind(false))
+	manager.tree_exiting.connect(dialog.queue_free)
 
 
 ## Subtitles sit low over the world; with a menu open they move up out of its buttons' way.
