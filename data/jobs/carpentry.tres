@@ -9,7 +9,7 @@ display_name = "목공"
 workplace = &"carpentry_shop"
 main_stat = "dex"
 base_output = Dictionary[StringName, float]({
-&"planks": 4.0
+&"plank": 4.0
 })
 base_input = Dictionary[StringName, float]({
 &"wood": 8.0
