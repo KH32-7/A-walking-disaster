@@ -75,8 +75,29 @@ func set_player(pos: Vector3, forward: Vector3) -> void:
 	_ink.queue_redraw()
 
 
+## Painted region art (art/maps/) instead of a render: shown whole and as painted, no fog and no
+## greybox tone-down. `rect` is the world x/z rectangle the picture covers.
+func set_art(art: Texture2D, rect: Rect2) -> void:
+	bounds = rect
+	texture = art
+	var mat := _bg.material as ShaderMaterial
+	var white := Image.create(1, 1, false, Image.FORMAT_L8)
+	white.fill(Color.WHITE)
+	mat.set_shader_parameter(&"fog_tex", ImageTexture.create_from_image(white))
+	mat.set_shader_parameter(&"desaturate", 0.0)
+	mat.set_shader_parameter(&"exposure", 1.0)
+	mat.set_shader_parameter(&"gamma", 1.0)
+	art_mode = true
+
+
+## True after set_art(): set_explored() is ignored so the whole picture stays visible.
+var art_mode := false
+
+
 ## Builds the fog texture from FieldExplore cells (Vector2i -> true) for the current bounds.
 func set_explored(cells: Dictionary, cell_size: float) -> void:
+	if art_mode:
+		return
 	var w := maxi(1, ceili(bounds.size.x / cell_size))
 	var h := maxi(1, ceili(bounds.size.y / cell_size))
 	var img := Image.create(w, h, false, Image.FORMAT_L8)

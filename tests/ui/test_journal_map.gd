@@ -150,6 +150,8 @@ func _test_map() -> bool:
 		var to := s.map.to_map(Vector3(s.map.bounds.position.x, 0, s.map.bounds.position.y))
 		ok = _expect(to.is_equal_approx(Vector2.ZERO), "bounds corner maps to the map corner") and ok
 		ok = _expect(s.map.bounds.size.x == s.map.bounds.size.y, "map area is square") and ok
+		ok = _expect(s.map.art_mode and s.map.bounds == MapScreen.OVERVIEWS[&"flooded_mall"][1],
+			"flooded mall uses its painted overview over the whole layout") and ok
 	UI.close(&"map")
 	world.queue_free()
 	explore.queue_free()
