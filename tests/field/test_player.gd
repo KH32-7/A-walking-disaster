@@ -14,7 +14,30 @@ func run() -> bool:
 	_test_stamina()
 	_test_dodge()
 	_test_damage()
+	_test_gun_faces_cursor()
 	return _ok
+
+
+## With a gun the player faces the cursor even while not aiming; with a melee weapon it faces
+## the move direction.
+func _test_gun_faces_cursor() -> void:
+	var previous := Armory.get_equipped(Armory.PLAYER_ID, Enums.EquipSlot.MAIN)
+	var gun := Armory.create_item(&"pistol", Enums.Rarity.COMMON)
+	Armory.equip(Armory.PLAYER_ID, Enums.EquipSlot.MAIN, gun)
+	var p := _spawn()
+	p.set_aim_point(p.global_position + Vector3(5.0, 0.0, 0.0))
+	_steps(p, 0.2, {"move": Vector2.UP})
+	_expect(p.facing().dot(Vector3.RIGHT) > 0.99, "gun: faces the cursor while walking away from it")
+	var blade := Armory.create_item(&"dagger", Enums.Rarity.COMMON)
+	Armory.equip(Armory.PLAYER_ID, Enums.EquipSlot.MAIN, blade)
+	_steps(p, 0.2, {"move": Vector2.UP})
+	_expect(p.facing().dot(Vector3.FORWARD) > 0.99, "melee: faces the move direction")
+	p.free()
+	Armory.unequip(Armory.PLAYER_ID, Enums.EquipSlot.MAIN)
+	Armory.remove_item(gun)
+	Armory.remove_item(blade)
+	if previous != &"":
+		Armory.equip(Armory.PLAYER_ID, Enums.EquipSlot.MAIN, previous)
 
 
 func _test_speeds() -> void:

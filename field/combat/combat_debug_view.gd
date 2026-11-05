@@ -103,7 +103,7 @@ func _draw_gun(stats: Dictionary) -> void:
 	var aim: Variant = _player.aim_point()
 	var target: Vector3 = _ground(aim) if aim != null else origin + _player.facing() * DEFAULT_AIM_DIST
 	# The line shows where a shot would really go (facing); the ring shows the cursor.
-	# They only line up while aiming (RMB), when the player turns to the cursor.
+	# With a gun the player always turns to the cursor, so they line up except mid-dodge.
 	var dist := maxf(origin.distance_to(target), DEFAULT_AIM_DIST)
 	_line(origin, origin + _player.facing() * dist, AIM_LINE_COLOR)
 	_ring(target, AIM_MARKER_RADIUS, AIM_COLOR)
