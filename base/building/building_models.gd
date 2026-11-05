@@ -20,6 +20,18 @@ const FIT_MAX_SCALE := 1.6
 ## centre (user feedback 2026-11-06: buildings looked small next to the forest). The grid footprint,
 ## placement and collision are unchanged; only the look grows.
 const VISUAL_SCALE := 1.35
+## Buildings that give light at night (base night, ForestDressing turns them on): a warm circle on
+## the ground around them: color, energy, range (m) and height (m above the footprint). No shadows, so
+## the pool stays a clean circle (a shadowed light got cut square by its own model and the camera).
+## Buildings not listed give none, so a base without them just stays dark at night.
+const NIGHT_LIGHTS := {
+	&"bonfire": {"color": Color("ffaa5e"), "energy": 3.2, "range": 8.0, "height": 1.8, "flicker": true},
+	&"essence_lamp": {"color": Color("bfeeff"), "energy": 3.2, "range": 10.0, "height": 4.0},
+	&"light_tower": {"color": Color("fff2d6"), "energy": 4.0, "range": 13.0, "height": 4.5},
+	&"warning_light": {"color": Color("ff6a50"), "energy": 1.8, "range": 5.0, "height": 2.0},
+}
+## Group of those lights (BuildingViews adds them, ForestDressing switches them).
+const NIGHT_LIGHT_GROUP := &"base_night_light"
 
 ## Buildings with no grid size in data (prebuilt / attached) get a sandbox footprint here.
 const SIZE_OVERRIDE := {&"radio_room": Vector2i(3, 3)}
