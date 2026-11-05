@@ -51,6 +51,9 @@ func _ready() -> void:
 	EventBus.sortie_started.connect(_on_sortie_started)
 	_last_flow = GameState.flow_state
 	Colony.night_events_ready.connect(_on_night_events_ready)
+	raid_flow = RaidFlow.new()
+	raid_flow.name = &"RaidFlow"
+	add_child(raid_flow)
 	_on_flow_state_changed(GameState.flow_state)
 
 
@@ -90,6 +93,22 @@ func show_base_hud(on: bool) -> void:
 		base_hud.process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
 		if on:
 			base_hud.refresh()
+
+
+## Raid screens (D-14): warning / result / emergency return, and the direct defense HUD.
+var raid_flow: RaidFlow
+var raid_hud: RaidDefenseHud
+const RAID_STATES := [Enums.FlowState.BASE_DAY_RAID, Enums.FlowState.NIGHT_RAID]
+
+
+func show_raid_hud(on: bool) -> void:
+	if on and raid_hud == null:
+		raid_hud = RaidDefenseHud.new()
+		raid_hud.name = &"RaidDefenseHud"
+		hud.add_child(raid_hud)
+	if raid_hud != null:
+		raid_hud.visible = on
+		raid_hud.process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
 
 
 ## Loot hook (D-08): when the player's current interactable (Player.interacting(), B-03) is a
@@ -137,6 +156,7 @@ var _last_flow: Enums.FlowState = Enums.FlowState.TITLE
 func _on_flow_state_changed(state: Enums.FlowState) -> void:
 	show_field_hud(state == Enums.FlowState.FIELD)
 	show_base_hud(state in BASE_STATES)
+	show_raid_hud(state in RAID_STATES)
 	for st: Enums.FlowState in FLOW_SCREENS:
 		var id: StringName = FLOW_SCREENS[st]
 		if st == state:
