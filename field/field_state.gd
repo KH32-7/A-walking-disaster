@@ -4,6 +4,17 @@ extends Node
 ## unlocks, boss respawn timers, the current sortie's runtime info.
 ## Also handles the player going down (B-11): bag loss, lost gear, stranded companions.
 ## Design reference: docs/design/02-field.md "고립과 유실물", 01-flow-time.md "실패 처리"
+## Also runs the sortie clock (B-21): dusk at GameState.SORTIE_DUSK_SEC, night from
+## GameState.SORTIE_NIGHT_SEC. Night rules are in `night` (field/night_tuning.tres).
+## Design reference: docs/design/01-flow-time.md "필드의 밤"
+
+## Sortie clock reached dusk (12 min). Also says the Radio "dusk" line.
+signal dusk_started
+## Sortie clock reached night (15 min). MonsterSpawner applies the night rules.
+signal night_started
+
+## Night rules. Tests may swap in their own NightTuning.
+var night: NightTuning = preload("res://field/night_tuning.tres")
 
 ## [{"item_uid": StringName, "region_id": StringName, "position": Vector3, "offered": bool}]
 ## One entry per item. "offered" = its one recovery sortie has started (set by sortie_started).
@@ -22,6 +33,11 @@ var sortie_seed := -1
 
 var _down_result: Dictionary = {}
 var _sortie_result: Dictionary = {}
+## Seconds since sortie_started. Runs from sortie_started until extraction, downing or sortie_ended.
+var _sortie_time := 0.0
+var _clock_running := false
+var _dusk_sent := false
+var _night_sent := false
 
 
 func _ready() -> void:
@@ -29,11 +45,60 @@ func _ready() -> void:
 	EventBus.sortie_started.connect(_on_sortie_started)
 	EventBus.sortie_ended.connect(_on_sortie_ended)
 	EventBus.player_downed.connect(_on_player_downed)
+	EventBus.extraction_completed.connect(func(_id: StringName) -> void: _clock_running = false)
+
+
+func _process(delta: float) -> void:
+	if _clock_running:
+		advance_sortie_time(delta)
 
 
 ## True while the player is inside a field region.
 func in_sortie() -> bool:
 	return GameState.phase == Enums.Phase.SORTIE
+
+
+## Seconds since this sortie started.
+func sortie_time() -> float:
+	return _sortie_time
+
+
+## False in the demo build: no dusk, no night.
+func night_enabled() -> bool:
+	return night != null and night.enabled
+
+
+## Between the dusk signal and night.
+func is_dusk() -> bool:
+	return _dusk_sent and not _night_sent
+
+
+## Night rules apply (spawn, elites, sight, drops).
+func is_night() -> bool:
+	return _night_sent
+
+
+## Seconds until dusk (HUD timer), 0 after it, -1 when night is off.
+func dusk_left_sec() -> float:
+	if not night_enabled():
+		return -1.0
+	return maxf(0.0, GameState.SORTIE_DUSK_SEC - _sortie_time)
+
+
+## Moves the sortie clock forward. _process calls this; tests call it with big steps.
+## Crossing both thresholds in one step sends dusk_started, then night_started.
+func advance_sortie_time(sec: float) -> void:
+	_sortie_time += maxf(sec, 0.0)
+	if not night_enabled():
+		return
+	if not _dusk_sent and _sortie_time >= GameState.SORTIE_DUSK_SEC:
+		_dusk_sent = true
+		var minutes := roundi((GameState.SORTIE_NIGHT_SEC - GameState.SORTIE_DUSK_SEC) / 60.0)
+		Radio.say(&"dusk", {"minutes": minutes})
+		dusk_started.emit()
+	if not _night_sent and _sortie_time >= GameState.SORTIE_NIGHT_SEC:
+		_night_sent = true
+		night_started.emit()
 
 
 ## What the player lost when going down this sortie, {} if they did not go down.
@@ -98,6 +163,8 @@ func _on_sortie_started(loadout: Dictionary) -> void:
 	_down_result = {}
 	# A stale result would leak into this sortie's sortie_ended (issue #44).
 	_sortie_result = {}
+	_reset_clock()
+	_clock_running = true
 	# Gear from another region is gone at once; gear from this region gets its one chance now.
 	_drop_lost_gear(func(e: Dictionary) -> bool:
 		return e.get("offered", false) or e["region_id"] != region_id)
@@ -106,11 +173,14 @@ func _on_sortie_started(loadout: Dictionary) -> void:
 
 
 func _on_sortie_ended(_result: Dictionary) -> void:
+	# Back at base: no field night left over for anything that reads is_night().
+	_reset_clock()
 	# Not recovered during its one sortie: gone.
 	_drop_lost_gear(func(e: Dictionary) -> bool: return e.get("offered", false))
 
 
 func _on_player_downed() -> void:
+	_clock_running = false
 	var player := get_tree().get_first_node_in_group(Player.GROUP) as Node3D
 	var pos := player.global_position if player else Vector3.ZERO
 	var bag_kept: bool = Settings.get_value(&"keep_bag_on_down")
@@ -128,6 +198,13 @@ func _on_player_downed() -> void:
 		"bag_kept": bag_kept, "stranded": stranded}
 
 
+func _reset_clock() -> void:
+	_sortie_time = 0.0
+	_clock_running = false
+	_dusk_sent = false
+	_night_sent = false
+
+
 func _drop_lost_gear(should_drop: Callable) -> void:
 	var kept := []
 	for e: Dictionary in lost_gear:
@@ -140,7 +217,8 @@ func _drop_lost_gear(should_drop: Callable) -> void:
 
 func save_data() -> Dictionary:
 	return {"lost_gear": lost_gear, "boss_respawn_day": boss_respawn_day,
-		"downs_by_region": downs_by_region, "region_id": region_id, "companions": companions}
+		"downs_by_region": downs_by_region, "region_id": region_id, "companions": companions,
+		"sortie_time": _sortie_time, "clock_running": _clock_running}
 
 
 func load_data(data: Dictionary) -> void:
@@ -150,3 +228,9 @@ func load_data(data: Dictionary) -> void:
 	region_id = data.get("region_id", &"")
 	companions.assign(data.get("companions", []))
 	_down_result = {}
+	# A suspended sortie resumes on the same clock. Thresholds already passed are not re-sent;
+	# MonsterSpawner checks is_night() itself when the region scene loads.
+	_sortie_time = float(data.get("sortie_time", 0.0))
+	_clock_running = bool(data.get("clock_running", false))
+	_dusk_sent = night_enabled() and _sortie_time >= GameState.SORTIE_DUSK_SEC
+	_night_sent = night_enabled() and _sortie_time >= GameState.SORTIE_NIGHT_SEC
