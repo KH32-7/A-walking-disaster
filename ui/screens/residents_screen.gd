@@ -53,6 +53,10 @@ func _build_body(b: Control) -> void:
 		var rel := MenuScreen.button("관계도", &"ButtonSoft")
 		rel.pressed.connect(func() -> void: UI.open(&"relations", {"id": _sel}))
 		(left[2] as HBoxContainer).add_child(rel)
+	if UI.has_screen(&"memorial"):  # #125 part 3
+		var mem := MenuScreen.button("추모비", &"ButtonSoft")
+		mem.pressed.connect(func() -> void: UI.open(&"memorial"))
+		(left[2] as HBoxContainer).add_child(mem)
 	for s: Array in SORTS:
 		var t := MenuScreen.button(String(s[0]), &"TabText")
 		t.toggle_mode = true
@@ -82,7 +86,7 @@ func _build_body(b: Control) -> void:
 
 ## Back from a D-13 screen: trust, likes, nickname or bed may have changed.
 func _on_screen_closed(id: StringName) -> void:
-	if id in [&"dialog", &"gift", &"welcome"] and is_inside_tree():
+	if id in [&"dialog", &"gift", &"welcome", &"memorial"] and is_inside_tree():
 		_fill()
 
 
@@ -109,7 +113,26 @@ func _fill() -> void:
 		_sel = ids[0]
 	for id: StringName in ids:
 		_list.add_child(_row(id))
+	_add_absent_rows()
 	_show_detail()
+
+
+## #125 part 3: stranded (region, days left / 기한 없음) and missing residents under the list.
+func _add_absent_rows() -> void:
+	var rows := LossText.absent_rows()
+	if rows.is_empty():
+		return
+	_list.add_child(MenuScreen.label("자리에 없는 사람  %d" % rows.size(), &"LabelSection", 16))
+	for a: Dictionary in rows:
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override(&"separation", 14)
+		var nm := MenuScreen.label(String(a.name), &"LabelHud", 16)
+		nm.custom_minimum_size = Vector2(150, 0)
+		h.add_child(nm)
+		var t := MenuScreen.label(String(a.text), &"LabelHud", 14)
+		t.add_theme_color_override(&"font_color", UiTokens.WARN if a.kind == &"stranded" else UiTokens.TEXT_DIM)
+		h.add_child(t)
+		_list.add_child(h)
 
 
 func _row(id: StringName) -> Control:
@@ -168,7 +191,9 @@ func _job_line(r: Dictionary) -> String:
 	var a: Dictionary = r.get("assignment", {})
 	var job := BaseDB.get_job(StringName(a.get("job", &"")))
 	var age: String = AGE_NAMES[clampi(int(r.get("age_stage", 3)), 0, 4)]
-	return "%s · %s" % [age, job.display_name if job != null else "일 없음"]
+	var line := "%s · %s" % [age, job.display_name if job != null else "일 없음"]
+	var grief := LossText.grief_tag(r)  # #125 part 3
+	return line + ("  " + grief if grief != "" else "")
 
 
 func _show_detail() -> void:
@@ -248,6 +273,11 @@ func _show_detail() -> void:
 	var bed := StringName(r.get("bed_id", &""))
 	rc.add_child(MenuScreen.label("%s · %s" % [job.display_name if job != null else "일 없음",
 		"침상 있음" if bed != &"" else "임시 거처"], &"LabelHud", 15))
+	for warn: String in _loss_lines(r):  # #125 part 3, 7
+		var wl := MenuScreen.label(warn, &"LabelHud", 14)
+		wl.add_theme_color_override(&"font_color", UiTokens.WARN)
+		wl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		rc.add_child(wl)
 	rc.add_child(MenuScreen.label("장비", &"LabelSection", 16))
 	var eg := GridContainer.new()
 	eg.columns = 4
@@ -296,6 +326,18 @@ func _show_detail() -> void:
 		bt.pressed.connect(func() -> void: UI.open(target, {"resident_id": _sel}))
 		acts.add_child(bt)
 	_detail.add_child(acts)
+
+
+## Grief (작업 효율) and the sortie block reason for the detail column.
+func _loss_lines(r: Dictionary) -> Array[String]:
+	var out: Array[String] = []
+	var grief := LossText.grief_tag(r)
+	if grief != "":
+		out.append("%s · 작업 효율 −%d%%" % [grief, roundi((1.0 - LossRules.GRIEF_WORK_MULT) * 100.0)])
+	var block := LossText.sortie_block(_sel)
+	if block != "":
+		out.append(block + " · 출격에 데려갈 수 없어요")
+	return out
 
 
 func _equip_slot(owner: StringName, slot: int) -> Control:
