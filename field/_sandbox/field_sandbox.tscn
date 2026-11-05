@@ -93,31 +93,31 @@ material = SubResource("Mat_wall")
 
 [node name="Cover" type="Node3D" parent="Geometry"]
 
-[node name="LowCover1" type="CSGBox3D" parent="Geometry/Cover"]
+[node name="LowCover1" type="CSGBox3D" parent="Geometry/Cover" groups=["low_cover"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0.6, 4)
 use_collision = true
 size = Vector3(2, 1.2, 1)
 material = SubResource("Mat_cover")
 
-[node name="LowCover2" type="CSGBox3D" parent="Geometry/Cover"]
+[node name="LowCover2" type="CSGBox3D" parent="Geometry/Cover" groups=["low_cover"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0.6, 6)
 use_collision = true
 size = Vector3(2, 1.2, 1)
 material = SubResource("Mat_cover")
 
-[node name="LowCover3" type="CSGBox3D" parent="Geometry/Cover"]
+[node name="LowCover3" type="CSGBox3D" parent="Geometry/Cover" groups=["low_cover"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.6, 12)
 use_collision = true
 size = Vector3(1, 1.2, 2)
 material = SubResource("Mat_cover")
 
-[node name="LowCover4" type="CSGBox3D" parent="Geometry/Cover"]
+[node name="LowCover4" type="CSGBox3D" parent="Geometry/Cover" groups=["low_cover"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0.6, -4)
 use_collision = true
 size = Vector3(2, 1.2, 1)
 material = SubResource("Mat_cover")
 
-[node name="LowCover5" type="CSGBox3D" parent="Geometry/Cover"]
+[node name="LowCover5" type="CSGBox3D" parent="Geometry/Cover" groups=["low_cover"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 0.6, -2)
 use_collision = true
 size = Vector3(1, 1.2, 2)

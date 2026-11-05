@@ -1,0 +1,69 @@
+[gd_resource type="Resource" script_class="CombatTuning" format=3]
+
+[ext_resource type="Script" path="res://field/defs/combat_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+mastery_per_level = 0.03
+default_mastery = 1
+crit_rate = 0.05
+crit_mult = 1.5
+combo_hits = 3
+combo_finisher_mult = 1.5
+combo_window_sec = PackedFloat32Array(0, 0.35, 0.6)
+melee_arc_deg = 100.0
+backstab_arc_deg = 90.0
+backstab_mult = 2.0
+melee_wear = 0.2
+gun_wear = 0.1
+block_arc_deg = 120.0
+block_damage_mult = 0.5
+block_stamina_per_damage = 0.5
+guard_break_stun_sec = 1.0
+perfect_block_window_sec = 0.2
+perfect_block_stun_sec = 1.0
+aim_spread_mult = 0.5
+moving_spread_mult = 1.5
+moving_speed_threshold = 0.5
+bloom_per_shot_deg = 1.0
+bloom_recover_delay_mult = 1.5
+bloom_recover_deg_per_sec = 6.0
+muzzle_height = 1.0
+cover_damage_mult = 0.5
+cover_near_target_m = 2.0
+infinite_ammo_defs = Array[StringName]([&"pistol"])
+weapon_types = Dictionary[StringName, Dictionary]({
+&"pistol": {
+"reload_sec": 1.2,
+"spread_cap_deg": 10.0,
+"spread_deg": 6.0
+},
+&"rifle": {
+"noise_action": &"rifle",
+"reload_sec": 2.0,
+"spread_cap_deg": 6.0,
+"spread_deg": 3.0
+},
+&"shotgun": {
+"noise_action": &"shotgun",
+"reload_sec": 2.5,
+"spread_cap_deg": 24.0,
+"spread_deg": 20.0
+},
+&"sledgehammer": {
+"stamina_cost": 25.0
+}
+})
+class_defaults = Array[Dictionary]([{
+"noise_action": &"pistol",
+"reload_sec": 1.5,
+"spread_cap_deg": 10.0,
+"spread_deg": 6.0,
+"stamina_cost": 0.0
+}, {
+"noise_action": &"blade_attack",
+"stamina_cost": 8.0
+}, {
+"noise_action": &"blunt_attack",
+"stamina_cost": 15.0
+}])
