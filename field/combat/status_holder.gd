@@ -7,7 +7,8 @@ extends Node
 ## Hits carry effects in take_damage(amount, info):
 ##   info["status"] = [{"id": &"bleed"}, {"id": &"stagger", "duration": 1.5}, ...]
 ##   Entry keys: "id" (required), "stacks" (default 1), "duration" (seconds, default the def's),
-##   "stacks_max" (raises the cap, e.g. blade mastery 10 bleed x2), "dir" (knockback, Vector3).
+##   "stacks_max" (raises the cap, e.g. blade mastery 10 bleed x2), "dir" (knockback, Vector3),
+##   "move_mult" (B-15: replaces the def's move_mult, e.g. essence slow 0.7; the lowest one stays).
 ##   Knockback without "dir" pushes away from info["source"], else from info["position"].
 ##   Legacy info["bind_sec"] (vine tendril, B-07) is the same as {"id": &"bind", "duration": bind_sec}.
 ## Tick damage comes back to the body as take_damage(amount, {"status_tick": id, "element": e}).
@@ -90,6 +91,8 @@ func apply(id: StringName, opts: Dictionary = {}) -> bool:
 	var e: Dictionary = _active.get(id, {"def": def, "stacks": 0, "time_left": 0.0, "tick_left": TICK_SEC})
 	e["stacks"] = clampi(e["stacks"] + add, 1, maxi(cap, e["stacks"]))
 	e["time_left"] = maxf(e["time_left"], duration)
+	var move: float = opts.get("move_mult", def.move_mult)
+	e["move_mult"] = minf(e.get("move_mult", move), move)
 	if def.knockback_m > 0.0:
 		var dir: Vector3 = opts.get("dir", Vector3.ZERO)
 		dir.y = 0.0
@@ -170,7 +173,7 @@ func move_mult() -> float:
 	var mult := 1.0
 	for e: Dictionary in _active.values():
 		var def: StatusEffect = e["def"]
-		mult *= 0.0 if def.stops_actions else def.move_mult
+		mult *= 0.0 if def.stops_actions else float(e["move_mult"])
 	return mult
 
 

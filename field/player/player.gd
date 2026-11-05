@@ -59,6 +59,8 @@ var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 @onready var skills: ClassSkills = ClassSkills.attach(self)
 ## Quick-slot consumables (B-16): keys 3 to 6, use time, throwing. Logic in field/consumables/.
 @onready var consumables: ConsumableUser = ConsumableUser.attach(self)
+## Magic weapons (B-15): essence effects, combos, mana, release (X). After `skills`: it wraps the hit filter.
+@onready var magic: MagicWeapon = MagicWeapon.attach(self)
 
 
 func _ready() -> void:

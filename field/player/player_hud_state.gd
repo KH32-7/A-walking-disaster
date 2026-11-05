@@ -4,8 +4,8 @@ extends RefCounted
 ## this returns; missing keys fall back to HUD defaults. Filled now: hp, stamina, weapons,
 ## heading and compass (extraction points), hold bar, interact prompt, dusk_left_sec (B-21,
 ## left out when night is off so the demo has no dusk timer).
-## skills (B-13: [{key, left, max}] of enabled class skills).
-## Later: armor (B-06 armor), consumables (B-16), mana (B-15),
+## skills (B-13: [{key, left, max}] of enabled class skills), mana (B-15: weapon in hand, 0..1).
+## Later: armor (B-06 armor), consumables (B-16),
 ## companions (B-17), objectives (A-13), minimap.
 
 const PROMPT_KEY := "F"
@@ -30,6 +30,7 @@ static func build(player: Player) -> Dictionary:
 		state["dusk_left_sec"] = FieldState.dusk_left_sec()
 	state["companions"] = FieldCompanion.hud_list(player.get_tree())
 	state["consumables"] = player.consumables.hud_slots()
+	state["mana"] = MagicWeapon.hud_mana(player)
 	return state
 
 
