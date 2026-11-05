@@ -88,6 +88,7 @@
 - **SceneRouter**: 하루 흐름의 유일한 진행자. `state()`, `stayed_today`(C: 머무르기 날 생산 +20%), `last_sortie_result`, `last_evening_report`.
   - D(화면): `start_new_game(slot, difficulty)`, `load_game(slot)`, `load_suspended()`, `quit_to_title()`, `open_sortie_prep()`,
     `cancel_sortie_prep()`, `go_to_field(loadout)`, `stay_at_base()`, `end_stay()`, `finish_result()`, `confirm_evening()`, `finish_night()`.
+  - `start_new_game`은 `STARTER_LOADOUT`(기본: MAIN에 `pistol`)을 만들어 `Armory.PLAYER_ID`에 장착한다. 무한 탄 처리는 B.
   - 임시 진행 프롬프트(`main.tscn`의 `FlowPrompts`, `core/flow_prompts.gd`, A): D 화면이 아직 없는 단계를 대신한다.
     TITLE(새 게임·이어하기·중단한 출격), BASE_STAY(하루 마치기), NIGHT(잠자기), Esc 일시정지(필드·기지, 열린 화면 없을 때).
     D가 `data/ui/screens/`에 화면 id `title` / `stay` / `night` / `pause_menu`를 등록하면 그 단계의 프롬프트는 자동으로 빠지고

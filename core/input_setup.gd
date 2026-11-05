@@ -29,7 +29,21 @@ const DEFAULTS := {
 	&"bag": [{"key": KEY_TAB}, {"joy_button": JOY_BUTTON_BACK}],
 	&"map": [{"key": KEY_M}],
 	&"pause": [{"key": KEY_ESCAPE}, {"joy_button": JOY_BUTTON_START}],
+	# FieldCamera (Lane B, B-04, issue #81). The mouse wheel is zoom, so weapon swap has no wheel.
+	# Gamepad rotate / zoom are undecided (no free button yet).
+	&"camera_rotate_left": [{"key": KEY_Z}],
+	&"camera_rotate_right": [{"key": KEY_C}],
+	&"camera_zoom_in": [{"mouse": MOUSE_BUTTON_WHEEL_UP}],
+	&"camera_zoom_out": [{"mouse": MOUSE_BUTTON_WHEEL_DOWN}],
+	&"aim_left": [{"joy_axis": [JOY_AXIS_RIGHT_X, -1.0]}],
+	&"aim_right": [{"joy_axis": [JOY_AXIS_RIGHT_X, 1.0]}],
+	&"aim_up": [{"joy_axis": [JOY_AXIS_RIGHT_Y, -1.0]}],
+	&"aim_down": [{"joy_axis": [JOY_AXIS_RIGHT_Y, 1.0]}],
 }
+
+const DEFAULT_DEADZONE := 0.3
+## Per-action deadzone overrides. The right stick aims, so it reacts earlier than movement.
+const DEADZONES := {&"aim_left": 0.2, &"aim_right": 0.2, &"aim_up": 0.2, &"aim_down": 0.2}
 
 
 func _ready() -> void:
@@ -44,7 +58,7 @@ func apply_defaults(overwrite: bool) -> void:
 				continue
 			InputMap.action_erase_events(action)
 		else:
-			InputMap.add_action(action, 0.3)
+			InputMap.add_action(action, DEADZONES.get(action, DEFAULT_DEADZONE))
 		for spec: Dictionary in DEFAULTS[action]:
 			InputMap.action_add_event(action, _make_event(spec))
 
