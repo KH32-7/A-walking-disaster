@@ -119,6 +119,8 @@ const OUTSKIRT_BUILDINGS := ["motel", "roadside_fast_food", "sheriff_substation"
 	"exterior_only_house_04", "exterior_only_house_05", "exterior_only_house_06", "exterior_only_house_07",
 	"exterior_only_house_08"]
 const OUTSKIRT_FAR_COLOR := Color(0.1, 0.13, 0.11)
+## The far backdrop plane sits under the deep water (RegionDressing.FAR_GROUND_Y matches it).
+const FAR_GROUND_Y := -3.0
 const WATER_SHADER := preload("res://art/shaders/water_toon.gdshader")
 ## Roads: lane lines down the middle of straight roads, power poles with wires along long edges.
 ## No pack sidewalks: their straight slabs fought the crumbled splat road edge and broke at the
@@ -691,7 +693,9 @@ func _save_buildings() -> Error:
 			fm.albedo_color = OUTSKIRT_FAR_COLOR
 			plane.material = fm
 			far.mesh = plane
-			far.position.y = -0.05
+			# Below the deep water and its bed (RegionDressing._water_bed): at -0.05 it covered every
+			# deep-water surface (WATER_SURFACE_Y) through the ground's water holes.
+			far.position.y = FAR_GROUND_Y
 			far.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			parent.add_child(far, true)
 		else:

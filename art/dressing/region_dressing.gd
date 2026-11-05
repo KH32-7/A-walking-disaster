@@ -5,7 +5,7 @@ extends Node3D
 ##
 ## Reads the sibling Layout (read-only geometry) and adds Lane D visuals on top:
 ##   environment (sky, fog, sun, glow), toon skin (each greybox StandardMaterial3D colour is drawn
-##   with the toon shader instead - layout files are untouched), flood water shader on deep-water
+##   with the toon shader instead - layout files are untouched), the base lakes' water (RealisticWater) on water
 ##   surfaces, vines along wall tops, dead neon signs, warm lights in IndoorZones, floating debris,
 ##   street lights on the standing pack lamp posts (field), and for the base: laundry lines, a
 ##   bonfire light, flower pots.
@@ -15,7 +15,15 @@ extends Node3D
 const TOON := preload("res://art/materials/toon_default.tres")
 const FOLIAGE := preload("res://art/materials/toon_foliage.tres")
 const WOOD := preload("res://art/materials/toon_wood.tres")
-const WATER := preload("res://art/shaders/water_toon.gdshader")
+## Water meshes still made with this shader (field/build/layout_builder.gd) are redrawn with RealisticWater.
+const OLD_WATER := preload("res://art/shaders/water_toon.gdshader")
+const CityKit := preload("res://field/buildings/city_kit.gd")
+## Deep water gets a muddy bed this far (m) under its surface (_water_bed).
+const WATER_BED_DEPTH := 2.2
+const WATER_BED_TEXTURE := "res://assets/environment/nature/pure_nature_redwood/textures/terrain/mud_darker_a.png"
+const WATER_BED_TINT := Color(0.55, 0.6, 0.5)
+## The layout builder's far backdrop plane goes this low, under the water beds.
+const FAR_GROUND_Y := -3.0
 
 enum Kind { FIELD, BASE }
 
@@ -75,6 +83,7 @@ var _toon_cache: Dictionary = {}
 var _bobbers: Array[Node3D] = []
 var _t := 0.0
 var _fire: OmniLight3D
+var _bed_mat: Material
 var _street_spots: Array[SpotLight3D] = []
 var _flicker_spots: Array[SpotLight3D] = []
 var _street_mult := 1.0
@@ -223,14 +232,12 @@ func _is_water(s: Node) -> bool:
 # ---------------- water ----------------
 
 func _water(layout: Node) -> void:
-	var mat := ShaderMaterial.new()
-	mat.shader = WATER
-	if bool(Settings.get_value(&"reduce_flash")):
-		mat.set_shader_parameter(&"sparkle_amount", 0.0)
+	# The base lakes' water (RealisticWater), with the real depth below each surface from the depth
+	# buffer: deep channels go dark blue, flooded floors stay see-through.
+	var mat := RealisticWater.material()
 	# Shallow overlays (a few cm over the ground) would read as foam everywhere: the foam is the depth
-	# difference to what is under the surface. They get a thin foam band only (B-26 feedback 2026-11-06).
-	var shallow_mat := mat.duplicate() as ShaderMaterial
-	shallow_mat.set_shader_parameter(&"foam_width", 0.005)
+	# difference to what is under the surface. They keep only a trace of it (B-26 feedback 2026-11-06).
+	var shallow_mat := RealisticWater.material(0.0, true)
 	for n in layout.find_children("*", "CSGShape3D", true, false):
 		if not _is_water(n):
 			continue
@@ -238,10 +245,42 @@ func _water(layout: Node) -> void:
 		(n as CSGShape3D).set(&"material", shallow_mat if is_shallow else mat)
 		var box := (n as CSGShape3D).get_aabb()
 		var xf := (n as Node3D).global_transform
+		if not is_shallow:
+			_water_bed(xf * box)
 		for i in int(debris_count / 2.0):
 			var local := Vector3(_rng.randf_range(box.position.x, box.end.x), box.end.y,
 				_rng.randf_range(box.position.z, box.end.z))
 			_float_debris(xf * local)
+	# The layout builder's far backdrop plane covered the deep water in scenes built before
+	# field/build/layout_builder.gd FAR_GROUND_Y: put it under the water beds.
+	for n in get_parent().find_children("FarGround", "MeshInstance3D", true, false):
+		(n as Node3D).global_position.y = minf((n as Node3D).global_position.y, FAR_GROUND_Y)
+	# The pack dressing (CityKit, the region's buildings scene) draws deep water as flat meshes made
+	# with the old toon water shader: they get the same water.
+	for n in get_parent().find_children("*", "MeshInstance3D", true, false):
+		var m := (n as MeshInstance3D).material_override as ShaderMaterial
+		if m != null and m.shader == OLD_WATER:
+			(n as MeshInstance3D).material_override = mat
+			_water_bed((n as MeshInstance3D).global_transform * (n as MeshInstance3D).get_aabb())
+
+
+## A muddy bed WATER_BED_DEPTH below a deep-water surface. The channels have nothing under them, and
+## the water shader refracts what is below: without a bed the surface reads as one flat colour.
+func _water_bed(surface: AABB) -> void:
+	if _bed_mat == null:
+		if ResourceLoader.exists(WATER_BED_TEXTURE):
+			_bed_mat = CityKit.ground_material(WATER_BED_TEXTURE, 4.0, WATER_BED_TINT)
+		else:
+			_bed_mat = _toon_for(WATER_BED_TINT)
+	var mi := MeshInstance3D.new()
+	mi.name = &"WaterBed"
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(surface.size.x, surface.size.z)
+	mi.mesh = plane
+	mi.material_override = _bed_mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+	mi.global_position = Vector3(surface.get_center().x, surface.end.y - WATER_BED_DEPTH, surface.get_center().z)
 
 
 func _float_debris(at: Vector3) -> void:

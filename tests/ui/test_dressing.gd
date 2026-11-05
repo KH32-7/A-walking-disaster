@@ -23,6 +23,11 @@ func run() -> bool:
 	surf.name = "Surface0"
 	surf.size = Vector3(10, 0.1, 10)
 	water_root.add_child(surf)
+	var far := MeshInstance3D.new()  # the layout builder's outskirts backdrop, built before FAR_GROUND_Y
+	far.name = "FarGround"
+	far.mesh = PlaneMesh.new()
+	map.add_child(far)
+	far.position.y = -0.05
 	var standing := _lamp_post(map, Vector3(5, 0, 5), false)
 	_lamp_post(map, Vector3(-5, 0, 5), true)
 	# The layout builder's own omni over each post (also over the fallen one) and a light tower's.
@@ -55,8 +60,11 @@ func run() -> bool:
 		"environment + sun added") and ok
 	ok = _expect(wall.material is ShaderMaterial, "greybox wall drawn with the toon shader") and ok
 	ok = _expect(gm.albedo_color == Color("c9ccc6"), "layout material resource itself untouched") and ok
-	ok = _expect((surf.material as ShaderMaterial).shader == preload("res://art/shaders/water_toon.gdshader"),
-		"deep-water surface gets the water shader") and ok
+	ok = _expect((surf.material as ShaderMaterial).shader == preload("res://art/shaders/realistic_water.gdshader"),
+		"deep-water surface gets the base lakes' water shader") and ok
+	ok = _expect(d.get_children().any(func(c: Node) -> bool: return c.name.begins_with("WaterBed")),
+		"deep water gets a bed under it") and ok
+	ok = _expect(far.position.y <= -2.9, "the builder's far backdrop goes under the deep water") and ok
 	ok = _expect(d.get_child_count() > 4, "vines / debris added") and ok
 	ok = _expect(ResourceLoader.exists("res://art/dressing/presets/base_school.tscn"), "base dressing preset exists") and ok
 	map.queue_free()
