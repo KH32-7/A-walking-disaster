@@ -13,8 +13,6 @@ enum State { CLOSED, OPENING, OPEN }
 const REVEAL_SEC := 0.5
 ## Interactor moving farther than this (m) from where it started ends the session.
 const MOVE_CANCEL_DISTANCE := 0.1
-## Bag autoload path proposed to Lane A (A-08). Set `bag` directly to override.
-const BAG_PATH := ^"/root/Bag"
 
 ## Open timer started. forcing = locked and no key, noise already emitted.
 signal open_started(duration: float, forcing: bool)
@@ -29,8 +27,6 @@ signal slot_taken(index: int, item_id: StringName, count: int)
 
 @export var def: LootContainerDef
 @export var loot_table: LootTable
-## Bag object with try_add / count_of / remove_item. Null = look up BAG_PATH.
-var bag: Object
 
 var state := State.CLOSED
 ## [{"item_id": StringName, "count": int, "identified": bool}], count 0 = taken.
@@ -101,11 +97,7 @@ func take(index: int) -> int:
 	var slot := _slots[index]
 	if not slot.identified or slot.count <= 0:
 		return 0
-	var b := _get_bag()
-	if b == null:
-		push_warning("LootContainer: no bag at %s" % BAG_PATH)
-		return 0
-	var added: int = b.try_add(slot.item_id, slot.count)
+	var added := Bag.try_add(slot.item_id, slot.count)
 	if added > 0:
 		slot.count -= added
 		slot_taken.emit(index, slot.item_id, added)
@@ -167,7 +159,7 @@ func _finish_open() -> void:
 	if _locked:
 		_locked = false
 		if _use_key:
-			_get_bag().remove_item(def.key_item_id, 1)
+			Bag.remove_item(def.key_item_id, 1)
 	if not _rolled:
 		var rng := RandomNumberGenerator.new()
 		rng.randomize()
@@ -202,11 +194,4 @@ func _next_unidentified() -> int:
 
 
 func _has_key() -> bool:
-	if def == null or def.key_item_id == &"":
-		return false
-	var b := _get_bag()
-	return b != null and b.count_of(def.key_item_id) > 0
-
-
-func _get_bag() -> Object:
-	return bag if bag else get_node_or_null(BAG_PATH)
+	return def != null and def.key_item_id != &"" and Bag.count_of(def.key_item_id) > 0

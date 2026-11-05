@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="LootTable" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="LootTable" load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://field/defs/loot_table.gd" id="1_table"]
 [ext_resource type="Script" path="res://field/defs/loot_entry.gd" id="2_entry"]
@@ -19,12 +19,19 @@ max_count = 1
 
 [sub_resource type="Resource" id="Entry_2"]
 script = ExtResource("2_entry")
-item_id = &"ammo"
-weight = 20.0
+item_id = &"ammo_rifle"
+weight = 10.0
 min_count = 5
 max_count = 10
 
 [sub_resource type="Resource" id="Entry_3"]
+script = ExtResource("2_entry")
+item_id = &"ammo_pistol"
+weight = 10.0
+min_count = 5
+max_count = 10
+
+[sub_resource type="Resource" id="Entry_4"]
 script = ExtResource("2_entry")
 item_id = &"first_aid_kit"
 weight = 20.0
@@ -38,4 +45,4 @@ region_id = &"flooded_mall"
 container_type = 3
 roll_min = 2
 roll_max = 3
-entries = Array[ExtResource("2_entry")]([SubResource("Entry_0"), SubResource("Entry_1"), SubResource("Entry_2"), SubResource("Entry_3")])
+entries = Array[ExtResource("2_entry")]([SubResource("Entry_0"), SubResource("Entry_1"), SubResource("Entry_2"), SubResource("Entry_3"), SubResource("Entry_4")])

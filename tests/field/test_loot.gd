@@ -3,7 +3,6 @@ extends RefCounted
 ## slot per 0.5 s, cancel on movement, make noise when forced, honor instant_loot,
 ## and the spawner places containers on a random share of the LootSpots.
 
-const BAG_STUB := preload("res://field/_sandbox/stubs/bag_stub.gd")
 const CONTAINER_SCENE := preload("res://field/loot/loot_container.tscn")
 const LOOT_SPOT_SCENE := preload("res://field/markers/loot_spot.tscn")
 const STEP := 0.01
@@ -14,8 +13,11 @@ var _ok := true
 
 func run() -> bool:
 	_root = (Engine.get_main_loop() as SceneTree).root
-	var instant_before: Variant = Settings.get_value(&"instant_loot")
-	Settings.set_value(&"instant_loot", false)
+	# Real autoloads: put their state back afterwards. Settings.values is set directly so the
+	# test never writes user://settings.cfg or turns the difficulty into "custom".
+	var instant_before: Variant = Settings.values[&"instant_loot"]
+	var bag_before := Bag.save_data()
+	Settings.values[&"instant_loot"] = false
 	_test_table_roll()
 	_test_data_files()
 	_test_open_and_reveal()
@@ -25,7 +27,8 @@ func run() -> bool:
 	_test_instant_loot()
 	_test_take()
 	_test_spawner()
-	Settings.set_value(&"instant_loot", instant_before)
+	Settings.values[&"instant_loot"] = instant_before
+	Bag.load_data(bag_before)
 	return _ok
 
 
@@ -153,29 +156,29 @@ func _test_key_opens_quietly() -> void:
 	EventBus.noise_emitted.connect(listener)
 	var s := _setup(_def(5.0, true, 6.0), 2)
 	var c: LootContainer = s.container
-	s.bag.try_add(&"key", 1)
+	Bag.try_add(&"key", 1)
 	c.begin_open(s.looter)
 	_check(noises.is_empty(), "key open made noise")
 	_step(c, 1.0)
 	s.looter.position.x += 1.0
 	_step(c, STEP)
-	_check(s.bag.count_of(&"key") == 1, "canceled open used up the key")
+	_check(Bag.count_of(&"key") == 1, "canceled open used up the key")
 	s.looter.position.x -= 1.0
 	c.begin_open(s.looter)
 	_step(c, 5.05)
-	_check(c.state == LootContainer.State.OPEN and s.bag.count_of(&"key") == 0, "key not used on open")
+	_check(c.state == LootContainer.State.OPEN and Bag.count_of(&"key") == 0, "key not used on open")
 	EventBus.noise_emitted.disconnect(listener)
 	_teardown(s)
 
 
 func _test_instant_loot() -> void:
-	Settings.set_value(&"instant_loot", true)
+	Settings.values[&"instant_loot"] = true
 	var s := _setup(_def(1.5), 3)
 	var c: LootContainer = s.container
 	c.begin_open(s.looter)
 	_step(c, 1.55)
 	_check(_count(s.events, "revealed") == 3 and s.events.has("finished"), "instant_loot did not identify at once")
-	Settings.set_value(&"instant_loot", false)
+	Settings.values[&"instant_loot"] = false
 	_teardown(s)
 
 
@@ -187,7 +190,7 @@ func _test_take() -> void:
 	_check(c.take(0) == 0, "took an unidentified slot")
 	_step(c, 1.0)
 	var slot: Dictionary = c.get_slots()[0]
-	_check(c.take(0) == slot.count and s.bag.count_of(slot.item_id) == slot.count, "take did not fill the bag")
+	_check(c.take(0) == slot.count and Bag.count_of(slot.item_id) == slot.count, "take did not fill the bag")
 	_check(c.take(0) == 0, "took the same slot twice")
 	_teardown(s)
 
@@ -239,7 +242,7 @@ func _entry(item: StringName, weight: float, lo: int, hi: int) -> LootEntry:
 	return e
 
 
-## Container with exactly `slots` slots, a looter next to it and a fresh bag stub.
+## Container with exactly `slots` slots, a looter next to it and an empty Bag.
 func _setup(def: LootContainerDef, slots: int) -> Dictionary:
 	var table := LootTable.new()
 	table.roll_min = slots
@@ -248,13 +251,11 @@ func _setup(def: LootContainerDef, slots: int) -> Dictionary:
 	var c: LootContainer = CONTAINER_SCENE.instantiate()
 	c.def = def
 	c.loot_table = table
-	var bag: Node = BAG_STUB.new()
-	c.bag = bag
 	var looter := Node3D.new()
 	looter.position = Vector3(1.0, 0.0, 0.0)
 	_root.add_child(c)
 	_root.add_child(looter)
-	_root.add_child(bag)
+	Bag.load_data({})
 	c.set_physics_process(false)  # the test drives advance() itself
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 99
@@ -264,11 +265,11 @@ func _setup(def: LootContainerDef, slots: int) -> Dictionary:
 	c.slot_revealed.connect(func(_i: int, _id: StringName, _n: int) -> void: events.append("revealed"))
 	c.reveal_finished.connect(func() -> void: events.append("finished"))
 	c.session_ended.connect(func() -> void: events.append("ended"))
-	return {"container": c, "looter": looter, "bag": bag, "events": events}
+	return {"container": c, "looter": looter, "events": events}
 
 
 func _teardown(s: Dictionary) -> void:
-	for key in ["container", "looter", "bag"]:
+	for key in ["container", "looter"]:
 		s[key].free()
 
 

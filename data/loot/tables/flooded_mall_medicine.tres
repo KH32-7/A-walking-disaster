@@ -26,7 +26,7 @@ max_count = 2
 
 [sub_resource type="Resource" id="Entry_3"]
 script = ExtResource("2_entry")
-item_id = &"canned_food"
+item_id = &"food"
 weight = 15.0
 min_count = 1
 max_count = 1

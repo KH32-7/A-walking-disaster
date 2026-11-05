@@ -3,7 +3,6 @@ extends Node3D
 ## fake interactor (no player until B-03), logs every signal on screen and in stdout,
 ## then prints PASS or FAIL. Quits by itself when run headless.
 
-const BAG_STUB := preload("res://field/_sandbox/stubs/bag_stub.gd")
 const SEED := 2026
 ## Give up on one step after this many seconds.
 const STEP_TIMEOUT := 12.0
@@ -13,14 +12,12 @@ const Type := LootSpot.ContainerType
 @onready var _looter: Node3D = $FakeLooter
 @onready var _label: Label = $LogLayer/LogLabel
 
-var _bag: Node
 var _lines: PackedStringArray = []
 var _failures := 0
 var _noise_count := 0
 
 
 func _ready() -> void:
-	_bag = _ensure_bag()
 	EventBus.noise_emitted.connect(_on_noise)
 	_run_demo.call_deferred()
 
@@ -33,8 +30,9 @@ func _run_demo() -> void:
 		by_type[c.def.type] = c
 		_watch(c)
 	_expect(by_type.size() == Type.size(), "one container per kind spawned")
-	var instant_before: Variant = Settings.get_value(&"instant_loot")
-	Settings.set_value(&"instant_loot", false)
+	# Settings.values directly: the demo must not save user://settings.cfg or change the difficulty.
+	var instant_before: Variant = Settings.values[&"instant_loot"]
+	Settings.values[&"instant_loot"] = false
 
 	_log("1. Drawer: open, identify, take all")
 	var drawer: LootContainer = by_type[Type.DRAWER]
@@ -62,13 +60,13 @@ func _run_demo() -> void:
 	_take_all(crate)
 
 	_log("4. Medicine cabinet: instant_loot on")
-	Settings.set_value(&"instant_loot", true)
+	Settings.values[&"instant_loot"] = true
 	var medicine: LootContainer = by_type[Type.MEDICINE]
 	_go_to(medicine)
 	medicine.begin_open(_looter)
 	_expect(await _wait(func() -> bool: return medicine.state == LootContainer.State.OPEN), "medicine opened")
 	_expect(_all_identified(medicine), "instant_loot identified every slot at once")
-	Settings.set_value(&"instant_loot", false)
+	Settings.values[&"instant_loot"] = false
 
 	_log("5. Monster nest: open, identify")
 	var nest: LootContainer = by_type[Type.MONSTER_NEST]
@@ -76,21 +74,12 @@ func _run_demo() -> void:
 	nest.begin_open(_looter)
 	_expect(await _wait(func() -> bool: return _all_identified(nest)), "nest identified every slot")
 
-	Settings.set_value(&"instant_loot", instant_before)
-	_log("Bag: %s" % [_bag.stacks])
+	Settings.values[&"instant_loot"] = instant_before
+	for e in Bag.entries():
+		_log("Bag: %s x%d at %s" % [e["ref"], e["amount"], e["pos"]])
 	_log("B08 DEMO %s (%d failures)" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	if DisplayServer.get_name() == "headless":
 		get_tree().quit(0 if _failures == 0 else 1)
-
-
-func _ensure_bag() -> Node:
-	var existing := get_node_or_null(LootContainer.BAG_PATH)
-	if existing:
-		return existing
-	var stub: Node = BAG_STUB.new()
-	stub.name = "Bag"
-	get_tree().root.add_child.call_deferred(stub)
-	return stub
 
 
 func _watch(c: LootContainer) -> void:
