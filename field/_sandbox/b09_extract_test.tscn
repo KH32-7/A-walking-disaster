@@ -1,0 +1,75 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://field/_sandbox/b09_extract_test.gd" id="1_test"]
+[ext_resource type="PackedScene" path="res://field/_sandbox/field_sandbox.tscn" id="2_sandbox"]
+[ext_resource type="PackedScene" path="res://field/player/player.tscn" id="3_player"]
+[ext_resource type="Script" path="res://field/extract/extraction_manager.gd" id="4_manager"]
+[ext_resource type="PackedScene" path="res://field/markers/extract_point.tscn" id="5_point"]
+[ext_resource type="Script" path="res://field/_sandbox/b09_party_dummy.gd" id="6_dummy"]
+[ext_resource type="Script" path="res://field/_sandbox/noise_debug_ring.gd" id="7_ring"]
+
+[sub_resource type="StandardMaterial3D" id="Mat_companion"]
+albedo_color = Color(0.45, 0.8, 0.45, 1)
+roughness = 1.0
+
+[node name="B09ExtractTest" type="Node3D"]
+script = ExtResource("1_test")
+
+[node name="FieldSandbox" parent="." instance=ExtResource("2_sandbox")]
+
+[node name="Player" parent="." instance=ExtResource("3_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
+
+[node name="ExtractionManager" type="Node" parent="."]
+script = ExtResource("4_manager")
+region_id = &"sandbox"
+
+[node name="ExtractPoints" type="Node3D" parent="."]
+
+[node name="ExNorth" parent="ExtractPoints" instance=ExtResource("5_point")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -22)
+id = &"ex_north"
+
+[node name="ExGenerator" parent="ExtractPoints" instance=ExtResource("5_point")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0, 12)
+id = &"ex_generator"
+type = 1
+wait_sec = 20.0
+noise_radius = 25.0
+
+[node name="ExKey" parent="ExtractPoints" instance=ExtResource("5_point")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 0, 12)
+id = &"ex_key"
+type = 2
+
+[node name="ExBattery" parent="ExtractPoints" instance=ExtResource("5_point")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 0, -22)
+id = &"ex_battery"
+type = 3
+
+[node name="Companion" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0.1, 0)
+script = ExtResource("6_dummy")
+party_id = &"sandbox_companion"
+display_name = "샌드박스 동행자"
+
+[node name="Body" type="CSGCylinder3D" parent="Companion"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+radius = 0.3
+height = 1.6
+material = SubResource("Mat_companion")
+
+[node name="NoiseDebugRing" type="Node3D" parent="."]
+script = ExtResource("7_ring")
+
+[node name="DebugLayer" type="CanvasLayer" parent="."]
+
+[node name="HelpLabel" type="Label" parent="DebugLayer"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -620.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = 200.0
+grow_horizontal = 0
