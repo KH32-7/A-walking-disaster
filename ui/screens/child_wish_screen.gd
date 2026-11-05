@@ -138,7 +138,7 @@ func _answer(choice: StringName, method: int) -> void:
 		notes.append(["● %s을(를) 맞이했어요" % ResidentText.call_name(child), UiTokens.GOOD])
 	elif res.get("waiting", false):
 		dialog.say(ResidentText.call_name(rb), "기다려 보자. 어딘가에 우리를 기다리는 아이가 있을 거야.", b)
-		notes.append(["◆ 무전실이 보호자를 잊은 아이 소문을 기다려요", UiTokens.INFO])
+		notes.append(["◆ 방송실이 보호자를 잊은 아이 소문을 기다려요", UiTokens.INFO])
 	dialog.set_notes(notes)
 	if Colony.child_wishes().is_empty():
 		dialog.set_choices([[&"close", "돌아간다"]])
@@ -161,7 +161,7 @@ func _refresh_column() -> void:
 	v.add_child(card_text("고를 수 있는 방식", true, 14))
 	for m: int in methods:
 		var detail := "%d일 뒤 태어나요. 그동안 아기를 품은 사람은 출격·경비를 쉬어요." % ChildRules.BIRTH_DAYS \
-			if m == Enums.ArrivalMethod.BIRTH else "기지에 보호자 없는 아이가 있으면 바로, 없으면 무전실이 소문을 기다려요."
+			if m == Enums.ArrivalMethod.BIRTH else "기지에 보호자 없는 아이가 있으면 바로, 없으면 방송실이 소문을 기다려요."
 		v.add_child(ResidentEventScreen.mark_row("●", "%s — %s" % [ResidentEventFlow.METHOD_NAMES.get(m, str(m)), detail]))
 	if _stage == &"done":
 		return  # answered: the conditions now only say "already waiting"

@@ -75,25 +75,29 @@ func _test_clear() -> bool:
 		"배정 puts a resident on construction at the zone") and ok
 	_button(_detail(), "빼기").pressed.emit()
 	ok = _expect((_screen.call(&"_workers_on", &"park_a") as Array).is_empty(), "빼기 unassigns") and ok
-	# The wheelchair user cannot reach 체육관 (no ramp): the reason shows instead of a button.
-	_screen.set(&"_sel_zone", &"gym")
-	Colony.start_clearing(&"gym")
+	# The wheelchair user cannot reach 북쪽 숲 (a slope, no ramp): the reason shows instead of a button.
+	Colony.tier = Enums.BaseTier.SETTLEMENT
+	Economy.apply({&"plank": 10})
+	_screen.set(&"_sel_zone", &"park_b")
+	Colony.start_clearing(&"park_b")
 	_screen.call(&"_refresh")
 	ok = _expect(_label_with(_detail(), "경사로") != null, "mobility block reason shown in the worker list") and ok
+	Colony.clear_started.erase(&"park_b")  # _test_clear_cost needs 북쪽 숲 not started yet
 	return ok
 
 
 func _test_clear_cost() -> bool:
-	await _open({"mode": &"clear", "zone": &"roof"})
+	Colony.tier = Enums.BaseTier.SETTLEMENT
+	await _open({"mode": &"clear", "zone": &"park_b"})
 	var start := _button(_detail(), "개간 시작")
-	var ok := _expect(start != null and start.disabled, "옥상 blocked without its start cost")
+	var ok := _expect(start != null and start.disabled, "북쪽 숲 blocked without its start cost (비탈 계단)")
 	var why := _label_with(_detail(), "시작 비용 부족")
 	ok = _expect(why != null and not "&" in why.text, "start cost reason in words") and ok
 	return ok
 
 
 func _test_repair() -> bool:
-	var uid := Colony.place_building(&"workshop", Vector2i(2, 2), 0, &"playground", false)
+	var uid := Colony.place_building(&"workshop", Vector2i(2, 2), 0, &"front_yard", false)
 	Colony.complete_building(uid)
 	Colony.damage_building(uid, 999)
 	Economy.apply(Colony.repair_cost(uid))
@@ -138,10 +142,10 @@ func _test_access() -> bool:
 		ok = _expect(mark is CheckMark and (mark as CheckMark).done == (l.text == "갈 수 있음"),
 			"met / not met has a shape next to the words") and ok
 	ok = _expect(_find(_list(), func(n: Node) -> bool: return n is InfoIcon) == null, "no inclusion facility yet") and ok
-	var ramp := Colony.place_building(&"ramp", Vector2i(1, 1), 0, &"gym", false)
+	var ramp := Colony.place_building(&"ramp", Vector2i(1, 1), 0, &"park_b", false)
 	Colony.complete_building(ramp)  # buildings_changed → the view redraws
 	await get_tree().process_frame
-	ok = _expect(_labels(_list(), "못 들어감").size() == blocked - 1, "a ramp in 체육관 makes it reachable") and ok
+	ok = _expect(_labels(_list(), "못 들어감").size() == blocked - 1, "a ramp in 북쪽 숲 makes it reachable") and ok
 	ok = _expect(_find(_list(), func(n: Node) -> bool: return n is InfoIcon) != null,
 		"inclusion facility shown with the INFO icon") and ok
 	ok = _expect(_label_with(_detail(), "청각") != null and _label_with(_detail(), "돌봄") != null
