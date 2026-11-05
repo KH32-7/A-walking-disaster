@@ -201,7 +201,10 @@ func _fill_companions() -> void:
 	var any := false
 	for id: StringName in Colony.active_resident_ids():
 		var r := Colony.get_resident(id)
-		var ok := int(r.get("health", 0)) == 0 and int(r.get("age_stage", 3)) >= Enums.AgeStage.TEEN
+		var block := LossText.sortie_block(id)  # #125 part 7: Colony.sortie_block_reason
+		var ok := int(r.get("health", 0)) == 0 and int(r.get("age_stage", 3)) >= Enums.AgeStage.TEEN and block == ""
+		if not ok:
+			_companions.erase(id)
 		var on := id in _companions
 		var b := Button.new()
 		b.theme_type_variation = &"ButtonCancel"
@@ -214,8 +217,17 @@ func _fill_companions() -> void:
 		for s in [&"normal", &"hover", &"pressed", &"focus", &"disabled"]:
 			b.add_theme_stylebox_override(s, box)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		var why := ""
+		if int(r.get("health", 0)) != 0:
+			why = "다침·아픔"
+		elif int(r.get("age_stage", 3)) < Enums.AgeStage.TEEN:
+			why = "어려서 못 감"
+		elif block != "":
+			why = block
+		var grief := LossText.grief_tag(r)
 		b.text = "%s%s   %s" % ["✓ " if on else "", String(r.get("name", "")),
-			"" if ok else ("다침·아픔" if int(r.get("health", 0)) != 0 else "어려서 못 감")]
+			why if why != "" else grief]
+		b.tooltip_text = why
 		b.add_theme_color_override(&"font_color", UiTokens.TEXT if ok else UiTokens.TEXT_DIM)
 		b.custom_minimum_size = Vector2(0, 48)
 		b.disabled = not ok
@@ -232,6 +244,7 @@ func _fill_companions() -> void:
 		any = true
 	if not any:
 		_right.add_child(MenuScreen.label("함께 갈 주민이 없어요. 혼자 출발합니다.", &"LabelDim", 15))
+	_add_stranded()
 	_right.add_child(MenuScreen.label("기지를 비우는 동안", &"LabelSection", 16))
 	var ch: Dictionary = RaidRules.raid_chance(Enums.RaidTime.DAY, Colony.threat)
 	var pct := roundi(float(ch.get("chance", 0.0)) * 100.0)
@@ -255,6 +268,19 @@ func _fill_companions() -> void:
 	_go.pressed.connect(_depart)
 	row.add_child(_go)
 	_right.add_child(row)
+
+
+## #125 part 3: residents left in the field — where, and how long until they go missing.
+func _add_stranded() -> void:
+	var rows := LossText.absent_rows().filter(func(a: Dictionary) -> bool: return a.kind == &"stranded")
+	if rows.is_empty():
+		return
+	_right.add_child(MenuScreen.label("필드에 남은 사람", &"LabelSection", 16))
+	for a: Dictionary in rows:
+		var l := MenuScreen.label("%s   %s" % [a.name, a.text], &"LabelHud", 15)
+		l.add_theme_color_override(&"font_color", UiTokens.WARN)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_right.add_child(l)
 
 
 func loadout() -> Dictionary:

@@ -15,6 +15,7 @@ extends Node
 ##                     emergency_return_requested are tracked too. The router emits sortie_ended.
 ##   Lane C (base):    start_day_raid / end_day_raid / start_night_event / end_night_event,
 ##                     and the Colony.settle_day / roll_raid / resolve_raid functions in contracts.md.
+##                     A night raid waits in NIGHT_RAID until Colony.begin_direct_defense calls back.
 ## Autosaves (design 01 "저장"): entering BASE_MORNING, right before the field loads (saved as
 ## SORTIE_PREP, so loading puts you back in prep) and on entering RESULT after the bag was unloaded.
 
@@ -397,7 +398,9 @@ func _settle_evening() -> bool:
 	return true
 
 
-## Night raid is resolved automatically for now (direct defence is C-17).
+## Night raid: the player defends the base directly (C-17, issue #121). Colony runs the
+## DefenseBattle when the base scene is up and calls back when it ends; without a base scene
+## (headless, tests) it judges at once with the player bonus and calls back right away.
 func _roll_night_raid() -> void:
 	if not Colony.has_method(&"roll_raid"):
 		return
@@ -405,9 +408,20 @@ func _roll_night_raid() -> void:
 	if not raid.get("occurs", false):
 		return
 	_go(S.NIGHT_RAID)
-	if Colony.has_method(&"resolve_raid"):
-		Colony.call(&"resolve_raid", raid, Enums.RaidMode.AUTO)
-	_go(S.NIGHT)
+	if Colony.has_method(&"start_raid"):
+		Colony.call(&"start_raid", raid)
+	if Colony.has_method(&"begin_direct_defense"):
+		Colony.call(&"begin_direct_defense", raid, 1, _on_night_raid_done)
+	else:
+		if Colony.has_method(&"resolve_raid"):
+			Colony.call(&"resolve_raid", raid, Enums.RaidMode.AUTO)
+		_on_night_raid_done()
+
+
+## The defense can last minutes; the player may have quit to the title meanwhile.
+func _on_night_raid_done() -> void:
+	if state() == S.NIGHT_RAID:
+		_go(S.NIGHT)
 
 
 ## The flow state came back with GameState; re-enter it so screens and the world match.

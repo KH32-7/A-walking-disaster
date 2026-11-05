@@ -19,6 +19,10 @@ const KIND_RESOURCE := &"resource"
 const KIND_ITEM := &"item"
 ## Ids with no ResourceDef (ammo, consumables until A-09) take one cell and stack this high.
 const DEFAULT_STACK := 20
+## Base defense (C-17, issues #110 #121): most ammo of each kind taken from storage (가안).
+const DEFENSE_AMMO_MAX := 120
+## Base defense: consumables taken from storage, each up to its stack size (가안).
+const DEFENSE_CONSUMABLES: Array[StringName] = [&"first_aid_kit", &"bandage", &"painkiller"]
 
 var grid_size: Vector2i = Armory.DEFAULT_BAG_GRID
 ## Extra cells in a partial row under the grid (work vest +2, perks).
@@ -171,6 +175,34 @@ func take_from_storage(resource_id: StringName, amount: int) -> int:
 	if moved > 0:
 		Economy.apply({resource_id: -moved})
 	return moved
+
+
+## Base defense start (Lane C DefenseBattle.start()): fills the bag from base storage with ammo for
+## the player's equipped guns (up to DEFENSE_AMMO_MAX each) and DEFENSE_CONSUMABLES (up to one
+## stack each), only what fits. At the end the battle calls unload_to_base() so the rest goes back.
+## Returns {resource_id: amount moved}.
+func load_for_defense() -> Dictionary:
+	resize_for_player()
+	var moved := {}
+	for slot in [Enums.EquipSlot.MAIN, Enums.EquipSlot.SUB]:
+		var uid := Armory.get_equipped(Armory.PLAYER_ID, slot)
+		if uid == &"":
+			continue
+		var ammo_id := StringName(Armory.get_item_stats(uid).get("ammo_id", &""))
+		if ammo_id == &"" or moved.has(ammo_id):
+			continue
+		_take_into(moved, ammo_id, DEFENSE_AMMO_MAX - count(ammo_id))
+	for id in DEFENSE_CONSUMABLES:
+		_take_into(moved, id, _stack_max(id) - count(id))
+	return moved
+
+
+func _take_into(moved: Dictionary, resource_id: StringName, amount: int) -> void:
+	if amount <= 0:
+		return
+	var n := take_from_storage(resource_id, amount)
+	if n > 0:
+		moved[resource_id] = n
 
 
 # --- Lane B looting API (issue #6). Resource / consumable ids only; for equipment use

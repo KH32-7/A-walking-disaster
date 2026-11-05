@@ -12,6 +12,7 @@ traits = Array[StringName]([&"monster_mark", &"timid"])
 likes = Array[StringName]([&"drawing", &"sweet_food"])
 dislikes = Array[StringName]([&"dark", &"shouting"])
 access_needs = Array[int]([1])
+origin_tags = Array[StringName]([&"migrant"])
 background = "이주민 가정의 열 살 아이. 한국어 방송을 다 알아듣지 못해 대피 시간을 놓쳤다. 마물에게 닿은 팔에 옅게 빛나는 무늬가 남았다. 무늬는 따뜻하지도 아프지도 않다고 한다."
 fragments = Array[String](["엄마는 시장에서 반찬가게를 했다. 린은 손님들 주문을 그림으로 그려 엄마에게 건네곤 했다.", "무늬를 소매로 가리는 버릇이 있다. 누가 무늬를 보고도 아무렇지 않게 웃어 주면, 그제야 소매를 걷는다."])
 contribution = "그림 표지판을 그려 말이 달라도 알아보게 한다."

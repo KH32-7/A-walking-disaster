@@ -28,6 +28,11 @@ extends Resource
 @export var dislikes: Array[StringName] = []
 ## Enums.AccessNeed values (참여 조건).
 @export var access_needs: Array[int] = []
+## &"female" / &"male" (ResidentData.GENDERS). &"" = rolled 50/50 when the person joins (C-15).
+@export var gender: StringName
+## 출신 태그, lowercase snake case (e.g. &"migrant"). Not traits: a background that opens
+## B-20 hidden routes (07 "출신은 특성이 아니라 사연", issue #107).
+@export var origin_tags: Array[StringName] = []
 ## Optional partial stats {&"str"|&"dex"|&"sense"|&"heart": 1..10}. Missing ones are rolled.
 @export var stats: Dictionary = {}
 ## Optional partial aptitude {&"gun"|&"blade"|&"blunt": Enums.Aptitude}. Missing ones are rolled.
@@ -88,6 +93,7 @@ func to_profile() -> Dictionary:
 		"likes": likes.duplicate(),
 		"dislikes": dislikes.duplicate(),
 		"access_needs": access_needs.duplicate(),
+		"origin_tags": origin_tags.duplicate(),
 		"story": {
 			"background": background,
 			"fragments": fragments.duplicate(),
@@ -100,6 +106,8 @@ func to_profile() -> Dictionary:
 	}
 	if nickname != "":
 		p["nickname"] = nickname
+	if gender != &"":
+		p["gender"] = gender
 	if not stats.is_empty():
 		p["stats"] = stats.duplicate()
 	if not class_aptitude.is_empty():
@@ -178,6 +186,11 @@ func validate(banned: PackedStringArray = PackedStringArray()) -> PackedStringAr
 		errors.append("rescue_lines: %d given, need %d" % [rescue_lines.size(), RESCUE_LINE_COUNT])
 	for i in rescue_lines.size():
 		_check_text(errors, "rescue_lines[%d]" % i, rescue_lines[i], LINE_MAX, true)
+	if gender != &"" and gender not in ResidentData.GENDERS:
+		errors.append("gender '%s' is not one of %s" % [gender, ResidentData.GENDERS])
+	for tag in origin_tags:
+		if not _snake.search(String(tag)):
+			errors.append("origin_tags '%s' is not lowercase snake case" % tag)
 	if region_id != &"" and not _snake.search(String(region_id)):
 		errors.append("region_id '%s' is not lowercase snake case" % region_id)
 

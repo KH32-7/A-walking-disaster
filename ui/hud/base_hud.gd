@@ -11,7 +11,7 @@ const SEASONS := ["봄", "여름", "가을", "겨울"]
 const PHASES := ["아침", "출격", "기지", "저녁", "밤"]
 ## [label, key, screen id or action]
 const MENU := [["건설", "B", &"build"], ["주민", "R", &"residents"], ["무기고", "I", &"armory"],
-	["제작", "C", &"craft"], ["일지", "J", &"journal"], ["머무르기", "H", &"@stay"], ["출격", "Enter", &"@sortie"]]
+	["제작", "C", &"craft"], ["일지", "J", &"journal"], ["전초기지", "O", &"outposts"], ["머무르기", "H", &"@stay"], ["출격", "Enter", &"@sortie"]]
 const NOTE_MAX := 4
 const NOTE_SEC := 8.0
 

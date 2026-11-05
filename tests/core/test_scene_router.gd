@@ -34,6 +34,7 @@ func run() -> bool:
 	EventBus.flow_state_changed.connect(on_flow)
 
 	var ok := _check_starter_loadout() and _check_three_days() and _check_refused() and _check_stay_branch()
+	ok = ok and _check_night_raid()
 	ok = ok and await _check_load_to_prep()
 	ok = ok and _check_merge_loot()
 
@@ -117,6 +118,22 @@ func _check_stay_branch() -> bool:
 		and _expect(SceneRouter.end_day_raid() and GameState.flow_state == Enums.FlowState.EVENING, "day raid -> evening")
 	ok = _expect(SceneRouter.confirm_evening() and SceneRouter.finish_night(), "night") and ok
 	return ok and _expect(GameState.day == day + 1 and not SceneRouter.stayed_today, "stay flag not reset")
+
+
+## Night raid (issue #121): NIGHT_RAID holds the night until Colony's direct defense calls back.
+## Headless there is no DefenseBattle, so begin_direct_defense judges at once and calls back.
+func _check_night_raid() -> bool:
+	var ok := _expect(SceneRouter.stay_at_base() and SceneRouter.end_stay() and SceneRouter.confirm_evening()
+		and GameState.flow_state == Enums.FlowState.NIGHT, "reach night")
+	ok = ok and _expect(SceneRouter._go(Enums.FlowState.NIGHT_RAID), "night -> night raid")
+	ok = ok and _expect(not SceneRouter.finish_night(), "finish_night during night raid")
+	var raid: Dictionary = Colony.roll_raid(Enums.RaidTime.NIGHT, true)
+	Colony.start_raid(raid)
+	Colony.begin_direct_defense(raid, 1, SceneRouter._on_night_raid_done)
+	ok = ok and _expect(GameState.flow_state == Enums.FlowState.NIGHT, "defense done did not return to night")
+	SceneRouter._on_night_raid_done()  # a late callback outside NIGHT_RAID changes nothing
+	ok = ok and _expect(GameState.flow_state == Enums.FlowState.NIGHT, "late callback moved the flow")
+	return ok and _expect(SceneRouter.finish_night(), "finish_night after the raid")
 
 
 func _check_load_to_prep() -> bool:

@@ -65,7 +65,7 @@ func _start() -> void:
 func _band() -> void:
 	band.visible = not _chain.is_empty()
 	if not _chain.is_empty():
-		band.set_steps(ResidentEventFlow.PREJUDICE_STEPS, ResidentEventFlow.chain_step_index(_chain) + 1)
+		band.set_progress(ResidentEventFlow.PREJUDICE_STEPS, ResidentEventFlow.chain_step_index(_chain) + 1)
 
 
 func _draw() -> void:

@@ -42,7 +42,7 @@ func _start() -> void:
 	_result = {}
 	_stage = &"ask"
 	band.visible = not w.is_empty()
-	band.set_steps(ResidentEventFlow.CHILD_STEPS, 0)
+	band.set_progress(ResidentEventFlow.CHILD_STEPS, 0)
 	if w.is_empty():
 		a = &""
 		b = &""
@@ -120,7 +120,7 @@ func _answer(choice: StringName, method: int) -> void:
 	_stage = &"done"
 	# 바람 → 맞이 → 이름 짓기 → 입주: an orphan adopted now already lives here (all done).
 	var arrived := choice == &"now" and StringName(res.get("child_id", &"")) != &""
-	band.set_steps(ResidentEventFlow.CHILD_STEPS, ResidentEventFlow.CHILD_STEPS.size() if arrived else (1 if choice == &"now" else 0))
+	band.set_progress(ResidentEventFlow.CHILD_STEPS, ResidentEventFlow.CHILD_STEPS.size() if arrived else (1 if choice == &"now" else 0))
 	var notes: Array = []
 	if choice == &"later":
 		dialog.say(ResidentText.call_name(ra), "그래, 조금 더 생각해 보자.", a)

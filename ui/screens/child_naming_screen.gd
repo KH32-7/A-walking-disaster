@@ -54,7 +54,7 @@ func _refresh() -> void:
 	_next_button = null
 	_nick_edit = null
 	# UI redesign "순서를 보여 준다": the whole child arrival; this screen is steps 3 and 4.
-	_band.set_steps(ResidentEventFlow.CHILD_STEPS, 2 + step)
+	_band.set_progress(ResidentEventFlow.CHILD_STEPS, 2 + step)
 	var r := Colony.get_resident(resident_id)
 	if r.is_empty() or (step == 0 and not ResidentEventFlow.is_family_child(resident_id)):
 		_who.text = ""

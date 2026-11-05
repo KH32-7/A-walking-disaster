@@ -70,7 +70,7 @@ func _start() -> void:
 func _band(state: StringName) -> void:
 	band.visible = state != &"none"
 	var cur := 2 if state == &"ready" else (1 if bool(_status.get("ok", false)) else 0)
-	band.set_steps(ResidentEventFlow.WEDDING_STEPS, cur)
+	band.set_progress(ResidentEventFlow.WEDDING_STEPS, cur)
 
 
 func _on_choice(id: StringName) -> void:

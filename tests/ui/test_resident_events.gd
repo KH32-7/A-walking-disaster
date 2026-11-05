@@ -87,7 +87,7 @@ func _test_prejudice() -> bool:
 	ok = _expect(box.layout == DialogBox.Layout.CENTER and box.primary_choice() == 0,
 		"centred dialogue, one yellow ring on the choice to press now") and ok
 	var band: StepBand = s.get(&"band")
-	ok = _expect(band.visible and band.steps == ResidentEventFlow.PREJUDICE_STEPS and band.state_of(0) == &"done"
+	ok = _expect(band.visible and band.names == ResidentEventFlow.PREJUDICE_STEPS and band.state_of(0) == &"done"
 		and band.state_of(1) == &"now", "step band 소문 ✓ → 선택 (now)") and ok
 	var trust := int(Colony.get_resident(target).trust)
 	ok = _expect(box.pick(PrejudiceRules.CHOICE_DEFEND), "defend can be picked") and ok
@@ -176,7 +176,7 @@ func _test_naming() -> bool:
 	await get_tree().process_frame
 	var s := UI.get_screen(&"child_naming")
 	ok = _expect(s.get(&"resident_id") == child and s.get(&"step") == 0, "it takes the waiting child") and ok
-	ok = _expect((s.get(&"_band") as StepBand).steps == ResidentEventFlow.CHILD_STEPS and (s.get(&"_band") as StepBand).current == 2,
+	ok = _expect((s.get(&"_band") as StepBand).names == ResidentEventFlow.CHILD_STEPS and (s.get(&"_band") as StepBand).current == 2,
 		"band: 바람 ✓ 맞이 ✓ → 이름 짓기") and ok
 	ok = _expect(not s.call(&"save_name", "") and String(s.get(&"_error")) != "", "an empty name shows Colony's reason") and ok
 	ok = _expect(s.call(&"save_name", "하람") and Colony.get_resident(child).name == "하람" and s.get(&"step") == 1,
