@@ -10,7 +10,13 @@ extends Node
 const NUMBER_SEC := 0.7
 const NUMBER_RISE := 0.8
 const NUMBER_HEIGHT := 1.6
-const NUMBER_SIZE := 48
+const NUMBER_SIZE := 64
+## m per font pixel: 64 x 0.008 = about 0.5 m tall (B-28, was 0.29 m and hard to read at 13.5 m).
+const NUMBER_PIXEL := 0.008
+const NUMBER_OUTLINE := 14
+## Big numbers (crits) start this much larger and snap down to size: they "pop".
+const NUMBER_POP := 1.7
+const NUMBER_POP_SEC := 0.12
 const FLASH_SEC := 0.12
 const MONSTER_FLASH := Color(1.0, 1.0, 1.0, 0.8)
 const PLAYER_FLASH := Color(1.0, 0.3, 0.25, 0.7)
@@ -95,16 +101,20 @@ func show_number(at: Vector3, text: String, color: Color, size := 1.0) -> Label3
 	label.text = text
 	label.modulate = color
 	label.outline_modulate = UiTokens.SHADOW
-	label.outline_size = 10
+	label.outline_size = NUMBER_OUTLINE
 	label.font_size = roundi(NUMBER_SIZE * size)
 	if _font != null:
 		label.font = _font
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
 	label.fixed_size = false
-	label.pixel_size = 0.006
+	label.pixel_size = NUMBER_PIXEL
 	add_child(label)
 	label.global_position = at + Vector3(randf_range(-0.15, 0.15), 0.0, 0.0)
+	if size > 1.2:
+		label.scale = Vector3.ONE * NUMBER_POP
+		var pop := label.create_tween()
+		pop.tween_property(label, ^"scale", Vector3.ONE, NUMBER_POP_SEC).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	var tw := label.create_tween()
 	tw.tween_property(label, ^"position:y", label.position.y + NUMBER_RISE, NUMBER_SEC) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)

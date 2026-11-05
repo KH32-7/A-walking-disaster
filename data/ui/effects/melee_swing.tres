@@ -1,0 +1,45 @@
+[gd_resource type="Resource" script_class="FxDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/fx_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://vfx/defs/fx_layer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/magic_arsenal/textures/cleave_light.png"
+grow = Vector2(1.6, 2.4)
+lifetime = 0.18
+color = Color(1.0, 1.0, 1.0, 0.85)
+fade_out = 0.6
+element_textures = PackedStringArray("", "res://assets/vfx/magic_arsenal/textures/cleave_life.png", "", "res://assets/vfx/magic_arsenal/textures/cleave_water.png", "res://assets/vfx/magic_arsenal/textures/cleave_light.png")
+tint_element = true
+align = 3
+spin = false
+offset = Vector3(0.0, 1.0, -0.9)
+follow_radius = true
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/magic_arsenal/textures/cleave_light.png"
+grow = Vector2(2.2, 3.2)
+lifetime = 0.22
+color = Color(1.0, 1.0, 1.0, 0.95)
+fade_out = 0.6
+element_textures = PackedStringArray("", "res://assets/vfx/magic_arsenal/textures/cleave_life.png", "", "res://assets/vfx/magic_arsenal/textures/cleave_water.png", "res://assets/vfx/magic_arsenal/textures/cleave_light.png")
+tint_element = true
+align = 3
+spin = false
+offset = Vector3(0.0, 1.05, -1.1)
+follow_radius = true
+flash = true
+when = {
+"finisher": true
+}
+
+[resource]
+script = ExtResource("1_def")
+id = &"melee_swing"
+base_radius = 1.5
+max_alive = 6
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1")])

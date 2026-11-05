@@ -30,6 +30,7 @@
 |---|---|---|
 | `hit_spark` | `element`, `crit`, `weak_point` | B weapon_holder, companion. 소리 `hit_impact`, 치명타 `hit_crit` |
 | `muzzle_flash` | `direction` | B weapon_holder |
+| `melee_swing` | `direction`, `radius`(무기 사거리), `element`, `combat_class`, `finisher` | B weapon_holder 근접 휘두르기. 마무리타면 큰 호가 하나 더 |
 | `bullet_tracer` | `to`, `speed`(기본 120 m/s) | B weapon_holder, companion, companion_skill |
 | `bullet_impact` | `normal` | B weapon_holder (벽, 바닥) |
 | `perfect_block` | | B weapon_holder |

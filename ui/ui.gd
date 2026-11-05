@@ -103,6 +103,8 @@ func _add_d16_nodes() -> void:
 var field_hud: FieldHud
 ## Noise rings, monster ?/!, edge arrows (D-05). Lives with the field HUD.
 var world_markers: WorldMarkers
+## Aim reticle + hit markers in place of the OS cursor (B-28). Lives with the field HUD.
+var aim_reticle: AimReticle
 
 
 func show_field_hud(on: bool) -> void:
@@ -113,10 +115,17 @@ func show_field_hud(on: bool) -> void:
 		field_hud = FieldHud.new()
 		field_hud.name = &"FieldHud"
 		hud.add_child(field_hud)
+		aim_reticle = AimReticle.new()
+		aim_reticle.name = &"AimReticle"
+		hud.add_child(aim_reticle)  # over the HUD widgets
 	for n: Control in [field_hud, world_markers]:
 		if n != null:
 			n.visible = on
 			n.process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
+	if aim_reticle != null:
+		aim_reticle.visible = on
+		# Always: it must give the cursor back while the game is paused under a screen.
+		aim_reticle.process_mode = Node.PROCESS_MODE_ALWAYS if on else Node.PROCESS_MODE_DISABLED
 
 
 ## Base HUD (D-06): top bar, notifications, bottom menu. Shown in the base flow states.

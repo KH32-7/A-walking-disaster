@@ -47,6 +47,8 @@ const BEHAVIORS := {
 
 var state: Enums.AIState = Enums.AIState.WANDER
 var hp: float = 0.0
+## B-28: info of the latest hit (the killing one after died): the corpse is knocked along it.
+var last_hit: Dictionary = {}
 var max_hp: float = 0.0
 ## Set before adding to the tree to scale max hp (split children).
 var hp_scale: float = 1.0
@@ -206,6 +208,7 @@ func take_damage(amount: float, info: Dictionary = {}) -> void:
 		dealt = status.scale_damage(amount * part * Enums.element_multiplier(element, def.family) \
 				* MonsterRules.defense_factor(def.defense * status.defense_mult()), info)
 	hp -= dealt
+	last_hit = info
 	damaged.emit(dealt, info)
 	if hp <= 0.0:
 		_die()
