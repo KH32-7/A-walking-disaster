@@ -65,6 +65,9 @@ func _ready() -> void:
 	raid_flow = RaidFlow.new()
 	raid_flow.name = &"RaidFlow"
 	add_child(raid_flow)
+	resident_events = ResidentEventFlow.new()  # #125: 아이 맞이·이름 짓기·편견 소문
+	resident_events.name = &"ResidentEventFlow"
+	add_child(resident_events)
 	_on_flow_state_changed(GameState.flow_state)
 
 
@@ -132,6 +135,7 @@ func show_base_hud(on: bool) -> void:
 
 ## Raid screens (D-14): warning / result / emergency return, and the direct defense HUD.
 var raid_flow: RaidFlow
+var resident_events: ResidentEventFlow
 var raid_hud: RaidDefenseHud
 const RAID_STATES := [Enums.FlowState.BASE_DAY_RAID, Enums.FlowState.NIGHT_RAID]
 
@@ -204,7 +208,7 @@ func _on_flow_state_changed(state: Enums.FlowState) -> void:
 			close(id)
 	# D-13: 입주 의식 for survivors brought home, on top of the evening screen.
 	if state == Enums.FlowState.EVENING and _in_game() and has_screen(&"welcome") and not is_open(&"welcome") \
-			and not Colony.pending_arrivals().is_empty():
+			and not ResidentEventFlow.welcome_queue().is_empty():
 		open(&"welcome")
 	# D-19: transition card (출격 / 귀환 / 쓰러짐 / 불러오기) above the screen just opened.
 	var t := LoadingScreen.transition_for(_last_flow, state)

@@ -82,7 +82,7 @@ func _build_body(b: Control) -> void:
 
 ## Back from a D-13 screen: trust, likes, nickname or bed may have changed.
 func _on_screen_closed(id: StringName) -> void:
-	if id in [&"dialog", &"gift", &"welcome"] and is_inside_tree():
+	if id in [&"dialog", &"gift", &"welcome", &"child_naming", &"child_wish", &"prejudice_choice", &"wedding_prep"] 			and is_inside_tree():
 		_fill()
 
 
@@ -277,13 +277,21 @@ func _show_detail() -> void:
 		for like in known:
 			kl.append(ResidentText.tag_name(like))
 		_detail.add_child(MenuScreen.label("▲ 좋아하는 것  " + " · ".join(kl), &"LabelDim", 14))
+	# #125: 편견 소문 진행, 결혼 약속, 아이 맞이 조건 (ResidentEventFlow reads Colony).
+	for line: Array in ResidentEventFlow.detail_lines(_sel):
+		var ll := MenuScreen.label(String(line[0]), &"LabelHud", 14)
+		ll.add_theme_color_override(&"font_color", line[1])
+		ll.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_detail.add_child(ll)
 	var day_acts := Colony.trust_actions(_sel)
 	var acts := HBoxContainer.new()
 	acts.add_theme_constant_override(&"separation", 10)
 	var buttons := [["대화", &"ButtonPrimary", &"dialog", day_acts.get("talk", false) or day_acts.get("deep_talk", false), "오늘은 이야기했어요"],
 		["선물", &"ButtonSecondary", &"gift", day_acts.get("gift", false), "오늘은 선물했어요"],
 		["장비 바꾸기", &"ButtonSecondary", &"armory", true, ""]]
-	if bool(r.get("arrival_pending", false)):
+	if ResidentEventFlow.is_family_child(_sel):
+		buttons.push_front(["이름 짓기", &"ButtonPrimary", &"child_naming", true, ""])
+	elif bool(r.get("arrival_pending", false)):
 		buttons.push_front(["입주 의식", &"ButtonPrimary", &"welcome", true, ""])
 	for pair: Array in buttons:
 		var bt := MenuScreen.button(String(pair[0]), pair[1])
@@ -295,6 +303,12 @@ func _show_detail() -> void:
 			bt.tooltip_text = String(pair[4])
 		bt.pressed.connect(func() -> void: UI.open(target, {"resident_id": _sel}))
 		acts.add_child(bt)
+	for ev: Array in ResidentEventFlow.detail_buttons(_sel):
+		var eb := MenuScreen.button(String(ev[0]), &"ButtonSecondary")
+		var sid: StringName = ev[1]
+		var eargs: Dictionary = ev[2]
+		eb.pressed.connect(func() -> void: UI.open(sid, eargs))
+		acts.add_child(eb)
 	_detail.add_child(acts)
 
 
