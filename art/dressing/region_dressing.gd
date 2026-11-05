@@ -177,6 +177,9 @@ func _toon_for(c: Color) -> ShaderMaterial:
 
 
 func _is_water(s: Node) -> bool:
+	# Field layouts tag every water surface (B-26, field/build/layout_builder.gd WATER_SURFACE_GROUP).
+	if s.is_in_group(&"water_surface"):
+		return true
 	var nm := String(s.name)
 	if nm == "Chan" or nm.begins_with("Water") or nm.begins_with("Channel"):
 		return true

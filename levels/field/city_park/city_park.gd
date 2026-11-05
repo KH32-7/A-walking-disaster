@@ -7,6 +7,9 @@ extends Node3D
 ## TODO(A-05): SceneRouter.go_to_field(loadout) picks spawn_id from the loadout.
 
 const DRESSING_PATH := "res://levels/field/city_park/dressing.tscn"
+## B-26 pack dressing (built by build/build_layout.gd); needs the private assets/ submodule.
+const BUILDINGS_PATH := "res://levels/field/city_park/buildings.tscn"
+const CityKit := preload("res://field/buildings/city_kit.gd")
 const PLAYER_SCENE := preload("res://field/player/player.tscn")
 
 ## PlayerSpawn marker to start at: &"main" (south avenue, main gate) or &"east" (east road).
@@ -20,6 +23,7 @@ var player: Node3D
 
 
 func _ready() -> void:
+	CityKit.attach(self, _layout, BUILDINGS_PATH)
 	if ResourceLoader.exists(DRESSING_PATH):
 		add_child((load(DRESSING_PATH) as PackedScene).instantiate())
 		$GreyboxLighting.queue_free()

@@ -31,6 +31,8 @@ const ROOFTOP_PROPS := ["conditioner_07", "conditioner_08", "roof_vents_01", "ro
 ## IndoorZone.ROOF_GROUP / ROOF_META (field/camera/indoor_zone.gd).
 const ROOF_GROUP := &"field_roof"
 const ROOF_META := &"building_id"
+## layout_builder.gd KIT_GREYBOX_GROUP: layout geometry the pack dressing replaces.
+const GREYBOX_GROUP := &"kit_greybox"
 
 const WALL_H := 3.0
 const WALL_T := 0.2
@@ -149,6 +151,13 @@ const PROPS := {
 	"sequoia2": ["nature/trees", Vector3(-7.93, -0.76, -7.50), Vector3(16.30, 36.15, 15.27)],
 	"sequoia3": ["nature/trees", Vector3(-8.36, -0.76, -8.41), Vector3(16.21, 38.28, 16.87)],
 	# Outdoor, vehicles, nature (Redwood pack: folder nature/<sub>).
+	"patio_bench_a": ["outdoor_environment", Vector3(-0.23, 0.00, -1.00), Vector3(0.45, 0.56, 2.05)],
+	"patio_bench_b": ["outdoor_environment", Vector3(-0.25, 0.00, -1.11), Vector3(0.50, 0.50, 2.22)],
+	"riding_lawn_mower": ["outdoor_environment", Vector3(-0.91, -0.00, -0.95), Vector3(1.81, 1.12, 1.53)],
+	"vending_machine_02": ["retail_shelving", Vector3(-0.38, -0.00, -0.56), Vector3(0.75, 1.87, 1.12)],
+	"speaker_box": ["outdoor_environment", Vector3(-0.23, -0.00, -0.26), Vector3(0.39, 1.20, 0.43)],
+	"stepping_stone_path_01": ["outdoor_environment", Vector3(-1.00, 0.00, 0.00), Vector3(1.00, 0.04, 1.00)],
+	"outdoor_dining_table_a": ["outdoor_environment", Vector3(-0.52, 0.00, -1.11), Vector3(1.04, 0.90, 2.13)],
 	"campfire_patio": ["outdoor_environment", Vector3(-0.51, -0.00, -0.53), Vector3(1.04, 0.48, 1.06)],
 	"adirondack_chair": ["outdoor_environment", Vector3(-0.43, 0.00, -0.37), Vector3(0.90, 0.96, 0.84)],
 	"compost_bin": ["outdoor_environment", Vector3(-0.34, -0.00, -0.97), Vector3(0.69, 1.07, 1.95)],
@@ -801,3 +810,25 @@ static func _dark(mat: Material, cache: Dictionary) -> Material:
 			base.b * FOLIAGE_TINT.b, base.a))
 		cache[sm] = d
 	return cache[sm]
+
+
+## Puts a region's pack dressing scene (layout_builder.gd out_kit) under region, next to its layout:
+## pack meshes in, greybox (group kit_greybox) out, layout skins on, foliage tuned. Does nothing
+## without the private packs (CI keeps the greybox). Returns the dressing root or null.
+static func attach(region: Node3D, layout: Node3D, kit_path: String) -> Node3D:
+	if not available() or not ResourceLoader.exists(kit_path):
+		return null
+	var kit := (load(kit_path) as PackedScene).instantiate() as Node3D
+	region.add_child(kit)
+	tune_look(kit)
+	# Layout CSG that stays (stairs, ramps) gets pack textures; Lane D's toon skin leaves ShaderMaterials.
+	var skins: Dictionary = kit.get_meta(&"layout_skins", {})
+	for path: NodePath in skins:
+		var shape := layout.get_node_or_null(path)
+		if shape != null:
+			shape.set(&"material", skins[path])
+	for node in layout.find_children("*", "Node3D", true, false):
+		if node.is_in_group(GREYBOX_GROUP):
+			node.remove_from_group(ROOF_GROUP)
+			(node as Node3D).visible = false
+	return kit

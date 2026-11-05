@@ -33,6 +33,8 @@ const KitScatter := preload("res://field/buildings/kit_scatter.gd")
 const GroundSplat := preload("res://field/buildings/ground_splat.gdshader")
 ## Greybox stand-ins of the kit dressing. The region scene hides them when the pack meshes load.
 const KIT_GREYBOX_GROUP := &"kit_greybox"
+## Water surfaces (deep and shallow) for Lane D's water shader (region_dressing.gd _is_water).
+const WATER_SURFACE_GROUP := &"water_surface"
 ## Markers inside kit buildings must be this far from walls and furniture.
 const KIT_MARKER_CLEAR := 0.3
 ## B-26 kit dressing: mesh picks and plants use their own seed so the layout seeds keep the map as is.
@@ -58,8 +60,15 @@ const SPLAT_RES := 0.5
 const SPLAT_BLUR := Vector3(1.0, 2.5, 2.5)
 const KIT_CARS := ["car_sedan_01", "car_sedan_02", "car_sedan_03", "car_crossover_01", "car_crossover_02",
 	"car_crossover_04", "car_crossover_05", "car_minivan_01", "police_sedan", "car_sport_01"]
+## Clutter kinds stretched along their greybox piece: kind -> pack piece (length along its local Z).
+const KIT_STRETCH := {"Barricade": "concrete_bump_5m", "LowWall": "concrete_bump_5m",
+	"Branch": "redwood_hollow_log_0", "Bench": "patio_bench_b"}
 ## Clutter kinds drawn with pack meshes; their box takes the mesh size.
 const KIT_CLUTTER := {
+	"Planter": ["bushes_04", "bushes_06", "bushes_08"],
+	"Cart": ["riding_lawn_mower", "wheelbarrow"],
+	"VendingMachine": ["vending_machine_01", "vending_machine_02"],
+	"Bin": ["urn_street_02", "curbside_trash_bin_03"],
 	"Crate": ["barrel_01", "barrel_02", "plastic_barrel_02", "curbside_trash_bin_01", "curbside_trash_bin_03",
 		"tool_cabinet", "pile_garbage_02"],
 	"CratePile": ["pile_garbage_01", "pile_garbage_03", "commercial_dumpster_02"],
@@ -297,6 +306,12 @@ var out_kit := ""
 var out_splat := ""
 var kit_cover := {}
 var shop_fill := []
+## Roads whose zone id starts with this get lane lines and power poles ("" = every road).
+var kit_street_prefix := ""
+## Path texture instead of the street asphalt (park paths), "" = KIT_TERRAIN.road.
+var kit_road_texture := ""
+## Furniture along road edges instead of STREET_PROPS (park benches and bins), [] = STREET_PROPS.
+var street_props := []
 
 var _map: Dictionary
 var _zones := {}
@@ -316,7 +331,11 @@ var _kit := {}
 ## piece -> PackedFloat32Array (x, y, z, yaw, scale), ground polygons by KIT_GROUND key.
 var _kit_items: Array[Dictionary] = []
 var _kit_plants := {}
-var _kit_ground := {"land": [], "road": [], "vegetation": [], "water": []}
+var _kit_ground := {"land": [], "road": [], "vegetation": [], "water": [], "shallow": []}
+## Zone ids of _kit_ground.road, same order (streets get lane lines and poles, see kit_street_prefix).
+var _kit_road_ids: Array[String] = []
+## Where the kit ground mesh must not cover (ramps going down, park underpass); set by structures.
+var _kit_ground_holes: Array[PackedVector2Array] = []
 var _kit_rng := RandomNumberGenerator.new()
 ## Layout CSG path -> [texture, tile]: textured at runtime when the kit loads (flooded_mall.gd).
 var _kit_skins := {}
@@ -414,7 +433,9 @@ func _build_terrain() -> void:
 	water.name = "DeepWater"
 	_root.add_child(water)
 	for i in deep.size():
-		water.add_child(_prism("Surface%d" % i, deep[i], WATER_SURFACE_Y - 0.05, 0.05, "deep", false))
+		var surface := _prism("Surface%d" % i, deep[i], WATER_SURFACE_Y - 0.05, 0.05, "deep", false)
+		surface.add_to_group(WATER_SURFACE_GROUP, true)
+		water.add_child(surface)
 	var lip := _combiner("Edge")
 	lip.visible = false
 	water.add_child(lip)
@@ -443,9 +464,14 @@ func _build_terrain() -> void:
 			var overlay := _prism(_title(zone.id), _poly(zone), 0.0, OVERLAY_Y[kind], kind, false)
 			overlays.add_child(overlay)
 			# B-26: roads and vegetation are painted into the kit ground (splat map) instead.
-			if _kit_ground.has(kind):
+			if kind == "road" or kind == "vegetation":
 				_kit_ground[kind].append(_poly(zone))
 				overlay.add_to_group(KIT_GREYBOX_GROUP, true)
+				if kind == "road":
+					_kit_road_ids.append(zone.id)
+			elif kind == "shallow":
+				_kit_ground.shallow.append(_poly(zone))
+				overlay.add_to_group(WATER_SURFACE_GROUP, true)
 
 	var blocked := Node3D.new()
 	blocked.name = "Blocked"
@@ -455,12 +481,20 @@ func _build_terrain() -> void:
 			var shape := _prism(_title(zone.id), _poly(zone), 0.0, blocked_h.get(zone.id, DEFAULT_BLOCKED_H), "blocked", true)
 			_nav(shape)
 			blocked.add_child(shape)
-			if zone.id.begins_with("bus"):
+			if _kit_blocked(zone, _poly(zone), blocked_h.get(zone.id, DEFAULT_BLOCKED_H)):
 				shape.add_to_group(KIT_GREYBOX_GROUP, true)
-				_kit_bus_row(_bounds(_poly(zone)))
-			elif zone.id == "rubble":
-				shape.add_to_group(KIT_GREYBOX_GROUP, true)
-				_kit_rubble(_poly(zone), blocked_h.get(zone.id, DEFAULT_BLOCKED_H))
+
+
+## Region hook (B-26): draws a blocked zone with pack pieces, returns true if it did (its greybox
+## prism then hides; the prism keeps the collision). Default: bus lanes and collapsed houses.
+func _kit_blocked(zone: Dictionary, poly: PackedVector2Array, h: float) -> bool:
+	if zone.id.begins_with("bus"):
+		_kit_bus_row(_bounds(poly))
+		return true
+	if zone.id == "rubble":
+		_kit_rubble(poly, h)
+		return true
+	return false
 
 
 # --- buildings -------------------------------------------------------------
@@ -592,7 +626,12 @@ func _save_buildings() -> Error:
 		CityKit.build_meshes(buildings, StringName(id), b[0], b[1], _kit[id])
 	var ground := MeshInstance3D.new()
 	ground.name = "Ground"
-	ground.mesh = _flat_mesh(_kit_ground.land, KIT_GROUND_LIFT)
+	var land: Array[PackedVector2Array] = []
+	for poly: PackedVector2Array in _kit_ground.land:
+		land.append(poly)
+	for cut in _kit_ground_holes:
+		land = _clip_all(land, cut)
+	ground.mesh = _flat_mesh(land, KIT_GROUND_LIFT)
 	var mat := ShaderMaterial.new()
 	mat.shader = GroundSplat
 	mat.set_shader_parameter(&"splat_map", _bake_splat())
@@ -600,6 +639,8 @@ func _save_buildings() -> Error:
 	mat.set_shader_parameter(&"splat_size", Vector2(MAP_HALF, MAP_HALF) * 2.0)
 	for key: String in KIT_TERRAIN:
 		mat.set_shader_parameter(StringName(key), load(KIT_TERRAIN[key]))
+	if not kit_road_texture.is_empty():
+		mat.set_shader_parameter(&"road", load(kit_road_texture))
 	# The pack asphalt is a dark grey; the cool grade crushed it to black (feedback 2026-11-06).
 	mat.set_shader_parameter(&"road_bright", ROAD_BRIGHT)
 	ground.material_override = mat
@@ -626,7 +667,10 @@ func _save_buildings() -> Error:
 			var mi := MeshInstance3D.new()
 			mi.name = "Slab"
 			mi.mesh = _flat_mesh([item.slab], item.y)
-			mi.material_override = CityKit.ground_material(item.texture, item.tile, item.get("tint", Color.WHITE))
+			if item.get("splat", false):
+				mi.material_override = mat # the ground's own splat material, seamless with it
+			else:
+				mi.material_override = CityKit.ground_material(item.texture, item.tile, item.get("tint", Color.WHITE))
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			parent.add_child(mi, true)
 		elif item.has("water"):
@@ -717,7 +761,7 @@ func _bake_splat() -> ImageTexture:
 		_raster(grass, n, poly)
 	var bare := PackedFloat32Array()
 	bare.resize(n * n)
-	for poly: PackedVector2Array in _kit_ground.road + _kit_ground.water + _kit_blocked_polys():
+	for poly: PackedVector2Array in _kit_ground.road + _kit_ground.water + _kit_ground.shallow + _kit_blocked_polys():
 		_raster(bare, n, poly)
 	for i in n * n:
 		grass[i] = maxf(grass[i] - bare[i], 0.0)
@@ -1211,7 +1255,7 @@ func _build_nature() -> void:
 
 
 func _build_ground_cover(trees: PackedVector2Array) -> void:
-	var water: Array = _kit_ground.water
+	var water: Array = _kit_ground.water + _kit_ground.shallow
 	var buildings := _kit_blocked_polys()
 	var doors := []
 	for id: String in zone_doors:
@@ -1250,7 +1294,7 @@ func _build_ground_cover(trees: PackedVector2Array) -> void:
 
 	# Overgrowth bands just outside every edge.
 	var edges: Array = []
-	for key: String in ["road", "vegetation", "water"]:
+	for key: String in ["road", "vegetation", "water", "shallow"]:
 		edges.append_array(_kit_ground[key])
 	for zone: Dictionary in _map.zones:
 		if zone.floor == 0 and zone.kind in ["indoor", "blocked"]:
@@ -1423,6 +1467,9 @@ func _kit_cover(kind: String, center: Vector2, size: Vector2, rot_deg: float) ->
 			_kit_add("concrete_bump_5m", center, yaw + (0.0 if along_z else PI * 0.5), 0.0, length / 5.0)
 		"pump":
 			pass # Drawn by the gas station canopy's pump island (_build_pois); only the greybox hides.
+		"bench":
+			var bench_len: float = (CityKit.PROPS.patio_bench_b[2] as Vector3).z
+			_kit_add("patio_bench_b", center, yaw + (0.0 if along_z else PI * 0.5), 0.0, length / bench_len)
 		"shelves":
 			_kit_shelf_row(center, yaw + (PI * 0.5 if along_z else 0.0), length, 0.0)
 
@@ -1461,7 +1508,7 @@ func _build_wall_dressing() -> void:
 	for zone: Dictionary in _map.zones:
 		if zone.floor == 0 and zone.kind == "indoor":
 			outlines.append(_poly(zone))
-	var water: Array = _kit_ground.water
+	var water: Array = _kit_ground.water + _kit_ground.shallow
 	var roads: Array = _kit_ground.road
 	var placed := 0
 	for poly: PackedVector2Array in outlines:
@@ -1659,16 +1706,17 @@ func _kit_clutter(pieces: Array) -> Array:
 			var along_z: bool = piece[4] > piece[3]
 			out.append([piece, car, maxf(piece[3], piece[4]) / (CityKit.PROPS[car][2] as Vector3).x,
 				PI * 0.5 if along_z else 0.0])
-		elif kind in ["Barricade", "LowWall"]:
-			# Concrete barrier scaled to the piece's long side. LowWall becomes "Barrier" so Lane D does
-			# not grow vines on its hidden greybox box.
+		elif KIT_STRETCH.has(kind):
+			# A long piece scaled to the greybox piece's long side (its own length runs along local Z).
+			# LowWall becomes "Barrier" so Lane D does not grow vines on its hidden greybox box.
+			var mesh: String = KIT_STRETCH[kind]
 			var along_z: bool = piece[4] > piece[3]
 			var length: float = maxf(piece[3], piece[4])
-			var s: float = length / 5.0
-			var bump: Vector3 = CityKit.PROPS.concrete_bump_5m[2]
-			var w: float = bump.x * s
+			var dims: Vector3 = CityKit.PROPS[mesh][2]
+			var s: float = length / dims.z
+			var w: float = dims.x * s
 			out.append([["Barrier" if kind == "LowWall" else kind, piece[1], piece[2], w if along_z else length,
-				length if along_z else w, bump.y * s, piece[6]], "concrete_bump_5m", s, 0.0 if along_z else PI * 0.5])
+				length if along_z else w, dims.y * s, piece[6]], mesh, s, 0.0 if along_z else PI * 0.5])
 		elif KIT_CLUTTER.has(kind):
 			var pool: Array = KIT_CLUTTER[kind]
 			var mesh: String = pool[_kit_rng.randi_range(0, pool.size() - 1)]
@@ -1876,11 +1924,15 @@ func _build_roadside() -> void:
 	var points := _keep_out_points()
 	var blocked := _kit_blocked_polys()
 	var roads: Array = _kit_ground.road
-	var water: Array = _kit_ground.water
+	var water: Array = _kit_ground.water + _kit_ground.shallow
 	var inside_any := func(p: Vector2, polys: Array) -> bool:
 		return polys.any(func(q: PackedVector2Array) -> bool: return Geometry2D.is_point_in_polygon(p, q))
 	var poles := 0
-	for poly: PackedVector2Array in roads:
+	var streets: Array = []
+	for k in roads.size():
+		if _kit_road_ids[k].begins_with(kit_street_prefix):
+			streets.append(roads[k])
+	for poly: PackedVector2Array in streets:
 		for i in poly.size():
 			var a := poly[i]
 			var b := poly[(i + 1) % poly.size()]
@@ -1919,7 +1971,7 @@ func _build_roadside() -> void:
 	# Lane lines down the long axis of every road wide enough for traffic (any outline): a 10 m piece
 	# wherever its whole length stays inside the road, 1.5 m clear of the edges.
 	var lines := 0
-	for poly: PackedVector2Array in roads:
+	for poly: PackedVector2Array in streets:
 		var axis := _main_axis(poly)
 		var c: Vector2 = axis[0]
 		var dir: Vector2 = axis[1]
@@ -2145,7 +2197,8 @@ func _build_street() -> void:
 			while t < length - 2.0:
 				var p := a + dir * t + normal * STREET_OUT
 				t += STREET_STEP * _kit_rng.randf_range(0.8, 1.4)
-				var piece: String = STREET_PROPS[_kit_rng.randi_range(0, STREET_PROPS.size() - 1)]
+				var pool: Array = street_props if not street_props.is_empty() else STREET_PROPS
+				var piece: String = pool[_kit_rng.randi_range(0, pool.size() - 1)]
 				# Front (-X) looks back at the road.
 				var yaw := atan2(-normal.y, normal.x)
 				var size := _kit_size(piece, yaw, PROP_SCALE)
