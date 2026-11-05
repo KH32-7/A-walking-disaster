@@ -18,6 +18,8 @@ signal reload_started(duration_sec: float)
 signal reload_finished()
 ## kind: &"shot" or &"swing". combo_step: 1..3 for swings, 0 for shots.
 signal attacked(kind: StringName, combo_step: int)
+## One bullet path (per pellet), same points as Fx "bullet_tracer". hit = it stopped on something.
+signal shot_traced(from: Vector3, to: Vector3, hit: bool)
 signal hit_landed(target: Node, amount: float, info: Dictionary)
 signal blocked(perfect: bool)
 signal guard_broken()
@@ -223,6 +225,7 @@ func shoot_ray(origin: Vector3, direction: Vector3, max_range: float, amount: fl
 		var hit := space.intersect_ray(query)
 		if hit.is_empty():
 			Fx.spawn(&"bullet_tracer", origin, {"to": target_point})
+			shot_traced.emit(origin, target_point, false)
 			return null
 		var collider := hit["collider"] as Node
 		if _is_low_cover(collider) and pass_index < MAX_COVER_PASSES:
@@ -231,6 +234,7 @@ func shoot_ray(origin: Vector3, direction: Vector3, max_range: float, amount: fl
 			continue
 		var point: Vector3 = hit["position"]
 		Fx.spawn(&"bullet_tracer", origin, {"to": point})
+		shot_traced.emit(origin, point, true)
 		var target := _damage_target(collider)
 		if target == null:
 			Fx.spawn(&"bullet_impact", point, {"normal": hit["normal"]})

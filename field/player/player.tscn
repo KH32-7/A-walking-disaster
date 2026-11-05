@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://field/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://field/noise/noise_emitter.gd" id="2_noise"]
 [ext_resource type="Script" path="res://field/combat/weapon_holder.gd" id="3_weapons"]
+[ext_resource type="Script" path="res://field/combat/combat_debug_view.gd" id="4_debug_view"]
 
 [sub_resource type="CapsuleShape3D" id="Shape_body"]
 radius = 0.35
@@ -46,3 +47,6 @@ armory_owner_id = &"player"
 
 [node name="Weapons" type="Node3D" parent="."]
 script = ExtResource("3_weapons")
+
+[node name="CombatDebugView" type="Node3D" parent="."]
+script = ExtResource("4_debug_view")
