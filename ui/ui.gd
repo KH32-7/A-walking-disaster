@@ -43,6 +43,7 @@ func _ready() -> void:
 	subtitle.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	subtitle.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	subtitle.offset_bottom = -200
+	_add_d16_nodes()
 	_rebuild_theme()
 	_load_defs()
 	EventBus.settings_changed.connect(_on_settings_changed)
@@ -52,6 +53,30 @@ func _ready() -> void:
 	_last_flow = GameState.flow_state
 	Colony.night_events_ready.connect(_on_night_events_ready)
 	_on_flow_state_changed(GameState.flow_state)
+
+
+## D-16: explored-area memory for the field map, notification toasts while no HUD shows them,
+## and the radio voice (TTS).
+var explore: FieldExplore
+var notice_toast: NoticeToast
+var radio_voice: RadioVoice
+
+
+func _add_d16_nodes() -> void:
+	explore = FieldExplore.new()
+	explore.name = &"FieldExplore"
+	add_child(explore)
+	radio_voice = RadioVoice.new()
+	radio_voice.name = &"RadioVoice"
+	add_child(radio_voice)
+	notice_toast = NoticeToast.new()
+	notice_toast.name = &"NoticeToast"
+	overlay.add_child(notice_toast)
+	notice_toast.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_KEEP_SIZE)
+	notice_toast.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	notice_toast.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	notice_toast.offset_right = -52
+	notice_toast.offset_bottom = -22
 
 
 ## The field HUD (D-04). Created on first use, shown only in FlowState.FIELD.
@@ -119,6 +144,9 @@ func _on_container_opened(_slot_count: int) -> void:
 func _input(event: InputEvent) -> void:
 	if GameState.flow_state == Enums.FlowState.FIELD and _stack.is_empty() and event.is_action_pressed(&"bag"):
 		open(&"bag")
+		get_viewport().set_input_as_handled()
+	elif GameState.flow_state == Enums.FlowState.FIELD and _stack.is_empty() and event.is_action_pressed(&"map"):
+		open(&"map")  # D-16
 		get_viewport().set_input_as_handled()
 
 
