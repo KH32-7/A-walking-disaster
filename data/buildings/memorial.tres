@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_mra4b"]
+
+[resource]
+script = ExtResource("1_mra4b")
+id = &"memorial"
+display_name = "추모비"
+cost = Dictionary[StringName, int]({
+&"stone": 20
+})
+effects = Dictionary[StringName, float]({
+&"grief_recovery": 1.0
+})
+requires_flags = Array[StringName]([&"first_death"])

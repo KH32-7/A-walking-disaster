@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_r0psp"]
+
+[resource]
+script = ExtResource("1_r0psp")
+id = &"dormitory"
+display_name = "숙소"
+category = 0
+size = Vector2i(3, 3)
+cost = Dictionary[StringName, int]({
+&"stone": 20,
+&"wood": 40
+})
+effects = Dictionary[StringName, float]({
+&"beds": 4.0,
+&"fatigue_recovery": 50.0,
+&"morale_daily": 1.0
+})
+requires = Array[StringName]([&"carpentry_shop"])

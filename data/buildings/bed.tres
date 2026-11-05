@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_0ulry"]
+
+[resource]
+script = ExtResource("1_0ulry")
+id = &"bed"
+display_name = "침상"
+category = 0
+size = Vector2i(1, 2)
+cost = Dictionary[StringName, int]({
+&"wood": 10
+})
+effects = Dictionary[StringName, float]({
+&"beds": 1.0,
+&"fatigue_recovery": 40.0
+})

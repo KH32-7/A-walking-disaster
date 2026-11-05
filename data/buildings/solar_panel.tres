@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_tc6fg"]
+
+[resource]
+script = ExtResource("1_tc6fg")
+id = &"solar_panel"
+display_name = "태양광 패널"
+category = 9
+size = Vector2i(2, 2)
+cost = Dictionary[StringName, int]({
+&"electronics": 3,
+&"scrap": 20
+})
+effects = Dictionary[StringName, float]({
+&"power_supply": 3.0,
+&"power_supply_winter": 1.5
+})
+requires_flags = Array[StringName]([&"blueprint_solar"])
