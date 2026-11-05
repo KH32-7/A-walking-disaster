@@ -1,0 +1,21 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://field/_sandbox/b03_player_test.gd" id="1_test"]
+[ext_resource type="PackedScene" path="res://field/_sandbox/field_sandbox.tscn" id="2_sandbox"]
+[ext_resource type="PackedScene" path="res://field/player/player.tscn" id="3_player"]
+
+[node name="B03PlayerTest" type="Node3D"]
+script = ExtResource("1_test")
+
+[node name="FieldSandbox" parent="." instance=ExtResource("2_sandbox")]
+
+[node name="Player" parent="." instance=ExtResource("3_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
+
+[node name="DebugLayer" type="CanvasLayer" parent="."]
+
+[node name="PlayerLabel" type="Label" parent="DebugLayer"]
+offset_left = 16.0
+offset_top = 140.0
+offset_right = 400.0
+offset_bottom = 260.0

@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="PlayerStats" format=3]
+
+[ext_resource type="Script" path="res://field/defs/player_stats.gd" id="1_stats"]
+
+[resource]
+script = ExtResource("1_stats")
+max_health = 100.0
+health_per_level = 5.0
+max_stamina = 100.0
+stamina_regen = 25.0
+stamina_regen_delay_sec = 0.8
+sprint_stamina_per_sec = 10.0
+walk_speed = 4.5
+sprint_speed = 7.0
+aim_move_speed = 2.5
+acceleration = 30.0
+dodge_distance = 3.5
+dodge_duration_sec = 0.35
+dodge_invuln_sec = 0.3
+dodge_stamina = 25.0
