@@ -25,6 +25,8 @@ class_name ResidentData
 ##          연애·결혼은 성별과 상관없고, 출산은 여성 주민만 (C-15)
 ##   study_days: {job_id: days} — 교실에서 배운 날 (세대 간 전수, C-15)
 ##   story_revealed: bool — 편견이 풀리며 사연이 모두 공개됨 (C-16)
+##   stranded_region: StringName, strand_days_left: int (-1 = 기한 없음) — 고립 중 (C-20)
+##   grief_days: int — 슬픔 (작업 효율 −20%), memorial_day: int — 추모비에 다녀온 날 (C-20)
 ##   health: Enums.HealthState, recover_days: int
 ##   relations: {resident_id: -100..100} (C-14)
 ##   assignment: {job: StringName, building_id: StringName}
@@ -105,6 +107,10 @@ static func create(profile: Dictionary, rng: RandomNumberGenerator) -> Dictionar
 		"gender": roll_gender(profile, rng),
 		"study_days": {},
 		"story_revealed": false,
+		"stranded_region": &"",
+		"strand_days_left": 0,
+		"grief_days": 0,
+		"memorial_day": 0,
 		"class_aptitude": roll_aptitude(rng),
 		"hunger": START_HUNGER,
 		"fatigue": START_FATIGUE,
@@ -170,6 +176,10 @@ static func normalize(src: Dictionary) -> Dictionary:
 	r["gender"] = parse_gender(r.get("gender", ""), r["id"])
 	r["study_days"] = _int_map(r.get("study_days", {}), 0, 1 << 30)
 	r["story_revealed"] = bool(r.get("story_revealed", false))
+	r["stranded_region"] = StringName(r.get("stranded_region", &""))
+	r["strand_days_left"] = int(r.get("strand_days_left", 0))
+	r["grief_days"] = maxi(int(r.get("grief_days", 0)), 0)
+	r["memorial_day"] = int(r.get("memorial_day", 0))
 	var apt := {}
 	for key in CLASS_KEYS:
 		apt[key] = clampi(int(_read(r.get("class_aptitude", {}), key, Enums.Aptitude.MID)), 0, Enums.Aptitude.size() - 1)

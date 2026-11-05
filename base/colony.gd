@@ -23,6 +23,11 @@ signal child_arrived(child_id: StringName, method: int, parents: Array)
 signal prejudice_rumor(target_id: StringName, holder_ids: Array)
 signal prejudice_incident(target_id: StringName, kind: StringName)
 signal prejudice_resolved(holder_id: StringName, target_id: StringName)
+## 고립·실종·사망·추모 (C-20): a stranded resident was not found in time, a funeral is shown this
+## morning (D, then end_funeral()), and a child got a new guardian.
+signal resident_missing(resident_id: StringName)
+signal funeral_ready(resident_ids: Array)
+signal guardian_changed(child_id: StringName, guardian_id: StringName)
 ## Autoload `Colony`. Owner: Lane C.
 ## Residents, buildings, relationships, raids threat - everything that lives in the base.
 ## Other lanes read through the getters below; they never edit resident data directly.
@@ -75,6 +80,9 @@ var last_night_raid_day := 0
 var _night_rolled_day := 0
 ## 편견 이벤트 체인 (C-16): target_id -> chain (see prejudice_chains()).
 var prejudice_chains_data: Dictionary = {}
+## 추모비에 새긴 이름 [{resident_id, name, day, cause}] and the funerals for tomorrow morning (C-20).
+var memorials: Array = []
+var funerals: Array = []
 
 var _next_resident_num := 1
 var _next_building_num := 1
@@ -88,6 +96,7 @@ func _ready() -> void:
 	EventBus.rescue_completed.connect(_on_rescue_completed)
 	EventBus.flow_state_changed.connect(_on_flow_state_changed)
 	EventBus.sortie_ended.connect(_on_sortie_ended)
+	EventBus.companion_stranded.connect(_on_companion_stranded)
 	_reset()
 	# DebugConsole loads after Colony and registers its placeholders in _ready; replace them after.
 	_register_debug_commands.call_deferred()
@@ -824,7 +833,7 @@ func settle_day() -> Dictionary:
 			continue  # workplace without power, or damaged by a raid, does not run
 		if access_block_reason(id, _work_zone(id)) != "":
 			continue  # 갈 수 없게 됨 (경사로가 부서지거나 철거됨)
-		var f := WorkRules.efficiency(r, job, _works_alone(id)) * access_multiplier(id) * _best_friend_mult(id) * _pregnancy_mult(id, job)
+		var f := WorkRules.efficiency(r, job, _works_alone(id)) * access_multiplier(id) * _best_friend_mult(id) * _pregnancy_mult(id, job) * _grief_mult(id)
 		if stayed:
 			f *= WorkRules.STAY_OUTPUT_MULT
 		if after_festival:
@@ -895,6 +904,7 @@ func settle_day() -> Dictionary:
 	_settle_relations(worked)
 	_settle_children(events)
 	_settle_prejudice(events)
+	_settle_loss(events)
 	var morale := _settle_morale(ids, ate_cooked, events)
 
 	# 4. Generator fuel (2/일, 겨울 3). No fuel → no power tomorrow.
@@ -1453,6 +1463,8 @@ func _on_flow_state_changed(state: Enums.FlowState) -> void:
 		_roll_tonight.call_deferred()
 	elif state == Enums.FlowState.BASE_MORNING:
 		_finish_night()
+		if not funerals.is_empty():
+			funeral_ready.emit(pending_funeral())
 
 
 ## Stay day raid (10 "발생 규칙": 낮, 기지에 머무는 중, 위협도 70 이상 20%), issue #45.
@@ -1471,11 +1483,12 @@ func _roll_stay_day_raid() -> void:
 	SceneRouter.end_day_raid()
 
 
-## TODO(C-20): funeral, grief, memorial, guardian succession.
+## Death: coworkers' morale, grief, the memorial, guardianship and tomorrow's funeral (C-20).
 func _kill(id: StringName, cause: StringName) -> void:
 	unassign_job(id)
 	release_bed(id)
 	residents[id]["status"] = Enums.ResidentStatus.DEAD
+	_after_death(id, cause)
 	EventBus.resident_died.emit(id, cause)
 
 
@@ -1692,9 +1705,9 @@ func partner_of(resident_id: StringName) -> StringName:
 		var flags: Array = m["flags"]
 		if not (Enums.RelationFlag.LOVERS in flags or Enums.RelationFlag.MARRIED in flags):
 			continue
-		if m["a"] == resident_id and residents.has(m["b"]):
+		if m["a"] == resident_id and _present(m["b"]):
 			return m["b"]
-		if m["b"] == resident_id and residents.has(m["a"]):
+		if m["b"] == resident_id and _present(m["a"]):
 			return m["a"]
 	return &""
 
@@ -1704,7 +1717,7 @@ func couples() -> Array:
 	var out := []
 	for key: String in relation_meta:
 		var m: Dictionary = relation_meta[key]
-		if Enums.RelationFlag.MARRIED in m["flags"] and residents.has(m["a"]) and residents.has(m["b"]):
+		if Enums.RelationFlag.MARRIED in m["flags"] and _present(m["a"]) and _present(m["b"]):
 			out.append([m["a"], m["b"]])
 	return out
 
@@ -2234,7 +2247,7 @@ func guardians_of(child_id: StringName) -> Array[StringName]:
 		if not Enums.RelationFlag.GUARDIAN in m["flags"]:
 			continue
 		var other: StringName = m["b"] if m["a"] == child_id else (m["a"] if m["b"] == child_id else &"")
-		if other != &"" and residents.has(other) and not ChildRules.is_minor(residents[other]):
+		if other != &"" and _present(other) and not ChildRules.is_minor(residents[other]):
 			out.append(other)
 	return out
 
@@ -2441,6 +2454,179 @@ func _needs_care(resident_id: StringName) -> bool:
 ## 출산을 기다리는 주민: 힘 작업 효율 ×0.7.
 func _pregnancy_mult(resident_id: StringName, job: JobDef) -> float:
 	return ChildRules.PREGNANT_STR_MULT if job.main_stat_key() == &"str" and is_pregnant(resident_id) else 1.0
+
+
+# --- 고립·실종·사망·추모 (C-20) ------------------------------------------------------------
+## 고립: companion_stranded → status STRANDED with strand_days_left (Settings strand_days, -1 = 기한
+## 없음). Each evening one day passes; at 0 the resident goes missing (MISSING, 장비 유실).
+## A stranded resident rescued in the field comes home through rescue_completed (resident dict).
+## 사망: _kill() → 동료 사기, 슬픔, 추모비 기록, 보호자 승계, next morning's funeral.
+
+## Stranded residents: [{"resident_id", "region_id", "days_left" (-1 = no limit)}] for B's rescue
+## spawns, the radio and the residents screen.
+func stranded_residents() -> Array:
+	var out: Array = []
+	for id: StringName in residents:
+		var r: Dictionary = residents[id]
+		if int(r["status"]) == Enums.ResidentStatus.STRANDED:
+			out.append({"resident_id": id, "region_id": r["stranded_region"], "days_left": r["strand_days_left"]})
+	return out
+
+
+## Stranded residents in one region (B-10/B-11 spawn them as fixed rescue targets).
+func stranded_in(region_id: StringName) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for s in stranded_residents():
+		if s["region_id"] == region_id:
+			out.append(s["resident_id"])
+	return out
+
+
+## Memorial stone names: [{"resident_id", "name", "day", "cause"}], oldest first.
+func memorial_names() -> Array:
+	return memorials.duplicate(true)
+
+
+## Residents whose funeral is shown this morning (D plays the scene, then calls end_funeral()).
+func pending_funeral() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for id in funerals:
+		out.append(StringName(id))
+	return out
+
+
+func end_funeral() -> void:
+	funerals = []
+
+
+## 추모비 방문 (밤, 하루 한 번): 슬픔 −1일 (추모비 효과), 사기 +3. Returns {"ok", "reason"}.
+func visit_memorial(resident_id: StringName) -> Dictionary:
+	var r: Dictionary = residents.get(resident_id, {})
+	if r.is_empty() or int(r["status"]) != Enums.ResidentStatus.ACTIVE:
+		return {"ok": false, "reason": "없는 주민"}
+	var stones := working_building_ids(LossRules.MEMORIAL)
+	if stones.is_empty():
+		return {"ok": false, "reason": "추모비가 없음"}
+	if int(r["memorial_day"]) == GameState.day:
+		return {"ok": false, "reason": "오늘은 이미 다녀왔다"}
+	r["memorial_day"] = GameState.day
+	r["grief_days"] = maxi(int(r["grief_days"]) - roundi(building_effect(stones[0], &"grief_recovery", 1.0)), 0)
+	r["morale"] = NeedsRules.apply_morale(r, LossRules.MEMORIAL_VISIT_MORALE)
+	return {"ok": true, "reason": ""}
+
+
+## Still part of the base (active, or stranded and coming back): not dead or missing.
+func _present(resident_id: StringName) -> bool:
+	return residents.has(resident_id) and int(residents[resident_id]["status"]) in [Enums.ResidentStatus.ACTIVE, Enums.ResidentStatus.STRANDED]
+
+
+## 슬픔 중이면 작업 효율 −20%.
+func _grief_mult(resident_id: StringName) -> float:
+	return LossRules.GRIEF_WORK_MULT if int(residents[resident_id]["grief_days"]) > 0 else 1.0
+
+
+func _on_companion_stranded(resident_id: StringName, region_id: StringName) -> void:
+	var r: Dictionary = residents.get(resident_id, {})
+	if r.is_empty() or int(r["status"]) != Enums.ResidentStatus.ACTIVE:
+		return
+	unassign_job(resident_id)
+	r["status"] = Enums.ResidentStatus.STRANDED
+	r["stranded_region"] = region_id
+	var days := int(Settings.get_value(LossRules.STRAND_SETTING))
+	r["strand_days_left"] = days if days > 0 else -1
+
+
+## Evening: one day passes for stranded residents, grief eases.
+func _settle_loss(events: Array) -> void:
+	for id: StringName in residents.keys():
+		var r: Dictionary = residents[id]
+		match int(r["status"]):
+			Enums.ResidentStatus.STRANDED:
+				if int(r["strand_days_left"]) < 0:
+					continue
+				r["strand_days_left"] = int(r["strand_days_left"]) - 1
+				if int(r["strand_days_left"]) <= 0:
+					_go_missing(id, events)
+			Enums.ResidentStatus.ACTIVE:
+				if int(r["grief_days"]) > 0:
+					r["grief_days"] = int(r["grief_days"]) - 1
+
+
+## 실종: permanent, the equipment is lost with them, children get another guardian.
+func _go_missing(id: StringName, events: Array) -> void:
+	var r: Dictionary = residents[id]
+	r["status"] = Enums.ResidentStatus.MISSING
+	r["strand_days_left"] = 0
+	release_bed(id)
+	for slot in Armory.list_equipped(id):
+		var item: StringName = Armory.list_equipped(id)[slot]
+		if item != &"":
+			Armory.remove_item(item)
+	_end_partnership(id)
+	_pass_guardianship(id, events)
+	events.append(_event(&"missing", id, "%s을(를) 끝내 찾지 못했다" % _display_name(r)))
+	resident_missing.emit(id)
+
+
+## After a death: coworkers' morale, grief, the memorial, guardianship, tomorrow's funeral.
+func _after_death(id: StringName, cause: StringName) -> void:
+	var dead: Dictionary = residents[id]
+	var spouse := partner_of(id)
+	var married := spouse != &"" and Enums.RelationFlag.MARRIED in relation_flags(id, spouse)
+	for other in active_resident_ids():
+		var r: Dictionary = residents[other]
+		var closeness := clampf(relation(id, other) / 100.0, 0.0, 1.0)
+		r["morale"] = NeedsRules.apply_morale(r, roundi(lerpf(LossRules.DEATH_MORALE_MIN, LossRules.DEATH_MORALE_MAX, closeness)))
+		var grief := 0
+		if other == spouse and married:
+			grief = LossRules.GRIEF_SPOUSE_DAYS
+		elif other == spouse or relation(id, other) >= LossRules.GRIEF_CLOSE_AT \
+				or Enums.RelationFlag.GUARDIAN in relation_flags(id, other):
+			grief = LossRules.GRIEF_DAYS
+		r["grief_days"] = maxi(int(r["grief_days"]), grief)
+	memorials.append({"resident_id": id, "name": _display_name(dead), "day": GameState.day, "cause": cause})
+	GameState.set_flag(LossRules.FIRST_DEATH_FLAG)
+	if not id in funerals:
+		funerals.append(id)
+	_end_partnership(id)
+	_pass_guardianship(id, [])
+
+
+## The lovers / married flags end when one of them dies or goes missing (the other is not re-matched).
+func _end_partnership(id: StringName) -> void:
+	var partner := partner_of(id)
+	if partner == &"":
+		return
+	var m := _relation_meta(id, partner)
+	m["flags"] = m["flags"].filter(func(f): return f != Enums.RelationFlag.LOVERS and f != Enums.RelationFlag.MARRIED)
+	m["engaged"] = false
+	m["wedding_ready"] = false
+
+
+## 보호자 승계: a child who lost every guardian gets the adult they are closest to.
+func _pass_guardianship(gone: StringName, events: Array) -> void:
+	for key: String in relation_meta.keys():
+		var m: Dictionary = relation_meta[key]
+		if not Enums.RelationFlag.GUARDIAN in m["flags"] or not gone in [m["a"], m["b"]]:
+			continue
+		var child: StringName = m["b"] if m["a"] == gone else m["a"]
+		if not residents.has(child) or not ChildRules.is_minor(residents[child]) or not guardians_of(child).is_empty():
+			continue
+		var best := &""
+		var best_value := -1000
+		for other in active_resident_ids():
+			if other == child or ChildRules.is_minor(residents[other]):
+				continue
+			if relation(child, other) > best_value:
+				best = other
+				best_value = relation(child, other)
+		if best == &"":
+			continue
+		var g := _relation_meta(best, child)
+		if not Enums.RelationFlag.GUARDIAN in g["flags"]:
+			g["flags"].append(Enums.RelationFlag.GUARDIAN)
+		events.append(_event(&"guardian", child, "%s이(가) %s을(를) 맡아 돌보기로 했다" % [_display_name(residents[best]), _display_name(residents[child])]))
+		guardian_changed.emit(child, best)
 
 
 # --- 편견 이벤트 체인 (C-16, 08 "편견과 갈등") ---------------------------------------------
@@ -2838,7 +3024,13 @@ func _settle_health(consumed: Dictionary, events: Array) -> void:
 				else:
 					r["recover_days"] = int(r["recover_days"]) - 1
 					if r["recover_days"] <= 0:
-						_recover(id, events)
+						# 질병 방치 (C-20): untreated and starving → may not make it (영구 사망일 때).
+						if int(r["hunger"]) < WorkRules.HUNGRY_BELOW and bool(Settings.get_value(&"permadeath")) \
+								and _rng.randf() < LossRules.NEGLECT_DEATH_CHANCE:
+							events.append(_event(&"died", id, "%s이(가) 병을 이기지 못했다" % r["name"]))
+							_kill(id, &"sickness")
+						else:
+							_recover(id, events)
 			_:
 				var chance := 0.0
 				if winter or int(r["hunger"]) < WorkRules.HUNGRY_BELOW:
@@ -2924,6 +3116,8 @@ func _on_rescue_completed(rescued: Dictionary) -> void:
 	var id := StringName(rescued.get("id", &""))
 	if residents.has(id) and int(residents[id]["status"]) in [Enums.ResidentStatus.STRANDED, Enums.ResidentStatus.MISSING]:
 		residents[id]["status"] = Enums.ResidentStatus.ACTIVE
+		residents[id]["stranded_region"] = &""
+		residents[id]["strand_days_left"] = 0
 		add_trust(id, TrustRules.RESCUED_FROM_STRAND, &"rescued")
 		var free := free_beds()
 		if residents[id]["bed_id"] == &"" and not free.is_empty():
@@ -2980,6 +3174,8 @@ func _reset() -> void:
 	last_night_raid_day = 0
 	_night_rolled_day = 0
 	prejudice_chains_data = {}
+	memorials = []
+	funerals = []
 	active_raid = {}
 	_rng.randomize()
 	_refresh_effects()
@@ -3001,6 +3197,8 @@ func save_data() -> Dictionary:
 		"relation_meta": relation_meta,
 		"festival_day": festival_day,
 		"prejudice_chains": prejudice_chains_data,
+		"memorials": memorials,
+		"funerals": funerals,
 		"cleared_zones": cleared_zones,
 		"clear_progress": clear_progress,
 		"clear_started": clear_started,
@@ -3041,6 +3239,9 @@ func load_data(data: Dictionary) -> void:
 	deep_talk_day = int(data.get("deep_talk_day", 0))
 	festival_day = int(data.get("festival_day", 0))
 	prejudice_chains_data = {}
+	memorials = Array(data.get("memorials", [])).map(func(m): return {"resident_id": StringName(m.get("resident_id", "")),
+		"name": str(m.get("name", "")), "day": int(m.get("day", 0)), "cause": StringName(m.get("cause", ""))})
+	funerals = Array(data.get("funerals", [])).map(func(x): return StringName(x))
 	var saved_chains: Dictionary = data.get("prejudice_chains", {})
 	for key in saved_chains:
 		var c: Dictionary = saved_chains[key]
@@ -3091,6 +3292,8 @@ func _register_debug_commands() -> void:
 		"settle - 하루 정산을 돌리고 Economy에 반영 (A-05 전 테스트용)")
 	DebugConsole.register(&"trust", _cmd_trust,
 		"trust <id> | trust talk|deep|add <id> [n] | trust gift <id> <resource_id> - 신뢰도·대화·선물")
+	DebugConsole.register(&"loss", _cmd_loss,
+		"loss | loss strand <id> [region] | loss day | loss kill <id> | loss visit <id> - 고립·실종·사망·추모")
 	DebugConsole.register(&"prejudice", _cmd_prejudice,
 		"prejudice | prejudice rumor <id> | choose <id> defend|watch|separate | incident <id> - 편견 이벤트 체인")
 	DebugConsole.register(&"child", _cmd_child,
@@ -3128,6 +3331,31 @@ func _register_debug_commands() -> void:
 		"raid now [day|night] | raid threat <0~100> | raid info - 습격 강제·위협도 설정·방어력/예상")
 	DebugConsole.register(&"build", _cmd_build,
 		"build <building_id> | build list - 비용 없이 건물을 바로 완성 / 건물·전력·소음 목록")
+
+
+func _cmd_loss(args: PackedStringArray) -> String:
+	var usage := "사용법: loss | loss strand <id> [region] | loss day | loss kill <id> | loss visit <id>"
+	if args.is_empty():
+		return "고립 %s · 추모비 %s · 장례 대기 %s" % [stranded_residents(), memorial_names(), pending_funeral()]
+	var events: Array = []
+	match args[0]:
+		"day":
+			_settle_loss(events)
+			return "\n".join(PackedStringArray(events.map(func(e): return String(e["text"])))) if not events.is_empty() else "고립 하루 지남: %s" % [stranded_residents()]
+	if args.size() < 2 or not residents.has(StringName(args[1])):
+		return usage
+	var id := StringName(args[1])
+	match args[0]:
+		"strand":
+			_on_companion_stranded(id, StringName(args[2]) if args.size() > 2 else &"flooded_mall")
+			return "%s 고립 (남은 날 %d)" % [id, residents[id]["strand_days_left"]]
+		"kill":
+			_kill(id, &"debug")
+			return "%s 사망. 추모비 %s, 장례 대기 %s" % [id, memorial_names().size(), pending_funeral()]
+		"visit":
+			var res := visit_memorial(id)
+			return "추모비 방문: 슬픔 %d일 남음" % residents[id]["grief_days"] if res["ok"] else "실패: " + String(res["reason"])
+	return usage
 
 
 func _cmd_prejudice(args: PackedStringArray) -> String:
