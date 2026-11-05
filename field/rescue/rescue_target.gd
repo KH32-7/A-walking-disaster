@@ -45,6 +45,8 @@ const FALLBACK_WALK_SPEED := 4.5
 const REVIVE_HOLD_LABEL := "일으키는 중"
 const WAYPOINT_REACHED := 0.3
 const MOVING_SPEED := 0.1
+## A supported person turns to the player's walking direction only above this speed (m/s).
+const SUPPORT_TURN_SPEED := 0.5
 const EXPOSED: Array[State] = [State.FOLLOW, State.HIDE, State.DEFEND]
 
 @export var spawn: RescueSpawn
@@ -76,6 +78,7 @@ var _round := 0
 var _strikes := 0
 var _rescued := false
 var _supporting := false
+var _support_dir := Vector3.FORWARD  # the player's last walking direction (flat, unit)
 var _startle_left := 0.0
 var _low_health_said := false
 var _hide_point := Vector3.ZERO
@@ -452,22 +455,34 @@ func _tick_follow(delta: float) -> void:
 		_player = _find_player()
 		if _player == null:
 			return
+	var moved := _player_flat_velocity()
 	if _supporting:
-		var right := _player.global_basis.x
-		right.y = 0.0
-		global_position = _player.global_position + right.normalized() * tuning.support_offset
+		# Side and facing follow where the player walks, not where they aim: aiming backward while
+		# walking forward must not swing the supported person around.
+		if moved.length() > SUPPORT_TURN_SPEED:
+			_support_dir = moved.normalized()
+		var right := Vector3(-_support_dir.z, 0.0, _support_dir.x)
+		global_position = _player.global_position + right * tuning.support_offset
+		rotation.y = atan2(-_support_dir.x, -_support_dir.z)
 		velocity = Vector3.ZERO
 		return
 	if _startle_left > 0.0:
 		_startle_left = maxf(_startle_left - delta, 0.0)
 		_stop()
 		return
-	_walk_toward(_player.global_position, tuning.follow_distance, delta)
+	var gap := _flat_distance(_player.global_position) - tuning.follow_distance
+	_walk_toward(_player.global_position, tuning.follow_distance, delta,
+		moved.length() + maxf(gap, 0.0) * tuning.follow_catch_up)
+
+
+func _player_flat_velocity() -> Vector3:
+	var v: Variant = _player.get(&"velocity") if _player != null else null
+	return Vector3(v.x, 0.0, v.z) if v is Vector3 else Vector3.ZERO
 
 
 ## Walks the nav path (layers from the spawn) toward goal until stop_distance (flat) is reached.
-## No path (e.g. a wheelchair facing stairs only) = stays put.
-func _walk_toward(goal: Vector3, stop_distance: float, delta: float) -> void:
+## No path (e.g. a wheelchair facing stairs only) = stays put. `max_speed` < 0: own walking speed.
+func _walk_toward(goal: Vector3, stop_distance: float, delta: float, max_speed := -1.0) -> void:
 	if _flat_distance(goal) <= stop_distance:
 		_stop()
 		return
@@ -482,7 +497,7 @@ func _walk_toward(goal: Vector3, stop_distance: float, delta: float) -> void:
 	var to := _path[_path_index] - global_position
 	to.y = 0.0
 	var dir := to.normalized()
-	var speed := move_speed()
+	var speed := move_speed() if max_speed < 0.0 else minf(move_speed(), max_speed)
 	velocity.x = dir.x * speed
 	velocity.z = dir.z * speed
 	rotation.y = atan2(-dir.x, -dir.z)
@@ -531,6 +546,10 @@ func _set_supporting(on: bool) -> void:
 	_supporting = on
 	if not is_instance_valid(_player):
 		return
+	if on:
+		var ahead := -_player.global_basis.z
+		ahead.y = 0.0
+		_support_dir = ahead.normalized() if ahead.length() > 0.01 else Vector3.FORWARD
 	# Player hooks (field/player/player.gd): speed x0.7 and one-hand weapons while supporting.
 	_player.set(&"move_speed_mult", tuning.speed_mult.get(RescueSpawn.Move.SUPPORTED, 1.0) if on else 1.0)
 	_player.set(&"one_hand_only", on)

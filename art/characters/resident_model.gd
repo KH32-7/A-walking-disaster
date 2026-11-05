@@ -48,8 +48,12 @@ const LIBRARY := &"resident"
 ## Teens wear adult models a little smaller; babies the child model smaller.
 const TEEN_SCALE := 0.92
 const BABY_SCALE := 0.6
-## Moving faster than this (m/s, flat) plays walk.
+## Moving faster than this (m/s, flat, smoothed) plays walk; idle again only below WALK_SPEED x
+## IDLE_RATIO. The speed is smoothed over SPEED_SMOOTH (1/s) because a frame without a physics step
+## reads as standing still; together they stop walk / idle flickering.
 const WALK_SPEED := 0.3
+const IDLE_RATIO := 0.5
+const SPEED_SMOOTH := 10.0
 const BLEND_SEC := 0.2
 
 ## Node hidden once a model is shown (the caller's greybox). Empty = none.
@@ -61,6 +65,7 @@ var _player: AnimationPlayer
 var _idle: StringName = &""
 var _walk: StringName = &""
 var _last_pos := Vector3.INF
+var _speed := 0.0
 
 ## model path -> AnimationLibrary built for that model (City People only).
 static var _libraries: Dictionary = {}
@@ -179,7 +184,9 @@ func _process(delta: float) -> void:
 	if _last_pos != Vector3.INF:
 		speed = Vector2(pos.x - _last_pos.x, pos.z - _last_pos.z).length() / delta
 	_last_pos = pos
-	var want := _walk if speed > WALK_SPEED else _idle
+	_speed = lerpf(_speed, speed, 1.0 - exp(-SPEED_SMOOTH * delta))
+	var walking := _player.current_animation == _walk
+	var want := _walk if _speed > (WALK_SPEED * IDLE_RATIO if walking else WALK_SPEED) else _idle
 	if _player.current_animation != want:
 		_player.play(want, BLEND_SEC)
 
