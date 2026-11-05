@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AudioEventDef" format=3]
+
+[ext_resource type="Script" path="res://audio/defs/audio_event_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"lure_beep"
+synth = &"click"
+bus = 0
+priority = 1
+volume_db = -6.0
+positional = true
+caption = ""

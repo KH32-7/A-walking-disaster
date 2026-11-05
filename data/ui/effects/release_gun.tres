@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="EffectDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/effect_def.gd" id="1_def"]
+[ext_resource type="PackedScene" path="res://vfx/effects/release_fx.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"release_gun"
+scene = ExtResource("2_scene")
+base_params = {
+"rounds": 5
+}
+sound = &"essence_release"
+sound_crit = &""
+max_alive = 2
+combo_id = &""
