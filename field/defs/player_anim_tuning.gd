@@ -3,8 +3,10 @@ extends Resource
 ## Player animation playback numbers. Values live in data/classes/player_anim_tuning.tres and can be
 ## tuned live with the debug panel (\ key) (core/debug/anim_tuning_panel.gd).
 ##
-## Walk clips play at (ground speed / the clip's own speed), clamped to min..max_playback, then
-## multiplied by the multiplier for the current move. 1.0 = feet match the ground.
+## Walk clips play at (ground speed / the bare-hand walk's own speed 1.3 m/s), clamped to
+## min..max_playback, then multiplied by the multiplier for the current move. Gun walks use the same
+## number, adjusted only so their steps come at the same rate as the bare-hand walk.
+## Example: walk 4.5 m/s / 1.3 = 3.46, clamped to 2.4, x walk_mult 0.6 = 1.44.
 
 @export_group("Multipliers")
 ## Walk, bare hands and gun alike (crouched walk / 4-way rifle walks).
