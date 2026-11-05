@@ -9,8 +9,10 @@ extends Node
 ## Who calls what:
 ##   Lane D (screens): start_new_game, load_game, load_suspended, open_sortie_prep, cancel_sortie_prep,
 ##                     go_to_field, stay_at_base, end_stay, finish_result, confirm_evening, finish_night
-##   Lane B (field):   emits extraction_completed / player_downed / rescue_completed / companion_stranded /
-##                     emergency_return_requested; the router turns them into sortie_ended.
+##   Lane B (field):   fills FieldState.last_sortie_result() (issue #27), then emits extraction_completed;
+##                     on player_downed the router waits until the end of the frame so B's handlers
+##                     (bag loss, lost gear, result) run first. rescue_completed / companion_stranded /
+##                     emergency_return_requested are tracked too. The router emits sortie_ended.
 ##   Lane C (base):    start_day_raid / end_day_raid / start_night_event / end_night_event,
 ##                     and the Colony.settle_day / roll_raid / resolve_raid functions in contracts.md.
 ## Autosaves (design 01 "저장"): entering BASE_MORNING, right before the field loads (saved as
@@ -46,8 +48,11 @@ var last_evening_report: Dictionary = {}
 var last_sortie_result: Dictionary = {}
 
 var _loadout: Dictionary = {}
+## rescue_completed profiles and companion_stranded ids seen during this sortie (fallback when Lane B
+## has no result yet, and "rescued_profiles" in the result).
 var _rescued: Array = []
 var _stranded: Array = []
+var _finish_pending := false
 var _emergency_return := false
 var _day_raid: Dictionary = {}
 var _day_raid_from_field := false
@@ -60,7 +65,8 @@ func _ready() -> void:
 	EventBus.rescue_completed.connect(func(rescued: Dictionary): _rescued.append(rescued))
 	EventBus.companion_stranded.connect(
 		func(resident_id: StringName, region_id: StringName):
-			_stranded.append({"resident_id": resident_id, "region_id": region_id}))
+			if not resident_id in _stranded:
+				_stranded.append(resident_id))
 	EventBus.emergency_return_requested.connect(func(): _emergency_return = true)
 
 
@@ -121,6 +127,11 @@ func go_to_field(loadout: Dictionary) -> bool:
 	if state() != S.SORTIE_PREP:
 		return _refuse("go_to_field")
 	_loadout = loadout.duplicate(true)
+	# Lane B picks the active extraction points from this seed; saved with the router so a
+	# reload gets the same points (issue #27).
+	if not _loadout.has("seed"):
+		_loadout["seed"] = randi()
+	_finish_pending = false
 	_rescued.clear()
 	_stranded.clear()
 	_emergency_return = false
@@ -151,24 +162,49 @@ func _on_extraction_completed(_point_id: StringName) -> void:
 		_finish_sortie(true)
 
 
-## Lane B handles the bag and lost gear before emitting player_downed.
+## Deferred: Lane B's own player_downed handlers (FieldState bag loss and lost gear, the extraction
+## manager's result) must run first, whatever order the signal connections have.
 func _on_player_downed() -> void:
-	if state() == S.FIELD:
-		_finish_sortie(false)
+	if state() == S.FIELD and not _finish_pending:
+		_finish_pending = true
+		_finish_sortie.call_deferred(false)
 
 
+## Builds the sortie_ended result (format: docs/dev/contracts.md "출격 결과"). Lane B's result from
+## FieldState.last_sortie_result() is the base; the router adds what only it knows.
 func _finish_sortie(extracted: bool) -> void:
-	var unloaded := Bag.unload_to_base()
-	var region := StringName(_loadout.get("region_id", &""))
-	var xp := Progression.finish_sortie(extracted, region, _rescued.size())
-	last_sortie_result = {
+	_finish_pending = false
+	if state() != S.FIELD:
+		return
+	var b_result: Dictionary = {}
+	if FieldState.has_method(&"last_sortie_result"):
+		b_result = FieldState.call(&"last_sortie_result")
+	var region := StringName(b_result.get("region_id", _loadout.get("region_id", &"")))
+	# Lane B unloads at the moment of extraction; unloading again picks up anything left
+	# (the safe pocket after going down) and merges it.
+	var loot := _merge_loot(b_result.get("loot", {}), Bag.unload_to_base())
+	var rescued_ids: Array = b_result.get("rescued", _rescued.map(func(p): return StringName(p.get("id", &""))))
+	var result := {
 		"extracted": extracted,
-		"region_id": _loadout.get("region_id", &""),
-		"loot": unloaded,
-		"rescued": _rescued.duplicate(),
+		"downed": not extracted,
+		"region_id": region,
+		"point_id": &"",
+		"kills": 0,
+		"kills_by_monster": {},
+		"rescued": [],
+		"companions": [],
 		"stranded": _stranded.duplicate(),
-		"xp": xp,
+		"duration_sec": 0.0,
 	}
+	result.merge(b_result, true)
+	result["extracted"] = extracted
+	result["downed"] = not extracted
+	result["loot"] = loot
+	result["rescued"] = rescued_ids
+	result["rescued_profiles"] = _rescued.duplicate()
+	result["down"] = FieldState.call(&"down_result") if not extracted and FieldState.has_method(&"down_result") else {}
+	result["xp"] = Progression.finish_sortie(extracted, region, rescued_ids.size())
+	last_sortie_result = result
 	EventBus.sortie_ended.emit(last_sortie_result)
 	if extracted and _emergency_return and not _day_raid.is_empty():
 		_go(S.BASE_DAY_RAID)
@@ -265,6 +301,21 @@ func advance() -> bool:
 		S.NIGHT:
 			return finish_night()
 	return false
+
+
+## {"resources", "discarded", "items"} from two unloads added together.
+func _merge_loot(a: Dictionary, b: Dictionary) -> Dictionary:
+	var out := {"resources": {}, "discarded": {}, "items": []}
+	for part: Dictionary in [a, b]:
+		for key in ["resources", "discarded"]:
+			var dst: Dictionary = out[key]
+			var src: Dictionary = part.get(key, {})
+			for id in src:
+				dst[id] = dst.get(id, 0) + int(src[id])
+		for uid in part.get("items", []):
+			if not uid in out["items"]:
+				out["items"].append(uid)
+	return out
 
 
 # --- Save provider "router" ---
