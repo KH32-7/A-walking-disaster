@@ -396,12 +396,23 @@ func _fill() -> void:
 
 
 ## 추천: 정착지에 필요해요 · 지금 지을 수 있어요 side by side, then 곧 열려요.
+## Buildings 추천 puts first while their condition holds and they are not built (의무실 after the doctor).
+const URGENT_IDS: Array[StringName] = [&"infirmary"]
+
+
 func _fill_recommended(defs: Array) -> void:
 	var goal_ids := _goal_ids()
+	# 의무실 first once the doctor is here and it is not built yet (사용자 요청 2026-11-06).
+	var urgent := []
+	for def: BuildingDef in defs:
+		if def.id in URGENT_IDS and Colony.buildings.values().all(func(b: Dictionary) -> bool: return b["def_id"] != def.id) 				and not (Colony.can_build(def.id).reasons as Array).any(func(r: String) -> bool: return "전직" in r):
+			urgent.append(def)
 	var goal := []
 	var now := []
 	var soon := []
 	for def: BuildingDef in defs:
+		if def in urgent:
+			continue
 		if def.id in goal_ids:
 			goal.append(def)
 		elif Colony.can_build(def.id).ok:
@@ -415,6 +426,10 @@ func _fill_recommended(defs: Array) -> void:
 	soon = soon.slice(0, SOON_MAX)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override(&"separation", 28)
+	if not urgent.is_empty():
+		var us := _card_section("의사가 왔어요", "지금 지어요", urgent)
+		us.custom_minimum_size.x = urgent.size() * (CARD_SIZE.x + 14)
+		row.add_child(us)
 	if not goal.is_empty():
 		var built := 0
 		for def: BuildingDef in goal:

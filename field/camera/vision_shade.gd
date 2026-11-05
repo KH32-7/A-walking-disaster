@@ -15,6 +15,10 @@ var _has_yaw := false
 
 
 func _ready() -> void:
+	# The base turns its follow camera off (process disabled) while nobody walks there: this light must
+	# still check, or it stays lit at the shader's default spot (사용자 제보 2026-11-06: 기지에 빛).
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	visible = false
 	var quad := QuadMesh.new()
 	quad.size = Vector2(2.0, 2.0)
 	mesh = quad
