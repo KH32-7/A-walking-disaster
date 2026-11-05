@@ -1,0 +1,86 @@
+[gd_resource type="Resource" script_class="FxDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/fx_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://vfx/defs/fx_layer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/magic_arsenal/textures/ground_life.png"
+grow = Vector2(0.5, 2.4)
+lifetime = 0.9
+color = Color(1.0, 1.0, 1.0, 0.9)
+fade_in = 0.1
+fade_out = 0.5
+follow_radius = true
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/elemental_spells/textures/shockwave_1.png"
+grow = Vector2(0.3, 2.6)
+lifetime = 0.4
+color = Color(1.0, 1.0, 1.0, 0.7)
+fade_out = 0.7
+channel = 1
+tint_element = true
+follow_radius = true
+
+[sub_resource type="Resource" id="layer_2"]
+script = ExtResource("2_layer")
+kind = 0
+texture = ""
+element_textures = PackedStringArray("", "res://assets/vfx/magic_arsenal/textures/life_drops.png", "res://assets/vfx/magic_arsenal/textures/earth_spray.png", "res://assets/vfx/magic_arsenal/textures/water_droplets.png", "res://assets/vfx/magic_arsenal/textures/storm_spark.png")
+blend = 1
+tint_element = true
+amount = 12
+size = Vector2(0.1, 0.22)
+speed = Vector2(1.5, 2.5)
+gravity = 1.0
+lifetime = 0.9
+end_scale = 0.5
+offset = Vector3(0.0, 0.1, 0.0)
+emit_radius = 0.9
+spread_deg = 20.0
+direction = Vector3(0.0, 1.0, 0.0)
+follow_radius = true
+
+[sub_resource type="Resource" id="layer_3"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/earth_spray.png"
+blend = 1
+amount = 8
+size = Vector2(0.1, 0.2)
+speed = Vector2(2.0, 4.0)
+gravity = 12.0
+direction = Vector3(0.0, 1.0, 0.0)
+spread_deg = 40.0
+lifetime = 0.6
+color = Color(0.45, 0.4, 0.35, 1.0)
+offset = Vector3(0.0, 0.2, 0.0)
+follow_radius = true
+
+[sub_resource type="Resource" id="layer_4"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/glow01.png"
+amount = 1
+size = Vector2(1.2, 1.2)
+speed = Vector2(0.0, 0.0)
+lifetime = 0.2
+end_scale = 1.5
+spin = false
+color = Color(1.0, 1.0, 1.0, 0.85)
+flash = true
+fade_out = 0.8
+tint_element = true
+offset = Vector3(0.0, 0.4, 0.0)
+follow_radius = true
+
+[resource]
+script = ExtResource("1_def")
+id = &"boss_summon_pods"
+base_radius = 1.2
+max_alive = 8
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1"), SubResource("layer_2"), SubResource("layer_3"), SubResource("layer_4")])

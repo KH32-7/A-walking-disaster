@@ -1,0 +1,70 @@
+[gd_resource type="Resource" script_class="FxDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/fx_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://vfx/defs/fx_layer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/glow01.png"
+amount = 1
+size = Vector2(0.25, 0.25)
+speed = Vector2(0.0, 0.0)
+lifetime = 0.4
+end_scale = 2.6
+spin = false
+color = Color(1.0, 1.0, 1.0, 0.85)
+flash = true
+fade_out = 0.3
+tint_element = true
+offset = Vector3(0.0, 1.4, 0.0)
+fade_in = 0.6
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/glowsprinkles.png"
+amount = 10
+explosiveness = 0.3
+emit_radius = 0.6
+speed = Vector2(0.2, 0.6)
+size = Vector2(0.05, 0.1)
+lifetime = 0.4
+color = Color(1.0, 1.0, 1.0, 1.0)
+tint_element = true
+offset = Vector3(0.0, 1.4, 0.0)
+
+[sub_resource type="Resource" id="layer_2"]
+script = ExtResource("2_layer")
+kind = 0
+texture = ""
+element_textures = PackedStringArray("", "res://assets/vfx/magic_arsenal/textures/life_orb.png", "res://assets/vfx/magic_arsenal/textures/stone_glow.png", "res://assets/vfx/magic_arsenal/textures/water_bubble.png", "res://assets/vfx/magic_arsenal/textures/lightning_ball.png")
+amount = 1
+size = Vector2(0.35, 0.35)
+end_scale = 1.5
+speed = Vector2(0.0, 0.0)
+lifetime = 0.35
+delay = 0.05
+color = Color(1.0, 1.0, 1.0, 1.0)
+offset = Vector3(0.0, 1.4, 0.0)
+
+[sub_resource type="Resource" id="layer_3"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/glowspiky.png"
+amount = 1
+size = Vector2(0.7, 0.7)
+speed = Vector2(0.0, 0.0)
+lifetime = 0.12
+delay = 0.35
+spin = false
+color = Color(1.0, 1.0, 1.0, 0.8)
+flash = true
+tint_element = true
+offset = Vector3(0.0, 1.4, 0.0)
+
+[resource]
+script = ExtResource("1_def")
+id = &"monster_cast"
+max_alive = 10
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1"), SubResource("layer_2"), SubResource("layer_3")])

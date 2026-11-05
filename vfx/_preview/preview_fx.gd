@@ -24,7 +24,9 @@ func _ready() -> void:
 		&"essence_combo:thorn_bush", &"essence_combo:swamp", &"essence_combo:mud",
 		&"essence_combo:photosynthesis", &"essence_combo:shard_burst", &"essence_combo:shock_puddle",
 		&"slam", &"dash_slash", &"brace", &"precision_shot", &"suppressive_fire", &"shadow_step",
-		&"boss_telegraph:circle", &"boss_telegraph:ring", &"boss_telegraph:cone", &"boss_telegraph:line"]
+		&"boss_telegraph:circle", &"boss_telegraph:ring", &"boss_telegraph:cone", &"boss_telegraph:line",
+		&"monster_claw", &"monster_bite", &"monster_slam", &"monster_splash", &"monster_scream", &"monster_cast",
+		&"monster_death", &"boss_slam", &"boss_root_burst", &"boss_summon_pods"]
 	for i in ids.size():
 		var pos := Vector3((i % COLUMNS) * SPACING, 0.0, (i / COLUMNS) * SPACING)
 		_spots.append({"id": ids[i], "pos": pos})
@@ -80,7 +82,9 @@ func _replay() -> void:
 		var parts := String(spot["id"]).split(":")
 		var id := StringName(parts[0])
 		var pos: Vector3 = spot["pos"]
-		var element := _element if _element != Enums.Element.NONE or id != &"essence_release" else Enums.Element.GREEN
+		# Essence and monster effects always carry an element in play; show green when none is picked.
+		var needs_element := id == &"essence_release" or String(id).begins_with("monster_") or String(id).begins_with("boss_")
+		var element := _element if _element != Enums.Element.NONE or not needs_element else Enums.Element.GREEN
 		var p := {"element": element, "crit": _crit, "weak_point": _crit, "direction": Vector3.RIGHT,
 			"radius": 3.0, "combat_class": Enums.CombatClass.BLADE}
 		match id:
@@ -108,6 +112,11 @@ func _replay() -> void:
 					"kind": &"warn" if _crit else &"danger"}
 				if parts[1] == "line":
 					pos += Vector3(0.0, 0.0, -3.0)
+			&"monster_claw", &"monster_bite", &"monster_slam", &"monster_splash", &"monster_scream", &"monster_cast", &"monster_death", &"boss_summon_pods":
+				p.erase("radius")  # D-17: authored at their default size
+			&"boss_root_burst":
+				pos += Vector3(-3.5, 0.0, 0.0)
+				p["to"] = pos + Vector3(7.0, 0.0, 0.0)
 			&"damage_number":
 				Fx.feedback.show_number(pos + Vector3.UP * 1.6, "128!" if _crit else "37",
 					UiTokens.ACCENT if _crit else UiTokens.TEXT, 1.5 if _crit else 1.0)

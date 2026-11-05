@@ -40,6 +40,13 @@
 | `essence_combo` | `id`, `radius`, `duration` | B magic_weapon, magic_zone. `essence_combo_<id>.tres`로 갈라진다 |
 | `brace`, `dash_slash`, `precision_shot`, `shadow_step`, `slam`, `suppressive_fire` | `direction`, `radius` | B class_skills, companion_skill (소리는 B가 냄) |
 | `boss_telegraph` | `shape`(`circle`, `ring`, `cone`, `line`), `radius`, `inner`, `angle_deg`, `length`, `width`, `direction`, `duration`, `kind`(`danger` 빨강 / `warn` 주황) | B boss_monster (B-19). 소리 `boss_warning`. 판정 모양 그대로를 `fx_telegraph.gdshader`로 그려서 **에셋 없어도 보인다**. 채움이 바깥으로 차오르면 그때 터진다 |
+| `monster_claw` / `monster_bite` | `direction`, `element` | B monster_base (`MonsterDef.attack_fx`, 공격이 맞을 때). 덩굴촉수와 뿌리 분쇄자 / 잔해 벌레 |
+| `monster_slam` / `monster_splash` | `radius`(기본 1.6 / 1.4), `element` | B monster_base. 석상과 잔해 돌진자 / 늪 덩어리와 안개 |
+| `monster_cast` | `element` | B monster_base. 신호 망령, 포자낭 (머리 위에서 모였다 터짐) |
+| `monster_scream` | `element` | B alarm_behavior. 바닥 고리가 경보가 닿는 거리 쪽으로 퍼진다 |
+| `monster_death` | `element`, `radius`(기본 0.9) | D MonsterVisual (처치 때 시체와 함께, 모델 크기로 radius) |
+| `boss_slam` / `boss_summon_pods` | `radius`(3 / 1.2), `element` | B boss_monster `boss_<pattern.id>`. 패턴이 맞을 때 / 소환한 자리마다 |
+| `boss_root_burst` | `to`, `direction`, `element` | B boss_monster. 직선 예고를 따라 금이 달리고 흙이 솟는다 (`to` 없으면 금 줄기 없이 흙만) |
 
 속성 4종(초록, 돌, 물, 빛)은 따로 id가 없다. `params.element`를 받는 레이어가 `element_textures`로 텍스처를 바꾸고
 `tint_element`로 `UiTokens.ELEMENT_COLORS` 색을 곱한다.
