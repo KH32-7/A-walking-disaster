@@ -41,7 +41,7 @@ func _fresh(resources: Dictionary = {}) -> void:
 
 
 func _test_defs() -> bool:
-	var ok := _check(BaseDB.buildings().size() == 43, "건물 43종 (09 탭 31 + 10 탭 방어 시설 12)")
+	var ok := _check(BaseDB.buildings().size() == 44, "건물 44종 (09 탭 31 + 10 탭 방어 시설 12 + 인트로 낡은 집 1)")
 	for id in DEMO:
 		ok = _check(BaseDB.get_building(id) != null, "데모 건물 %s" % id) and ok
 	for job_id: StringName in BaseDB.jobs():
