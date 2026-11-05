@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 id = &"loot_open"
+stream = "res://assets/audio/sfx/action_rpg_sfx_v2/foley/foley_mechanical_unlock_metal_short_01_01.wav"
 synth = &"open"
 bus = 0
 priority = 0

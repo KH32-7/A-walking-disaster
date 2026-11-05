@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 id = &"hit_blunt"
+stream = "res://assets/audio/sfx/action_rpg_sfx_v2/impact/impact_combat_thud_hit_deep_01_01.wav"
 synth = &"thud"
 bus = 0
 priority = 1
