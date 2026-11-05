@@ -2,7 +2,7 @@ extends MenuScreen
 ## Residents list + detail (D-06). Owner: Lane D. Design 07 "주민 데이터", 14 "주민 목록", "주민 상세".
 ## Left: rows with status (job, needs bars, health, bed). Right: detail of the selected resident —
 ## stats, traits, participation conditions (access needs), job/bed, equipment slots (Armory), trust,
-## story. Talk / gift come with D-13, equipment with D-08. Reads Colony / Armory / BaseDB only.
+## story. Talk / gift / 관계도 / 입주 의식 open the D-13 screens, equipment with D-08. Reads Colony / Armory / BaseDB only.
 ## open_with({"id": resident_id}) selects one.
 
 const STAT_NAMES := {&"str": "힘", &"dex": "손재주", &"sense": "감각", &"heart": "마음"}
@@ -49,6 +49,10 @@ func _build_body(b: Control) -> void:
 	var sorts := HBoxContainer.new()
 	sorts.add_theme_constant_override(&"separation", 4)
 	(left[2] as HBoxContainer).add_child(sorts)
+	if UI.has_screen(&"relations"):
+		var rel := MenuScreen.button("관계도", &"ButtonSoft")
+		rel.pressed.connect(func() -> void: UI.open(&"relations", {"id": _sel}))
+		(left[2] as HBoxContainer).add_child(rel)
 	for s: Array in SORTS:
 		var t := MenuScreen.button(String(s[0]), &"TabText")
 		t.toggle_mode = true
@@ -72,7 +76,14 @@ func _build_body(b: Control) -> void:
 	(right[0] as Control).size_flags_vertical = Control.SIZE_EXPAND_FILL
 	row.add_child(right[0])
 	_detail = right[1]
+	UI.screen_closed.connect(_on_screen_closed)
 	_fill()
+
+
+## Back from a D-13 screen: trust, likes, nickname or bed may have changed.
+func _on_screen_closed(id: StringName) -> void:
+	if id in [&"dialog", &"gift", &"welcome"] and is_inside_tree():
+		_fill()
 
 
 func _ids() -> Array:
@@ -259,14 +270,29 @@ func _show_detail() -> void:
 	cols.add_child(rc)
 	_detail.add_child(cols)
 
+	# D-13: talk / gift (하루 1번, Colony.trust_actions), 입주 의식 when it is still waiting.
+	var known := Colony.known_likes(_sel)
+	if not known.is_empty():
+		var kl := PackedStringArray()
+		for like in known:
+			kl.append(ResidentText.tag_name(like))
+		_detail.add_child(MenuScreen.label("▲ 좋아하는 것  " + " · ".join(kl), &"LabelDim", 14))
+	var day_acts := Colony.trust_actions(_sel)
 	var acts := HBoxContainer.new()
 	acts.add_theme_constant_override(&"separation", 10)
-	for pair in [["대화", &"ButtonPrimary", &"talk"], ["선물", &"ButtonSecondary", &"gift"],
-			["장비 바꾸기", &"ButtonSecondary", &"armory"]]:
+	var buttons := [["대화", &"ButtonPrimary", &"dialog", day_acts.get("talk", false) or day_acts.get("deep_talk", false), "오늘은 이야기했어요"],
+		["선물", &"ButtonSecondary", &"gift", day_acts.get("gift", false), "오늘은 선물했어요"],
+		["장비 바꾸기", &"ButtonSecondary", &"armory", true, ""]]
+	if bool(r.get("arrival_pending", false)):
+		buttons.push_front(["입주 의식", &"ButtonPrimary", &"welcome", true, ""])
+	for pair: Array in buttons:
 		var bt := MenuScreen.button(String(pair[0]), pair[1])
 		var target: StringName = pair[2]
 		bt.disabled = not UI.has_screen(target)
 		bt.tooltip_text = "" if not bt.disabled else "아직 준비 중"
+		if not bt.disabled and not bool(pair[3]):
+			bt.text += "  ✓"
+			bt.tooltip_text = String(pair[4])
 		bt.pressed.connect(func() -> void: UI.open(target, {"resident_id": _sel}))
 		acts.add_child(bt)
 	_detail.add_child(acts)

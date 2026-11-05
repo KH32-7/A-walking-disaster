@@ -50,6 +50,7 @@ func _ready() -> void:
 	EventBus.flow_state_changed.connect(_on_flow_state_changed)
 	EventBus.sortie_started.connect(_on_sortie_started)
 	_last_flow = GameState.flow_state
+	Colony.night_events_ready.connect(_on_night_events_ready)
 	_on_flow_state_changed(GameState.flow_state)
 
 
@@ -143,6 +144,10 @@ func _on_flow_state_changed(state: Enums.FlowState) -> void:
 				open(id)
 		elif is_open(id):
 			close(id)
+	# D-13: 입주 의식 for survivors brought home, on top of the evening screen.
+	if state == Enums.FlowState.EVENING and _in_game() and has_screen(&"welcome") and not is_open(&"welcome") \
+			and not Colony.pending_arrivals().is_empty():
+		open(&"welcome")
 	# D-19: transition card (출격 / 귀환 / 쓰러짐 / 불러오기) above the screen just opened.
 	var t := LoadingScreen.transition_for(_last_flow, state)
 	_last_flow = state
@@ -154,6 +159,17 @@ func _on_flow_state_changed(state: Enums.FlowState) -> void:
 func _on_sortie_started(loadout: Dictionary) -> void:
 	if is_open(&"loading"):
 		open(&"loading", {"kind": &"sortie", "region_id": StringName(loadout.get("region_id", &""))})
+
+
+## D-13: tonight's events (C-14) play in the night event screen.
+func _on_night_events_ready(_events: Array) -> void:
+	if _in_game() and has_screen(&"night_event") and not is_open(&"night_event"):
+		open(&"night_event")
+
+
+## Auto-opened scenes (welcome, night events) only inside a running scene, not in --script test runs.
+func _in_game() -> bool:
+	return get_tree().current_scene != null
 
 
 # --- public API (contracts.md) ---
