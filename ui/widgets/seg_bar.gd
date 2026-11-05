@@ -18,6 +18,12 @@ extends Control
 @export var empty_color := Color(1, 1, 1, 0.12)
 @export var frame := true
 @export var bracket := false
+## Tick marks at these fill ratios (0..1), e.g. boss phase boundaries (#115). Drawn as short
+## vertical lines that stick out above and below the frame.
+@export var ticks: PackedFloat32Array = PackedFloat32Array():
+	set(v):
+		ticks = v
+		queue_redraw()
 
 
 func _init() -> void:
@@ -44,6 +50,7 @@ func _draw() -> void:
 	if segments <= 1:
 		draw_rect(inner, empty_color)
 		draw_rect(Rect2(inner.position, Vector2(inner.size.x * value, inner.size.y)), fill_color)
+		_draw_ticks(inner)
 		return
 	var gap := 4.0
 	var w := (inner.size.x - gap * (segments - 1)) / segments
@@ -54,3 +61,10 @@ func _draw() -> void:
 		var part := clampf(filled - i, 0.0, 1.0)
 		if part > 0.0:
 			draw_rect(Rect2(cell.position, Vector2(cell.size.x * part, cell.size.y)), fill_color)
+
+
+func _draw_ticks(inner: Rect2) -> void:
+	for t in ticks:
+		var x := inner.position.x + inner.size.x * clampf(t, 0.0, 1.0)
+		draw_line(Vector2(x, -4), Vector2(x, size.y + 4), Color(0, 0, 0, 0.6), 4.0)
+		draw_line(Vector2(x, -4), Vector2(x, size.y + 4), UiTokens.TEXT, 2.0)

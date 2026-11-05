@@ -51,6 +51,11 @@ var _mates: VBoxContainer
 var _name: Label
 var _armor: SegBar
 var _hp: SegBar
+## Boss bar (#115): top centre, only while Player.hud_state() has "boss" (B-19).
+var _boss: VBoxContainer
+var _boss_name: Label
+var _boss_phase: Label
+var _boss_bar: SegBar
 var _xp: SegBar
 var _level: Label
 var _stamina: SegBar
@@ -189,6 +194,7 @@ func _apply(s: Dictionary) -> void:
 		_set_timer(float(s.dusk_left_sec))
 	_apply_hold(s.get("hold", {}))
 	_apply_prompt(s.get("prompt", {}))
+	_apply_boss(s.get("boss", {}))
 	# lists rebuild only when their content changes
 	var sig := var_to_str([s.get("weapons", []), s.get("weapon_index", 0), s.get("reloading", false),
 		s.get("consumables", []), s.get("skills", []), s.get("companions", []), s.get("objectives", [])])
@@ -209,6 +215,28 @@ func _set_timer(left: float) -> void:
 	_timer.add_theme_color_override(&"font_color", UiTokens.WARN if warn else UiTokens.TEXT)
 	_timer_icon.visible = warn
 	_timer_cap.text = "해질녘까지" if left > 0.0 else "해가 졌습니다"
+
+
+## "boss": {name, hp, hp_max, phase, phase_count, optional phase_at: [hp ratios]} (B-19, issue #115).
+## Phase boundaries are tick marks (shape, not colour); without phase_at they split the bar evenly.
+func _apply_boss(b: Dictionary) -> void:
+	_boss.visible = not b.is_empty()
+	if not _boss.visible:
+		return
+	_boss_name.text = String(b.get("name", ""))
+	var hp_max := maxf(1.0, float(b.get("hp_max", 1.0)))
+	_boss_bar.value = float(b.get("hp", hp_max)) / hp_max
+	var count := maxi(1, int(b.get("phase_count", 1)))
+	var ticks := PackedFloat32Array()
+	if b.has("phase_at"):
+		for r in b["phase_at"]:
+			ticks.append(float(r))
+	else:
+		for i in range(1, count):
+			ticks.append(float(i) / count)
+	if ticks != _boss_bar.ticks:
+		_boss_bar.ticks = ticks
+	_boss_phase.text = "%d / %d 단계" % [int(b.get("phase", 1)), count] if count > 1 else ""
 
 
 func _apply_hold(h: Dictionary) -> void:
@@ -252,6 +280,23 @@ func _build() -> void:
 	_objectives.add_theme_constant_override(&"separation", 6)
 	tr.add_child(_objectives)
 	_place(tr, Control.PRESET_TOP_RIGHT, Vector2(-m, 28))
+
+	# top centre: boss name + phase on one line, a long thin bar under it (no panel, UI_RULES §1)
+	_boss = VBoxContainer.new()
+	_boss.add_theme_constant_override(&"separation", 6)
+	_boss.custom_minimum_size = Vector2(640, 0)
+	var brow := HBoxContainer.new()
+	_boss_name = _lbl("", &"LabelHud", 20)
+	_boss_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	brow.add_child(_boss_name)
+	_boss_phase = _lbl("", &"LabelHud", 16)
+	brow.add_child(_boss_phase)
+	_boss.add_child(brow)
+	_boss_bar = SegBar.new()
+	_boss_bar.custom_minimum_size = Vector2(640, 16)
+	_boss.add_child(_boss_bar)
+	_boss.visible = false
+	_place(_boss, Control.PRESET_CENTER_TOP, Vector2(0, 30))
 
 	_feed = VBoxContainer.new()
 	_feed.add_theme_constant_override(&"separation", 8)
