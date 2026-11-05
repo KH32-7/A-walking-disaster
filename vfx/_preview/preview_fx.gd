@@ -1,6 +1,6 @@
 extends Node3D
 ## D-18 preview: every Fx id on a grid, replayed every REPLAY_SEC. Owner: Lane D.
-## Keys: 1~5 element (없음, 초록, 돌, 물, 빛), C crit, F reduce flash, R replay now.
+## Keys: 1~5 element (없음, 풀, 돌, 물, 번개), C crit, F reduce flash, R replay now.
 ## WASD / arrows move the camera, mouse wheel zooms. Needs the assets submodule to show anything.
 
 const REPLAY_SEC := 2.5

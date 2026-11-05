@@ -146,7 +146,7 @@ static func essence_lines(stats: Dictionary) -> Array:
 				slow += " / 이동 −%d%%" % _pct(p["slow_ratio"])
 			parts.append(slow)
 		if p.has("wet_sec"):
-			parts.append("젖음 %s초 (빛 피해 +%d%%)" % [_num(p["wet_sec"]), _pct(p.get("wet_light_bonus", 0.0))])
+			parts.append("젖음 %s초 (번개 피해 +%d%%)" % [_num(p["wet_sec"]), _pct(p.get("wet_light_bonus", 0.0))])
 		if p.has("chain_chance"):
 			parts.append("감전 %d%% / %d마리에게 %d%%" % [_pct(p["chain_chance"]), int(p.get("chain_targets", 0)),
 				_pct(p.get("chain_damage_ratio", 0.0))])

@@ -1,6 +1,7 @@
 [gd_resource type="Resource" script_class="ResidentTemplate" format=3]
 
 [ext_resource type="Script" path="res://systems/defs/resident_template.gd" id="1_rtpl"]
+[ext_resource type="Resource" path="res://data/classes/skills/signature/wheelchair_rush.tres" id="2_sig"]
 
 [resource]
 script = ExtResource("1_rtpl")
@@ -11,6 +12,7 @@ former_job = &"mechanic"
 traits = Array[StringName]([&"quick_hands", &"brave"])
 likes = Array[StringName]([&"coffee", &"engine_parts"])
 dislikes = Array[StringName]([&"stairs", &"waiting"])
+gender = &"male"
 access_needs = Array[int]([0])
 stats = {
 &"dex": 7
@@ -22,4 +24,6 @@ first_line = "늦었네요. 문은 제가 반쯤 열어 놨어요."
 rescue_lines = Array[String](["턱 있는 데선 뒤로 내려갈게요. 잡아만 줘요.", "저 차 배터리, 아직 쓸 만해 보이는데.", "길이 좁으면 먼저 말해 줘요. 돌아가게."])
 situation = "멈춘 고층 승강기 안"
 demo = true
+signature_skill = ExtResource("2_sig")
+signature_line = "바퀴에 뭐 꼈네. 이따 빼 줘요."
 reviewed = true

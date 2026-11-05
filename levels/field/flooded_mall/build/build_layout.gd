@@ -140,6 +140,8 @@ func _init() -> void:
 	loot_seed = LOOT_SEED
 	clutter_seed = CLUTTER_SEED
 	custom_buildings = ["shop_in"]
+	# 2F dressing (tables, deck cars) hides with the mall roof while the player is on the 1F.
+	upper_floor_holder = "roof:shop_in"
 	kit_buildings = KitBuildings.BUILDINGS
 	out_kit = OUT_KIT
 	out_splat = OUT_SPLAT
@@ -301,7 +303,8 @@ func _build_pois() -> void:
 				"fuel_tank_covers", "fuel_price_sign_01"]:
 			placed += int(_poi_try(piece, gas, keep_out, routes, piece in ["conditioner_07", "fuel_price_sign_01"]))
 
-	# 해솔마트: the sign half off its post by the front door, overgrowth inside.
+	# 해솔마트: the sign half off its post by the front door. No plants inside (user decision
+	# 2026-11-06: nothing grows on indoor floors).
 	var mart_doors := _doors("mart_in")
 	if not mart_doors.is_empty():
 		var mart := _poly(_zones.mart_in)
@@ -320,7 +323,11 @@ func _build_pois() -> void:
 		for i in int(_area(inner) * 0.12):
 			var p := Vector2(_kit_rng.randf_range(b.position.x, b.end.x), _kit_rng.randf_range(b.position.y, b.end.y))
 			if Geometry2D.is_point_in_polygon(p, inner) and not _near_door(p, mart_doors, 2.0) and not _in_prop(p, 0.3):
-				_kit_plant(KIT_EDGE_PLANTS[_kit_rng.randi_range(0, KIT_EDGE_PLANTS.size() - 1)], p, CityKit.FLOOR_Y)
+				# The old overgrowth spot: draw the same random numbers as before (piece, yaw,
+				# scale) without placing a plant, so the rest of the map keeps its layout.
+				_kit_rng.randi_range(0, KIT_EDGE_PLANTS.size() - 1)
+				_kit_rng.randf()
+				_kit_rng.randf_range(0.8, 1.4)
 
 	# 옥상 주차 데크: cars left parked on the mall roof deck.
 	var deck := _largest(Geometry2D.offset_polygon(_poly(_zones.shop2_deck), -2.5))
@@ -340,7 +347,7 @@ func _build_pois() -> void:
 				or _kit_items.any(func(it: Dictionary) -> bool: return it.has("deck") and (it.deck as Vector2).distance_to(p) < 5.5):
 			continue
 		deck_cars += 1
-		_kit_add(car, p, yaw, y2)
+		_kit_add(car, p, yaw, y2, 1.0, upper_floor_holder)
 		_kit_items[-1]["deck"] = p
 		_root.get_node("PropsKit").add_child(_box("DeckCar%d" % deck_cars, p, Vector2(size.x, size.z), y2, size.y, 0.0, "blocked"))
 	placed += deck_cars

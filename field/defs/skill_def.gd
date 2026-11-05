@@ -29,6 +29,10 @@ extends Resource
 @export var damage_taken_mult: float = 1.0
 ## Weapon stat that scales the cooldown (sniper rifle "정조준 쿨 -50%": aim_cooldown_mult 0.5).
 @export var cooldown_stat: StringName = &""
+## Fx id shown instead of `id` (&"" = id). Signature skills reuse a runner (id) with their own look.
+@export var fx: StringName = &""
+## Element passed to the Fx (tints / picks the element texture).
+@export var fx_element: Enums.Element = Enums.Element.NONE
 
 
 ## Cooldown for a skill used with a weapon of these Armory stats.
