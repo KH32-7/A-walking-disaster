@@ -39,6 +39,7 @@ func run() -> bool:
 		lamp.position = at
 		builder_lamps.append(lamp)
 	var d: RegionDressing = load("res://levels/field/flooded_mall/dressing.tscn").instantiate()
+	d.night_fade_sec = 0.0
 	map.add_child(d)
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -53,9 +54,14 @@ func run() -> bool:
 		ok = _expect(spot.global_position.distance_to(standing.global_position + Vector3(0, 6.5, 0)) < 0.2,
 			"the lamp hangs at the top of the post") and ok
 		ok = _expect((-spot.global_basis.z).dot(Vector3.DOWN) > 0.99, "the lamp shines straight down") and ok
-		FieldState.dusk_started.emit()
-		ok = _expect(is_equal_approx(spot.light_energy, d.street_light_energy * d.street_light_dusk_mult),
-			"lamps brighten at dusk") and ok
+		ok = _expect(not spot.visible and not Fx.night_lights, "by day the lamps are off and muzzle flashes give no light") and ok
+		var day_sun: float = (d.get_node(^"Sun") as DirectionalLight3D).light_energy
+		FieldState.night_started.emit()
+		ok = _expect(spot.visible and is_equal_approx(spot.light_energy, d.street_light_energy),
+			"the lamps come on at night") and ok
+		ok = _expect(Fx.night_lights, "muzzle flashes light the ground at night") and ok
+		var night_sun: float = (d.get_node(^"Sun") as DirectionalLight3D).light_energy
+		ok = _expect(is_equal_approx(night_sun, d.night_sun_energy) and night_sun < day_sun, "the map goes dark at night") and ok
 	ok = _expect(d.get_node_or_null(^"DressingEnvironment") != null and d.get_node_or_null(^"Sun") != null,
 		"environment + sun added") and ok
 	ok = _expect(wall.material is ShaderMaterial, "greybox wall drawn with the toon shader") and ok
@@ -67,7 +73,8 @@ func run() -> bool:
 	ok = _expect(far.position.y <= -2.9, "the builder's far backdrop goes under the deep water") and ok
 	ok = _expect(d.get_child_count() > 4, "vines / debris added") and ok
 	ok = _expect(ResourceLoader.exists("res://art/dressing/presets/base_school.tscn"), "base dressing preset exists") and ok
-	map.queue_free()
+	map.free()
+	ok = _expect(not Fx.night_lights, "leaving the map ends the night lights") and ok
 	return ok
 
 

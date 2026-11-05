@@ -82,5 +82,7 @@ enum Channel { RGBA, MASK, PACKED }
 @export var follow_radius := false
 
 @export_group("Light")
+## Built only while Fx.night_lights is on (field nights): a muzzle flash lights the ground at night only.
+@export var night_only := false
 @export var light_energy := 2.0
 @export var light_range := 4.0

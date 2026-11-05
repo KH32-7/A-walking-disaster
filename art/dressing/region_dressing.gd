@@ -7,7 +7,8 @@ extends Node3D
 ##   environment (sky, fog, sun, glow), toon skin (each greybox StandardMaterial3D colour is drawn
 ##   with the toon shader instead - layout files are untouched), the base lakes' water (RealisticWater) on water
 ##   surfaces, vines along wall tops, dead neon signs, warm lights in IndoorZones, floating debris,
-##   street lights on the standing pack lamp posts (field), and for the base: laundry lines, a
+##   street lights on the standing pack lamp posts and a darker night look (field, from
+##   FieldState.night_started), and for the base: laundry lines, a
 ##   bonfire light, flower pots.
 ## Everything is seeded, so the same map always looks the same.
 ## Design 16 "아트 방향": 회백 콘크리트 + 청록 수면 + 초록 덩굴, 맑은 하늘, 꺼진 네온.
@@ -64,19 +65,28 @@ enum Kind { FIELD, BASE }
 @export var vine_color := Color("5e9a4a")
 @export_group("Street lights")
 ## Standing pack lamp posts (STREET_LAMP_SCENES) get a downward spot light and a glowing bulb, so
-## the streets get pools of light and the map reads in depth. Fallen posts stay dark.
+## the streets get pools of light and the map reads in depth. Fallen posts stay dark. The lamps are
+## off by day and come on with the field night (FieldState.night_started), user decision 2026-11-06.
 @export var street_lights := true
 @export var street_light_color := Color("ffd59a")
-@export var street_light_energy := 3.0
-## Multiplier from dusk (FieldState.dusk_started) on, and again at night.
-@export var street_light_dusk_mult := 1.6
-@export var street_light_night_mult := 2.4
+@export var street_light_energy := 7.0
 @export var street_light_range := 14.0
 @export_range(10.0, 89.0) var street_light_angle := 55.0
 ## Spots further than this from the camera stop casting shadows (and fade out at twice this).
 @export var street_light_shadow_distance := 45.0
 ## About this share of the lamps flicker (seeded).
 @export_range(0.0, 1.0) var street_light_flicker := 0.15
+@export_group("Night")
+## Field only. At FieldState.night_started the map fades to this over night_fade_sec, the street lamps
+## come on and Fx.night_lights lets muzzle flashes light the ground (day: no muzzle light).
+@export var night_sun_color := Color("8094c4")
+@export var night_sun_energy := 0.25
+@export var night_ambient := Color("34405a")
+@export var night_ambient_energy := 0.4
+@export var night_sky_top := Color("0b1424")
+@export var night_sky_horizon := Color("1c2940")
+@export var night_fog_color := Color("172030")
+@export var night_fade_sec := 4.0
 
 var _rng := RandomNumberGenerator.new()
 var _toon_cache: Dictionary = {}
@@ -86,7 +96,11 @@ var _fire: OmniLight3D
 var _bed_mat: Material
 var _street_spots: Array[SpotLight3D] = []
 var _flicker_spots: Array[SpotLight3D] = []
-var _street_mult := 1.0
+var _street_bulbs: Array[Node3D] = []
+var _night := false
+var _sun: DirectionalLight3D
+var _env: Environment
+var _sky: ProceduralSkyMaterial
 
 ## Pack lamp posts that light up (CityKit places them into the region's buildings scene).
 const STREET_LAMP_SCENES := ["parking_lot_light_pole_01.fbx"]
@@ -99,6 +113,8 @@ const BUILDER_LAMP_MATCH := 1.0
 func _ready() -> void:
 	_rng.seed = seed_value
 	_environment()
+	if kind == Kind.FIELD:
+		FieldState.night_started.connect(_start_night)
 	var layout := _find_layout()
 	if layout == null:
 		push_warning("RegionDressing: no sibling Layout found; only the environment is added")
@@ -118,6 +134,13 @@ func _ready() -> void:
 		_street_lights()
 	if kind == Kind.BASE:
 		_base_life(layout, walls)
+	if kind == Kind.FIELD and FieldState.is_night() and not _night:
+		_start_night(true)  # the map was loaded at night
+
+
+func _exit_tree() -> void:
+	if _night:
+		Fx.night_lights = false
 
 
 func _process(delta: float) -> void:
@@ -131,10 +154,10 @@ func _process(delta: float) -> void:
 		_fire.light_energy = 1.4 + sin(_t * 9.0) * 0.12 + sin(_t * 23.0) * 0.08
 	for i in _flicker_spots.size():
 		var s := _flicker_spots[i]
-		if is_instance_valid(s):
+		if _night and is_instance_valid(s):
 			# Mostly on, with short dips (a bad contact, not a strobe: reduce_flash keeps it gentle).
 			var dip := 1.0 if sin(_t * 1.7 + i * 3.1) > -0.85 else 0.35
-			s.light_energy = street_light_energy * _street_mult * dip
+			s.light_energy = street_light_energy * dip
 
 
 func _find_layout() -> Node3D:
@@ -154,6 +177,7 @@ func _environment() -> void:
 	e.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
 	var sm := ProceduralSkyMaterial.new()
+	_sky = sm
 	sm.sky_top_color = sky_top
 	sm.sky_horizon_color = sky_horizon
 	sm.ground_horizon_color = sky_horizon
@@ -185,7 +209,9 @@ func _environment() -> void:
 	e.fog_sky_affect = 0.3
 	env.environment = e
 	add_child(env)
+	_env = e
 	var sun := DirectionalLight3D.new()
+	_sun = sun
 	sun.name = &"Sun"
 	sun.rotation_degrees = sun_rotation
 	sun.light_color = sun_color
@@ -459,6 +485,7 @@ func _street_lights() -> void:
 		spot.distance_fade_shadow = street_light_shadow_distance
 		spot.distance_fade_length = street_light_shadow_distance
 		add_child(spot)
+		spot.visible = _night
 		spot.global_position = at
 		spot.global_rotation = Vector3(-PI / 2.0, 0.0, 0.0)  # straight down
 		var bulb := MeshInstance3D.new()
@@ -466,19 +493,13 @@ func _street_lights() -> void:
 		bulb.material_override = bulb_mat
 		bulb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(bulb)
+		bulb.visible = _night
 		bulb.global_position = at
+		_street_bulbs.append(bulb)
 		_street_spots.append(spot)
 		if not no_flicker and _rng.randf() < street_light_flicker:
 			_flicker_spots.append(spot)
 	_hide_builder_lamps(region, post_spots)
-	if _street_spots.is_empty():
-		return
-	FieldState.dusk_started.connect(_set_street_mult.bind(street_light_dusk_mult))
-	FieldState.night_started.connect(_set_street_mult.bind(street_light_night_mult))
-	if FieldState.is_night():
-		_set_street_mult(street_light_night_mult)
-	elif FieldState.is_dusk():
-		_set_street_mult(street_light_dusk_mult)
 
 
 ## The layout builder (field/build/layout_builder.gd LAMP_LIGHTS) also bakes a plain "Lamp" omni light
@@ -505,11 +526,50 @@ func _is_street_lamp(n: Node) -> bool:
 	return false
 
 
-func _set_street_mult(mult: float) -> void:
-	_street_mult = mult
+func _set_lamps(on: bool) -> void:
 	for s in _street_spots:
 		if is_instance_valid(s):
-			s.light_energy = street_light_energy * mult
+			s.visible = on
+			s.light_energy = street_light_energy
+	for b in _street_bulbs:
+		if is_instance_valid(b):
+			b.visible = on
+
+
+# ---------------- night ----------------
+
+## Field night: the map fades dark, the street lamps come on and muzzle flashes light the ground.
+func _start_night(instant := false) -> void:
+	if _night:
+		return
+	_night = true
+	Fx.night_lights = true
+	_set_lamps(true)
+	if _sun == null or _env == null:
+		return
+	if instant or night_fade_sec <= 0.0:
+		_sun.light_color = night_sun_color
+		_sun.light_energy = night_sun_energy
+		_env.ambient_light_color = night_ambient
+		_env.ambient_light_energy = night_ambient_energy
+		_env.fog_light_color = night_fog_color
+		_sky.sky_top_color = night_sky_top
+		_sky.sky_horizon_color = night_sky_horizon
+		_sky.ground_horizon_color = night_sky_horizon
+		return
+	var tw := create_tween().set_parallel().set_trans(Tween.TRANS_SINE)
+	tw.tween_property(_sun, ^"light_color", night_sun_color, night_fade_sec)
+	tw.tween_property(_sun, ^"light_energy", night_sun_energy, night_fade_sec)
+	tw.tween_property(_env, ^"ambient_light_color", night_ambient, night_fade_sec)
+	tw.tween_property(_env, ^"ambient_light_energy", night_ambient_energy, night_fade_sec)
+	tw.tween_property(_env, ^"fog_light_color", night_fog_color, night_fade_sec)
+	tw.tween_property(_sky, ^"sky_top_color", night_sky_top, night_fade_sec)
+	tw.tween_property(_sky, ^"sky_horizon_color", night_sky_horizon, night_fade_sec)
+	tw.tween_property(_sky, ^"ground_horizon_color", night_sky_horizon, night_fade_sec)
+
+
+func is_night_look() -> bool:
+	return _night
 
 
 ## Standing lit lamp posts (tests and previews).
