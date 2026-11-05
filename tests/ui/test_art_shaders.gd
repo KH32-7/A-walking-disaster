@@ -3,6 +3,7 @@ extends RefCounted
 
 const EXPECT := {
 	"res://art/shaders/toon.gdshader": ["albedo", "shade_color", "bands", "rim_amount", "alpha_cut"],
+	"res://art/shaders/toon_double_sided.gdshader": ["albedo", "albedo_texture", "alpha_cut"],
 	"res://art/shaders/outline.gdshader": ["outline_color", "outline_px"],
 	"res://art/shaders/element_glow.gdshader": ["glow_color", "energy", "pulse_amount"],
 	"res://art/shaders/roof_fade.gdshader": ["player_position", "fade_radius", "fade_amount"],
