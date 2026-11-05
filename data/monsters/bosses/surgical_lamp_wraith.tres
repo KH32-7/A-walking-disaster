@@ -1,0 +1,69 @@
+[gd_resource type="Resource" script_class="BossDef" format=3]
+
+[ext_resource type="Script" path="res://field/defs/boss_def.gd" id="1_boss"]
+[ext_resource type="Script" path="res://field/defs/boss_pattern.gd" id="2_pattern"]
+[ext_resource type="Script" path="res://field/monsters/boss/mechanics/wraith_mechanic.gd" id="3_mech"]
+
+[sub_resource type="Resource" id="Pattern_clones"]
+script = ExtResource("2_pattern")
+id = &"clones"
+action = &"clones"
+range_min = 0.0
+range_max = 16.0
+cooldown_sec = 18.0
+windup_sec = 1.0
+shape = &""
+params = {
+"count": 2,
+"life_sec": 12.0,
+"spread": 5.0
+}
+
+[sub_resource type="Resource" id="Pattern_flash"]
+script = ExtResource("2_pattern")
+id = &"flash"
+action = &"flash"
+range_min = 0.0
+range_max = 8.0
+cooldown_sec = 10.0
+windup_sec = 1.2
+shape = &"circle"
+anchor = 0
+radius = 9.0
+kind = &"warn"
+damage_mult = 0.0
+params = {
+"blind_sec": 2.0
+}
+
+[sub_resource type="Resource" id="Pattern_scalpels"]
+script = ExtResource("2_pattern")
+id = &"scalpels"
+action = &"scalpels"
+range_min = 3.0
+range_max = 14.0
+cooldown_sec = 5.0
+windup_sec = 0.8
+shape = &""
+length = 14.0
+width = 1.0
+kind = &"danger"
+damage_mult = 0.8
+status = Array[Dictionary]([{"id": &"bleed"}])
+params = {
+"count": 3,
+"spread_deg": 22.0
+}
+
+[resource]
+script = ExtResource("1_boss")
+monster_id = &"surgical_lamp_wraith"
+phases = Array[float]([0.5])
+phase_speed = Array[float]([1.0, 1.5])
+patterns = Array[ExtResource("2_pattern")]([SubResource("Pattern_flash"), SubResource("Pattern_scalpels"), SubResource("Pattern_clones")])
+pattern_gap_sec = 1.0
+mechanic = ExtResource("3_mech")
+respawn_days = 3
+first_kill_flags = Array[StringName]([&"blueprint_infirmary_lv3"])
+first_kill_text = "수술등 망령을 쓰러뜨렸다. 의무실 Lv3 설계도를 얻었다"
+first_kill_drop_table_id = &"monster_boss_first"
