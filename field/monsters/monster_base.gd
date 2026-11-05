@@ -471,7 +471,7 @@ func _tick_return(delta: float) -> void:
 ## No art file, or its model is missing (clone without assets access) -> the grey box stays.
 func _add_visual() -> void:
 	var path := VISUAL_DIR + String(def.id) + ".tscn"
-	if has_node(^"Visual") or not ResourceLoader.exists(path):
+	if has_node(^"Visual") or not ResourceLoader.exists(path) or not _dependencies_present(path):
 		return
 	var scene := load(path) as PackedScene
 	if scene == null:
@@ -486,6 +486,17 @@ func _add_visual() -> void:
 	for child in get_children():
 		if child is MeshInstance3D:
 			(child as MeshInstance3D).visible = false
+
+
+## The visual scene references its model under res://assets/ (private submodule). On a clone without
+## it, loading the scene logs a "Parse Error" for the missing file (the headless check fails on that),
+## so look at the dependencies first and keep the grey box when one is missing.
+static func _dependencies_present(path: String) -> bool:
+	for dep in ResourceLoader.get_dependencies(path):
+		var dep_path := dep.get_slice("::", dep.get_slice_count("::") - 1)
+		if dep_path.begins_with("res://") and not ResourceLoader.exists(dep_path):
+			return false
+	return true
 
 
 func _add_behavior(id: StringName) -> void:
