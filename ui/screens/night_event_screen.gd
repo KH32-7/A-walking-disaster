@@ -12,6 +12,9 @@ var _index := 0
 var _total := 0
 var _result: Dictionary = {}
 var _before: Dictionary = {}  # pair key -> relation value before the choice
+## prejudice_talk (#125 part 1): the target's story fragments Colony revealed, shown one by one.
+var _fragments: Array = []
+var _fragment_i := 0
 
 var _day_label: Label
 var _title: Label
@@ -76,7 +79,7 @@ func _build_body(b: Control) -> void:
 	_people.offset_top = 150
 	_people.offset_bottom = 520
 	b.add_child(_people)
-	dialog = DialogBox.new()
+	dialog = DialogBox.new(DialogBox.Layout.CENTER)  # UI redesign 대화 (#125)
 	dialog.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	dialog.offset_top = -330
 	dialog.offset_bottom = 0
@@ -180,6 +183,13 @@ func _on_choice(id: StringName) -> void:
 	match id:
 		&"next":
 			_next()
+		&"more":
+			_fragment_i += 1
+			_show_fragment()
+		&"wedding":
+			var pair: Array = _ev.get("participants", [])
+			if pair.size() >= 2:
+				UI.open(&"wedding_prep", {"a": pair[0], "b": pair[1]})
 		&"end":
 			close()
 		_:
@@ -204,6 +214,11 @@ func _show_result() -> void:
 	if text == "" and _result.get("skipped", false):
 		text = "%s 중 누군가 자리에 없어 지나갔다." % ResidentText.names_of(who)
 	var frag: Dictionary = _result.get("fragment", {})
+	_fragments = _result.get("fragments", [])
+	_fragment_i = 0
+	if not _fragments.is_empty() and who.size() > 1:
+		_show_fragment()
+		return
 	if not frag.is_empty():
 		notes.append([text, UiTokens.TEXT])
 		notes.append(["◆ 사연 한 조각", UiTokens.ACCENT])
@@ -212,10 +227,30 @@ func _show_result() -> void:
 	else:
 		dialog.say("", text)
 	dialog.set_notes(notes)
+	_end_choices()
+
+
+## After an event: next / end, plus 결혼식 준비 보기 after a proposal (#125 part 5).
+func _end_choices(extra: Array = []) -> void:
+	var out: Array = extra.duplicate()
+	if StringName(_ev.get("event_id", &"")) == &"proposal" and UI.has_screen(&"wedding_prep"):
+		out.append([&"wedding", "결혼식 준비 보기"])
 	if Colony.pending_night_events().is_empty():
-		dialog.set_choices([[&"end", "밤을 보낸다"]])
+		out.append([&"end", "밤을 보낸다"])
 	else:
-		dialog.set_choices([[&"next", "다음 일 보기"]])
+		out.append([&"next", "다음 일 보기"])
+	dialog.set_choices(out)
+
+
+## prejudice_talk: the marked resident (second participant) tells the revealed story, one piece a
+## line, "이야기를 더 듣는다" for the next piece.
+func _show_fragment() -> void:
+	var who: Array = _ev.get("participants", [])
+	var target := StringName(who[1])
+	var i := clampi(_fragment_i, 0, _fragments.size() - 1)
+	dialog.say(ResidentText.call_name(Colony.get_resident(target)), String(_fragments[i]), target)
+	dialog.set_notes([[String(_result.get("text", "")), UiTokens.TEXT], ["◆ 사연이 드러났어요  %d / %d" % [i + 1, _fragments.size()], UiTokens.ACCENT]])
+	_end_choices([[&"more", "이야기를 더 듣는다"]] if i + 1 < _fragments.size() else [])
 
 
 static func _key(a: Variant, b: Variant) -> String:

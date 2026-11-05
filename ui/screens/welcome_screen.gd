@@ -72,7 +72,7 @@ func _build_body(b: Control) -> void:
 
 func _begin() -> void:
 	if resident_id == &"" or Colony.arrival_info(resident_id).is_empty():
-		var waiting := Colony.pending_arrivals()
+		var waiting := ResidentEventFlow.welcome_queue()  # family children get child_naming (#125)
 		resident_id = waiting[0] if not waiting.is_empty() else &""
 	step = 0
 	_result = {}
@@ -304,7 +304,7 @@ func _step_first_talk(r: Dictionary) -> void:
 		var chip := ResidentSceneScreen.cream_chip("▲ " + ResidentText.tag_name(like))
 		chip.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		_card.add_child(chip)
-	var more := Colony.pending_arrivals()
+	var more := ResidentEventFlow.welcome_queue()
 	more.erase(resident_id)
 	if more.is_empty():
 		_buttons([], "기지로", close)

@@ -79,6 +79,11 @@ func open_with(args: Dictionary) -> void:
 		_sel_zone = StringName(args["zone"])
 	if args.has("uid"):
 		_sel_uid = StringName(args["uid"])
+	if args.has("def"):  # #125: "가족 숙소 짓기 ›" links from the resident screens open on that building
+		_mode = &"build"
+		_sel = StringName(args["def"])
+		var d := BaseDB.get_building(_sel)
+		_cat = group_of(int(d.category)) if d != null else -1
 	if _list != null:
 		_refresh()
 

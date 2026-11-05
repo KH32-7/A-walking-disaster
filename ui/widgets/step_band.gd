@@ -99,3 +99,35 @@ class StepDot extends Control:
 			_:
 				draw_arc(c, r, 0, TAU, 28, UiTokens.TEXT_DIM, 1.5, true)
 				draw_string(font, c + Vector2(-12, 5), str(n), HORIZONTAL_ALIGNMENT_CENTER, 24, 14, UiTokens.TEXT_DIM)
+
+
+# ---------------- names + current index (#125 resident events) ----------------
+
+## The names given to set_progress() and the index of the current step.
+var names: Array = []
+var current := 0
+
+
+## Steps by name and the index of the current one: earlier steps are done, later ones todo,
+## cur >= names.size() = every step done. Same look as set_steps().
+func set_progress(step_names: Array, cur: int) -> void:
+	names = step_names.duplicate()
+	current = cur
+	var list: Array = []
+	for i in step_names.size():
+		list.append({"label": String(step_names[i]), "state": DONE if i < cur else (NOW if i == cur else TODO)})
+	set_steps(list)
+
+
+## DONE / NOW / TODO for step i.
+func state_of(i: int) -> StringName:
+	return StringName(steps[i].get("state", TODO)) if i >= 0 and i < steps.size() else TODO
+
+
+## Places the band at the top centre of its parent (a full-screen Control).
+func place_top_center(top := 30.0) -> void:
+	anchor_left = 0.5
+	anchor_right = 0.5
+	offset_top = top
+	grow_horizontal = Control.GROW_DIRECTION_BOTH
+	mouse_filter = Control.MOUSE_FILTER_IGNORE

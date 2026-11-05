@@ -28,6 +28,7 @@ const NIGHT_INTRO := {
 	&"proposal": "%s이(가) 할 말이 있다며 모두를 불렀다.",
 	&"wedding": "%s의 결혼식. 모두가 강당에 모였다.",
 	&"breakup": "%s이(가) 서로 눈을 피한다.",
+	&"prejudice_talk": "%s이(가) 늦은 밤 마주 앉았다. 미뤄 둔 이야기를 꺼낼 때다.",
 }
 
 ## Gift reactions (Colony.give_gift "reaction") → [mark, words]. The mark is a shape glyph so the
