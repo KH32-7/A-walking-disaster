@@ -7,21 +7,29 @@ extends ResidentSceneScreen
 ## line between neighbours (shape = stage, RelationGraph) and small note chips under each name.
 
 var people: HBoxContainer
+## Top-centre step band (UI redesign "순서가 있는 일은 순서를 보여 준다"). Subclasses call band.set_steps().
+var band: StepBand
 
 
 func _build_body(b: Control) -> void:
+	# UI redesign 대화: cream box at the bottom centre + yellow name pill, choices as a pill row.
+	dialog_layout = DialogBox.Layout.CENTER
 	people = HBoxContainer.new()
 	people.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	people.anchor_right = ResidentSceneScreen.RIGHT
 	people.offset_left = 52
 	people.offset_right = -20
-	people.offset_top = 150
-	people.offset_bottom = -340
+	people.offset_top = 130
+	people.offset_bottom = -390
 	people.alignment = BoxContainer.ALIGNMENT_CENTER
 	people.add_theme_constant_override(&"separation", 18)
 	people.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(people)
+	band = StepBand.new()
+	add_child(band)
+	band.place_top_center(30)
 	super._build_body(b)
+	column.offset_bottom = -380  # above the dialogue box
 	move_child(people, dialog.get_index())
 
 

@@ -11,6 +11,7 @@ const CHILD_STEPS := [&"child_name", &"meet"]
 const CHILD_STEP_NAMES := ["이름 짓기", "맞이하기"]
 
 var method := -1
+var _band: StepBand
 
 
 func _init() -> void:
@@ -40,11 +41,20 @@ func steps() -> Array:
 	return CHILD_STEPS
 
 
+func _build_body(b: Control) -> void:
+	_band = StepBand.new()
+	add_child(_band)
+	_band.place_top_center(30)
+	super._build_body(b)
+	_track.visible = false  # the welcome track; the band shows 바람 → 맞이 → 이름 짓기 → 입주
+
+
 func _refresh() -> void:
 	MenuScreen.clear(_card)
 	_next_button = null
 	_nick_edit = null
-	_track.set_steps(CHILD_STEP_NAMES, step)
+	# UI redesign "순서를 보여 준다": the whole child arrival; this screen is steps 3 and 4.
+	_band.set_steps(ResidentEventFlow.CHILD_STEPS, 2 + step)
 	var r := Colony.get_resident(resident_id)
 	if r.is_empty() or (step == 0 and not ResidentEventFlow.is_family_child(resident_id)):
 		_who.text = ""

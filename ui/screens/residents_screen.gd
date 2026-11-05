@@ -283,6 +283,9 @@ func _show_detail() -> void:
 		ll.add_theme_color_override(&"font_color", line[1])
 		ll.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_detail.add_child(ll)
+	var lack := ResidentEventFlow.detail_lack_box(_sel)
+	if lack != null:
+		_detail.add_child(lack)
 	var day_acts := Colony.trust_actions(_sel)
 	var acts := HBoxContainer.new()
 	acts.add_theme_constant_override(&"separation", 10)

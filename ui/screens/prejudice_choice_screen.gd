@@ -1,8 +1,9 @@
 extends ResidentEventScreen
 ## 편견 소문 선택 (#125 part 1, C-16). Owner: Lane D. Design 08 "편견과 갈등".
 ## Opens on Colony.prejudice_rumor (ResidentEventFlow). The marked resident and the residents who
-## hold the prejudice stand on the left; the strip asks what to do with three cream pills
-## (PrejudiceRules.CHOICE_DEFEND / WATCH / SEPARATE) and Colony.choose_prejudice_response() answers.
+## hold the prejudice stand on the left; the centred cream dialogue asks what to do with three cream
+## pills (PrejudiceRules.CHOICE_DEFEND / WATCH / SEPARATE) and Colony.choose_prejudice_response()
+## answers. The step band on top shows 소문 → 선택 → 사건 → 해소.
 ## The trust / morale change shown is the difference Colony made, not a number computed here.
 ## The right card shows the chain (소문 → 선택 → 사건 → 해소) from Colony.prejudice_chain() and says
 ## plainly that a mark never turns anyone into a monster. Esc = 나중에 (the rumor stays, back tomorrow).
@@ -36,6 +37,7 @@ func _start() -> void:
 	_chain = Colony.prejudice_chain(resident_id)
 	_result = {}
 	set_subtitle("%d일차" % GameState.day)
+	_band()
 	if _chain.is_empty():
 		MenuScreen.clear(people)
 		dialog.say("", "지금은 기지에 도는 소문이 없어요.")
@@ -57,6 +59,13 @@ func _start() -> void:
 			ResidentEventFlow.CHOICE_DONE.get(StringName(_chain.get("choice", &"")), "이미 골랐어요")])
 		dialog.set_choices([[&"close", "돌아간다"]])
 	_refresh_column()
+
+
+## 소문 → 선택 → 사건 → 해소. A chain in the rumor step is at 선택 (the rumor already went round).
+func _band() -> void:
+	band.visible = not _chain.is_empty()
+	if not _chain.is_empty():
+		band.set_steps(ResidentEventFlow.PREJUDICE_STEPS, ResidentEventFlow.chain_step_index(_chain) + 1)
 
 
 func _draw() -> void:
@@ -89,6 +98,7 @@ func _on_choice(id: StringName) -> void:
 		return
 	_result = res
 	_chain = Colony.prejudice_chain(resident_id)
+	_band()
 	var r := resident()
 	var notes: Array = []
 	var dt := int(r.get("trust", 0)) - trust0
@@ -99,7 +109,7 @@ func _on_choice(id: StringName) -> void:
 		notes.append([("▲ 사기 +%d" if dm > 0 else "▼ 사기 %d") % dm, UiTokens.GOOD if dm > 0 else UiTokens.WARN])
 	if id == PrejudiceRules.CHOICE_SEPARATE and StringName(r.get("bed_id", &"")) == &"":
 		notes.append(["● 임시 거처로 옮겼어요", UiTokens.TEXT_DIM])
-	notes.append(["◆ 며칠 안에 무슨 일이 생길 것 같아요", UiTokens.ACCENT])
+	notes.append(["◆ 며칠 안에 무슨 일이 생길 것 같아요", UiTokens.TEXT])
 	dialog.say(ResidentText.call_name(r), LINES[id], resident_id)
 	dialog.set_notes(notes)
 	if ResidentEventFlow.rumor_queue().is_empty():
@@ -128,15 +138,12 @@ func _refresh_column() -> void:
 			holders.append(ResidentText.call_name(hr))
 	if not holders.is_empty():
 		v.add_child(card_text("소문을 믿는 사람  ·  " + ", ".join(holders), true, 15))
-	v.add_child(HSeparator.new())
-	v.add_child(card_text("이야기의 흐름", true, 14))
-	# rumor = the rumor went round, now choose (row 1); resolved = every row done.
 	var now := ResidentEventFlow.chain_step_index(_chain) + 1
-	for i in ResidentEventFlow.CHAIN_STEP_NAMES.size():
-		var text: String = ResidentEventFlow.CHAIN_STEP_NAMES[i]
-		if i == 1 and now > 1:
-			text += " — " + ResidentEventFlow.CHOICE_DONE.get(StringName(_chain.get("choice", &"")), "")
-		var mark := "✓" if i < now else ("●" if i == now else "○")
-		v.add_child(ResidentEventScreen.mark_row(mark, text, i <= now))
+	if now > 1:
+		v.add_child(ResidentEventScreen.mark_row("✓", ResidentEventFlow.CHOICE_DONE.get(StringName(_chain.get("choice", &"")), "")))
+	if now == 2:
+		v.add_child(card_text("며칠 안에 무슨 일이 생길 것 같아요.", true, 15))
+	elif now == 3:
+		v.add_child(card_text("편견을 가진 주민과 이야기할 밤을 기다려요.", true, 15))
 	if now == 1:
-		v.add_child(card_text("따로 지내게 하면 이야기가 더 늦게 풀려요.", true, 14))
+		v.add_child(card_text("따로 지내게 하면 이야기가 더 늦게 풀려요.", true, 15))

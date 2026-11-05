@@ -5,7 +5,8 @@ extends Node3D
 ## waiting for a name, an engaged pair, and tonight's prejudice_talk.
 ## Optional: -- --view=<name> --shot=user://x.png
 ##   prejudice | prejudice_done | wish | wish_method | wish_done | wish_blocked | naming | naming_error |
-##   naming_meet | wedding | wedding_short | wedding_ready | night_talk | night_proposal | detail | detail_family
+##   naming_meet | wedding | wedding_short | wedding_ready | night_talk | night_proposal | detail | detail_family |
+##   detail_lack
 
 var _shot := ""
 var _view := "prejudice"
@@ -66,6 +67,11 @@ func _ready() -> void:
 			UI.get_screen(&"night_event").call(&"_on_choice", &"watch")
 		"detail_family":
 			UI.open(&"residents", {"id": _ids.guard})
+		"detail_lack":
+			# The second family: their house is full with the baby, and one parent is low on morale.
+			Colony.residents[&"pv_mom"]["morale"] = 40
+			(Colony._relation_meta(&"pv_mom", &"pv_dad") as Dictionary)["house_uid"] = &""  # no free family-house bed
+			UI.open(&"residents", {"id": &"pv_mom"})
 		_:
 			UI.open(&"residents", {"id": _ids.marked})
 

@@ -79,7 +79,7 @@ func _build_body(b: Control) -> void:
 	_people.offset_top = 150
 	_people.offset_bottom = 520
 	b.add_child(_people)
-	dialog = DialogBox.new()
+	dialog = DialogBox.new(DialogBox.Layout.CENTER)  # UI redesign 대화 (#125)
 	dialog.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	dialog.offset_top = -330
 	dialog.offset_bottom = 0

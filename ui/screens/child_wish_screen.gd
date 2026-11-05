@@ -41,6 +41,8 @@ func _start() -> void:
 		w = all[0] if not all.is_empty() else {}
 	_result = {}
 	_stage = &"ask"
+	band.visible = not w.is_empty()
+	band.set_steps(ResidentEventFlow.CHILD_STEPS, 0)
 	if w.is_empty():
 		a = &""
 		b = &""
@@ -59,7 +61,7 @@ func _start() -> void:
 	set_subtitle("%s 가족" % ResidentText.call_name(Colony.get_resident(a)))
 	draw_people([a, b])
 	dialog.say(ResidentText.call_name(Colony.get_resident(a)), "우리… 아이를 맞이하면 어떨까? 여기라면 함께 키울 수 있을 것 같아.", a)
-	dialog.set_notes([["◆ 아이를 맞고 싶어 해요", UiTokens.ACCENT]])
+	dialog.set_notes([["◆ 아이를 맞고 싶어 해요", UiTokens.TEXT]])
 	dialog.set_choices([[&"now", "지금 맞이한다"], [&"later", "나중에 생각한다", false, "다시 이야기해요"]])
 	_refresh_column()
 
@@ -116,13 +118,16 @@ func _answer(choice: StringName, method: int) -> void:
 		dialog.set_notes([["✕ " + String(res.get("reason", "")), UiTokens.WARN]])
 		return
 	_stage = &"done"
+	# 바람 → 맞이 → 이름 짓기 → 입주: an orphan adopted now already lives here (all done).
+	var arrived := choice == &"now" and StringName(res.get("child_id", &"")) != &""
+	band.set_steps(ResidentEventFlow.CHILD_STEPS, ResidentEventFlow.CHILD_STEPS.size() if arrived else (1 if choice == &"now" else 0))
 	var notes: Array = []
 	if choice == &"later":
 		dialog.say(ResidentText.call_name(ra), "그래, 조금 더 생각해 보자.", a)
 		notes.append(["● 나중에 다시 이야기해요", UiTokens.TEXT_DIM])
 	elif method == Enums.ArrivalMethod.BIRTH:
 		dialog.say(ResidentText.call_name(rb), "열흘이면 우리 아기를 만나겠네.", b)
-		notes.append(["◆ %d일차에 아기가 와요" % int(res.get("due_day", 0)), UiTokens.ACCENT])
+		notes.append(["◆ %d일차에 아기가 와요" % int(res.get("due_day", 0)), UiTokens.TEXT])
 		for id in [a, b]:
 			var why := Colony.sortie_block_reason(id)
 			if why != "":
@@ -160,12 +165,9 @@ func _refresh_column() -> void:
 		v.add_child(ResidentEventScreen.mark_row("●", "%s — %s" % [ResidentEventFlow.METHOD_NAMES.get(m, str(m)), detail]))
 	if _stage == &"done":
 		return  # answered: the conditions now only say "already waiting"
-	v.add_child(HSeparator.new())
 	var st := Colony.child_arrival_status(a, b)
 	var missing: Array = st.get("missing", [])
-	v.add_child(card_text("아이 맞이 조건", true, 14))
 	if missing.is_empty():
-		v.add_child(ResidentEventScreen.mark_row("✓", "조건을 모두 갖췄어요"))
+		v.add_child(ResidentEventScreen.mark_row("✓", "아이를 맞을 조건을 모두 갖췄어요"))
 	else:
-		for m in missing:
-			v.add_child(ResidentEventScreen.mark_row("✕", String(m), true, UiTokens.DANGER.darkened(0.2)))
+		v.add_child(ResidentEventFlow.lack_box("아이 맞이", missing))

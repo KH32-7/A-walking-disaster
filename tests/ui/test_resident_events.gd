@@ -84,6 +84,11 @@ func _test_prejudice() -> bool:
 	var box: DialogBox = s.get(&"dialog")
 	ok = _expect(s.get(&"resident_id") == target, "without args it takes the oldest rumor") and ok
 	ok = _expect(box.choice_ids() == PrejudiceRules.CHOICES, "three choices: defend / watch / separate: %s" % [box.choice_ids()]) and ok
+	ok = _expect(box.layout == DialogBox.Layout.CENTER and box.primary_choice() == 0,
+		"centred dialogue, one yellow ring on the choice to press now") and ok
+	var band: StepBand = s.get(&"band")
+	ok = _expect(band.visible and band.steps == ResidentEventFlow.PREJUDICE_STEPS and band.state_of(0) == &"done"
+		and band.state_of(1) == &"now", "step band 소문 ✓ → 선택 (now)") and ok
 	var trust := int(Colony.get_resident(target).trust)
 	ok = _expect(box.pick(PrejudiceRules.CHOICE_DEFEND), "defend can be picked") and ok
 	var chain := Colony.prejudice_chain(target)
@@ -118,6 +123,7 @@ func _test_child_wish() -> bool:
 	ok = _expect(box.choice_ids() == [&"birth", &"adoption", &"back"], "then only the methods Colony sent: %s" % [box.choice_ids()]) and ok
 	box.pick(&"birth")
 	ok = _expect(Colony.is_pregnant(a) and Colony.child_wishes().is_empty(), "출산 goes through Colony.answer_child_wish") and ok
+	ok = _expect((s.get(&"band") as StepBand).current == 1, "band: 바람 ✓ → 맞이") and ok
 	var notes := _note_texts(box)
 	ok = _expect(notes.any(func(t: String) -> bool: return t.contains("%d일차" % (GameState.day + ChildRules.BIRTH_DAYS))),
 		"the due day from Colony's result is shown: %s" % [notes]) and ok
@@ -139,8 +145,17 @@ func _test_child_wish() -> bool:
 	var miss: Array = Colony.child_arrival_status(g[0], g[1]).missing
 	ok = _expect(not miss.is_empty() and _texts(s.get(&"column")).any(func(t: String) -> bool: return t.contains(String(miss[0]))),
 		"why the family cannot welcome a child is written in the card: %s" % [miss]) and ok
-	ok = _expect(ResidentEventFlow.detail_lines(g[0]).any(func(l: Array) -> bool: return String(l[0]).contains(String(miss[0]))),
-		"and in the resident detail") and ok
+	var lack := ResidentEventFlow.detail_lack_box(g[0])
+	ok = _expect(lack != null and _texts(lack).any(func(t: String) -> bool: return t.contains(String(miss[0])))
+		and _texts(lack).any(func(t: String) -> bool: return t.begins_with("아이 맞이 · ")),
+		"and in the resident detail, in the teal 'still lacks' box") and ok
+	var food_gap: Control = ResidentEventFlow.lack_box("아이 맞이", ["의무실 필요"])
+	ok = _expect(_texts(food_gap).has("아이 맞이 · 기지가 아직 못 갖춘 것")
+		and _buttons(food_gap).any(func(bt: Button) -> bool: return bt.text.ends_with("짓기 ›")),
+		"a missing building reads as what the base lacks, with a build link") and ok
+	food_gap.free()
+	if lack != null:
+		lack.free()
 	box.pick(&"back")
 	box.pick(&"later")
 	ok = _expect(Colony.child_wishes().is_empty() and box.choice_ids() == [&"close"], "나중에 answers 'later' (Colony)") and ok
@@ -161,6 +176,8 @@ func _test_naming() -> bool:
 	await get_tree().process_frame
 	var s := UI.get_screen(&"child_naming")
 	ok = _expect(s.get(&"resident_id") == child and s.get(&"step") == 0, "it takes the waiting child") and ok
+	ok = _expect((s.get(&"_band") as StepBand).steps == ResidentEventFlow.CHILD_STEPS and (s.get(&"_band") as StepBand).current == 2,
+		"band: 바람 ✓ 맞이 ✓ → 이름 짓기") and ok
 	ok = _expect(not s.call(&"save_name", "") and String(s.get(&"_error")) != "", "an empty name shows Colony's reason") and ok
 	ok = _expect(s.call(&"save_name", "하람") and Colony.get_resident(child).name == "하람" and s.get(&"step") == 1,
 		"Colony.name_child saves the name, then 맞이하기") and ok
@@ -192,6 +209,9 @@ func _test_wedding() -> bool:
 	var texts := _texts(s.get(&"column"))
 	ok = _expect(texts.any(func(t: String) -> bool: return t.contains("식량 20")) and texts.any(func(t: String) -> bool: return t.contains("가족 숙소")),
 		"the card lists the cost with names and the family house: %s" % [texts]) and ok
+	ok = _expect(_buttons(s.get(&"column")).any(func(bt: Button) -> bool: return bt.text.contains("짓기 ›")),
+		"what is missing links to the build screen") and ok
+	ok = _expect((s.get(&"band") as StepBand).current == 0, "band: 조건 (now)") and ok
 	Economy.set_cap_bonus(1000)
 	Economy.apply({&"food": 25, &"cloth": 5})
 	_build(&"family_house")
@@ -279,6 +299,15 @@ func _test_flow() -> bool:
 	await get_tree().process_frame
 	UI.close_all()
 	return ok
+
+
+func _buttons(n: Node) -> Array:
+	var out: Array = []
+	if n is Button:
+		out.append(n)
+	for c in n.get_children():
+		out.append_array(_buttons(c))
+	return out
 
 
 func _note_texts(box: DialogBox) -> Array:

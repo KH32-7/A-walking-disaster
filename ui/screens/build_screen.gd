@@ -50,6 +50,10 @@ func open_with(args: Dictionary) -> void:
 		_sel_zone = StringName(args["zone"])
 	if args.has("uid"):
 		_sel_uid = StringName(args["uid"])
+	if args.has("def"):  # #125: "가족 숙소 짓기 ›" links from the resident screens
+		_mode = &"build"
+		_cat = -1
+		_sel = StringName(args["def"])
 	if _list != null:
 		_refresh()
 
