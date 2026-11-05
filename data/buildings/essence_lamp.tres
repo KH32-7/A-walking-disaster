@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_vtkpd"]
+
+[resource]
+script = ExtResource("1_vtkpd")
+id = &"essence_lamp"
+display_name = "정수 등불"
+category = 10
+cost = Dictionary[StringName, int]({
+&"scrap": 15
+})
+build_work = 10
+effects = Dictionary[StringName, float]({
+&"aura_dps": 10.0,
+&"aura_radius_m": 8.0,
+&"essence_per_raid": 2.0
+})
+durability = 150
+defense_value = 6.0
+note = "습격마다 정수 2. 그 속성에 약한 계열에게 반경 8m 초당 피해 10"

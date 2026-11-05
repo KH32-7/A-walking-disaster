@@ -9,7 +9,7 @@ display_name = "정수 공방"
 category = 4
 size = Vector2i(3, 3)
 cost = Dictionary[StringName, int]({
-&"essence_low": 5,
+&"essence_green_low": 5,
 &"scrap": 20,
 &"stone": 40
 })

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_esorx"]
+
+[resource]
+script = ExtResource("1_esorx")
+id = &"light_tower"
+display_name = "조명탑"
+category = 10
+cost = Dictionary[StringName, int]({
+&"scrap": 10
+})
+build_work = 10
+effects = Dictionary[StringName, float]({
+&"fog_cancel": 1.0,
+&"night_vision": 1.0
+})
+power_use = Array[int]([1, 1, 1])
+durability = 150
+defense_value = 1.0
+note = "밤 시야 확보, 안개 습격 무효 (전력 1)"
