@@ -8,6 +8,12 @@ signal trust_changed(resident_id: StringName, trust: int, stage: int, reason: St
 ## Emitted when tonight's events are picked (C-14). Each: {event_id, participants, choices, night_day}.
 ## Lane D plays them with next_night_event() / resolve_night_event(choice).
 signal night_events_ready(events: Array)
+## 입주 의식 (C-13): a rescued survivor moved in and waits for the ceremony (D-13 opens it),
+## and the ceremony ended (result = complete_arrival()'s Dictionary).
+signal arrival_ready(resident_id: StringName)
+signal arrival_completed(resident_id: StringName, result: Dictionary)
+## Nickname or appearance changed (ResidentAgent redraws).
+signal resident_profile_changed(resident_id: StringName)
 ## Autoload `Colony`. Owner: Lane C.
 ## Residents, buildings, relationships, raids threat - everything that lives in the base.
 ## Other lanes read through the getters below; they never edit resident data directly.
@@ -2102,6 +2108,131 @@ func _sortie_relations(back: Array[StringName]) -> void:
 		add_relation(pair[0], pair[1], RelationRules.SORTIE_TOGETHER, &"sortie")
 
 
+# --- 입주 의식 (C-13, 07 "입주 의식") ---------------------------------------------------
+## A rescued survivor joins with arrival_pending = true. Lane D's ceremony screen (D-13) walks the
+## steps (ArrivalRules.STEPS) with these calls and ends with complete_arrival(). Residents gather at
+## the base to greet them meanwhile (ResidentCrowd, activity &"welcome").
+
+## Residents waiting for their 입주 의식, oldest first.
+func pending_arrivals() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for id in active_resident_ids():
+		if residents[id]["arrival_pending"]:
+			out.append(id)
+	return out
+
+
+## Everything the ceremony screen needs for one resident:
+## {resident_id, name, nickname, age_stage, appearance (CharacterLook form), steps, hair_styles,
+##  bed_id, beds: [{bed_id, building_uid, building_name}], nickname_max}.
+func arrival_info(resident_id: StringName) -> Dictionary:
+	var r: Dictionary = residents.get(resident_id, {})
+	if r.is_empty():
+		return {}
+	var choices: Array = []
+	for bed_id in free_beds():
+		var uid := _bed_building(bed_id)
+		choices.append({"bed_id": bed_id, "building_uid": uid,
+			"building_name": _def_name(buildings[uid]["def_id"]) if buildings.has(uid) else "본관 1층"})
+	return {
+		"resident_id": resident_id, "name": r["name"], "nickname": r["nickname"], "age_stage": r["age_stage"],
+		"appearance": appearance_for_look(resident_id), "steps": ArrivalRules.STEPS.duplicate(),
+		"hair_styles": ArrivalRules.HAIR_STYLES.duplicate(), "bed_id": r["bed_id"], "beds": choices,
+		"nickname_max": ArrivalRules.NICKNAME_MAX,
+	}
+
+
+## 별명 짓기 (empty = no nickname). Returns {"ok", "reason"}.
+func set_nickname(resident_id: StringName, nickname: String) -> Dictionary:
+	if not residents.has(resident_id):
+		return {"ok": false, "reason": "없는 주민"}
+	var check := ArrivalRules.check_nickname(nickname, ResidentTemplate.load_banned_words())
+	if check["ok"]:
+		residents[resident_id]["nickname"] = check["nickname"]
+		resident_profile_changed.emit(resident_id)
+	return {"ok": check["ok"], "reason": check["reason"]}
+
+
+## 외형 꾸미기: keys preset, hair, hair_color, outfit_color, outfit_accent, skin (Color or "#rrggbb").
+## Merged into what the resident has. Returns {"ok", "reason"}.
+func set_appearance(resident_id: StringName, appearance: Dictionary) -> Dictionary:
+	if not residents.has(resident_id):
+		return {"ok": false, "reason": "없는 주민"}
+	var clean := ArrivalRules.clean_appearance(appearance)
+	if clean["ok"]:
+		residents[resident_id]["appearance"].merge(clean["appearance"], true)
+		resident_profile_changed.emit(resident_id)
+	return {"ok": clean["ok"], "reason": clean["reason"]}
+
+
+## The resident's look for CharacterLook.apply(): colours as Color, a default preset when none was
+## picked yet (by age, ResidentAgent.default_preset).
+func appearance_for_look(resident_id: StringName) -> Dictionary:
+	var r: Dictionary = residents.get(resident_id, {})
+	if r.is_empty():
+		return {}
+	var look := ArrivalRules.to_look(r["appearance"])
+	if not look.has("preset"):
+		look["preset"] = ResidentAgent.default_preset(r)
+	return look
+
+
+## 침상 배정: a free bed, or &"" for 임시 거처 (사기 −10/일). Returns false if the bed is taken.
+func choose_bed(resident_id: StringName, bed_id: StringName) -> bool:
+	if not residents.has(resident_id):
+		return false
+	if bed_id == residents[resident_id]["bed_id"]:
+		return true
+	if bed_id != &"" and (not beds.has(bed_id) or beds[bed_id] != &""):
+		return false
+	release_bed(resident_id)
+	return bed_id == &"" or assign_bed(resident_id, bed_id)
+
+
+## 첫 대화 and the end of the ceremony: tells the story's first piece (background) and one like,
+## counts as today's talk (+3 trust when not talked yet). Returns {"ok", "first_line", "background", "like"}.
+func complete_arrival(resident_id: StringName) -> Dictionary:
+	var r: Dictionary = residents.get(resident_id, {})
+	if r.is_empty() or not r["arrival_pending"]:
+		return {"ok": false, "first_line": "", "background": "", "like": &""}
+	r["arrival_pending"] = false
+	var like: StringName = r["likes"][0] if not r["likes"].is_empty() else &""
+	if like != &"" and not like in r["known_likes"]:
+		r["known_likes"].append(like)
+	if trust_actions(resident_id).get("talk", false):
+		talk(resident_id)
+	var result := {"ok": true, "first_line": r["story"]["first_line"], "background": r["story"]["background"], "like": like}
+	arrival_completed.emit(resident_id, result)
+	EventBus.notification_posted.emit("%s이(가) 기지 식구가 되었다" % _display_name(r), &"info")
+	return result
+
+
+## Likes the player knows about (첫 대화, liked gifts). Screens show only these.
+func known_likes(resident_id: StringName) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for like in residents.get(resident_id, {}).get("known_likes", []):
+		out.append(StringName(like))
+	return out
+
+
+## A liked gift tells the player which like it matched (the tag, or the resource id itself).
+func _learn_like(resident_id: StringName, resource_id: StringName) -> void:
+	var r: Dictionary = residents[resident_id]
+	for like: StringName in r["likes"]:
+		if (like == resource_id or resource_id in TrustRules.GIFT_TAGS.get(like, [])) and not like in r["known_likes"]:
+			r["known_likes"].append(like)
+			return
+
+
+func _display_name(r: Dictionary) -> String:
+	return String(r["nickname"]) if String(r["nickname"]) != "" else String(r["name"])
+
+
+func _bed_building(bed_id: StringName) -> StringName:
+	var s := String(bed_id)
+	return &"" if s.begins_with(START_BED_PREFIX) else StringName(s.get_slice("_bed_", 0))
+
+
 # --- Trust, talk, gifts (C-12, 07 "신뢰도") ---------------------------------------
 ## Lines come from Lane A (Radio / AI 대화); the resident screen is D-13. Colony only keeps the numbers.
 
@@ -2189,6 +2320,8 @@ func give_gift(resident_id: StringName, resource_id: StringName) -> Dictionary:
 	Economy.apply({resource_id: -1})
 	residents[resident_id]["gift_day"] = GameState.day
 	var reaction := gift_reaction(resident_id, resource_id)
+	if reaction == &"liked":
+		_learn_like(resident_id, resource_id)
 	var amount: int = TrustRules.GIFT_AMOUNT[reaction]
 	return {"ok": true, "reason": "", "reaction": reaction, "trust": add_trust(resident_id, amount, &"gift")}
 
@@ -2324,7 +2457,10 @@ func _on_rescue_completed(rescued: Dictionary) -> void:
 			assign_bed(id, free[0])
 		EventBus.resident_joined.emit(id)
 		return
-	add_resident(rescued)
+	# A new survivor: 입주 의식 (C-13) is still to come.
+	var new_id := add_resident(rescued.merged({"arrival_pending": true}, true))
+	if new_id != &"":
+		arrival_ready.emit(new_id)
 
 
 func _new_resident_id() -> StringName:
@@ -2466,6 +2602,8 @@ func _register_debug_commands() -> void:
 		"settle - 하루 정산을 돌리고 Economy에 반영 (A-05 전 테스트용)")
 	DebugConsole.register(&"trust", _cmd_trust,
 		"trust <id> | trust talk|deep|add <id> [n] | trust gift <id> <resource_id> - 신뢰도·대화·선물")
+	DebugConsole.register(&"arrival", _cmd_arrival,
+		"arrival | arrival <id> nick <별명> | preset <id> | bed <bed_id|none> | done - 입주 의식 (목록·별명·외형·침상·첫 대화)")
 	DebugConsole.register(&"rel", _cmd_rel,
 		"rel <id> | rel add <a> <b> <n> | rel night (오늘 밤 이벤트 뽑고 모두 진행) | rel wedding <a> <b> (결혼식 준비)")
 	DebugConsole.register(&"zone", _cmd_zone,
@@ -2497,6 +2635,32 @@ func _register_debug_commands() -> void:
 		"raid now [day|night] | raid threat <0~100> | raid info - 습격 강제·위협도 설정·방어력/예상")
 	DebugConsole.register(&"build", _cmd_build,
 		"build <building_id> | build list - 비용 없이 건물을 바로 완성 / 건물·전력·소음 목록")
+
+
+func _cmd_arrival(args: PackedStringArray) -> String:
+	var usage := "사용법: arrival | arrival <id> nick <별명> | preset <id> | bed <bed_id|none> | done"
+	if args.is_empty():
+		var waiting := pending_arrivals()
+		return "입주 의식 대기: %s · 빈 침상 %s" % [waiting if not waiting.is_empty() else "없음", free_beds()]
+	var id := StringName(args[0])
+	if not residents.has(id):
+		return "없는 주민: %s" % id
+	if args.size() < 2:
+		return "%s" % arrival_info(id)
+	var value := " ".join(args.slice(2)) if args.size() > 2 else ""
+	match args[1]:
+		"nick":
+			var res := set_nickname(id, value)
+			return "별명: %s" % residents[id]["nickname"] if res["ok"] else "실패: " + String(res["reason"])
+		"preset":
+			var res := set_appearance(id, {"preset": StringName(value)})
+			return "외형: %s" % appearance_for_look(id) if res["ok"] else "실패: " + String(res["reason"])
+		"bed":
+			return "침상: %s" % residents[id]["bed_id"] if choose_bed(id, &"" if value == "none" else StringName(value)) else "그 침상은 쓸 수 없다"
+		"done":
+			var res := complete_arrival(id)
+			return "첫 대화 — %s / 좋아하는 것: %s" % [res["background"], res["like"]] if res["ok"] else "입주 의식 대기 중이 아님"
+	return usage
 
 
 func _cmd_rel(args: PackedStringArray) -> String:

@@ -4,6 +4,7 @@ extends Node3D
 ## evening gathering and bed by the day phase (docs/design/01-flow-time.md "하루 구조"):
 ##   MORNING / STAY → work (workplace building, its WorkSpot, or the construction site)
 ##   EVENING        → gather (best 모닥불·식당 building, else the layout's GatherPoint)
+##   입주 의식 대기 중  → welcome (낮에 모두 모임터로 마중, C-13)
 ##   NIGHT          → sleep (own bed: main-hall BedSpots marker or the bed building)
 ## Residents without a job idle near the gathering point. Stranded / dead / left residents are removed.
 
@@ -23,6 +24,9 @@ func _ready() -> void:
 	EventBus.phase_changed.connect(_on_phase_changed)
 	EventBus.evening_settled.connect(_on_evening_settled)
 	Colony.buildings_changed.connect(_on_buildings_changed)
+	Colony.arrival_ready.connect(_on_resident_changed)
+	Colony.resident_profile_changed.connect(_on_resident_changed)
+	Colony.arrival_completed.connect(_on_arrival_completed)
 	sync.call_deferred()
 
 
@@ -71,6 +75,10 @@ func destination(resident_id: StringName) -> Dictionary:
 	match GameState.phase:
 		Enums.Phase.NIGHT:
 			return {"position": _bed_position(r), "activity": &"sleep"}
+	# 입주 의식 1단계: everyone comes out to greet a newcomer (C-13).
+	if not Colony.pending_arrivals().is_empty():
+		return {"position": _gather_point() + _offset(resident_id), "activity": &"welcome"}
+	match GameState.phase:
 		Enums.Phase.EVENING:
 			return {"position": _gather_point() + _offset(resident_id), "activity": &"gather"}
 	var work = _work_position(r)
@@ -150,3 +158,7 @@ func _on_evening_settled(_report: Dictionary) -> void:
 
 func _on_buildings_changed() -> void:
 	retarget.call_deferred()
+
+
+func _on_arrival_completed(_id: StringName, _result: Dictionary) -> void:
+	sync.call_deferred()

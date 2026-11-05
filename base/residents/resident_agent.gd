@@ -123,9 +123,7 @@ func refresh_from_colony() -> void:
 	var age := int(r["age_stage"])
 	if _look != null:
 		_look.set(&"age_stage", age)  # CharacterLook sizes the body by age (D-09)
-		var appearance: Dictionary = r["appearance"].duplicate()
-		if not appearance.has("preset"):
-			appearance["preset"] = default_preset(r)
+		var appearance := Colony.appearance_for_look(resident_id)  # 입주 의식 choices (C-13)
 		if appearance != _applied_look:
 			_applied_look = appearance
 			_look.call(&"apply", appearance)

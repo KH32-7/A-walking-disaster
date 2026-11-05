@@ -19,11 +19,14 @@ class_name ResidentData
 ##   hunger, fatigue, morale, trust: int 0..100
 ##   low_morale_days: int (days in a row under 20), leave_crisis: bool (떠나려 한다, C-06)
 ##   talked_day, gift_day: int — the day of the last talk / gift (하루 1번, C-12)
+##   arrival_pending: bool — 입주 의식 not done yet (rescued survivors, C-13)
+##   known_likes: Array[StringName] — likes the player has learned (첫 대화, 좋아한 선물)
 ##   health: Enums.HealthState, recover_days: int
 ##   relations: {resident_id: -100..100} (C-14)
 ##   assignment: {job: StringName, building_id: StringName}
 ##   bed_id: StringName (&"" = 임시 거처)
-##   story: {background: String, fragments: Array[String], requests: Array}
+##   story: {background: String, fragments: Array[String], requests: Array,
+##          first_line: String (첫 대화 첫마디, from the pool profile's "first_line")}
 ##   status: Enums.ResidentStatus, joined_day: int
 ## Equipment is not stored here: Armory owns it (Armory.get_equipped(resident_id, slot)).
 
@@ -89,6 +92,8 @@ static func create(profile: Dictionary, rng: RandomNumberGenerator) -> Dictionar
 		"leave_crisis": false,
 		"talked_day": 0,
 		"gift_day": 0,
+		"arrival_pending": false,
+		"known_likes": [],
 		"class_aptitude": roll_aptitude(rng),
 		"hunger": START_HUNGER,
 		"fatigue": START_FATIGUE,
@@ -99,7 +104,7 @@ static func create(profile: Dictionary, rng: RandomNumberGenerator) -> Dictionar
 		"relations": {},
 		"assignment": {"job": &"", "building_id": &""},
 		"bed_id": &"",
-		"story": {"background": "", "fragments": [], "requests": []},
+		"story": {"background": "", "fragments": [], "requests": [], "first_line": str(profile.get("first_line", ""))},
 		"status": Enums.ResidentStatus.ACTIVE,
 		"joined_day": 0,
 	}
@@ -149,6 +154,8 @@ static func normalize(src: Dictionary) -> Dictionary:
 	r["leave_crisis"] = bool(r.get("leave_crisis", false))
 	r["talked_day"] = int(r.get("talked_day", 0))
 	r["gift_day"] = int(r.get("gift_day", 0))
+	r["arrival_pending"] = bool(r.get("arrival_pending", false))
+	r["known_likes"] = _names(r.get("known_likes", []))
 	var apt := {}
 	for key in CLASS_KEYS:
 		apt[key] = clampi(int(_read(r.get("class_aptitude", {}), key, Enums.Aptitude.MID)), 0, Enums.Aptitude.size() - 1)
@@ -169,6 +176,7 @@ static func normalize(src: Dictionary) -> Dictionary:
 		"background": str(story.get("background", "")),
 		"fragments": Array(story.get("fragments", [])).map(func(f): return str(f)),
 		"requests": Array(story.get("requests", [])),
+		"first_line": str(story.get("first_line", "")),
 	}
 	r["status"] = int(r.get("status", Enums.ResidentStatus.ACTIVE))
 	r["joined_day"] = int(r.get("joined_day", 0))
