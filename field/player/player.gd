@@ -48,12 +48,13 @@ var _dodge_elapsed := 0.0
 var _dodge_dir := Vector3.ZERO
 var _facing := Vector3.FORWARD
 var _aim_point: Variant = null
-var _bound_left := 0.0
 ## Interactable the player last started using (HUD hold bar).
 var _interacting: Node3D
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
 @onready var _noise: NoiseEmitter = $Noise
+## Status effects (B-14): bleed, stagger, bind, slow ... Lane D listens to its signals.
+@onready var status: StatusHolder = StatusHolder.attach(self)
 
 
 func _ready() -> void:
@@ -117,13 +118,14 @@ func interact_target() -> Node3D:
 	return best
 
 
+## Cannot move: bound, staggered or knocked back (B-14 status effects).
 func is_bound() -> bool:
-	return _bound_left > 0.0
+	return not status.can_move()
 
 
-## Stagger (B-06 guard break): same movement lock as a bind until B-14 owns status effects.
+## Stagger for `sec` seconds (B-06 guard break). Same as the &"stagger" status.
 func stun(sec: float) -> void:
-	_bound_left = maxf(_bound_left, sec)
+	status.apply(&"stagger", {"duration": sec})
 
 
 ## Weapons (B-06) pay melee and block stamina through this, so regen delay restarts.
@@ -149,21 +151,25 @@ func is_invulnerable() -> bool:
 	return move_state == MoveState.DODGE and _dodge_elapsed < stats.dodge_invuln_sec
 
 
-## Damage entry point for monsters and hazards. Reads info["bind_sec"] (vine tendril);
-## other keys (element, knockback, status effects) are for B-06/B-14.
+## Damage entry point for monsters and hazards. Status effects ride in info (StatusHolder header:
+## info["status"], legacy info["bind_sec"]); a blocked hit applies none.
+## Status tick damage (bleed, shock) skips blocking and dodge invulnerability.
 ## DebugConsole `godmode` blocks everything.
 func take_damage(amount: float, info: Dictionary = {}) -> void:
-	if is_downed or is_invulnerable() or amount <= 0.0 or DebugConsole.godmode:
+	var tick := StatusHolder.is_tick(info)
+	if is_downed or (is_invulnerable() and not tick) or amount <= 0.0 or DebugConsole.godmode:
 		return
-	if incoming_damage_filter.is_valid():
+	if incoming_damage_filter.is_valid() and not tick:
 		amount = incoming_damage_filter.call(amount, info)
 		if amount <= 0.0:
 			return
-	_bound_left = maxf(_bound_left, info.get("bind_sec", 0.0))
+	amount = status.scale_damage(amount, info)
+	status.apply_hit(info)
 	health = maxf(health - amount, 0.0)
 	health_changed.emit(health, stats.max_health)
 	if health == 0.0:
 		is_downed = true
+		status.clear()
 		velocity = Vector3.ZERO
 		downed.emit()
 		EventBus.player_downed.emit()
@@ -173,9 +179,11 @@ func take_damage(amount: float, info: Dictionary = {}) -> void:
 ## input: {"move": Vector2, "aim": bool, "sprint": bool, "dodge": bool}
 func step(delta: float, input: Dictionary) -> void:
 	var dir := _to_world(input.get("move", Vector2.ZERO))
-	if _bound_left > 0.0:
-		# Bound (B-14 will own status effects): no moving or dodging, aiming still works.
-		_bound_left = maxf(_bound_left - delta, 0.0)
+	status.step(delta)
+	if is_downed:
+		return
+	if not status.can_move():
+		# Bound, staggered or knocked back (B-14): no moving or dodging, aiming still works.
 		dir = Vector3.ZERO
 		input = input.merged({"dodge": false, "sprint": false}, true)
 	if move_state == MoveState.DODGE:
@@ -184,6 +192,10 @@ func step(delta: float, input: Dictionary) -> void:
 		_start_dodge(dir)
 	else:
 		_step_move(delta, dir, input.get("aim", false), input.get("sprint", false))
+	var push := status.knockback_velocity()
+	if push != Vector3.ZERO:
+		velocity.x = push.x
+		velocity.z = push.z
 	if not is_on_floor():
 		velocity.y -= _gravity * delta
 	_step_stamina_regen(delta)
@@ -233,7 +245,7 @@ func _step_move(delta: float, dir: Vector3, aim: bool, sprint: bool) -> void:
 		_spend_stamina(stats.sprint_stamina_per_sec * delta)
 		if stamina <= 0.0:
 			_sprint_toggled = false
-	var target := dir * speed * move_speed_mult
+	var target := dir * speed * move_speed_mult * status.move_mult()
 	var flat := Vector3(velocity.x, 0.0, velocity.z).move_toward(target, stats.acceleration * delta)
 	velocity.x = flat.x
 	velocity.z = flat.z

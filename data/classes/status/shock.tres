@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="StatusEffect" format=3]
+
+[ext_resource type="Script" path="res://field/defs/status_effect.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"shock"
+duration_sec = 1.0
+tick_damage = 5.0
+move_mult = 0.8
+stacks_max = 1
+element = 4
