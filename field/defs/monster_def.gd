@@ -35,3 +35,12 @@ enum WeakPointShape { PETAL, SQUARE, DROPLET, BOLT }
 @export var attack_range: float = 1.5
 ## Seconds between attacks.
 @export var attack_interval: float = 1.2
+## Extra behaviors an elite gets on top of `behaviors` (04 "정예": 패턴 1개 추가, B-18).
+@export var elite_behaviors: Array[StringName] = []
+
+@export_group("Siege (C-17)")
+## Raid-only monsters (tier SIEGE). Lane C's defense battle reads these; field code ignores them.
+## Damage multiplier against walls and palisades (root crusher x3).
+@export var structure_damage_mult: float = 1.0
+## Rushes at doors and barricades first (debris ram).
+@export var charges_gates: bool = false

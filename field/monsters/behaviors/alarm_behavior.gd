@@ -1,7 +1,7 @@
 extends MonsterBehavior
 ## &"alarm" (spore pod): on spotting a target it screams. The scream is an ordinary
 ## noise on EventBus.noise_emitted, so nearby monsters hear it like any other noise.
-## TODO(B-14): spore projectile slow. Lane D plays the scream sound and effect.
+## The spore slow (포자 투사) comes from &"slow_touch". Lane D plays the scream sound and effect.
 
 
 func on_state_changed(old_state: Enums.AIState, new_state: Enums.AIState) -> void:

@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="MonsterDef" format=3]
+
+[ext_resource type="Script" path="res://field/defs/monster_def.gd" id="1_def"]
+[ext_resource type="PackedScene" path="res://field/monsters/root_crusher.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"root_crusher"
+name = "뿌리 파쇄자"
+family = 1
+tier = 3
+hp = 200.0
+defense = 10.0
+attack = 15.0
+move_speed = 3.0
+hearing_mult = 1.0
+sight_range = 10.0
+behaviors = Array[StringName]([])
+weak_point_shape = 0
+regions = Array[StringName]([])
+group_min = 1
+group_max = 1
+scene = ExtResource("2_scene")
+attack_range = 1.6
+attack_interval = 1.5
+elite_behaviors = Array[StringName]([])
+structure_damage_mult = 3.0

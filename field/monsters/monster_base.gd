@@ -21,6 +21,13 @@ const BEHAVIORS := {
 	&"bind": preload("res://field/monsters/behaviors/bind_behavior.gd"),
 	&"alarm": preload("res://field/monsters/behaviors/alarm_behavior.gd"),
 	&"split": preload("res://field/monsters/behaviors/split_behavior.gd"),
+	&"noise_only": preload("res://field/monsters/behaviors/noise_only_behavior.gd"),
+	&"mist": preload("res://field/monsters/behaviors/mist_behavior.gd"),
+	&"slow_touch": preload("res://field/monsters/behaviors/slow_touch_behavior.gd"),
+	&"self_destruct": preload("res://field/monsters/behaviors/self_destruct_behavior.gd"),
+	&"shock_orb": preload("res://field/monsters/behaviors/shock_orb_behavior.gd"),
+	&"orb_fan": preload("res://field/monsters/behaviors/orb_fan_behavior.gd"),
+	&"rally": preload("res://field/monsters/behaviors/rally_behavior.gd"),
 }
 
 @export var def: MonsterDef
@@ -41,6 +48,14 @@ var pack: MonsterPack
 var target: Node3D
 ## How many times this monster's line has split (split behavior).
 var split_generation: int = 0
+## Set by make_elite() (B-18). Elites use the elite drop table.
+var elite := false
+## Drop chance multiplier (B-21 night x1.3). 0 = drops nothing.
+var drop_mult: float = 1.0
+## Sight distance multiplier (B-21 night x0.7). Applied to def.sight_range.
+var sight_mult: float = 1.0
+## Damage multiplier on def.attack (elite x1.5).
+var attack_mult: float = 1.0
 
 var _behaviors: Array[MonsterBehavior] = []
 var _dead := false
@@ -77,12 +92,10 @@ func _ready() -> void:
 	if home == Vector3.INF:
 		home = global_position
 	for id in def.behaviors:
-		if BEHAVIORS.has(id):
-			var behavior: MonsterBehavior = BEHAVIORS[id].new()
-			behavior.monster = self
-			_behaviors.append(behavior)
-		else:
-			push_warning("%s: unknown behavior %s" % [def.id, id])
+		_add_behavior(id)
+	if elite:
+		for id in def.elite_behaviors:
+			_add_behavior(id)
 	state = start_state
 	_noise_point = global_position
 	if state == Enums.AIState.CHASE:
@@ -113,10 +126,14 @@ func tick(delta: float) -> void:
 	_state_time += delta
 	_sight_timer -= delta
 	status.step(delta)
+	var blocked := false
+	for behavior in _behaviors:
+		behavior.on_tick(delta)
+		blocked = blocked or behavior.blocks_action()
 	if _dead:
 		return
-	if not status.can_act():
-		# Staggered or knocked back (B-14): no moving, turning or attacking.
+	if blocked or not status.can_act():
+		# A behavior holds it still (B-18), or staggered / knocked back (B-14).
 		_stop()
 		return
 	if _is_leash_state() and _flat_distance(home) > MonsterRules.RETURN_DISTANCE:
@@ -171,6 +188,8 @@ func take_damage(amount: float, info: Dictionary = {}) -> void:
 func hear(point: Vector3, source: Node) -> void:
 	if _dead or state == Enums.AIState.RETURN:
 		return
+	for behavior in _behaviors:
+		behavior.on_heard(point, source)
 	_heard_times.append(_clock)
 	while _heard_times.size() > 0 and _clock - _heard_times[0] > MonsterRules.HEARING_WINDOW_SEC:
 		_heard_times.pop_front()
@@ -213,10 +232,10 @@ func pack_alert(point: Vector3) -> void:
 
 ## Cone + distance + wall check. use_cone = false while already chasing.
 func can_see(node: Node3D, use_cone: bool = true) -> bool:
-	if node == null or not node.is_inside_tree() or def.sight_range <= 0.0:
+	if node == null or not node.is_inside_tree() or sight_range() <= 0.0:
 		return false
 	var to := node.global_position - global_position
-	if to.length() > def.sight_range:
+	if to.length() > sight_range():
 		return false
 	var flat := Vector3(to.x, 0.0, to.z)
 	if use_cone and flat.length() > 0.01:
@@ -268,6 +287,54 @@ func can_move() -> bool:
 
 func is_dead() -> bool:
 	return _dead
+
+
+## Sight distance after sight_mult (B-21 night).
+func sight_range() -> float:
+	return def.sight_range * sight_mult
+
+
+## One hit's damage: def.attack x attack_mult (elite x1.5).
+func attack_damage() -> float:
+	return def.attack * attack_mult
+
+
+## Turns this monster into its elite variant (04 "정예", B-18): hp x3, attack x1.5,
+## size x1.3, plus def.elite_behaviors. Works before or after adding to the tree.
+## Calling it twice does nothing the second time.
+func make_elite() -> void:
+	if elite or def == null:
+		return
+	elite = true
+	hp_scale *= MonsterRules.ELITE_HP_MULT
+	attack_mult *= MonsterRules.ELITE_ATTACK_MULT
+	scale *= MonsterRules.ELITE_SIZE_MULT
+	if is_node_ready():
+		max_hp *= MonsterRules.ELITE_HP_MULT
+		hp *= MonsterRules.ELITE_HP_MULT
+		for id in def.elite_behaviors:
+			_add_behavior(id)
+
+
+## The attached behavior for `id`, or null. Lets other B code reach one, for example a
+## flash item calling the mist behavior's reveal().
+func get_behavior(id: StringName) -> MonsterBehavior:
+	for behavior in _behaviors:
+		if behavior.get_meta(&"id", &"") == id:
+			return behavior
+	return null
+
+
+## Removes the monster without it counting as a kill: no monster_killed, no drops
+## (neon moth self-destruct). `died` still fires so packs and spawners let go of it.
+func vanish() -> void:
+	if _dead:
+		return
+	_dead = true
+	died.emit(self)
+	if pack:
+		pack.remove(self)
+	queue_free()
 
 
 # --- States ---------------------------------------------------------------
@@ -323,7 +390,7 @@ func _tick_chase(delta: float) -> void:
 	if not _target_valid():
 		_lose_target()
 		return
-	var seen_now := can_see(target, false)
+	var seen_now := _senses(target)
 	if seen_now:
 		_perceive(target)
 	elif _clock - _last_seen > MonsterRules.LOSE_TARGET_SEC:
@@ -345,7 +412,7 @@ func _tick_attack(delta: float) -> void:
 		_lose_target()
 		return
 	_face(target.global_position, delta)
-	if _distance_to(target) > def.attack_range * MonsterRules.ATTACK_EXIT_MULT or not can_see(target, false):
+	if _distance_to(target) > def.attack_range * MonsterRules.ATTACK_EXIT_MULT or not _senses(target):
 		_set_state(Enums.AIState.CHASE)
 		return
 	_perceive(target)
@@ -362,6 +429,23 @@ func _tick_return(delta: float) -> void:
 
 
 # --- Helpers --------------------------------------------------------------
+
+func _add_behavior(id: StringName) -> void:
+	if not BEHAVIORS.has(id):
+		push_warning("%s: unknown behavior %s" % [def.id, id])
+		return
+	var behavior: MonsterBehavior = BEHAVIORS[id].new()
+	behavior.monster = self
+	behavior.set_meta(&"id", id)
+	_behaviors.append(behavior)
+	behavior.on_added()
+
+
+## Sight without the cone, or touch. Blind monsters (statue) still notice a target
+## right next to them, so they can attack. Ranged attackers do not sense through walls.
+func _senses(who: Node3D) -> bool:
+	return can_see(who, false) 			or _distance_to(who) <= minf(def.attack_range, MonsterRules.TOUCH_SENSE_RANGE)
+
 
 func _set_state(new_state: Enums.AIState) -> void:
 	if new_state == state:
@@ -423,9 +507,13 @@ func _perform_attack() -> void:
 	var info := {"source": self, "element": def.family, "monster_id": def.id}
 	for behavior in _behaviors:
 		behavior.modify_attack(info)
-	# TODO(B-03): the player and allies expose take_damage(amount, info) too.
-	if target.has_method("take_damage"):
-		target.take_damage(def.attack, info)
+	var replaced := false
+	for behavior in _behaviors:
+		if behavior.replace_attack(info):
+			replaced = true
+			break
+	if not replaced and target.has_method("take_damage"):
+		target.take_damage(attack_damage(), info)
 	attack_landed.emit(target, info)
 
 
@@ -433,6 +521,7 @@ func _die() -> void:
 	_dead = true
 	for behavior in _behaviors:
 		behavior.on_died()
+	MonsterDrops.drop_for(self)
 	EventBus.monster_killed.emit(def.id, def.family, global_position)
 	died.emit(self)
 	if pack:
@@ -459,10 +548,10 @@ func _look_for_target() -> Node3D:
 
 func _allies_in_range() -> Array[Node3D]:
 	var result: Array[Node3D] = []
-	if def.sight_range <= 0.0:
+	if sight_range() <= 0.0:
 		return result
 	var shape := SphereShape3D.new()
-	shape.radius = def.sight_range
+	shape.radius = sight_range()
 	var query := PhysicsShapeQueryParameters3D.new()
 	query.shape = shape
 	query.transform = Transform3D(Basis.IDENTITY, global_position)

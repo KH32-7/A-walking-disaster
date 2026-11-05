@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MonsterDropTable" format=3]
+
+[ext_resource type="Script" path="res://field/defs/monster_drop_table.gd" id="1_table"]
+
+[resource]
+script = ExtResource("1_table")
+id = &"monster_elite"
+essence_chance = 1.0
+essence_grade = 1
+essence_min = 1
+essence_max = 2
+material_chance = 1.0
+material_min = 2
+material_max = 3
+gear_chance = 0.2
+gear_rarity_weights = Array[float]([0.0, 70.0, 25.0, 5.0])
+gear_pool = Array[StringName]([&"club", &"dagger", &"pipe_wrench", &"baseball_bat", &"machete", &"pistol", &"cloth_hat", &"hoodie", &"sneakers", &"knee_guards", &"work_helmet", &"work_vest", &"work_boots", &"hammer", &"spear", &"longsword", &"sledgehammer", &"shield_club", &"shotgun", &"smg", &"rifle", &"riot_helmet", &"flak_vest", &"scrap_armor", &"ring", &"necklace", &"badge"])
