@@ -10,6 +10,15 @@ const ZOOM_MIN := 15.0
 const ZOOM_MAX := 200.0
 const PITCH_DEG := 55.0 ## quarter view, docs/dev/lane-b-field.md B-04
 
+## Character models from the private assets/ submodule. Shown in place of the greybox capsules
+## only when present (clones without asset access keep the capsules). Final resident visuals
+## come from Lane D (D-09); this is sandbox-only.
+const PEOPLE_DIR := "res://assets/peoplewithdisabilities_fbx/rig-animated-fbx/"
+const PEOPLE := [
+	"wheelchair_man_ani", "blind_woman_ani", "crutches_man_ani", "prostheticLeg_girl_ani",
+	"cane_man_ani", "wheelchair_teen_ani", "blind_man_ani", "crutches_woman_ani",
+]
+
 @export var show_markers := true
 
 var _focus := Vector3(0.0, 0.0, 0.0)
@@ -25,6 +34,7 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	($Sun as DirectionalLight3D).rotation_degrees = Vector3(-50.0, 30.0, 0.0)
+	_spawn_people()
 	_update_camera()
 	_update_info()
 
@@ -56,6 +66,25 @@ func _unhandled_input(event: InputEvent) -> void:
 		ColonyMarker.show_in_game = not ColonyMarker.show_in_game
 		ColonyMarker.refresh_all(get_tree())
 		_update_info()
+
+
+func _spawn_people() -> void:
+	var root := $Greybox/People as Node3D
+	var x := -float(PEOPLE.size() - 1)
+	var spawned := 0
+	for id: String in PEOPLE:
+		var path := PEOPLE_DIR + id + ".fbx"
+		if not ResourceLoader.exists(path):
+			continue
+		var model := (load(path) as PackedScene).instantiate() as Node3D
+		model.name = id
+		model.position = Vector3(x, 0.0, 0.0)
+		root.add_child(model)
+		x += 2.0
+		spawned += 1
+	# Keep the capsules when no model could be loaded.
+	for capsule in $Greybox/Capsules.get_children():
+		capsule.visible = spawned == 0
 
 
 func _update_camera() -> void:

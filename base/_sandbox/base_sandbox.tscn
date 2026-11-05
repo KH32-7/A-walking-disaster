@@ -93,17 +93,22 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, -2.5, 0)
 operation = 2
 size = Vector3(2, 3, 4)
 
-[node name="PersonA" type="MeshInstance3D" parent="Greybox"]
+[node name="Capsules" type="Node3D" parent="Greybox"]
+
+[node name="PersonA" type="MeshInstance3D" parent="Greybox/Capsules"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0.85, -14)
 mesh = SubResource("person_mesh")
 
-[node name="PersonB" type="MeshInstance3D" parent="Greybox"]
+[node name="PersonB" type="MeshInstance3D" parent="Greybox/Capsules"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.85, -14)
 mesh = SubResource("person_mesh")
 
-[node name="PersonWheelchair" type="MeshInstance3D" parent="Greybox"]
+[node name="PersonWheelchair" type="MeshInstance3D" parent="Greybox/Capsules"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0.6, -14)
 mesh = SubResource("wheelchair_mesh")
+
+[node name="People" type="Node3D" parent="Greybox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -13)
 
 [node name="Markers" type="Node3D" parent="."]
 
