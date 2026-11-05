@@ -138,6 +138,15 @@ func set_aim_point(point: Vector3) -> void:
 	_aim_point = point
 
 
+## True when the body turns to the cursor: while aiming, and always while holding a gun
+## (user decision: guns face the cursor, melee faces the move direction unless aiming/blocking).
+func faces_cursor() -> bool:
+	if is_aiming:
+		return true
+	var weapons := get_node_or_null(^"Weapons") as WeaponHolder
+	return weapons != null and WeaponHolder.is_gun(weapons.current_stats())
+
+
 ## Last aim point from the camera (Vector3), or null before the first one.
 func aim_point() -> Variant:
 	return _aim_point
@@ -295,7 +304,7 @@ func _step_stamina_regen(delta: float) -> void:
 
 
 func _update_facing(dir: Vector3) -> void:
-	if is_aiming and _aim_point != null:
+	if faces_cursor() and _aim_point != null and move_state != MoveState.DODGE:
 		var to_aim: Vector3 = _aim_point - global_position
 		to_aim.y = 0.0
 		if to_aim.length_squared() > 0.0001:
