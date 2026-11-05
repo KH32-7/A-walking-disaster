@@ -11,6 +11,7 @@ extends MenuScreen
 ##   FieldState.region_id, dusk_left_sec(), recoverable_gear() (B)
 ##   party: ExtractionManager.PARTY_GROUP nodes (display_name), player: group "player"
 ##   UI.explore (FieldExplore) for the explored fog. Recorders show once their spot was explored.
+##   FieldState.ping / set_ping / clear_ping (B): right click on the map sets or clears it.
 ## Background: one top-down orthographic render of the running region (SubViewport sharing the
 ## world, render layer MAP_HIDDEN_LAYER excluded so B can keep monsters off the map).
 ## Hidden routes: drawn once revealed. B-20 has no getter yet; reads `revealed` on the HiddenRoute
@@ -27,8 +28,10 @@ const LEGEND_W := 330.0
 ## Extraction type -> words (ExtractPoint.Type). Ids are not names; B has no display name yet.
 const EXTRACT_TYPES := ["탈출", "탈출 · 발전기", "탈출 · 열쇠 필요", "탈출 · 배터리 필요"]
 const LEGEND := [[&"player", "나"], [&"companion", "일행"], [&"extract", "탈출 지점"], [&"objective", "목표"],
-	[&"route", "숨은 경로"], [&"recording", "녹음기"], [&"lost_gear", "유실물"]]
+	[&"route", "숨은 경로"], [&"recording", "녹음기"], [&"lost_gear", "유실물"], [&"ping", "핑"]]
 const REFRESH_SEC := 0.5
+## Right click within this many pixels of the ping clears it instead of moving it.
+const PING_CLEAR_PX := 22.0
 ## Painted region maps (art/maps/README.md): region id -> [picture, world x/z rectangle it covers].
 ## The flooded mall art covers the 150 m map file, which the layout builds at x1.5
 ## (levels/field/flooded_mall/build/build_layout.gd MAP_SCALE), so 225 m centred on the origin.
@@ -54,7 +57,7 @@ var data: Dictionary = {}
 
 func _init() -> void:
 	title_text = "지도"
-	footer_keys = [["M / Esc", "닫기"], ["J", "생존 일지"]]
+	footer_keys = [["M / Esc", "닫기"], ["J", "생존 일지"], ["우클릭", "핑 찍기"]]
 	header_resources = []
 
 
@@ -176,6 +179,28 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+## Right click on the map sets the ping there (FieldState), or clears it when clicking on it.
+func _input(event: InputEvent) -> void:
+	var mb := event as InputEventMouseButton
+	if mb == null or mb.button_index != MOUSE_BUTTON_RIGHT or not mb.pressed or map == null:
+		return
+	if not visible or UI.top() != StringName(name):
+		return
+	var local := map.get_global_transform_with_canvas().affine_inverse() * mb.position
+	if not Rect2(Vector2.ZERO, map.size).has_point(local):
+		return
+	get_viewport().set_input_as_handled()
+	if FieldState.has_ping and map.to_map(FieldState.ping).distance_to(local) <= PING_CLEAR_PX:
+		FieldState.clear_ping()
+	else:
+		var p := get_tree().get_first_node_in_group(&"player") as Node3D
+		var at := map.from_map(local)
+		# The map has no heights: the ping sits at the player's height.
+		at.y = p.global_position.y if p != null else 0.0
+		FieldState.set_ping(at)
+	_collect()
+
+
 # ---------------- data ----------------
 
 func _markers(group: StringName) -> Array:
@@ -230,6 +255,13 @@ func _collect() -> void:
 			marks.append({"pos": r.global_position, "kind": &"recording", "label": "녹음기"})
 	for g: Dictionary in FieldState.recoverable_gear():
 		marks.append({"pos": g.position, "kind": &"lost_gear", "label": "유실물"})
+	if FieldState.has_ping:
+		var me := get_tree().get_first_node_in_group(&"player") as Node3D
+		var label := ""
+		if me != null:
+			label = "%dm" % roundi(Vector2(me.global_position.x, me.global_position.z).distance_to(
+				Vector2(FieldState.ping.x, FieldState.ping.z)))
+		marks.append({"pos": FieldState.ping, "kind": &"ping", "label": label})
 	for n: Node3D in _markers(ExtractionManager.PARTY_GROUP):
 		marks.append({"pos": n.global_position, "kind": &"companion", "label": String(n.get(&"display_name"))
 			if n.get(&"display_name") != null else ""})

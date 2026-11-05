@@ -212,6 +212,14 @@ func _test_wedding() -> bool:
 	ok = _expect(_buttons(s.get(&"column")).any(func(bt: Button) -> bool: return bt.text.contains("짓기 ›")),
 		"what is missing links to the build screen") and ok
 	ok = _expect((s.get(&"band") as StepBand).current == 0, "band: 조건 (now)") and ok
+	var link: Button = _buttons(s.get(&"column")).filter(func(bt: Button) -> bool: return bt.text.contains("짓기 ›"))[0]
+	link.pressed.emit()
+	await get_tree().process_frame
+	var bs := UI.get_screen(&"build")
+	ok = _expect(bs != null and bs.get(&"_sel") == &"family_house" and int(bs.get(&"_cat")) >= 0,
+		"the link opens the build screen on the family house, in its tab") and ok
+	UI.close(&"build")
+	await get_tree().process_frame
 	Economy.set_cap_bonus(1000)
 	Economy.apply({&"food": 25, &"cloth": 5})
 	_build(&"family_house")

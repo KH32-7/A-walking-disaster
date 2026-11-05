@@ -6,6 +6,7 @@
 script = ExtResource("1_fl7rs")
 id = &"infirmary"
 display_name = "의무실"
+description = "다친 주민을 치료하고 구급상자를 만들어요. 아이를 맞이하려면 필요해요."
 size = Vector2i(3, 3)
 cost = Dictionary[StringName, int]({
 &"medicine": 5,

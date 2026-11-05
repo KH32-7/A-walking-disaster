@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 id = &"monster_death"
+stream = "res://assets/audio/sfx/magic_arsenal/impact/lifeimpact.wav"
 synth = &"monster_growl"
 bus = 0
 priority = 1

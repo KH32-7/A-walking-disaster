@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 id = &"swing_blade"
+stream = "res://assets/audio/sfx/cc0/oga_swishes/swish_2.wav"
 synth = &"swing"
 bus = 0
 priority = 1

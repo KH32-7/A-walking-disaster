@@ -138,6 +138,7 @@ func release() -> bool:
 	Audio.play(&"essence_release", _player.global_position)
 	Fx.spawn(&"essence_release", _player.global_position,
 			{"element": element, "combat_class": family, "radius": float(rule.get("radius", 0.0))})
+	CombatFeel.shake(_player, CombatFeel.SHAKE_RELEASE)
 	match family:
 		Enums.CombatClass.GUN:
 			_charged_shots = int(rule["shots"])

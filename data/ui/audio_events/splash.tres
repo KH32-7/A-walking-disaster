@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 id = &"splash"
+stream = "res://assets/audio/sfx/magic_arsenal/impact/waterimpact.wav"
 synth = &"splash"
 bus = 0
 priority = 0

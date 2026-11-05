@@ -214,6 +214,7 @@ func fire() -> bool:
 	_emit_noise(stats)
 	Audio.play(StringName("gunshot_%s" % stats["def_id"]), origin)
 	Fx.spawn(&"muzzle_flash", origin + forward * 0.5, {"direction": forward})
+	CombatFeel.kick(self, forward, stats["def_id"])
 	attacked.emit(&"shot", 0)
 	_emit_ammo()
 	return true
@@ -483,7 +484,20 @@ func _deal(target: Node, amount: float, info: Dictionary) -> void:
 		"weak_point": target is MonsterWeakPoint,
 		"crit": info.get("crit", false),
 	})
+	_hit_stop(target, info)
 	hit_landed.emit(target, amount, info)
+
+
+## B-27: hit-stop for melee hits, kills and crit / weak point kills (never a single bullet).
+func _hit_stop(target: Node, info: Dictionary) -> void:
+	var monster := target as Monster
+	if monster == null and target is MonsterWeakPoint:
+		monster = target.get_parent() as Monster
+	var killed := monster != null and is_instance_valid(monster) and monster.is_dead()
+	var melee := info.has("combo_step")
+	var finisher := melee and int(info["combo_step"]) == tuning.combo_hits
+	var crit: bool = info.get("crit", false) or target is MonsterWeakPoint
+	CombatFeel.hit_stop(self, CombatFeel.stop_for(killed, crit, melee, finisher))
 
 
 ## Machete "수풀 계열 피해 +20%": stats vs_green_bonus against GREEN monsters.

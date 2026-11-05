@@ -12,8 +12,34 @@ extends MenuScreen
 ##            plus hearing_alarm / care / interpreter_radio.
 ## Selection is by list (the base map's own markers stay Lane C's). This screen computes no rules:
 ## every yes/no, reason and cost comes from Colony.
+##
+## 새로 짓기 재설계 (ui/_mockups/ui-redesign.html §03, 컬트 오브 더 램 Build 메뉴 + 덕코프 Build 패널):
+## the scene behind goes grey, a ①고르기 ②놓기 ③짓기 strip sits on top, buildings are picture cards
+## (BuildingArt shows the footprint) in display groups, and 추천 splits them into "정착지에 필요해요 /
+## 지금 지을 수 있어요 / 곧 열려요" under the next-tier card (Colony.next_tier_status()).
 
 const CATEGORY_NAMES := ["주거", "생산", "가공", "생활", "제작", "포함", "저장", "군사", "특수", "설비", "방어"]
+## Display groups for the build tabs: [key (= _cat value), name, icon, categories]. -1 = 추천.
+## Data categories stay as they are; only the screen folds 11 into 6.
+const GROUPS := [
+	[-1, "추천", &"star", []],
+	[BuildingDef.Category.HOUSING, "살림", &"home", [BuildingDef.Category.HOUSING, BuildingDef.Category.LIVING]],
+	[BuildingDef.Category.PRODUCTION, "생산", &"sprout", [BuildingDef.Category.PRODUCTION, BuildingDef.Category.PROCESSING]],
+	[BuildingDef.Category.CRAFTING, "제작", &"anvil", [BuildingDef.Category.CRAFTING]],
+	[BuildingDef.Category.INCLUSION, "포용", &"access", [BuildingDef.Category.INCLUSION]],
+	[BuildingDef.Category.STORAGE, "보관·설비", &"box", [BuildingDef.Category.STORAGE, BuildingDef.Category.UTILITY, BuildingDef.Category.SPECIAL]],
+	[BuildingDef.Category.DEFENSE, "방어", &"shield", [BuildingDef.Category.DEFENSE, BuildingDef.Category.MILITARY]],
+]
+## Card tint per group key (display only).
+const GROUP_COLORS := {
+	BuildingDef.Category.HOUSING: Color("c9a87a"), BuildingDef.Category.PRODUCTION: Color("8fa35a"), BuildingDef.Category.CRAFTING: Color("6f8fa8"),
+	BuildingDef.Category.INCLUSION: Color("4fa9ae"), BuildingDef.Category.STORAGE: Color("b59b6e"), BuildingDef.Category.DEFENSE: Color("8c8c92"),
+}
+const CARD_SIZE := Vector2(172, 222)
+const SOON_MAX := 12
+const STEPS := ["건물 고르기", "놓을 곳 정하기", "주민이 짓기"]
+## Shortfall reason Colony.can_build() gives when only the cost is missing.
+const REASON_COST := "자원 부족"
 const MODES := [[&"build", "새로 짓기"], [&"clear", "개간"], [&"repair", "수리·레벨업"], [&"access", "접근성 보기"]]
 const MODE_TITLES := {&"build": "건물", &"clear": "구역", &"repair": "지은 건물", &"access": "구역별 참여 조건"}
 ## ZoneDef.mobility_access → words (07 "참여 조건": 이동).
@@ -35,12 +61,15 @@ var _list: VBoxContainer
 var _detail: VBoxContainer
 var _count: Label
 var _list_title: Label
+var _steps: HBoxContainer
+## Build ids in the order the cards are shown (← → moves through it).
+var _order: Array[StringName] = []
 
 
 func _init() -> void:
 	title_text = "건설"
 	subtitle_text = "기지"
-	footer_keys = [["Esc", "뒤로"], ["클릭", "고르기"], ["Enter", "실행"]]
+	footer_keys = [["Esc", "뒤로"], ["← →", "고르기"], ["Q E", "분류"], ["Enter", "실행"]]
 
 
 ## args: mode (&"build"|&"clear"|&"repair"|&"access"), zone (zone id), uid (building uid).
@@ -50,10 +79,11 @@ func open_with(args: Dictionary) -> void:
 		_sel_zone = StringName(args["zone"])
 	if args.has("uid"):
 		_sel_uid = StringName(args["uid"])
-	if args.has("def"):  # #125: "가족 숙소 짓기 ›" links from the resident screens
+	if args.has("def"):  # #125: "가족 숙소 짓기 ›" links from the resident screens open on that building
 		_mode = &"build"
-		_cat = -1
 		_sel = StringName(args["def"])
+		var d := BaseDB.get_building(_sel)
+		_cat = group_of(int(d.category)) if d != null else -1
 	if _list != null:
 		_refresh()
 
@@ -72,6 +102,7 @@ func _build_body(b: Control) -> void:
 	col.add_child(row)
 	var left := MenuScreen.panel("건물", "", Vector2(980, 0))
 	(left[0] as Control).size_flags_vertical = Control.SIZE_EXPAND_FILL
+	(left[0] as Control).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(left[0])
 	_list_title = (left[2] as HBoxContainer).get_child(0)
 	_count = (left[2] as HBoxContainer).get_child(1)
@@ -86,10 +117,16 @@ func _build_body(b: Control) -> void:
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(_list)
 	(left[1] as VBoxContainer).add_child(sc)
-	var card := MenuScreen.cream_card(460)
+	var card := MenuScreen.cream_card(560)
 	(card[0] as Control).size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	row.add_child(card[0])
 	_detail = card[1]
+	_build_steps()
+	# 컬트 오브 더 램: the base goes grey behind the build menu so the cards stand out.
+	var mat := backdrop.material as ShaderMaterial
+	if mat != null:
+		mat.set_shader_parameter(&"saturation", 0.12)
+		mat.set_shader_parameter(&"tint", Color(0.04, 0.05, 0.08, 0.5))
 	Colony.buildings_changed.connect(_on_colony_changed)
 	_refresh()
 
@@ -107,6 +144,7 @@ func set_mode(mode: StringName) -> void:
 func _refresh() -> void:
 	_build_modes()
 	_tabs.visible = _mode == &"build"
+	_steps.visible = _mode == &"build"
 	_list_title.text = MODE_TITLES.get(_mode, "건물")
 	_primary = Callable()
 	match _mode:
@@ -132,26 +170,88 @@ func _build_modes() -> void:
 		_modes.add_child(t)
 
 
-# ---------------- 새로 짓기 (D-06) ----------------
+# ---------------- 새로 짓기 (D-06, 재설계) ----------------
+
+## ① 건물 고르기 ② 놓을 곳 정하기 ③ 주민이 짓기 — always on top while the build view is open.
+## Steps 2 and 3 happen on the base map (C-03 BuildMode, 건설 현장), so here only ① is lit.
+func _build_steps() -> void:
+	_steps = HBoxContainer.new()
+	_steps.add_theme_constant_override(&"separation", 10)
+	var bg := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(UiTokens.INK, 0.72)
+	sb.set_corner_radius_all(99)
+	sb.content_margin_left = 10
+	sb.content_margin_right = 10
+	sb.content_margin_top = 7
+	sb.content_margin_bottom = 7
+	bg.add_theme_stylebox_override(&"panel", sb)
+	bg.add_child(_steps)
+	for i in STEPS.size():
+		if i > 0:
+			var ar := ColorRect.new()
+			ar.color = Color(UiTokens.TEXT, 0.3)
+			ar.custom_minimum_size = Vector2(18, 2)
+			ar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			_steps.add_child(ar)
+		_steps.add_child(_step_pill(i + 1, STEPS[i], i == 0))
+	add_child(bg)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE)
+	bg.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	bg.position.y = 34
+	_steps.visibility_changed.connect(func() -> void: bg.visible = _steps.visible)
+
+
+func _step_pill(n: int, text: String, on: bool) -> Control:
+	var p := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(UiTokens.TEXT, 0.12) if on else Color.TRANSPARENT
+	sb.set_corner_radius_all(99)
+	sb.content_margin_left = 6
+	sb.content_margin_right = 14
+	sb.content_margin_top = 4
+	sb.content_margin_bottom = 4
+	p.add_theme_stylebox_override(&"panel", sb)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override(&"separation", 8)
+	p.add_child(h)
+	h.add_child(StepNumber.new(n, on))
+	var l := MenuScreen.label(text, &"LabelHud", 16)
+	l.add_theme_color_override(&"font_color", UiTokens.TEXT if on else UiTokens.TEXT_DIM)
+	h.add_child(l)
+	return p
+
 
 func _build_tabs() -> void:
 	MenuScreen.clear(_tabs)
-	var all := MenuScreen.button("전체", &"TabText")
-	all.toggle_mode = true
-	all.button_pressed = _cat == -1
-	all.pressed.connect(func() -> void: _set_cat(-1))
-	_tabs.add_child(all)
-	var used := {}
-	for def: BuildingDef in BaseDB.buildings().values():
-		if not def.prebuilt and def.attach_to == &"":
-			used[int(def.category)] = true
-	var cats := used.keys()
-	cats.sort()
-	for c: int in cats:
-		var t := MenuScreen.button(CATEGORY_NAMES[c], &"TabText")
+	for g: Array in GROUPS:
+		if int(g[0]) >= 0 and _group_defs(int(g[0])).is_empty():
+			continue
+		var t := Button.new()
 		t.toggle_mode = true
-		t.button_pressed = _cat == c
-		t.pressed.connect(_set_cat.bind(c))
+		t.button_pressed = _cat == int(g[0])
+		t.focus_mode = Control.FOCUS_NONE
+		t.custom_minimum_size = Vector2(0, 46)
+		for s: StringName in [&"normal", &"hover", &"pressed", &"hover_pressed", &"focus"]:
+			var on := t.button_pressed or s == &"pressed" or s == &"hover_pressed"
+			var box := StyleBoxFlat.new()
+			box.bg_color = Color(UiTokens.TAB_GLOW, 0.22) if on else Color(1, 1, 1, 0.1 if s == &"hover" else 0.05)
+			box.border_color = Color(UiTokens.TAB_GLOW, 0.75)
+			box.set_border_width_all(2 if on else 0)
+			box.set_corner_radius_all(99)
+			t.add_theme_stylebox_override(s, box)
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override(&"separation", 8)
+		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		h.alignment = BoxContainer.ALIGNMENT_CENTER
+		h.add_child(LineIcon.new(g[2], 20, UiTokens.TEXT if t.button_pressed else UiTokens.TEXT_DIM))
+		var l := MenuScreen.label(String(g[1]), &"LabelHud", 17)
+		l.add_theme_color_override(&"font_color", UiTokens.TEXT if t.button_pressed else UiTokens.TEXT_DIM)
+		h.add_child(l)
+		t.add_child(h)
+		t.custom_minimum_size.x = 44 + 8 + l.get_minimum_size().x + 36
+		t.pressed.connect(_set_cat.bind(int(g[0])))
 		_tabs.add_child(t)
 
 
@@ -161,46 +261,422 @@ func _set_cat(c: int) -> void:
 	_fill()
 
 
-func _defs() -> Array:
+## Display group key for a data category (GROUPS). Unknown → its own value.
+static func group_of(category: int) -> int:
+	for g: Array in GROUPS:
+		if category in g[3]:
+			return int(g[0])
+	return category
+
+
+static func group_name(category: int) -> String:
+	var key := group_of(category)
+	for g: Array in GROUPS:
+		if int(g[0]) == key:
+			return String(g[1])
+	return CATEGORY_NAMES[category]
+
+
+static func group_color(category: int) -> Color:
+	return GROUP_COLORS.get(group_of(category), Color("9a7ac4"))
+
+
+## Buildings the build list can offer (not prebuilt) in a display group, sorted: can build first.
+func _group_defs(key: int) -> Array:
 	var out := []
 	for def: BuildingDef in BaseDB.buildings().values():
 		if def.prebuilt:
 			continue
-		if _cat >= 0 and int(def.category) != _cat:
+		if key >= 0 and group_of(int(def.category)) != key:
 			continue
 		out.append(def)
-	out.sort_custom(func(a: BuildingDef, b: BuildingDef) -> bool:
-		var oa := bool(Colony.can_build(a.id).ok)
-		var ob := bool(Colony.can_build(b.id).ok)
-		return oa if oa != ob else a.display_name < b.display_name)
+	out.sort_custom(_by_ready)
+	return out
+
+
+## Can build first, then tab order (살림 → 생산 → … → 방어), then name.
+func _by_ready(a: BuildingDef, b: BuildingDef) -> bool:
+	var oa := bool(Colony.can_build(a.id).ok)
+	var ob := bool(Colony.can_build(b.id).ok)
+	if oa != ob:
+		return oa
+	var ga := _group_rank(int(a.category))
+	var gb := _group_rank(int(b.category))
+	return ga < gb if ga != gb else a.display_name < b.display_name
+
+
+static func _group_rank(category: int) -> int:
+	var key := group_of(category)
+	for i in GROUPS.size():
+		if int(GROUPS[i][0]) == key:
+			return i
+	return GROUPS.size()
+
+
+## Kept for callers that want the flat list of the current tab.
+func _defs() -> Array:
+	return _group_defs(_cat)
+
+
+## Building ids the next base tier asks for (TierRules data, read for display).
+func _goal_ids() -> Array[StringName]:
+	var out: Array[StringName] = []
+	var status := Colony.next_tier_status()
+	var next := int(status.get("tier", -1))
+	if next < 0 or not TierRules.REQUIREMENTS.has(next):
+		return out
+	for id: StringName in TierRules.REQUIREMENTS[next]["buildings"]:
+		if BaseDB.get_building(id) != null:
+			out.append(id)
 	return out
 
 
 func _fill() -> void:
 	MenuScreen.clear(_list)
-	var defs := _defs()
+	_order.clear()
+	var defs := _group_defs(_cat)
 	var ok_n := 0
 	for def: BuildingDef in defs:
-		var check: Dictionary = Colony.can_build(def.id)
-		if check.ok:
+		if Colony.can_build(def.id).ok:
 			ok_n += 1
-		_list.add_child(_row(def, check))
 	_count.text = "지을 수 있음 %d / %d" % [ok_n, defs.size()]
-	if _sel == &"" and not defs.is_empty():
-		_sel = (defs[0] as BuildingDef).id
+	_list_title.text = "건물" if _cat < 0 else group_name(_cat)
+	_list.add_child(_tier_card())
+	if _cat < 0:
+		_fill_recommended(defs)
+	else:
+		_list.add_child(_card_section(group_name(_cat), "%d" % defs.size(), defs))
+	if not _sel in _order and not _order.is_empty():
+		# Nothing picked yet (or it left this tab): pick the first card and draw again so it is lit.
+		_sel = _order[0]
+		_fill()
+		return
 	_show_detail()
 
 
-func _row(def: BuildingDef, check: Dictionary) -> Control:
-	var sub := "%s · %d×%d칸" % [CATEGORY_NAMES[int(def.category)], def.size.x, def.size.y]
-	var inclusive := def.category == BuildingDef.Category.INCLUSION
-	var st := "지을 수 있음" if check.ok else reason_text(String((check.reasons as Array)[0]))
-	return _list_row(def.id == _sel, def.display_name, sub, st, UiTokens.GOOD if check.ok else UiTokens.TEXT_DIM,
-		not check.ok, func() -> void:
-			_sel = def.id
-			_fill(),
-		InfoIcon.new(20) if inclusive else null,
-		MenuScreen.label(MenuScreen.cost_text(def.cost_for_level(1)), &"LabelHud", 15))
+## 추천: 정착지에 필요해요 · 지금 지을 수 있어요 side by side, then 곧 열려요.
+func _fill_recommended(defs: Array) -> void:
+	var goal_ids := _goal_ids()
+	var goal := []
+	var now := []
+	var soon := []
+	for def: BuildingDef in defs:
+		if def.id in goal_ids:
+			goal.append(def)
+		elif Colony.can_build(def.id).ok:
+			now.append(def)
+		else:
+			soon.append(def)
+	soon.sort_custom(func(a: BuildingDef, b: BuildingDef) -> bool:
+		var ra := (Colony.can_build(a.id).reasons as Array).size()
+		var rb := (Colony.can_build(b.id).reasons as Array).size()
+		return ra < rb if ra != rb else a.display_name < b.display_name)
+	soon = soon.slice(0, SOON_MAX)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override(&"separation", 28)
+	if not goal.is_empty():
+		var built := 0
+		for def: BuildingDef in goal:
+			if not Colony.working_building_ids(def.id).is_empty():
+				built += 1
+		var gs := _card_section("정착지에 필요해요", "%d / %d" % [built, goal.size()], goal, true)
+		gs.custom_minimum_size.x = goal.size() * (CARD_SIZE.x + 14)
+		row.add_child(gs)
+	var ns := _card_section("지금 지을 수 있어요", "%d" % now.size(), now)
+	ns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(ns)
+	_list.add_child(row)
+	if not soon.is_empty():
+		_list.add_child(_card_section("곧 열려요", "조건을 채우면 열려요", soon))
+
+
+func _card_section(title: String, count: String, defs: Array, goal := false) -> Control:
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override(&"separation", 8)
+	var h := HBoxContainer.new()
+	var t := MenuScreen.label(title, &"LabelSection", 17)
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(t)
+	h.add_child(MenuScreen.label(count, &"LabelDim", 14))
+	v.add_child(h)
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override(&"h_separation", 14)
+	flow.add_theme_constant_override(&"v_separation", 14)
+	v.add_child(flow)
+	if defs.is_empty():
+		flow.add_child(MenuScreen.label("지금은 없어요", &"LabelDim", 14))
+	for def: BuildingDef in defs:
+		flow.add_child(_card(def, Colony.can_build(def.id), goal))
+		_order.append(def.id)
+	return v
+
+
+## Next tier card (컬트 오브 더 램 잠금 마름모 "1/4"): what the next tier still needs, in words.
+func _tier_card() -> Control:
+	var status := Colony.next_tier_status()
+	var next := int(status.get("tier", -1))
+	var p := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(UiTokens.INFO, 0.12)
+	sb.border_color = Color(UiTokens.INFO, 0.4)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(UiTokens.SLOT_RADIUS)
+	sb.content_margin_left = 14
+	sb.content_margin_right = 16
+	sb.content_margin_top = 10
+	sb.content_margin_bottom = 10
+	p.add_theme_stylebox_override(&"panel", sb)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override(&"separation", 14)
+	p.add_child(h)
+	if next < 0:
+		h.add_child(CheckMark.new(true))
+		h.add_child(MenuScreen.label("기지가 %s(이)에요. 더 오를 단계가 없어요." % TIER_NAMES[Colony.tier], &"LabelHud", 16))
+		return p
+	var missing: Array = status.get("missing", [])
+	var total := _tier_need_count(next)
+	h.add_child(TierDiamond.new(maxi(total - missing.size(), 0), total))
+	var tv := VBoxContainer.new()
+	tv.add_theme_constant_override(&"separation", -1)
+	tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tv.alignment = BoxContainer.ALIGNMENT_CENTER
+	tv.add_child(MenuScreen.label("다음 기지 단계 · %s" % TIER_NAMES[next], &"LabelSection", 17))
+	tv.add_child(MenuScreen.label("시설을 Lv%d까지 올릴 수 있어요" % TierRules.level_cap(next), &"LabelDim", 13))
+	h.add_child(tv)
+	var needs := HFlowContainer.new()
+	needs.add_theme_constant_override(&"h_separation", 16)
+	needs.alignment = FlowContainer.ALIGNMENT_END
+	needs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if missing.is_empty():
+		needs.add_child(MenuScreen.label("조건을 다 채웠어요 · 오늘 저녁에 올라가요", &"LabelHud", 14))
+	for m: String in missing:
+		var mh := HBoxContainer.new()
+		mh.add_theme_constant_override(&"separation", 5)
+		mh.add_child(CheckMark.new(false, false))
+		mh.add_child(MenuScreen.label(m, &"LabelHud", 14))
+		needs.add_child(mh)
+	h.add_child(needs)
+	return p
+
+
+## How many conditions the next tier has (population + buildings + zones + generator), for "n / total".
+func _tier_need_count(next: int) -> int:
+	var req: Dictionary = TierRules.REQUIREMENTS.get(next, {})
+	if req.is_empty():
+		return 0
+	return 1 + (req["buildings"] as Dictionary).size() + (req["zones"] as Array).size() + (1 if req["powered_generator"] else 0)
+
+
+## Only the cost blocks it (the card shows the shortfall in red, not a lock).
+func _only_cost(check: Dictionary) -> bool:
+	for r: String in check.reasons:
+		if r != REASON_COST:
+			return false
+	return not check.ok
+
+
+## "나무 6 부족" for the first resource that is short (display arithmetic on Colony's own cost).
+func _short_text(def: BuildingDef) -> String:
+	var cost := def.cost_for_level(1)
+	for id: StringName in cost:
+		var lack := int(cost[id]) - Economy.get_amount(id)
+		if lack > 0:
+			return "%s %d 부족" % [MenuScreen.resource_name(id), lack]
+	return REASON_COST
+
+
+func _card(def: BuildingDef, check: Dictionary, goal: bool) -> Control:
+	var sel := def.id == _sel
+	var locked: bool = not check.ok and not _only_cost(check)
+	var b := Button.new()
+	b.custom_minimum_size = CARD_SIZE
+	b.focus_mode = Control.FOCUS_NONE
+	b.tooltip_text = def.description
+	for s: StringName in [&"normal", &"hover", &"pressed", &"focus"]:
+		var box := StyleBoxFlat.new()
+		box.bg_color = Color(0.09, 0.1, 0.13, 0.8) if s != &"hover" else Color(0.13, 0.14, 0.18, 0.85)
+		box.border_color = UiTokens.ACCENT if sel else UiTokens.LINE
+		box.set_border_width_all(3 if sel else 1)
+		box.set_corner_radius_all(12)
+		if sel:
+			box.shadow_color = Color(UiTokens.ACCENT, 0.22)
+			box.shadow_size = 8
+		b.add_theme_stylebox_override(s, box)
+	var v := VBoxContainer.new()
+	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	v.add_theme_constant_override(&"separation", 4)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(v)
+	# picture
+	var art_box := Control.new()
+	art_box.custom_minimum_size = Vector2(0, 100)
+	art_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art_box.clip_contents = true
+	v.add_child(art_box)
+	var glow := ArtGlow.new(group_color(int(def.category)))
+	glow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	art_box.add_child(glow)
+	var art := BuildingArt.for_def(def, group_color(int(def.category)))
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	art.offset_top = 14
+	art.offset_bottom = -4
+	art.dim = locked
+	art_box.add_child(art)
+	var cat := _corner_chip(LineIcon.new(group_icon(int(def.category)), 15))
+	cat.position = Vector2(8, 8)
+	art_box.add_child(cat)
+	var sz := _corner_chip(MenuScreen.label("%d×%d" % [maxi(def.size.x, 1), maxi(def.size.y, 1)], &"LabelNumber", 13))
+	art_box.add_child(sz)
+	sz.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE)
+	sz.position += Vector2(-8, 8)
+	if locked:
+		var lk := LockBadge.new()
+		art_box.add_child(lk)
+		lk.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
+	if goal:
+		var g := _flag_chip()
+		art_box.add_child(g)
+		g.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE)
+		g.position += Vector2(8, -6)
+	# name
+	var pad := MarginContainer.new()
+	pad.add_theme_constant_override(&"margin_left", 12)
+	pad.add_theme_constant_override(&"margin_right", 10)
+	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pad.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(pad)
+	var inner := VBoxContainer.new()
+	inner.add_theme_constant_override(&"separation", 6)
+	inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pad.add_child(inner)
+	var nm := MenuScreen.label(def.display_name, &"LabelSection", 18)
+	nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	if locked:
+		nm.add_theme_color_override(&"font_color", UiTokens.TEXT_DIM)
+	inner.add_child(nm)
+	var cost := HFlowContainer.new()
+	cost.add_theme_constant_override(&"h_separation", 5)
+	cost.add_theme_constant_override(&"v_separation", 4)
+	cost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var c1 := def.cost_for_level(1)
+	for id: StringName in c1:
+		cost.add_child(_cost_chip(id, int(c1[id]), Economy.get_amount(id) < int(c1[id]), false))
+	if c1.is_empty():
+		cost.add_child(MenuScreen.label("재료 없음", &"LabelDim", 13))
+	inner.add_child(cost)
+	# state (shape + words)
+	var st := HBoxContainer.new()
+	st.add_theme_constant_override(&"separation", 5)
+	st.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	st.size_flags_vertical = Control.SIZE_SHRINK_END | Control.SIZE_EXPAND
+	var col := UiTokens.GOOD
+	var kind := &"check"
+	var text := "지을 수 있음"
+	if locked:
+		col = UiTokens.TEXT_DIM
+		kind = &"lock"
+		text = reason_text(_first_block(check))
+	elif not check.ok:
+		col = Color("ff8a7a")
+		kind = &"warn"
+		text = _short_text(def)
+	st.add_child(LineIcon.new(kind, 15, col))
+	var sl := MenuScreen.label(text, &"LabelHud", 13)
+	sl.add_theme_color_override(&"font_color", col)
+	sl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	sl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sl.clip_text = true
+	st.add_child(sl)
+	inner.add_child(st)
+	b.pressed.connect(func() -> void:
+		_sel = def.id
+		_fill())
+	return b
+
+
+static func group_icon(category: int) -> StringName:
+	var key := group_of(category)
+	for g: Array in GROUPS:
+		if int(g[0]) == key:
+			return g[2]
+	return &"dot"
+
+
+## First reason that is not the cost (what keeps the card locked).
+func _first_block(check: Dictionary) -> String:
+	for r: String in check.reasons:
+		if r != REASON_COST:
+			return r
+	return REASON_COST
+
+
+func _corner_chip(child: Control) -> PanelContainer:
+	var p := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0, 0, 0, 0.45)
+	sb.set_corner_radius_all(6)
+	sb.content_margin_left = 5
+	sb.content_margin_right = 5
+	sb.content_margin_top = 2
+	sb.content_margin_bottom = 2
+	p.add_theme_stylebox_override(&"panel", sb)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	child.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(child)
+	return p
+
+
+func _flag_chip() -> PanelContainer:
+	var p := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = UiTokens.INFO
+	sb.set_corner_radius_all(99)
+	sb.content_margin_left = 6
+	sb.content_margin_right = 8
+	sb.content_margin_top = 1
+	sb.content_margin_bottom = 1
+	p.add_theme_stylebox_override(&"panel", sb)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override(&"separation", 3)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(LineIcon.new(&"flag", 13, UiTokens.TEXT_ON_CREAM))
+	var l := MenuScreen.label("정착지", &"LabelOnCream", 12)
+	h.add_child(l)
+	p.add_child(h)
+	return p
+
+
+## Resource chip: icon + amount (+ " / 보유 n" on the cream card). Short = red tint + red number.
+func _cost_chip(id: StringName, need: int, short: bool, on_cream: bool) -> Control:
+	var p := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	if on_cream:
+		sb.bg_color = Color(UiTokens.DANGER, 0.14) if short else Color(0, 0, 0, 0.07)
+	else:
+		sb.bg_color = Color(UiTokens.DANGER, 0.24) if short else Color(1, 1, 1, 0.08)
+	sb.set_corner_radius_all(6)
+	sb.content_margin_left = 6
+	sb.content_margin_right = 7
+	sb.content_margin_top = 2
+	sb.content_margin_bottom = 2
+	p.add_theme_stylebox_override(&"panel", sb)
+	p.mouse_filter = Control.MOUSE_FILTER_PASS
+	p.tooltip_text = MenuScreen.resource_name(id)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override(&"separation", 4)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var ink := UiTokens.TEXT_ON_CREAM if on_cream else UiTokens.TEXT
+	var red := Color("b3261e") if on_cream else Color("ff9d93")
+	h.add_child(LineIcon.for_resource(id, 15 if not on_cream else 17, red if short else ink))
+	var n := MenuScreen.label(str(need), &"LabelNumber", 13 if not on_cream else 16)
+	n.add_theme_color_override(&"font_color", red if short else ink)
+	h.add_child(n)
+	if on_cream:
+		var have := MenuScreen.label("%s · 보유 %d" % [MenuScreen.resource_name(id), Economy.get_amount(id)], &"LabelOnCreamDim", 13)
+		h.add_child(have)
+	p.add_child(h)
+	return p
 
 
 func _show_detail() -> void:
@@ -209,22 +685,157 @@ func _show_detail() -> void:
 	if def == null:
 		return
 	var check: Dictionary = Colony.can_build(def.id)
-	_detail.add_child(_tag(CATEGORY_NAMES[int(def.category)] + "  ·  %d×%d칸" % [def.size.x, def.size.y]))
-	_detail.add_child(_title(def.display_name))
-	if def.category == BuildingDef.Category.INCLUSION:
-		_detail.add_child(_inclusion_line("포함 시설 — 참여 조건을 채워 줍니다"))
-	var grid := _grid()
-	_cost_rows(grid, def.cost_for_level(1))
-	if def.power_use[0] > 0:
-		_pair(grid, "전력", "−%d" % def.power_use[0])
-	if def.noise > 0.0:
-		_pair(grid, "기지 소음", "+%.1f" % def.noise)
+	var locked: bool = not check.ok and not _only_cost(check)
+	# picture band
+	var pic := PanelContainer.new()
+	var psb := StyleBoxFlat.new()
+	psb.bg_color = UiTokens.CREAM_2
+	psb.set_corner_radius_all(10)
+	pic.add_theme_stylebox_override(&"panel", psb)
+	pic.custom_minimum_size = Vector2(0, 190)
+	var pic_in := Control.new()
+	pic.add_child(pic_in)
+	var art := BuildingArt.for_def(def, group_color(int(def.category)))
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	art.offset_top = 30
+	art.offset_bottom = -12
+	art.dim = locked
+	pic_in.add_child(art)
+	var w := maxi(def.size.x, 1)
+	var d := maxi(def.size.y, 1)
+	var size_tag := _cream_tag("%d×%d칸 · %dm × %dm" % [w, d, w * 2, d * 2])
+	size_tag.position = Vector2(12, 12)
+	pic_in.add_child(size_tag)
+	var count := Colony.working_building_ids(def.id).size()
+	var built_tag := _cream_tag("지은 것 %d" % count)
+	pic_in.add_child(built_tag)
+	built_tag.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE)
+	built_tag.position += Vector2(-12, 12)
+	_detail.add_child(pic)
+	# tags
+	var tags := HBoxContainer.new()
+	tags.add_theme_constant_override(&"separation", 6)
+	tags.add_child(_cream_tag(group_name(int(def.category)), group_icon(int(def.category))))
 	if def.capacity > 0:
-		_pair(grid, "일손", "%d명" % def.capacity)
+		tags.add_child(_cream_tag("일손 %d명" % def.capacity, &"people"))
+	if def.category == BuildingDef.Category.INCLUSION:
+		var inc := HBoxContainer.new()
+		inc.add_theme_constant_override(&"separation", 5)
+		inc.add_child(InfoIcon.new(18))
+		inc.add_child(MenuScreen.label("포함 시설", &"LabelOnCream", 14))
+		tags.add_child(inc)
+	_detail.add_child(tags)
+	_detail.add_child(_title(def.display_name))
+	if def.description != "":
+		var desc := MenuScreen.label(def.description, &"LabelOnCream", 16)
+		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		desc.custom_minimum_size = Vector2(520, 0)
+		_detail.add_child(desc)
+	_detail.add_child(HSeparator.new())
+	# facts: 필요한 것 / 놓는 곳 / 전력 / 소음
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override(&"h_separation", 16)
+	grid.add_theme_constant_override(&"v_separation", 8)
+	grid.add_child(_fact_key("필요한 것"))
+	var costs := HFlowContainer.new()
+	costs.add_theme_constant_override(&"h_separation", 6)
+	costs.add_theme_constant_override(&"v_separation", 4)
+	costs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var c1 := def.cost_for_level(1)
+	for id: StringName in c1:
+		costs.add_child(_cost_chip(id, int(c1[id]), Economy.get_amount(id) < int(c1[id]), true))
+	if c1.is_empty():
+		costs.add_child(MenuScreen.label("없음", &"LabelOnCream", 15))
+	grid.add_child(costs)
+	if def.note != "":
+		grid.add_child(_fact_key("놓는 곳 · 참고"))
+		grid.add_child(_fact_val(def.note))
+	if def.power_use[0] > 0:
+		grid.add_child(_fact_key("전력"))
+		grid.add_child(_fact_val("−%d" % def.power_use[0]))
+	if def.noise > 0.0:
+		grid.add_child(_fact_key("기지 소음"))
+		grid.add_child(_fact_val("+%.1f" % def.noise))
 	_detail.add_child(grid)
-	_reasons(check.reasons)
-	_action("배치하기", check.ok, _place)
+	_reasons(check.reasons.filter(func(r: String) -> bool: return r != REASON_COST))
+	# how it gets built (② ③ happen on the map)
+	var how := PanelContainer.new()
+	var hsb := StyleBoxFlat.new()
+	hsb.bg_color = Color(0, 0, 0, 0.06)
+	hsb.set_corner_radius_all(10)
+	hsb.content_margin_left = 12
+	hsb.content_margin_right = 12
+	hsb.content_margin_top = 8
+	hsb.content_margin_bottom = 8
+	how.add_theme_stylebox_override(&"panel", hsb)
+	var hv := VBoxContainer.new()
+	hv.add_theme_constant_override(&"separation", 2)
+	how.add_child(hv)
+	hv.add_child(MenuScreen.label("지어지는 과정", &"LabelOnCream", 14))
+	var steps := MenuScreen.label("① 놓을 곳 정하기  →  ② 건설 주민 보내기  →  ③ 진행 %d 채우면 완성" % def.build_work_needed(),
+		&"LabelOnCreamDim", 14)
+	steps.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hv.add_child(steps)
+	_detail.add_child(how)
+	var foot := HBoxContainer.new()
+	foot.alignment = BoxContainer.ALIGNMENT_END
+	var go := MenuScreen.button("놓을 곳 고르기", &"ButtonPrimary")
+	go.disabled = not check.ok
+	go.pressed.connect(_place)
+	foot.add_child(go)
+	_detail.add_child(foot)
+	if check.ok:
+		_primary = _place
 
+
+func _cream_tag(text: String, icon: StringName = &"") -> PanelContainer:
+	var p := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(1, 1, 1, 0.55) if icon == &"" else Color(0, 0, 0, 0.07)
+	sb.set_corner_radius_all(6)
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 3
+	sb.content_margin_bottom = 3
+	p.add_theme_stylebox_override(&"panel", sb)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override(&"separation", 5)
+	if icon != &"":
+		h.add_child(LineIcon.new(icon, 15, UiTokens.TEXT_ON_CREAM))
+	h.add_child(MenuScreen.label(text, &"LabelOnCream", 13))
+	p.add_child(h)
+	return p
+
+
+func _fact_key(text: String) -> Label:
+	var l := MenuScreen.label(text, &"LabelOnCreamDim", 14)
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return l
+
+
+func _fact_val(text: String) -> Label:
+	var l := MenuScreen.label(text, &"LabelOnCream", 15)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return l
+
+
+func _move_sel(step: int) -> void:
+	if _order.is_empty():
+		return
+	var i := _order.find(_sel)
+	_sel = _order[clampi(i + step, 0, _order.size() - 1)] if i >= 0 else _order[0]
+	_fill()
+
+
+func _step_group(step: int) -> void:
+	var keys: Array[int] = []
+	for g: Array in GROUPS:
+		if int(g[0]) < 0 or not _group_defs(int(g[0])).is_empty():
+			keys.append(int(g[0]))
+	var i := keys.find(_cat)
+	_set_cat(keys[posmod(i + step, keys.size())])
 
 func _place() -> void:
 	if _sel == &"" or not bool(Colony.can_build(_sel).ok):
@@ -882,3 +1493,97 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif _primary.is_valid():
 			_primary.call()
 		get_viewport().set_input_as_handled()
+		return
+	if _mode != &"build":
+		return
+	if event.is_action_pressed(&"ui_left") or event.is_action_pressed(&"ui_right"):
+		_move_sel(-1 if event.is_action_pressed(&"ui_left") else 1)
+		get_viewport().set_input_as_handled()
+	elif event is InputEventKey and event.pressed and not event.echo:
+		var k := (event as InputEventKey).keycode
+		if k == KEY_Q or k == KEY_E:
+			_step_group(-1 if k == KEY_Q else 1)
+			get_viewport().set_input_as_handled()
+
+
+## Number circle in the step strip: filled when it is the current step.
+class StepNumber extends Control:
+	var n := 1
+	var on := false
+
+	func _init(num: int, lit: bool) -> void:
+		n = num
+		on = lit
+		custom_minimum_size = Vector2(26, 26)
+		size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var c := size * 0.5
+		if on:
+			draw_circle(c, 12.0, UiTokens.TEXT, true, -1.0, true)
+		else:
+			draw_arc(c, 11.5, 0.0, TAU, 32, Color(UiTokens.TEXT, 0.5), 1.6, true)
+		var font := get_theme_default_font()
+		var s := str(n)
+		var fs := 14
+		var tw := font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		draw_string(font, Vector2(c.x - tw * 0.5, c.y + fs * 0.36), s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs,
+			UiTokens.INK if on else UiTokens.TEXT_DIM)
+
+
+## Lock diamond with "met / total" (컬트 오브 더 램 신성한 영감의 잠금 마름모).
+class TierDiamond extends Control:
+	var met := 0
+	var total := 0
+
+	func _init(m: int, t: int) -> void:
+		met = m
+		total = t
+		custom_minimum_size = Vector2(46, 46)
+		size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var c := size * 0.5
+		var r := 21.0
+		var pts := PackedVector2Array([c + Vector2(0, -r), c + Vector2(r, 0), c + Vector2(0, r), c + Vector2(-r, 0)])
+		draw_colored_polygon(pts, Color(UiTokens.INK, 0.9))
+		pts.append(pts[0])
+		draw_polyline(pts, UiTokens.INFO, 2.0, true)
+		var font := get_theme_default_font()
+		var s := "%d/%d" % [met, total]
+		var fs := 13
+		var tw := font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		draw_string(font, Vector2(c.x - tw * 0.5, c.y + fs * 0.36), s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, UiTokens.TEXT)
+
+
+## Soft group-colour glow behind the card picture.
+class ArtGlow extends Control:
+	var col := Color.WHITE
+
+	func _init(c: Color) -> void:
+		col = c
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var c := Vector2(size.x * 0.5, size.y * 0.7)
+		for i in 6:
+			var k := 1.0 - i / 6.0
+			draw_circle(c, size.x * 0.55 * k, Color(col, 0.06), true, -1.0, true)
+
+
+## Dark circle with a lock, over a locked card's picture.
+class LockBadge extends Control:
+	func _init() -> void:
+		custom_minimum_size = Vector2(36, 36)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _ready() -> void:
+		var ic := LineIcon.new(&"lock", 18)
+		ic.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		add_child(ic)
+
+	func _draw() -> void:
+		draw_circle(size * 0.5, 17.0, Color(UiTokens.INK, 0.85), true, -1.0, true)
+		draw_arc(size * 0.5, 17.0, 0.0, TAU, 32, Color(UiTokens.TEXT, 0.4), 1.5, true)

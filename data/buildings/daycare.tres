@@ -6,6 +6,7 @@
 script = ExtResource("1_sw1j7")
 id = &"daycare"
 display_name = "돌봄방"
+description = "아이들을 돌봐요. 보호자가 마음 놓고 일하러 갈 수 있어요."
 category = 5
 size = Vector2i(3, 3)
 cost = Dictionary[StringName, int]({

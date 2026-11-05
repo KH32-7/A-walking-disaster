@@ -185,6 +185,9 @@ func take_damage(amount: float, info: Dictionary = {}) -> void:
 	status.apply_hit(info)
 	health = maxf(health - amount, 0.0)
 	health_changed.emit(health, stats.max_health)
+	var ratio := amount / maxf(stats.max_health, 1.0)
+	if not tick and ratio >= CombatFeel.SHAKE_HURT_MIN_RATIO:
+		CombatFeel.shake(self, CombatFeel.SHAKE_PLAYER_HURT * ratio)
 	if health == 0.0:
 		is_downed = true
 		status.clear()
@@ -223,8 +226,10 @@ func step(delta: float, input: Dictionary) -> void:
 
 
 func _read_input() -> Dictionary:
-	var aim := Input.is_action_pressed(&"aim")
-	if Settings.get_value(&"toggle_aim"):
+	# The field map is open (real time): right click there sets a ping, not the aim.
+	var map_open := UI.is_open(&"map")
+	var aim := Input.is_action_pressed(&"aim") and not map_open
+	if Settings.get_value(&"toggle_aim") and not map_open:
 		if Input.is_action_just_pressed(&"aim"):
 			_aim_toggled = not _aim_toggled
 		aim = _aim_toggled

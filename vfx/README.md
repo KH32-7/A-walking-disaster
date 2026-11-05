@@ -1,52 +1,54 @@
-# vfx/ — 이펙트 (D-18, 레인 D)
+# vfx/ (D-18, 레인 D)
 
-게임플레이는 `Fx.spawn(effect_id, position, params)`만 부른다. 이펙트 씬을 직접 인스턴스하지 않는다.
+게임플레이는 `Fx.spawn(effect_id, position, params)`만 부른다. 이펙트 노드를 직접 만들지 않는다.
+그림은 전부 VFX 팩(`res://assets/vfx/`, Magic Arsenal, Elemental Spells, Stylized Shoot & Hit)의
+텍스처와 메시를 `GPUParticles3D` + `vfx/shaders/fx_*.gdshader`로 다시 조립한 것이다. 유니티 프리팹은 없다.
 
-- 이펙트 정의: `data/ui/effects/<id>.tres` (`EffectDef`: 씬 + `base_params` + 효과음 + 동시 개수 상한).
-  `base_params`는 기본값이고 호출 쪽 params가 이긴다. 조합 이펙트는 `combo_id`로 A의 `data/essences/combos/<id>.tres`
-  `effect_params`(반경·시간)를 읽어서 그림이 규칙과 같은 크기가 된다.
-- 효과음은 `EffectDef.sound`(D-11 `data/ui/audio_events`)로 Fx가 위치에 재생한다. `params.silent = true`면 끈다.
-- 모양 + 색: 속성은 꽃잎(초록)·사각(돌)·물방울(물)·번개(빛), 색은 `UiTokens`. 색만으로 구분하는 이펙트는 없다.
-- `Settings.reduce_flash`: 흰 번쩍임을 줄이고(`FxEffect.flash_k`) 피격 번쩍임은 약한 단색으로. Fx는 카메라를 흔들지 않는다
-  (히트스톱·카메라 흔들림·넉백은 레인 B).
-- 미리보기: `vfx/_preview/preview_vfx.tscn` (`-- --view=combat|elements|combos|release|blast|telegraph --shot=user://x.png --t=0.05,0.15,0.4 [--reduce_flash]`).
-  키 1~6 화면, R 다시, F 번쩍임 줄이기. 테스트: `tests/ui/test_vfx.gd`.
+## 구조
 
-## 타격감 (게임플레이가 부르지 않아도 되는 것)
-
-`HitFeedback`(Fx 자식)이 신호를 듣는다. D-05 마물 표시와 같은 방식(그룹 + 신호 이름, duck typing).
-
-| 듣는 것 | 보여 주는 것 |
+| 파일 | 하는 일 |
 |---|---|
-| `field_monsters` 그룹의 `damaged(amount, info)` | 피해 숫자(`info.position`, 없으면 머리 위), 흰 피격 번쩍임. `info.status_tick`이면 작은 속성색 숫자, 번쩍임 없음 |
-| `player` 그룹의 `health_changed(current, max)` | 줄면 빨강 `-N` + 붉은 번쩍임 + `player_hurt` 소리, 늘면 초록 `+N` |
+| `fx.gd` | 오토로드 `Fx`. 정의 로드, id별 동시 개수 상한(`max_alive`), 효과음 재생, `clear()` (흐름 상태가 바뀌면 자동) |
+| `fx_node.gd` | 살아 있는 이펙트 하나. 레이어를 조립하고 수명이 끝나면 스스로 지운다 |
+| `defs/fx_def.gd`, `defs/fx_layer.gd` | 데이터 스키마. 정의는 `data/ui/effects/<id>.tres` |
+| `shaders/fx_common.gdshaderinc` | 빌보드, 속도 방향 늘이기, 플립북, 채널 모드(RGBA, 빨강=알파 마스크, 슛힛 묶음 채널 R 모양/G 디졸브/A 알파) |
+| `fx_feedback.gd` | 피해 숫자와 피격 번쩍임. 게임플레이가 부르지 않는다(`Monster.damaged`, `Player.health_changed`를 듣는다) |
+| `_preview/preview_fx.tscn` | 모든 id 미리보기 |
 
-피해 숫자: 0.7초 동안 위로 뜨며 흐려진다(UI_RULES §6). 치명타는 `ACCENT` + 크게 + 튀어나옴 + `!`, 약점은 `◆`.
-숫자는 B가 준 최종 피해(약점·속성·방어 반영 후)를 그대로 쓴다. D는 계산하지 않는다.
+레이어 종류: `PARTICLES`, `MESH`(팩 메시 + 텍스처, 방향을 따라 돈다), `GROUND`(바닥 원판), `BEAM`(두 점 사이 띠,
+`travel_speed`면 날아가는 줄기), `LIGHT`(짧은 점광원, 폭발 같은 큰 순간에만).
+
+## 에셋이 없을 때 (CI, 권한 없는 클론)
+
+텍스처와 메시는 `.tres`에 **경로 문자열**로만 들어 있다(`ext_resource` 아님). 그래서 임포트와 로드가 깨끗하다.
+`FxNode`가 `ResourceLoader.exists`로 보고 파일이 없는 레이어를 빼고, 남는 레이어가 없으면 노드를 만들지 않는다.
+경고는 없다. 효과음은 그대로 난다(오디오는 합성음으로 대체된다).
 
 ## 이펙트 id
 
-| id | params | 쓰는 곳 |
+| id | params | 부르는 곳 |
 |---|---|---|
+| `hit_spark` | `element`, `crit`, `weak_point` | B weapon_holder, companion. 소리 `hit_impact`, 치명타 `hit_crit` |
 | `muzzle_flash` | `direction` | B weapon_holder |
-| `bullet_tracer` | `to`, `speed`(기본 120 m/s) | B weapon_holder, companion |
-| `bullet_impact` | `normal` | B weapon_holder (벽·바닥) |
-| `hit_spark` | `element`, `crit`, `weak_point` | B weapon_holder, companion. 소리 `hit_impact` / 치명타 `hit_crit` |
-| `perfect_block` | — | B weapon_holder |
-| `neon_moth_blast` | `radius`(기본 2) | B self_destruct_behavior |
-| `melee_swing` | `direction`, `arc_deg`, `range`, `element`, `combo_step` | **B 아직 안 부름** (요청) |
-| `element_green` / `_stone` / `_water` / `_light` | `scale` | 정수 발동·상태 부여 (B-15) |
-| `combo_thorn_bush`, `combo_swamp`, `combo_mud` | `zone_radius`/`zone_sec`/`duration_sec` (ComboDef 기본) | B-15 조합 발동 |
-| `combo_photosynthesis`, `combo_shard_burst` | `radius` (ComboDef 기본) | B-15 처치 시 조합 |
-| `combo_shock_puddle` | `radius`(1.5), `chain: Array[Vector3]` 연쇄 대상 위치 | B-15 |
-| `release_gun` / `release_blade` / `release_blunt` | `element`, `direction`(총), `radius`·`hits`·`rounds`(기획 기본값) | B-15 정수 해방. 소리 `essence_release` |
-| `explosion` | `radius`(3), `element` | 폭발물·보스 |
-| `noise_lure` | `fuse_sec`(4), `radius` | 소음 미끼가 떨어진 자리. 소음 15 m 자체는 B의 `noise_emitted` |
-| `boss_telegraph` | `shape`(`circle`·`cone`·`line`·`ring`), `radius`, `inner`, `angle_deg`, `length`, `width`, `direction`, `duration`(1초), `kind`(`danger` 빨강 / `warn` 주황) | B 보스. 소리 `boss_warning` |
-| `damage_number` | `amount`, `kind`(`hit`·`tick`·`player`·`heal`), `crit`, `weak_point`, `element` | HitFeedback (B가 직접 불러도 됨) |
+| `bullet_tracer` | `to`, `speed`(기본 120 m/s) | B weapon_holder, companion, companion_skill |
+| `bullet_impact` | `normal` | B weapon_holder (벽, 바닥) |
+| `perfect_block` | | B weapon_holder |
+| `neon_moth_blast` | `radius`(기본 2) | B self_destruct_behavior. 소리 `explosion` |
+| `consumable_grenade` / `_flashbang` / `_noise_lure` | `radius` | B thrown_consumable |
+| `essence_release` | `element`, `combat_class`, `radius` | B magic_weapon (소리는 B가 냄) |
+| `essence_chain` | `to` | B magic_weapon (빛 연쇄) |
+| `essence_combo` | `id`, `radius`, `duration` | B magic_weapon, magic_zone. `essence_combo_<id>.tres`로 갈라진다 |
+| `brace`, `dash_slash`, `precision_shot`, `shadow_step`, `slam`, `suppressive_fire` | `direction`, `radius` | B class_skills, companion_skill (소리는 B가 냄) |
+| `boss_telegraph` | `shape`(`circle`, `ring`, `cone`, `line`), `radius`, `inner`, `angle_deg`, `length`, `width`, `direction`, `duration`, `kind`(`danger` 빨강 / `warn` 주황) | B boss_monster (B-19). 소리 `boss_warning`. 판정 모양 그대로를 `fx_telegraph.gdshader`로 그려서 **에셋 없어도 보인다**. 채움이 바깥으로 차오르면 그때 터진다 |
+
+속성 4종(초록, 돌, 물, 빛)은 따로 id가 없다. `params.element`를 받는 레이어가 `element_textures`로 텍스처를 바꾸고
+`tint_element`로 `UiTokens.ELEMENT_COLORS` 색을 곱한다.
 
 ## 새 이펙트 추가
 
-1. `vfx/effects/<이름>.gd` (`extends FxEffect`, `_build()`에서 `sprite()`·`ground()`·`ribbon()`으로 조각을 만든다) + 같은 이름 `.tscn`.
-2. `data/ui/effects/<id>.tres`에 `EffectDef` (씬, 기본 params, 소리).
-3. 미리보기 화면에 넣고 스크린샷으로 확인한다.
+1. `data/ui/effects/<id>.tres`에 `FxDef`를 만들고 레이어를 넣는다(에디터 인스펙터에서 바로 조절 가능).
+2. 미리보기 `_preview/preview_fx.gd`의 id 목록에 넣고 눈으로 확인한다.
+3. `tests/ui/test_fx.gd`의 `GAMEPLAY_IDS`에 넣는다(게임플레이가 부르는 id면).
+
+`Settings.reduce_flash`: `flash = true` 레이어와 점광원, 피격 번쩍임이 약해진다. Fx는 카메라를 움직이지 않는다
+(히트스톱, 카메라 흔들림, 넉백은 레인 B).

@@ -6,6 +6,7 @@
 script = ExtResource("1_tduke")
 id = &"bonfire"
 display_name = "모닥불"
+description = "밤에 둘러앉아 이야기하는 곳이에요. 사기가 매일 조금씩 올라요."
 cost = Dictionary[StringName, int]({
 &"wood": 5
 })

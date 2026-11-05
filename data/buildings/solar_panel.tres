@@ -6,6 +6,7 @@
 script = ExtResource("1_tc6fg")
 id = &"solar_panel"
 display_name = "태양광 패널"
+description = "햇빛으로 전력을 조금 만들어요. 겨울에는 줄어요."
 category = 9
 size = Vector2i(2, 2)
 cost = Dictionary[StringName, int]({

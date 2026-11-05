@@ -93,6 +93,7 @@ func trigger() -> void:
 	match def.effect:
 		ConsumableDef.Effect.FLASH:
 			_flash(point)
+			CombatFeel.shake(self, CombatFeel.SHAKE_FLASHBANG, point)
 		ConsumableDef.Effect.BLAST:
 			_blast(point)
 	if def.noise != &"":
@@ -147,6 +148,7 @@ func _blast(point: Vector3) -> void:
 			"element": Enums.Element.NONE}
 	for monster in monsters_in_reach(point):
 		monster.take_damage(def.damage, info)
+	CombatFeel.shake(self, CombatFeel.SHAKE_EXPLOSION, point)
 
 
 func _clear_line(point: Vector3, monster: Monster) -> bool:

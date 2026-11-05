@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="FxDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/fx_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://vfx/defs/fx_layer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/magic_arsenal/textures/ground_earth02.png"
+grow = Vector2(2.0, 2.0)
+lifetime = 0.4
+color = Color(0.6, 0.5, 0.38, 0.9)
+fade_out = 0.7
+loop = true
+fade_in = 0.5
+blend = 1
+follow_radius = true
+spin = true
+
+[resource]
+script = ExtResource("1_def")
+id = &"essence_combo_mud"
+lifetime_param = &"duration"
+max_alive = 8
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0")])

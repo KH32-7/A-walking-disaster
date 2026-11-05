@@ -6,6 +6,7 @@
 script = ExtResource("1_bbuyl")
 id = &"picture_sign"
 display_name = "그림 표지판"
+description = "말 대신 그림으로 길을 안내해요. 말이 다르거나 잘 듣지 못하는 주민도 길을 찾아요."
 category = 5
 cost = Dictionary[StringName, int]({
 &"paint": 1,

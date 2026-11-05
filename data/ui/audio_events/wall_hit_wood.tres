@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AudioEventDef" format=3]
+
+[ext_resource type="Script" path="res://audio/defs/audio_event_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"wall_hit_wood"
+stream = "res://assets/audio/sfx/action_rpg_sfx_v2/foley/foley_wooden_pile_impact_debris_01_01.wav"
+synth = &"thud"
+bus = 0
+priority = 1
+positional = true
+caption = "나무 부서지는 소리"

@@ -1,0 +1,1415 @@
+<title>해솔시 UI 재설계</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Barlow:wght@500;600;700&display=swap">
+<style>
+/* Layout: one long column. Each section = a 16:9 game-screen mockup (drawn at 1280×720, scaled to fit)
+   followed by numbered notes that match the yellow markers on the screen. Single dark look on purpose. */
+:root{
+  --page:#0F1116; --page-2:#171A22; --page-3:#1E222C; --rule:rgba(233,231,224,.12);
+  --ink:#ECEAE3; --ink-dim:#A9A79F; --mark:#F6C744;
+  /* game tokens (ui/UI_RULES.md §2) */
+  --slate:rgba(42,46,59,.82); --slate-solid:#2A2E3B; --slate2:rgba(54,58,73,.94); --line:rgba(220,218,210,.32); --line-strong:rgba(233,231,224,.75);
+  --text:#F1F0EA; --dim:#B9B7AF; --cream:#EFEADF; --cream2:#DDD7C9; --on-cream:#26262B; --on-cream-dim:#6B6A70;
+  --accent:#F6C744; --grey:#8B8E98; --info:#57C2C9; --danger:#D9453B; --warn:#E8A23A; --good:#5FC46B;
+  --pill-soft:#E6F4FF; --pill-soft-t:#1D3D55; --tab-glow:#6CC8FF;
+  --f-ui:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-num:"Barlow","Noto Sans KR",system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--page)}
+.wrap{max-width:1180px;margin:0 auto}
+h1,h2,h3{text-wrap:balance;margin:0}
+a{color:var(--mark)}
+:focus-visible{outline:2px solid var(--mark);outline-offset:2px}
+
+/* page header */
+.hero{padding-block:48px 28px;display:grid;gap:14px;border-bottom:1px solid var(--rule)}
+.hero .eyebrow{font-family:var(--f-num);font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim);font-size:12px}
+.hero h1{font-size:clamp(30px,5vw,48px);font-weight:900;letter-spacing:-.01em;line-height:1.15}
+.hero h1 .band{display:inline-block;width:.9em;height:.16em;background:var(--info);vertical-align:middle;margin-right:.25em;border-radius:2px;box-shadow:.4em .28em 0 var(--accent)}
+.hero p{max-width:68ch;color:var(--ink-dim);margin:0}
+.src{display:flex;flex-wrap:wrap;gap:8px}
+.src span{font-size:12.5px;padding:4px 10px;border:1px solid var(--rule);border-radius:999px;color:var(--ink-dim)}
+.src b{color:var(--ink);font-weight:700}
+
+nav.toc{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:color-mix(in srgb,var(--page) 92%,transparent);backdrop-filter:blur(6px);
+  border-bottom:1px solid var(--rule);margin-bottom:8px}
+nav.toc .in{display:flex;gap:4px;overflow-x:auto;padding-block:10px;scrollbar-width:none}
+nav.toc a{flex:none;font-size:13px;color:var(--ink-dim);text-decoration:none;padding:5px 11px;border-radius:999px;border:1px solid transparent}
+nav.toc a:hover{color:var(--ink);border-color:var(--rule)}
+
+section.sec{padding-block:44px 8px;border-bottom:1px solid var(--rule);scroll-margin-top:60px}
+.sec-head{display:grid;gap:8px;margin-bottom:18px}
+.sec-head .kicker{font-family:var(--f-num);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim)}
+.sec-head h2{font-size:clamp(22px,3vw,30px);font-weight:900}
+.sec-head p{margin:0;max-width:72ch;color:var(--ink-dim)}
+.refs{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.ref{font-size:12px;padding:2px 9px;border-radius:6px;background:var(--page-3);color:var(--ink-dim)}
+.ref b{color:var(--ink);font-weight:600}
+.ref.d{box-shadow:inset 3px 0 0 #6CC8FF}
+.ref.c{box-shadow:inset 3px 0 0 #E2534B}
+.ref.a{box-shadow:inset 3px 0 0 var(--accent)}
+
+/* problems / principles */
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px}
+.box{background:var(--page-2);border:1px solid var(--rule);border-radius:12px;padding:18px 20px;min-width:0}
+.box h3{font-size:16px;font-weight:700;margin-bottom:8px}
+.box ul,.box ol{margin:0;padding-left:1.15em;display:grid;gap:6px;color:var(--ink-dim)}
+.box li b{color:var(--ink)}
+
+/* 1:1 table */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--rule);border-radius:12px}
+table.map{border-collapse:collapse;width:100%;min-width:900px;font-size:13.5px}
+table.map th,table.map td{padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--rule)}
+table.map th{font-size:12px;color:var(--ink-dim);font-weight:600;background:var(--page-2);position:sticky;top:0}
+table.map td:first-child{font-weight:700;white-space:nowrap}
+table.map td .t{font-family:var(--f-num);font-variant-numeric:tabular-nums;color:var(--ink-dim);font-size:12px}
+table.map td.no{color:var(--ink-dim)}
+table.map tr:hover td{background:rgba(255,255,255,.02)}
+.pr{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;margin-left:6px;vertical-align:1px}
+.pr.p1{background:var(--accent);color:#26262B}
+.pr.p2{background:var(--page-3);color:var(--ink);border:1px solid var(--rule)}
+
+/* mockup frame */
+.shot{position:relative;width:100%;aspect-ratio:16/9;max-width:100%;overflow:hidden;border-radius:12px;background:#000;
+  box-shadow:0 0 0 1px var(--rule),0 18px 40px rgba(0,0,0,.45)}
+.stage{position:absolute;left:0;top:0;width:1280px;height:720px;transform-origin:0 0;overflow:hidden;font-family:var(--f-ui);color:var(--text);
+  font-size:14px;line-height:1.4;background:#1b2621}
+.stage svg.scene{position:absolute;inset:0;width:1280px;height:720px;display:block}
+.shot-cap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-dim);margin:10px 2px 0}
+.shot-cap b{color:var(--ink)}
+.duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:18px}
+.flow{display:grid;gap:30px}
+.step-title{display:flex;align-items:baseline;gap:10px;margin:0 0 10px}
+.step-title .n{font-family:var(--f-num);font-weight:700;font-size:13px;color:#26262B;background:var(--accent);border-radius:999px;width:24px;height:24px;display:grid;place-items:center;flex:none}
+.step-title h3{font-size:18px;font-weight:700}
+.step-title span{color:var(--ink-dim);font-size:13px}
+
+/* notes under mockups */
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:10px 22px;margin:16px 0 4px;padding:0;list-style:none}
+.notes li{display:grid;grid-template-columns:24px 1fr;gap:10px;color:var(--ink-dim);font-size:14px;min-width:0}
+.notes li i{font-style:normal;font-family:var(--f-num);font-weight:700;font-size:12px;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#26262B;display:grid;place-items:center;margin-top:1px}
+.notes li b{color:var(--ink)}
+.notes li em{font-style:normal;font-size:12px;color:var(--ink-dim);opacity:.85}
+
+/* ===== game UI kit (1280 space) ===== */
+.mk{position:absolute;z-index:40;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#26262B;font:700 13px/24px var(--f-num);
+  text-align:center;box-shadow:0 0 0 3px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.5);pointer-events:none}
+.ic{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
+.hs{text-shadow:0 1px 2px rgba(0,0,0,.85),0 0 8px rgba(0,0,0,.35)}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.abs{position:absolute}
+.kc{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:4px;background:#F4F2EC;color:#1d1d22;font:700 11.5px var(--f-num);letter-spacing:.02em}
+.kp{display:inline-flex;align-items:center;height:20px;padding:0 7px;border:1.3px solid rgba(241,240,234,.7);border-radius:999px;font:600 11.5px var(--f-num);color:var(--text)}
+.keys{position:absolute;left:36px;bottom:18px;display:flex;gap:16px;align-items:center;font-size:13px;z-index:30}
+.keys span{display:inline-flex;gap:6px;align-items:center}
+.panel{position:absolute;background:var(--slate);border-radius:14px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.06)}
+.phead{display:flex;align-items:center;gap:10px;background:var(--slate2);border-radius:10px;margin:8px;padding:8px 12px;font-weight:700;font-size:14px}
+.phead .cnt{font:600 13px var(--f-num);color:var(--dim)}
+.phead .sp{flex:1}
+.cream{background:var(--cream);color:var(--on-cream);border-radius:12px;box-shadow:0 10px 28px rgba(0,0,0,.35)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:38px;padding:0 18px;border-radius:999px;font-weight:700;font-size:14px;white-space:nowrap}
+.btn.primary{background:var(--accent);color:#26262B}
+.btn.cream{background:#fffaf0;color:var(--on-cream);box-shadow:inset 0 0 0 1.5px rgba(38,38,43,.18)}
+.btn.grey{background:var(--grey);color:#1f2026}
+.btn.dark{background:#2b2f3a;color:var(--text)}
+.pill-soft{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 10px;border-radius:999px;background:var(--pill-soft);color:var(--pill-soft-t);font-size:12px;font-weight:700}
+.tag{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:6px;font-size:12px;font-weight:700;background:rgba(38,38,43,.1);color:var(--on-cream)}
+.tag.dk{background:rgba(255,255,255,.1);color:var(--text)}
+.chip{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 7px;border-radius:6px;font:600 12.5px var(--f-num);background:rgba(255,255,255,.08);color:var(--text)}
+.chip .ic{width:14px;height:14px}
+.chip.short{background:rgba(217,69,59,.22);color:#ff9d93}
+.chip.ok-c{background:rgba(38,38,43,.08);color:var(--on-cream)}
+.chip.short-c{background:rgba(217,69,59,.14);color:#B3261E}
+.res{display:inline-flex;align-items:center;gap:5px;font:600 17px var(--f-num)}
+.res .ic{width:17px;height:17px;color:var(--dim)}
+.sect{font-size:12.5px;color:var(--dim);display:flex;justify-content:space-between;align-items:center;margin:0 4px 8px}
+.sect b{color:var(--text);font-size:13.5px}
+.dim{color:var(--dim)}
+.good{color:var(--good)} .warn{color:var(--warn)} .danger{color:#ff8a7a}
+.bar{height:6px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--text)}
+
+/* step strip */
+.steps{position:absolute;top:22px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;z-index:30;
+  background:rgba(20,22,29,.72);padding:6px 8px;border-radius:999px;backdrop-filter:blur(6px)}
+.steps .s{display:flex;align-items:center;gap:7px;height:28px;padding:0 12px 0 6px;border-radius:999px;font-size:13px;color:var(--dim)}
+.steps .s i{font:700 12px/20px var(--f-num);font-style:normal;width:20px;height:20px;border-radius:50%;text-align:center;border:1.3px solid rgba(241,240,234,.45)}
+.steps .s.on{background:rgba(241,240,234,.12);color:var(--text);font-weight:700}
+.steps .s.on i{background:var(--text);color:#20232b;border-color:var(--text)}
+.steps .s.done{color:var(--dim)}
+.steps .s.done i{background:var(--good);border-color:var(--good);color:#14301a}
+.steps .ar{width:14px;height:1.5px;background:rgba(241,240,234,.3)}
+
+/* build cards */
+.bgrid{display:grid;grid-template-columns:repeat(6,112px);gap:12px}
+.bc{position:relative;height:144px;border-radius:12px;background:rgba(26,29,38,.75);border:1.5px solid var(--line);overflow:hidden;display:flex;flex-direction:column}
+.bc .art{height:68px;display:grid;place-items:center;position:relative}
+.bc .art svg{width:100px;height:64px}
+.bc .sz{position:absolute;right:6px;top:6px;font:700 11px var(--f-num);color:var(--text);background:rgba(0,0,0,.45);padding:1px 5px;border-radius:4px}
+.bc .cat{position:absolute;left:6px;top:6px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.45);display:grid;place-items:center}
+.bc .cat .ic{width:13px;height:13px}
+.bc .nm{font-weight:700;font-size:14px;padding:4px 8px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bc .cost{display:flex;gap:4px;padding:3px 7px 0;flex-wrap:wrap}
+.bc .cost .chip{height:19px;font-size:11.5px;padding:0 5px}
+.bc .st{margin-top:auto;font-size:11.5px;padding:4px 8px 6px;display:flex;gap:4px;align-items:center}
+.bc .st .ic{width:13px;height:13px}
+.bc.sel{border:2px solid var(--accent);box-shadow:0 0 0 4px rgba(246,199,68,.18),0 8px 18px rgba(0,0,0,.45);transform:translateY(-4px)}
+.bc.lock .art{filter:grayscale(1) brightness(.55)}
+.bc.lock .nm,.bc.lock .cost{opacity:.6}
+.bc .lk{position:absolute;left:50%;top:34px;transform:translate(-50%,-50%);width:30px;height:30px;border-radius:50%;background:rgba(12,13,17,.8);display:grid;place-items:center;border:1.5px solid rgba(241,240,234,.4)}
+.bc .lk .ic{width:16px;height:16px}
+.bc .new{position:absolute;right:6px;bottom:52px;font-size:10.5px;font-weight:700;color:#1d3d55;background:var(--pill-soft);border-radius:999px;padding:0 6px}
+.bc .goal{position:absolute;left:6px;bottom:52px;font-size:10.5px;font-weight:700;color:#0f2a2c;background:var(--info);border-radius:999px;padding:0 6px;display:flex;gap:3px;align-items:center}
+.bc .goal .ic{width:11px;height:11px}
+
+/* world labels */
+.wl{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;z-index:20;pointer-events:none}
+.wl .chipw{background:rgba(20,22,29,.78);border-radius:8px;padding:3px 9px 4px;text-align:center;line-height:1.2;border:1px solid rgba(255,255,255,.08)}
+.wl .chipw small{display:block;font-size:10.5px;color:var(--dim)}
+.wl .chipw b{font-size:13px}
+.wl .stem{width:1px;height:18px;background:rgba(241,240,234,.6)}
+.wl .dot{width:6px;height:6px;border-radius:50%;background:#fff;margin-top:-1px}
+.need{position:absolute;transform:translate(-50%,-100%);display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;background:rgba(20,22,29,.82);
+  border-radius:999px;padding:2px 8px 2px 5px;z-index:21;white-space:nowrap}
+.need .ic{width:13px;height:13px}
+.prompt{position:absolute;display:flex;flex-direction:column;gap:3px;z-index:25}
+.prompt .o{display:flex;align-items:center;gap:8px;height:28px;padding:0 10px 0 9px;border-radius:999px;font-size:14px;font-weight:600}
+.prompt .o::before{content:"";width:5px;height:5px;border-radius:50%;background:rgba(241,240,234,.7)}
+.prompt .o.on{background:rgba(108,200,255,.28);box-shadow:inset 0 0 0 1px rgba(108,200,255,.55)}
+.prompt .o.on::before{background:#fff}
+.prompt .o .dimn{font:600 12px var(--f-num);color:var(--dim)}
+.bottom-prompt{position:absolute;left:50%;bottom:60px;transform:translateX(-50%);display:flex;gap:16px;align-items:center;
+  background:rgba(14,15,20,.82);padding:8px 16px;border-radius:999px;font-size:14px;z-index:30;white-space:nowrap}
+.bottom-prompt span{display:inline-flex;gap:7px;align-items:center}
+.bottom-prompt b{color:var(--accent)}
+.toast{position:absolute;display:flex;align-items:center;gap:10px;background:rgba(20,22,29,.85);border-radius:10px;padding:8px 14px 8px 10px;font-size:14px;z-index:30;border-left:4px solid var(--good)}
+.feed{position:absolute;display:grid;gap:4px;z-index:25}
+.feed div{display:flex;gap:6px;align-items:center;font-size:13px}
+.feed .xp{font:700 12px var(--f-num);background:var(--accent);color:#26262B;border-radius:4px;padding:0 5px}
+
+/* portraits */
+.pt{border-radius:50%;overflow:hidden;flex:none;background:#3a3f4d}
+.pt svg{width:100%;height:100%;display:block}
+
+/* item slots (bag/craft) */
+.slot{position:relative;width:58px;height:58px;border-radius:9px;background:rgba(54,58,73,.55);border:1.5px solid var(--line);display:grid;place-items:center;overflow:hidden}
+.slot .ic{width:28px;height:28px;color:#e9e6dc}
+.slot .q{position:absolute;right:4px;bottom:2px;font:600 11px var(--f-num)}
+.slot .nm{position:absolute;left:0;right:0;bottom:-1px;font-size:9.5px;text-align:center;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 3px}
+.slot.r2{background:linear-gradient(to top,rgba(95,196,107,.42),rgba(54,58,73,.55) 70%)}
+.slot.r3{background:linear-gradient(to top,rgba(63,176,230,.45),rgba(54,58,73,.55) 70%)}
+.slot.r4{background:linear-gradient(to top,rgba(176,114,232,.45),rgba(54,58,73,.55) 70%)}
+.slot .rb{position:absolute;left:4px;top:4px;width:9px;height:9px}
+.slot.sel{border-color:var(--line-strong);box-shadow:0 0 0 2px rgba(241,240,234,.35)}
+.slot.empty{background:rgba(54,58,73,.32)}
+.slot.search{background:linear-gradient(110deg,rgba(150,110,230,.35),rgba(255,255,255,.35),rgba(80,210,200,.35));}
+.sgrid{display:grid;gap:6px}
+
+@media (prefers-reduced-motion:no-preference){
+  .slot.search{background-size:200% 100%;animation:sweep 1s linear infinite}
+  @keyframes sweep{from{background-position:200% 0}to{background-position:0 0}}
+}
+footer.end{padding-block:36px 0;color:var(--ink-dim);font-size:13px;display:grid;gap:8px}
+</style>
+
+<!-- icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<symbol id="i-wood" viewBox="0 0 24 24"><rect x="2.5" y="8" width="15" height="8" rx="4"/><ellipse cx="17.5" cy="12" rx="3.5" ry="4"/><path d="M17.5 10.5v3"/></symbol>
+<symbol id="i-stone" viewBox="0 0 24 24"><path d="M3.5 17.5 6.5 9 13 5.5l6.5 4.5-1 8z"/><path d="M6.5 9l6 3 6-2.5M12.5 12v6"/></symbol>
+<symbol id="i-scrap" viewBox="0 0 24 24"><path d="M12 3.5l7.4 4.25v8.5L12 20.5l-7.4-4.25v-8.5z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-food" viewBox="0 0 24 24"><path d="M5 9h14v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M5 12.5h14M8 9V6.5h8V9"/></symbol>
+<symbol id="i-parts" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></symbol>
+<symbol id="i-cloth" viewBox="0 0 24 24"><path d="M8 4 4 7l2 3 2-1v11h8V9l2 1 2-3-4-3c-.5 1.5-2 2.5-4 2.5S8.5 5.5 8 4z"/></symbol>
+<symbol id="i-plank" viewBox="0 0 24 24"><path d="M3 9.5h18v5H3z"/><path d="M7 9.5v5M13 9.5v5"/></symbol>
+<symbol id="i-seed" viewBox="0 0 24 24"><path d="M12 20c-4 0-6-3-6-7 3 0 6 2 6 7zM12 20c4 0 6-4 6-9-4 0-6 3-6 9z"/><path d="M12 20v-8"/></symbol>
+<symbol id="i-people" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-4.5 3.5-6.5 7-6.5s6.2 2 7 6.5"/></symbol>
+<symbol id="i-bed" viewBox="0 0 24 24"><path d="M3 18V7M3 13.5h18V18M21 13.5V12a3 3 0 0 0-3-3h-7.5v4.5"/><circle cx="6.8" cy="10.8" r="1.7"/></symbol>
+<symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.5 3 5.5 13.5h5.5L10 21l8-10.5h-5.5z"/></symbol>
+<symbol id="i-noise" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4 21 19.5H3z"/><path d="M12 10v4.5M12 17v.5"/></symbol>
+<symbol id="i-hammer" viewBox="0 0 24 24"><path d="M9 4.5h7l3 3-2 2-2.5-2.5H12z"/><path d="M13.5 8.5 5 17l2 2 8.5-8.5"/></symbol>
+<symbol id="i-axe" viewBox="0 0 24 24"><path d="M5 20 15 10"/><path d="M13 5.5c3 0 5.5 2.5 5.5 5.5l-3.5 1-3-3z"/></symbol>
+<symbol id="i-pick" viewBox="0 0 24 24"><path d="M4.5 9.5C8 5.5 15 5.5 19.5 9.5"/><path d="M12 7.5V20"/></symbol>
+<symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.5 4.5a4.5 4.5 0 0 0-4.2 6.1L4 17l3 3 6.4-6.3A4.5 4.5 0 0 0 19.5 9.5l-2.7 2.7-2.8-.7-.7-2.8z"/></symbol>
+<symbol id="i-fire" viewBox="0 0 24 24"><path d="M12 21c-3.9 0-6.5-2.6-6.5-6 0-3 2-5 3.5-7 .5 2 1.5 3 2.5 3.5C11 8 12.5 5 15 3c0 3.5 3.5 6 3.5 10.5 0 4.5-2.6 7.5-6.5 7.5z"/></symbol>
+<symbol id="i-crystal" viewBox="0 0 24 24"><path d="M12 3 18 9l-6 12L6 9z"/><path d="M6 9h12M12 3v18"/></symbol>
+<symbol id="i-ramp" viewBox="0 0 24 24"><path d="M3 19h18V8z"/><path d="M9 19v-2.5"/></symbol>
+<symbol id="i-fence" viewBox="0 0 24 24"><path d="M5 20V7l1.5-2L8 7v13M11 20V7l1.5-2L14 7v13M17 20V7l1.5-2L20 7v13M3 10h18M3 15h18"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7"/><path d="M6.5 9.5V20h11V9.5"/><path d="M10 20v-5h4v5"/></symbol>
+<symbol id="i-sprout" viewBox="0 0 24 24"><path d="M12 20v-7"/><path d="M12 13c0-4-3-6-7-6 0 4 3 6 7 6zM12 11c0-3.5 2.5-6 7-6 0 4-2.5 6-7 6z"/></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 19.5S4 15 4 9.5A4 4 0 0 1 12 8a4 4 0 0 1 8 1.5c0 5.5-8 10-8 10z"/></symbol>
+<symbol id="i-anvil" viewBox="0 0 24 24"><path d="M4 7h12c0 3 2 4 4 4-1.5 1.5-4 2-6 2l1 3H8l1-3c-2.5 0-5-2-5-6z"/><path d="M7 20h10"/></symbol>
+<symbol id="i-access" viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="1.8"/><path d="M12 7v6h5l2 5"/><path d="M8.5 10.5a5.5 5.5 0 1 0 6.5 7.5"/></symbol>
+<symbol id="i-box" viewBox="0 0 24 24"><path d="M3.5 8 12 4l8.5 4v8L12 20l-8.5-4z"/><path d="M3.5 8 12 12l8.5-4M12 12v8"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 19 6v5.5c0 4.5-3 8-7 9.5-4-1.5-7-5-7-9.5V6z"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.5 14.6 9l6 .6-4.5 4 1.3 5.9L12 16.5l-5.4 3 1.3-5.9-4.5-4 6-.6z"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="M14.5 5.5 8 12l6.5 6.5"/></symbol>
+<symbol id="i-tree" viewBox="0 0 24 24"><path d="M12 3 6 12h3l-4 6h14l-4-6h3z"/><path d="M12 18v3"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+<symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V4M6 4h11l-2.5 4L17 12H6"/></symbol>
+<symbol id="i-bag" viewBox="0 0 24 24"><rect x="4.5" y="7.5" width="15" height="13" rx="3"/><path d="M9 7.5V6a3 3 0 0 1 6 0v1.5M4.5 12h15"/></symbol>
+<symbol id="i-map" viewBox="0 0 24 24"><path d="M3.5 6.5 9 4l6 2.5L20.5 4v13.5L15 20l-6-2.5-5.5 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5C6.5 4.5 9.5 4.5 12 6c2.5-1.5 5.5-1.5 8-.5v13c-2.5-1-5.5-1-8 .5-2.5-1.5-5.5-1.5-8-.5z"/><path d="M12 6v13"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M4.5 6.5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H10l-4 3.5v-3.5a2 2 0 0 1-1.5-2z"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M18.7 5.3l-1.8 1.8M7.1 16.9l-1.8 1.8"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.8l1.6 2.4 2.8-.7.7 2.8 2.4 1.6-1.4 2.6 1.4 2.6-2.4 1.6-.7 2.8-2.8-.7L12 21.2l-1.6-2.4-2.8.7-.7-2.8-2.4-1.6 1.4-2.6-1.4-2.6 2.4-1.6.7-2.8 2.8.7z"/></symbol>
+<symbol id="i-gun" viewBox="0 0 24 24"><path d="M3 9h15l1.5 2H21v2h-8l-1 2.5H9l.5-2.5H6l-1.5 4H2.5L4 13H3z"/></symbol>
+<symbol id="i-bandage" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="8" rx="4" transform="rotate(-35 12 12)"/><path d="M10 10l4 4"/></symbol>
+<symbol id="i-ammo" viewBox="0 0 24 24"><path d="M7 21V10c0-3 1.5-5.5 2-6 .5.5 2 3 2 6v11zM13.5 21V11.5c0-2.5 1-4 1.5-4.5.5.5 1.5 2 1.5 4.5V21z"/></symbol>
+<symbol id="i-helmet" viewBox="0 0 24 24"><path d="M4 15a8 8 0 0 1 16 0v1H4z"/><path d="M3 16h18v2.5H3z"/></symbol>
+<symbol id="i-vest" viewBox="0 0 24 24"><path d="M8 3.5 5 6v14h14V6l-3-2.5c-.7 2-2 3-4 3s-3.3-1-4-3z"/><path d="M5 12h14"/></symbol>
+<symbol id="i-medkit" viewBox="0 0 24 24"><rect x="3.5" y="6.5" width="17" height="13" rx="2"/><path d="M9 6.5V4.5h6v2M12 10v6M9 13h6"/></symbol>
+<symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v3M15.5 12v2"/></symbol>
+<symbol id="i-radio" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M7 8 16 3.5"/><circle cx="9" cy="14" r="2.5"/><path d="M14 12.5h3M14 15.5h3"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M9.5 5.5 12 3l2.5 2.5M9.5 18.5 12 21l2.5-2.5M5.5 9.5 3 12l2.5 2.5M18.5 9.5 21 12l-2.5 2.5"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/></symbol>
+<symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+<symbol id="i-tired" viewBox="0 0 24 24"><path d="M4 9h5l-5 6h5M13 4h4l-4 4.5h4M15 13h5l-5 6h5"/></symbol>
+<symbol id="i-sad" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 16.5c1-1.5 2.2-2 3.5-2s2.5.5 3.5 2M9 10h.01M15 10h.01"/></symbol>
+<symbol id="i-rotate" viewBox="0 0 24 24"><path d="M19 12a7 7 0 1 1-2.1-5"/><path d="M19 4.5V9h-4.5"/></symbol>
+<symbol id="i-gift" viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M3 9h18M12 9v11M12 9c-2-4-6-4-6-1.5S10 9 12 9zM12 9c2-4 6-4 6-1.5S14 9 12 9z"/></symbol>
+<symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.3 1 2.1h5c0-.8.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></symbol>
+</defs>
+</svg>
+
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">레인 D · UI 시안 · 게임에 넣기 전 검토용</div>
+  <h1><span class="band" aria-hidden="true"></span>해솔시 UI 재설계 시안</h1>
+  <p>전투 HUD를 뺀 모든 화면을 다시 그렸습니다. 덕코프 1.0 플레이 영상의 화면을 우리 화면과 하나씩 짝지어 보고, 기지와 건설은 컬트 오브 더 램의 흐름을 더했습니다. 아래 그림은 모두 HTML로 그린 시안이고 게임 파일은 건드리지 않았습니다.</p>
+  <div class="src">
+    <span><b>덕코프</b> Oscar Mikey · 1.0 Ep 1 · 49:51</span>
+    <span><b>컬트 오브 더 램</b> 건물 이동·편집·철거 · 0:31</span>
+    <span><b>컬트 오브 더 램</b> Base Building and You · 21:11</span>
+    <span><b>컬트 오브 더 램</b> 신성한 영감 트리 · 1:03</span>
+    <span>규칙: <b>ui/UI_RULES.md</b>(아크 기본 + 덕코프 스킨)</span>
+  </div>
+</header>
+
+<nav class="toc" aria-label="목차"><div class="in">
+  <a href="#why">지금 문제</a><a href="#map">1:1 비교표</a><a href="#base">기지 기본</a><a href="#build">건설 모드</a>
+  <a href="#facility">시설</a><a href="#residents">주민</a><a href="#bag">가방</a><a href="#craft">제작</a>
+  <a href="#sortie">출격 준비</a><a href="#journal">일지</a><a href="#small">대화·타이틀</a><a href="#next">다음 할 일</a>
+</div></nav>
+
+<!-- ============ WHY ============ -->
+<section class="sec" id="why">
+  <div class="sec-head">
+    <div class="kicker">00 · 진단</div>
+    <h2>지금 화면이 왜 안 읽히나</h2>
+    <p>코드로 직접 확인한 것은 건설 화면(<code>ui/screens/build_screen.gd</code>)과 기지 HUD(<code>ui/hud/base_hud.gd</code>) 두 곳입니다. 나머지는 영상 비교에서 나온 차이입니다.</p>
+  </div>
+  <div class="cols">
+    <div class="box">
+      <h3>건설 화면</h3>
+      <ul>
+        <li><b>건물 43종이 글자 줄로만 나온다.</b> 한 줄에 이름, "생산 · 2×2칸", 비용 글, "지을 수 있음"뿐이라 생김새도 하는 일도 알 수 없다.</li>
+        <li><b>설명이 없다.</b> 오른쪽 카드에 비용·전력·소음·일손 숫자만 있고 "이 건물이 무엇을 하는지" 한 줄이 없다.</li>
+        <li><b>놓은 다음이 안 보인다.</b> "배치하기"를 누르면 창이 닫히고 끝. 건설 현장 → 주민 보내기 → 진행이라는 순서를 화면이 알려 주지 않는다.</li>
+        <li><b>분류 탭 11개</b>(주거·생산·가공·생활·제작·포용·저장·군사·특수·설비·방어)가 같은 크기 글자 버튼으로 늘어선다.</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h3>기지 HUD</h3>
+      <ul>
+        <li><b>위 막대 한 줄에 열 가지</b>(날짜·단계·자원 6종·창고·인구·침상·전력·위협도)가 같은 굵기로 붙어 있어 먼저 볼 것이 없다.</li>
+        <li><b>아래 메뉴가 글자 버튼 7개.</b> 기지는 걸어 다니는 곳인데 시설 앞에 가도 할 수 있는 일이 월드에 뜨지 않는다.</li>
+        <li><b>무엇을 지어야 하는지 모른다.</b> 기지 단계(캐프 → 정착지 → 요새) 조건이 어디에도 안 보인다.</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h3>고치는 원칙 네 가지</h3>
+      <ol>
+        <li><b>그림 먼저, 글은 다음.</b> 건물·아이템·주민은 미니 모형과 아이콘으로 먼저 알아보게 한다.</li>
+        <li><b>순서가 있는 일은 순서를 보여 준다.</b> 건설은 ①고르기 ②놓기 ③짓기를 화면 위에 늘 띄운다.</li>
+        <li><b>기지는 걸어서 쓴다.</b> 시설 앞에서 [F] 목록(덕코프), 메뉴 버튼은 지름길로만.</li>
+        <li><b>노랑은 지금 누를 버튼 하나.</b> 판은 슬레이트 목록판, 크림 읽을거리, 월드 표지 세 가지만.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MAP ============ -->
+<section class="sec" id="map">
+  <div class="sec-head">
+    <div class="kicker">01 · 1:1 비교</div>
+    <h2>우리 화면 ↔ 레퍼런스 화면</h2>
+    <p>시간은 덕코프 영상 기준입니다. 레퍼런스에서는 구조와 느낌만 가져오고 아이콘·문구·로고는 베끼지 않습니다. <span class="pr p1">1순위</span>는 이번 시안에서 그린 화면입니다.</p>
+  </div>
+  <div class="tbl-wrap">
+  <table class="map">
+    <thead><tr><th>우리 화면</th><th>덕코프 짝</th><th>컬트 오브 더 램 짝</th><th>가져올 것</th><th>우리만의 것</th></tr></thead>
+    <tbody>
+    <tr><td>기지 기본 HUD<span class="pr p1">1순위</span></td><td>벙커 HUD <span class="t">08:40 · 13:07</span></td><td>기지 HUD, 자원 획득 줄</td><td>왼쪽 위 큰 시계 + 날씨 + "다음 폭풍까지" 카운트, 왼쪽 아래 장소 칩, 오른쪽 위 "조작 [O]". 컬오램의 왼쪽 "+3 돌" 획득 줄</td><td>폭풍 대신 "오늘 밤 습격 위협" 3구간 막대, 자원 6종은 오른쪽 위 아이콘 줄로</td></tr>
+    <tr><td>건설 모드<span class="pr p1">1순위</span></td><td>Build 패널 <span class="t">15:52</span>, 건설 게시판 <span class="t">08:13</span></td><td>Build 메뉴 → 배치 → 이동·철거</td><td>덕코프: 카드마다 설명 한 줄, 설치 수 "0/1", 모자란 재료는 빨강 "(0/1)", 바닥 청록 격자. 컬오램: 분류 안 소제목 "모은 것 6/16", 잠긴 칸도 자리 보여 주기, 오른쪽 상세 카드, 놓을 때 기존 건물 칸 빨강·새 건물 칸 초록, 아래 한 줄 "놓기 · 뒤집기 · 취소"</td><td>①고르기 ②놓기 ③짓기 단계 띠, 정착지 조건 카드, 미니 모형(칸 크기가 보임), 주민 보내기 단계, 접근성 보기</td></tr>
+    <tr><td>시설 상호작용<span class="pr p1">1순위</span></td><td>작업대 앞 "Craft · Blueprint Research · Upgrade [F]" <span class="t">19:58</span></td><td>"[A] 농부에게 말하기 Lv III", 시설 범위 마름모</td><td>캐릭터 옆 세로 선택지, 고른 줄만 하늘색 + 키 칩, 휠로 넘김. 컬오램처럼 시설 이름 옆에 레벨</td><td>"일손 배정 1/2"처럼 선택지에 상태 숫자</td></tr>
+    <tr><td>시설 레벨업<span class="pr p1">1순위</span></td><td>Workbench 트리 <span class="t">26:22</span>, Skill Enhancement <span class="t">27:37</span></td><td>신성한 영감 트리(잠금 마름모 "2/4")</td><td>노드 트리 + "LEVEL 1" 빗금 선, 오른쪽 설명판. 컬오램의 줄 사이 잠금 마름모(조건 진행 수)</td><td>줄 = 기지 단계(캐프·정착지·요새), 잠금 마름모 안에 조건 수</td></tr>
+    <tr><td>주민 목록·상세<span class="pr p1">1순위</span></td><td class="no">없음</td><td>신도 이름표, "[A] 배정 | [X] 비어 있음"</td><td>월드 머리 위 이름표, 비어 있는 자리 표시</td><td>참여 조건(경사로 필요 등)을 "기지가 아직 못 갖춘 것"으로 보여 주기</td></tr>
+    <tr><td>가방<span class="pr p1">1순위</span></td><td>인벤토리 + 루팅 <span class="t">11:30 · 31:33</span></td><td class="no">—</td><td>위 장비 칸(칸 아래 부위 이름), 아래 가방 격자, 오른쪽 상자 판, 아래 가운데 "끌어다 놓아 단축칸 정하기" 줄, 무게 막대, 크림 툴팁</td><td>수색 중 칸 무지개빛, 안전 주머니</td></tr>
+    <tr><td>제작·강화·각인<span class="pr p1">1순위</span></td><td>Craft <span class="t">16:52</span></td><td>부엌 레시피 격자 + 오른쪽 카드</td><td>위 아이콘 탭, 만들 수 있는 줄은 초록, 오른쪽 미리보기. 컬오램의 칸마다 보유 수</td><td>전후 스탯 비교, 담당 주민</td></tr>
+    <tr><td>무기고·창고</td><td>Trade·자판기 <span class="t">08:58 · 14:41</span></td><td class="no">—</td><td>왼쪽 내 가방·펫 가방·창고 접이 목록 + 오른쪽 격자. 창고 "18/100" 개수</td><td>주민 장착 칸(무기고)</td></tr>
+    <tr><td>출격 준비 (지도)<span class="pr p1">1순위</span></td><td>지도 <span class="t">19:36 · 24:34</span></td><td>그림 지도 + 지역 이름 띠</td><td>큰 지역 이름, 북쪽 표시, 확대 막대, 표시 팔레트. 컬오램처럼 그림 지도</td><td>위험도(색 + 모양 + 숫자), 소문, 동행자, 예상 습격</td></tr>
+    <tr><td>생존 일지 (퀘스트)<span class="pr p1">1순위</span></td><td>Quest <span class="t">21:12</span></td><td>오른쪽 퀘스트 추적 목록</td><td>받을 수 있음 · 진행 중 · 끝남 탭, 새 퀘스트 빨간 점, 이름 아래 지역 작은 글</td><td>주민 부탁(이름 붙은 퀘스트), 녹음 모음</td></tr>
+    <tr><td>대화·이벤트</td><td>Jeff 대화 <span class="t">08:13</span></td><td>교리 책(크림 종이)</td><td>노란 이름 알약 + 크림 대화 상자 아래 가운데</td><td>선택지 3개, 2줄 자막</td></tr>
+    <tr><td>타이틀·일시정지</td><td>메인 메뉴 <span class="t">00:00</span></td><td>일시정지 목록(빨간 줄 강조)</td><td>왼쪽 세로 알약 버튼, 뒤 장면은 살아 있음</td><td>해솔시 띠(청록·노랑)</td></tr>
+    <tr><td>입주 의식</td><td>캐릭터 꾸미기 <span class="t">03:20 무렵</span></td><td class="no">—</td><td>말소리로만 확인. 프레임은 못 봤다</td><td>이름·별명, 외형 프리셋, 침상 고르기</td></tr>
+    <tr><td>결과·저녁 정산·습격·설정·로딩·엔딩</td><td class="no">영상에 없음</td><td class="no">—</td><td colspan="2">지금 구조(아크 방식) 유지. 판·버튼·키 줄만 이 시안의 스킨으로 통일</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ============ BASE ============ -->
+<section class="sec" id="base">
+  <div class="sec-head">
+    <div class="kicker">02 · 기지 기본</div>
+    <h2>기지 기본 화면</h2>
+    <p>위 막대를 없애고 네 구석으로 나눴습니다. 왼쪽 위는 "오늘"(날짜·단계·습격 위협), 오른쪽 위는 "가진 것"(자원·사람·전력), 아래 가운데는 할 일 메뉴, 월드에는 시설과 주민 표지가 뜹니다.</p>
+    <div class="refs"><span class="ref d"><b>덕코프</b> 벙커 HUD 08:40</span><span class="ref c"><b>컬오램</b> 자원 획득 줄, 신도 이름표</span><span class="ref a"><b>UI_RULES</b> §4 지점 표지, §7 위협도</span></div>
+  </div>
+  <div class="shot"><div class="stage" id="st-base">
+    <svg class="scene" data-scene='{"mode":"day","player":[8.6,8.4]}'></svg>
+    <!-- top-left: today -->
+    <div class="abs hs" style="left:32px;top:22px;z-index:30">
+      <div style="display:flex;align-items:flex-end;gap:10px">
+        <div class="num" style="font-size:52px;font-weight:700;line-height:.9">3<span style="font-size:22px;margin-left:4px;font-family:var(--f-ui)">일차</span></div>
+        <div style="padding-bottom:3px;line-height:1.25"><div style="font-weight:700;font-size:16px">봄 · 아침</div><div style="font-size:12.5px" class="dim">맑음 · 기지에서는 시간이 멈춰요</div></div>
+      </div>
+      <div style="margin-top:12px;width:250px">
+        <div style="display:flex;justify-content:space-between;font-size:12.5px"><span>오늘 밤 습격 위협</span><span class="warn" style="font-weight:700">▲ 주의 46</span></div>
+        <svg width="250" height="16" style="display:block;margin-top:4px">
+          <defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="6" fill="rgba(0,0,0,.35)"/></pattern></defs>
+          <rect x="0" y="4" width="98" height="8" rx="2" fill="rgba(95,196,107,.6)"/><rect x="101" y="4" width="78" height="8" fill="rgba(232,162,58,.65)"/><rect x="182" y="4" width="68" height="8" rx="2" fill="rgba(217,69,59,.6)"/><rect x="182" y="4" width="68" height="8" fill="url(#hatch)"/>
+          <rect x="113" y="0" width="4" height="16" rx="1" fill="#F1F0EA"/>
+          <text x="2" y="16" font-size="0">안전 주의 위험</text>
+        </svg>
+        <div style="display:flex;justify-content:space-between;font-size:10.5px" class="dim"><span>안전</span><span>주의</span><span>위험</span></div>
+      </div>
+    </div>
+    <div class="mk" style="left:12px;top:14px">1</div>
+    <!-- top-right: holdings -->
+    <div class="abs hs" style="right:30px;top:22px;z-index:30;display:grid;justify-items:end;gap:8px">
+      <div style="display:flex;gap:16px">
+        <span class="res"><svg class="ic"><use href="#i-wood"/></svg>34</span>
+        <span class="res"><svg class="ic"><use href="#i-stone"/></svg>12</span>
+        <span class="res"><svg class="ic"><use href="#i-scrap"/></svg>8</span>
+        <span class="res"><svg class="ic"><use href="#i-food"/></svg>21</span>
+        <span class="res"><svg class="ic"><use href="#i-parts"/></svg>3</span>
+        <span class="res"><svg class="ic"><use href="#i-cloth"/></svg>5</span>
+      </div>
+      <div style="display:flex;gap:14px;font-size:13px">
+        <span class="dim">창고 <span class="num" style="color:var(--text)">83/200</span></span>
+        <span style="display:inline-flex;gap:4px;align-items:center"><svg class="ic" style="width:15px;height:15px"><use href="#i-people"/></svg><span class="num">7</span><span class="dim">/ 침상</span><span class="num warn">8</span></span>
+        <span style="display:inline-flex;gap:4px;align-items:center"><svg class="ic" style="width:15px;height:15px"><use href="#i-bolt"/></svg><span class="num">3/4</span></span>
+      </div>
+      <div style="font-size:12px;display:flex;gap:6px;align-items:center" class="dim">조작 <span class="kc">O</span></div>
+    </div>
+    <div class="mk" style="right:14px;top:14px">2</div>
+    <!-- left: actionable notes + feed -->
+    <div class="abs" style="left:32px;top:168px;display:grid;gap:7px;z-index:30">
+      <div style="background:rgba(42,46,59,.86);border-left:4px solid var(--warn);border-radius:8px;padding:7px 12px;font-size:13px;display:flex;gap:8px;align-items:center"><svg class="ic warn" style="width:15px;height:15px"><use href="#i-warn"/></svg>벌목장 일손 부족 <span class="num">1/2</span><span class="dim" style="margin-left:6px">›</span></div>
+      <div style="background:rgba(42,46,59,.86);border-left:4px solid var(--warn);border-radius:8px;padding:7px 12px;font-size:13px;display:flex;gap:8px;align-items:center"><svg class="ic warn" style="width:15px;height:15px"><use href="#i-food"/></svg>린이 배고파요<span class="dim" style="margin-left:6px">›</span></div>
+      <div style="background:rgba(42,46,59,.86);border-left:4px solid var(--info);border-radius:8px;padding:7px 12px;font-size:13px;display:flex;gap:8px;align-items:center"><svg class="ic" style="width:15px;height:15px;color:var(--info)"><use href="#i-chat"/></svg>서하은이 할 말이 있어요<span class="dim" style="margin-left:6px">›</span></div>
+    </div>
+    <div class="feed hs" style="left:34px;top:300px">
+      <div><svg class="ic" style="width:14px;height:14px"><use href="#i-wood"/></svg><b class="num">+12</b> 나무 <span class="dim num">(34)</span></div>
+      <div><svg class="ic" style="width:14px;height:14px"><use href="#i-stone"/></svg><b class="num">+4</b> 돌 <span class="dim num">(12)</span></div>
+    </div>
+    <div class="mk" style="left:12px;top:160px">3</div>
+    <!-- world labels -->
+    <div class="wl" data-g="2.5,7.5,60"><div class="chipw"><small>정비소 Lv1</small><b>일손 1/2</b></div><div class="stem"></div><div class="dot"></div></div>
+    <div class="wl" data-g="6.5,6.5,26"><div class="chipw"><small>모닥불</small><b>밤 대화</b></div><div class="stem"></div><div class="dot"></div></div>
+    <div class="wl" data-g="3,2,18"><div class="chipw"><small>침상</small><b>3 / 3</b></div><div class="stem"></div><div class="dot"></div></div>
+    <div class="wl" data-g="4,-4,128"><div class="chipw"><small>본관</small><b>무전실</b></div><div class="stem"></div><div class="dot"></div></div>
+    <div class="need" data-g="5,8.3,40"><svg class="ic warn"><use href="#i-food"/></svg><span class="warn">배고픔</span></div>
+    <div class="need" data-g="7.3,4.3,40"><svg class="ic" style="color:var(--info)"><use href="#i-chat"/></svg>대화</div>
+    <div class="mk" data-g="6.6,6.4,74" style="transform:translate(40px,-60px)">4</div>
+    <!-- player prompt -->
+    <div class="prompt hs" data-g="8.6,8.4,30" style="transform:translate(26px,-40px)">
+      <div class="o on">정비소 둘러보기 <span class="kc">F</span></div>
+    </div>
+    <!-- bottom menu -->
+    <div class="abs" style="left:50%;bottom:22px;transform:translateX(-50%);display:flex;align-items:flex-end;gap:10px;z-index:30">
+      <div style="display:flex;gap:8px;background:rgba(20,22,29,.6);padding:8px 10px;border-radius:16px;backdrop-filter:blur(6px)">
+        <div style="display:grid;justify-items:center;gap:4px;width:60px"><div style="width:44px;height:44px;border-radius:50%;background:rgba(241,240,234,.1);display:grid;place-items:center;box-shadow:inset 0 0 0 1.5px rgba(241,240,234,.3)"><svg class="ic" style="width:22px;height:22px"><use href="#i-hammer"/></svg></div><span style="font-size:12px">건설 <span class="kc" style="height:16px;min-width:16px;font-size:10px">B</span></span></div>
+        <div style="display:grid;justify-items:center;gap:4px;width:60px"><div style="width:44px;height:44px;border-radius:50%;background:rgba(241,240,234,.1);display:grid;place-items:center;box-shadow:inset 0 0 0 1.5px rgba(241,240,234,.3)"><svg class="ic" style="width:22px;height:22px"><use href="#i-people"/></svg></div><span style="font-size:12px">주민 <span class="kc" style="height:16px;min-width:16px;font-size:10px">R</span></span></div>
+        <div style="display:grid;justify-items:center;gap:4px;width:60px"><div style="width:44px;height:44px;border-radius:50%;background:rgba(241,240,234,.1);display:grid;place-items:center;box-shadow:inset 0 0 0 1.5px rgba(241,240,234,.3)"><svg class="ic" style="width:22px;height:22px"><use href="#i-box"/></svg></div><span style="font-size:12px">창고 <span class="kc" style="height:16px;min-width:16px;font-size:10px">I</span></span></div>
+        <div style="display:grid;justify-items:center;gap:4px;width:60px"><div style="width:44px;height:44px;border-radius:50%;background:rgba(241,240,234,.1);display:grid;place-items:center;box-shadow:inset 0 0 0 1.5px rgba(241,240,234,.3)"><svg class="ic" style="width:22px;height:22px"><use href="#i-anvil"/></svg></div><span style="font-size:12px">제작 <span class="kc" style="height:16px;min-width:16px;font-size:10px">C</span></span></div>
+        <div style="display:grid;justify-items:center;gap:4px;width:60px;position:relative"><div style="width:44px;height:44px;border-radius:50%;background:rgba(241,240,234,.1);display:grid;place-items:center;box-shadow:inset 0 0 0 1.5px rgba(241,240,234,.3)"><svg class="ic" style="width:22px;height:22px"><use href="#i-book"/></svg></div><span style="position:absolute;right:8px;top:0;width:9px;height:9px;border-radius:50%;background:var(--danger);box-shadow:0 0 0 2px #1b1e26"></span><span style="font-size:12px">일지 <span class="kc" style="height:16px;min-width:16px;font-size:10px">J</span></span></div>
+        <div style="width:1px;background:rgba(241,240,234,.18);margin:4px 2px"></div>
+        <div style="display:grid;justify-items:center;gap:4px;width:70px"><div style="width:44px;height:44px;border-radius:50%;background:rgba(241,240,234,.1);display:grid;place-items:center;box-shadow:inset 0 0 0 1.5px rgba(241,240,234,.3)"><svg class="ic" style="width:22px;height:22px"><use href="#i-moon"/></svg></div><span style="font-size:12px">머무르기 <span class="kc" style="height:16px;min-width:16px;font-size:10px">H</span></span></div>
+      </div>
+      <div class="btn primary" style="height:52px;border-radius:14px;padding:0 20px;font-size:16px;flex-direction:column;gap:0;line-height:1.1"><span>출격 준비</span><span class="num" style="font-size:11px;font-weight:600;opacity:.75">Enter</span></div>
+    </div>
+    <div class="mk" style="left:356px;bottom:84px">5</div>
+    <div class="abs hs" style="left:32px;bottom:26px;display:flex;align-items:center;gap:7px;font-size:13.5px;z-index:30"><svg class="ic" style="width:16px;height:16px"><use href="#i-home"/></svg>기지 · 운동장</div>
+  </div></div>
+  <div class="shot-cap"><span><b>기지 기본</b> · 아침, 플레이어가 정비소 앞에 서 있음</span><span>1280×720 기준</span></div>
+  <ol class="notes">
+    <li><i>1</i><div><b>오늘.</b> 큰 숫자 날짜, 계절·단계, "기지에서는 시간이 멈춰요". 덕코프의 "다음 폭풍까지" 자리를 <b>오늘 밤 습격 위협</b>으로 바꿨다. 색 + ▲ 모양 + 숫자 46 + 빗금으로 구간을 보인다.</div></li>
+    <li><i>2</i><div><b>가진 것.</b> 자원 6종은 아이콘 + 숫자만. 이름은 마우스를 올리면. 그 아래 창고·사람/침상·전력. 침상이 거의 찼으면 주황 글.</div></li>
+    <li><i>3</i><div><b>할 일 알림</b>은 누르면 그 화면으로 간다(›). 그 아래 컬오램식 <b>획득 줄</b>("+12 나무 (34)")은 2.6초 뒤 사라진다.</div></li>
+    <li><i>4</i><div><b>월드 표지.</b> 시설은 "이름 Lv / 지금 상태" 두 줄 + 지시선. 주민은 머리 위 필요 알약. 플레이어 옆에는 덕코프식 <b>[F] 한 줄</b>.</div></li>
+    <li><i>5</i><div><b>할 일 메뉴.</b> 아이콘 원 + 이름 + 키. 출격만 노란 큰 버튼. 일지의 빨간 점은 새 소식(덕코프 퀘스트 점).</div></li>
+  </ol>
+</section>
+
+<!-- ============ BUILD ============ -->
+<section class="sec" id="build">
+  <div class="sec-head">
+    <div class="kicker">03 · 건설 모드</div>
+    <h2>건설: 고르기 → 놓기 → 짓기</h2>
+    <p>"좌라락 뜨는 목록"을 그림 카드 격자로 바꾸고, 건설이 세 단계라는 걸 화면 위 띠로 늘 보여 줍니다. 컬트 오브 더 램처럼 메뉴 뒤 월드는 흑백으로 가라앉고, 놓을 때는 월드 색을 바꿔 칸을 또렷하게 합니다.</p>
+    <div class="refs"><span class="ref c"><b>컬오램</b> Build 메뉴(분류 안 소제목·잠긴 칸·상세 카드), 배치(빨강·초록 칸), 이동·철거</span><span class="ref d"><b>덕코프</b> Build 패널 15:52(설명 한 줄·설치 수·빨간 비용 칩·청록 격자)</span></div>
+  </div>
+
+  <div class="duo" style="margin-bottom:26px">
+    <div>
+      <div class="shot" style="aspect-ratio:16/9"><div class="stage" id="st-old">
+        <div class="abs" style="inset:0;background:#1d2230"></div>
+        <div class="panel" style="left:52px;top:96px;width:740px;bottom:90px;background:rgba(42,46,59,.9)">
+          <div class="phead">건물 <span class="sp"></span><span class="cnt">지을 수 있음 6 / 43</span></div>
+          <div style="display:flex;gap:4px;padding:0 12px 8px;font-size:13px;flex-wrap:wrap">
+            <span class="kp">전체</span><span class="kp">주거</span><span class="kp">생산</span><span class="kp">가공</span><span class="kp">생활</span><span class="kp">제작</span><span class="kp">포함</span><span class="kp">저장</span><span class="kp">군사</span><span class="kp">특수</span><span class="kp">설비</span><span class="kp">방어</span>
+          </div>
+          <div id="oldrows" style="display:grid;gap:6px;padding:0 12px"></div>
+        </div>
+        <div class="cream" style="position:absolute;left:820px;top:96px;width:400px;padding:18px">
+          <div style="font-size:12px;color:var(--on-cream-dim)">생산 · 2×2칸</div>
+          <div style="font-size:22px;font-weight:700">벌목장</div>
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 18px;margin:10px 0;font-size:14px"><span>나무</span><span>20 / 보유 34</span><span>일손</span><span>2명</span></div>
+          <div class="btn primary">배치하기</div>
+        </div>
+        <div class="abs" style="left:52px;top:36px;font-size:26px;font-weight:700">건설 <span class="dim" style="font-size:15px;font-weight:500">기지</span></div>
+      </div></div>
+      <div class="shot-cap"><span><b>지금</b> · build_screen.gd를 옮겨 그린 것</span><span>글 줄 43개 + 숫자 카드</span></div>
+    </div>
+    <div class="box" style="align-self:start">
+      <h3>무엇이 달라지나</h3>
+      <ul>
+        <li><b>카드에 미니 모형.</b> 1×2 침상과 3×3 정비소가 크기부터 다르게 보인다. 칸 수를 글로 읽을 필요가 없다.</li>
+        <li><b>분류 탭 11개 → 7개.</b> 살림(주거·생활), 생산(생산·가공), 제작, 포용, 보관·설비, 방어(방어·군사), 그리고 맨 앞 <b>추천</b>. 데이터 분류는 그대로 두고 화면에서만 묶는다.</li>
+        <li><b>추천 탭</b>이 "지금 지을 수 있는 것 / 정착지에 필요한 것 / 곧 열리는 것"으로 나눠 보여 준다. 무엇을 지을지 모르는 문제를 여기서 푼다.</li>
+        <li><b>상세 카드에 "하는 일" 한 줄과 "지어지는 과정"</b>(놓기 → 일손 보내기 → 진행)을 쓴다.</li>
+        <li><b>잠긴 건물도 자리를 차지한다</b>(컬오램). 자물쇠 + 무엇이 필요한지.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="flow">
+    <!-- step 1 -->
+    <div>
+      <div class="step-title"><span class="n">1</span><h3>건물 고르기</h3><span>[B]로 열면 월드가 흑백으로 가라앉고 카드 격자가 뜬다</span></div>
+      <div class="shot"><div class="stage" id="st-b1">
+        <svg class="scene" data-scene='{"mode":"menu"}' style="filter:grayscale(.9) brightness(.45)"></svg>
+        <div class="steps"><div class="s on"><i>1</i>건물 고르기</div><div class="ar"></div><div class="s"><i>2</i>놓을 곳 정하기</div><div class="ar"></div><div class="s"><i>3</i>주민이 짓기</div></div>
+        <div class="abs" style="left:36px;top:24px;display:flex;align-items:center;gap:10px;z-index:30">
+          <div style="width:34px;height:34px;border-radius:50%;background:rgba(241,240,234,.12);display:grid;place-items:center"><svg class="ic"><use href="#i-back"/></svg></div>
+          <div><div style="font-size:22px;font-weight:700;line-height:1.1">건설</div><div style="font-size:12px" class="dim">기지 · 캐프</div></div>
+        </div>
+        <div class="abs hs" style="right:36px;top:28px;display:flex;gap:14px;z-index:30">
+          <span class="res" style="font-size:15px"><svg class="ic"><use href="#i-wood"/></svg>34</span><span class="res" style="font-size:15px"><svg class="ic"><use href="#i-stone"/></svg>12</span><span class="res" style="font-size:15px"><svg class="ic"><use href="#i-scrap"/></svg>8</span><span class="res" style="font-size:15px"><svg class="ic"><use href="#i-plank"/></svg>0</span><span class="res" style="font-size:15px"><svg class="ic"><use href="#i-seed"/></svg>2</span>
+        </div>
+        <!-- left grid panel -->
+        <div class="panel" style="left:36px;top:84px;width:790px;height:568px">
+          <div style="display:flex;gap:6px;padding:12px 12px 4px" id="b1tabs"></div>
+          <div style="margin:8px 12px 10px;background:rgba(87,194,201,.12);border:1px solid rgba(87,194,201,.35);border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:12px;font-size:13px">
+            <svg viewBox="0 0 30 30" width="30" height="30"><path d="M15 2 28 15 15 28 2 15z" fill="rgba(20,22,29,.9)" stroke="#57C2C9" stroke-width="1.6"/><text x="15" y="18.5" text-anchor="middle" font-family="Barlow" font-weight="700" font-size="9" fill="#F1F0EA">1/4</text></svg>
+            <div style="flex:1"><b>다음 기지 단계 · 정착지</b><div class="dim" style="font-size:12px">열리는 것: 시설 Lv2, 가족 숙소, 병원·업무지구</div></div>
+            <div style="display:flex;gap:10px;font-size:12px">
+              <span class="good" style="display:inline-flex;gap:3px;align-items:center"><svg class="ic" style="width:13px;height:13px"><use href="#i-check"/></svg>인구 5 <span class="dim num">(7)</span></span>
+              <span style="display:inline-flex;gap:3px;align-items:center" class="dim">○ 목공소</span>
+              <span style="display:inline-flex;gap:3px;align-items:center" class="dim">○ 경사로 <span class="num">0/1</span></span>
+              <span style="display:inline-flex;gap:3px;align-items:center" class="dim">◐ 운동장 개간 <span class="num">18/40</span></span>
+            </div>
+          </div>
+          <div style="padding:0 14px;display:grid;gap:14px">
+            <div>
+              <div style="display:grid;grid-template-columns:236px 1fr;gap:20px">
+                <div><div class="sect"><b>정착지에 필요해요</b><span class="num">0/2</span></div><div class="bgrid" style="grid-template-columns:repeat(2,112px)" id="g-goal"></div></div>
+                <div><div class="sect"><b>지금 지을 수 있어요</b><span class="num">4</span></div><div class="bgrid" style="grid-template-columns:repeat(4,112px)" id="g-now"></div></div>
+              </div>
+            </div>
+            <div><div class="sect"><b>곧 열려요</b><span class="dim">조건을 채우면 열림</span></div><div class="bgrid" id="g-soon"></div></div>
+          </div>
+        </div>
+        <!-- right detail -->
+        <div class="cream" style="position:absolute;left:846px;top:84px;width:398px;height:568px;overflow:hidden;display:flex;flex-direction:column">
+          <div style="height:150px;background:var(--cream2);display:grid;place-items:center;position:relative">
+            <svg id="detail-art" width="260" height="140" viewBox="0 0 260 140"></svg>
+            <span class="tag" style="position:absolute;left:12px;top:12px;background:rgba(255,255,255,.6)">2×2칸 · 4m × 4m</span>
+            <span class="tag" style="position:absolute;right:12px;top:12px;background:rgba(255,255,255,.6)">지은 것 <span class="num">0</span> · 제한 없음</span>
+          </div>
+          <div style="padding:14px 18px 16px;display:flex;flex-direction:column;gap:10px;flex:1">
+            <div style="display:flex;gap:6px"><span class="tag"><svg class="ic" style="width:13px;height:13px"><use href="#i-sprout"/></svg>생산</span><span class="tag"><svg class="ic" style="width:13px;height:13px"><use href="#i-people"/></svg>일손 2명</span><span class="tag" style="background:var(--pill-soft);color:var(--pill-soft-t)">새로 열림</span></div>
+            <div style="font-size:24px;font-weight:900;line-height:1.1">벌목장</div>
+            <div style="font-size:14px;line-height:1.5">주민이 근처 나무를 베어 매일 <b>나무</b>를 모아 와요. 목공소·숙소를 지으려면 나무가 많이 필요해요.</div>
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:13.5px;border-top:1px solid rgba(38,38,43,.12);padding-top:10px;align-items:center">
+              <span style="color:var(--on-cream-dim)">필요한 것</span><span style="display:flex;gap:6px"><span class="chip ok-c"><svg class="ic"><use href="#i-wood"/></svg>20 <span style="color:var(--on-cream-dim);font-weight:500">/ 34</span></span></span>
+              <span style="color:var(--on-cream-dim)">하는 일</span><span><b class="num">+6</b> 나무 / 일 · 일손 한 명당</span>
+              <span style="color:var(--on-cream-dim)">놓는 곳</span><span style="display:flex;gap:5px;align-items:center"><svg class="ic" style="width:15px;height:15px"><use href="#i-tree"/></svg>나무가 반경 10m 안에 있어야 해요</span>
+              <span style="color:var(--on-cream-dim)">소음</span><span>없음</span>
+            </div>
+            <div style="background:rgba(38,38,43,.06);border-radius:10px;padding:9px 12px;font-size:12.5px">
+              <div style="font-weight:700;margin-bottom:5px">지어지는 과정</div>
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span>① 놓기</span><span style="color:var(--on-cream-dim)">→</span><span>② 일손 보내기</span><span style="color:var(--on-cream-dim)">→</span><span>③ 진행 <b class="num">10</b> <span style="color:var(--on-cream-dim)">(주민 1명이면 하루)</span></span></div>
+            </div>
+            <div style="margin-top:auto;display:flex;justify-content:flex-end"><div class="btn primary">놓을 곳 고르기 <span class="kc" style="background:rgba(38,38,43,.15)">Enter</span></div></div>
+          </div>
+        </div>
+        <div class="keys"><span><span class="kp">← →</span>고르기</span><span><span class="kp">Q E</span>분류</span><span><span class="kp">Enter</span>놓을 곳 고르기</span><span><span class="kp">X</span>옮기기·철거</span><span><span class="kp">Esc</span>나가기</span></div>
+        <div class="mk" style="left:604px;top:12px">1</div>
+        <div class="mk" style="left:22px;top:150px">2</div>
+        <div class="mk" style="left:22px;top:232px">3</div>
+        <div class="mk" style="left:22px;top:418px">4</div>
+        <div class="mk" style="left:832px;top:300px">5</div>
+      </div></div>
+      <ol class="notes">
+        <li><i>1</i><div><b>단계 띠.</b> 지금 어느 단계인지 늘 보인다. 놓기·짓기로 넘어가면 앞 단계에 초록 체크.</div></li>
+        <li><i>2</i><div><b>다음 기지 단계 카드.</b> 컬오램 신성한 영감의 잠금 마름모처럼 "1/4". 무엇을 지어야 할지 여기서 나온다.</div></li>
+        <li><i>3</i><div><b>추천 탭의 세 묶음</b>(컬오램 "General · 모은 것 6/16" 소제목 방식). 정착지 조건 건물에는 청록 깃발.</div></li>
+        <li><i>4</i><div><b>잠긴 건물</b>은 흑백 + 자물쇠 + 필요한 것 한 줄. 모자란 재료는 빨간 칩(덕코프 "(0/1)").</div></li>
+        <li><i>5</i><div><b>상세 크림 카드.</b> 큰 모형 + 칸 크기, 하는 일 한 줄, 필요한 것(보유 수), 놓는 조건, 지어지는 과정. 노란 버튼은 여기 하나.</div></li>
+      </ol>
+    </div>
+
+    <!-- step 2 -->
+    <div>
+      <div class="step-title"><span class="n">2</span><h3>놓을 곳 정하기</h3><span>월드 색이 바뀌고 격자와 칸이 뜬다</span></div>
+      <div class="shot"><div class="stage" id="st-b2">
+        <svg class="scene" data-scene='{"mode":"place","ghost":[9,1,2,2,true],"ring":[10,2,5],"occupied":true,"grid":true,"player":[8.2,5.6]}'></svg>
+        <div class="steps"><div class="s done"><i>✓</i>건물 고르기</div><div class="ar"></div><div class="s on"><i>2</i>놓을 곳 정하기</div><div class="ar"></div><div class="s"><i>3</i>주민이 짓기</div></div>
+        <div class="abs" data-g="10,1,40" style="transform:translate(-50%,-100%);z-index:30">
+          <div class="cream" style="padding:8px 12px;font-size:13px;white-space:nowrap;display:flex;gap:8px;align-items:center;border-radius:10px">
+            <svg class="ic" style="color:#2f8a3a"><use href="#i-check"/></svg><div><b>여기에 놓을 수 있어요</b><div style="font-size:12px;color:var(--on-cream-dim)">범위 안 나무 6그루 · 통로와 이어짐</div></div>
+          </div>
+        </div>
+        <div class="wl" data-g="16.5,6,6" style="z-index:22"><div class="chipw" style="background:rgba(20,22,29,.85)"><small>개간 안 됨</small><b>운동장 동쪽 <span class="num">18/40</span></b></div><div class="stem"></div><div class="dot"></div></div>
+        <div class="abs" style="right:30px;top:84px;width:262px;z-index:30">
+          <div class="panel" style="position:relative;padding:10px 12px 12px">
+            <div style="font-size:12.5px;font-weight:700;margin-bottom:8px;display:flex;gap:6px;align-items:center"><svg class="ic danger" style="width:15px;height:15px"><use href="#i-warn"/></svg>빨강이 뜨면 이런 이유예요</div>
+            <svg viewBox="0 0 120 60" width="236" height="96" style="display:block;margin:0 auto 6px" id="redmini"></svg>
+            <div style="display:grid;gap:4px;font-size:12.5px">
+              <div>· 다른 건물과 겹쳐요</div>
+              <div>· 아직 개간하지 않은 땅이에요</div>
+              <div>· 주민이 걸어서 닿는 길과 끊겨요</div>
+              <div>· 범위 안에 나무가 없어요</div>
+            </div>
+          </div>
+        </div>
+        <div class="abs" style="left:36px;top:84px;z-index:30;display:grid;gap:8px">
+          <div class="panel" style="position:relative;display:flex;gap:10px;align-items:center;padding:8px 12px 8px 8px">
+            <svg width="54" height="40" viewBox="0 0 100 64" id="chip-art"></svg>
+            <div><div style="font-weight:700">벌목장 <span class="num dim" style="font-weight:600;font-size:12px">2×2</span></div><div style="font-size:12px;display:flex;gap:6px;align-items:center" class="dim"><svg class="ic" style="width:13px;height:13px"><use href="#i-wood"/></svg><span class="num">20</span> · 다른 건물 <span class="kp" style="height:17px">Q</span></div></div>
+          </div>
+          <div class="panel" style="position:relative;display:flex;gap:8px;align-items:center;padding:7px 12px;font-size:12.5px"><svg class="ic" style="width:15px;height:15px;color:var(--info)"><use href="#i-access"/></svg>접근성 보기 <span class="kp" style="height:17px">Tab</span><span class="dim">꺼짐</span></div>
+        </div>
+        <div class="bottom-prompt" style="bottom:22px"><span><span class="kc">클릭</span><b>벌목장</b> 놓기</span><span><span class="kc">R</span>돌리기</span><span><span class="kc">Tab</span>접근성 보기</span><span><span class="kc">Esc</span>다시 고르기</span></div>
+        <div class="mk" data-g="10,2,0" style="transform:translate(-150px,-10px)">1</div>
+        <div class="mk" data-g="12.6,0.2,0" style="transform:translate(10px,-30px)">2</div>
+        <div class="mk" style="left:1004px;top:76px">3</div>
+        <div class="mk" data-g="16.5,6,60" style="transform:translate(64px,-36px)">4</div>
+        <div class="mk" style="left:394px;bottom:30px">5</div>
+      </div></div>
+      <ol class="notes">
+        <li><i>1</i><div><b>칸 색.</b> 새 건물 칸 초록, 이미 있는 건물 칸은 흐린 빨강 테두리(컬오램). 바닥은 덕코프처럼 청록 격자.</div></li>
+        <li><i>2</i><div><b>범위 원.</b> 벌목장 10m 안의 나무에 작은 표시. 놓기 전에 "범위 안 나무 6그루"를 크림 말풍선으로 알려 준다.</div></li>
+        <li><i>3</i><div><b>빨강일 때 이유</b>를 글로. 실제 화면에서는 커서 말풍선이 빨강으로 바뀌고 이유 한 줄이 뜬다.</div></li>
+        <li><i>4</i><div><b>개간 안 된 땅</b>은 빗금 + 진행 수. 넓히기와 지키기 사이 선택을 여기서 바로 본다.</div></li>
+        <li><i>5</i><div><b>아래 한 줄 키 안내</b>(컬오램 "놓기 · 뒤집기 · 취소"). 고른 건물 이름만 노랑.</div></li>
+      </ol>
+    </div>
+
+    <!-- step 3 -->
+    <div>
+      <div class="step-title"><span class="n">3</span><h3>주민이 짓기</h3><span>놓으면 건설 현장이 되고, 일손을 보내야 진행된다</span></div>
+      <div class="shot"><div class="stage" id="st-b3">
+        <svg class="scene" data-scene='{"mode":"day","site":[9,1,2,2,0.3],"walkers":[[7.2,3.6],[8,2.4]],"player":[8.4,6.4],"center":[11,4.5]}'></svg>
+        <div class="steps"><div class="s done"><i>✓</i>건물 고르기</div><div class="ar"></div><div class="s done"><i>✓</i>놓을 곳 정하기</div><div class="ar"></div><div class="s on"><i>3</i>주민이 짓기</div></div>
+        <div class="wl" data-g="10,2,64" style="z-index:24">
+          <div class="chipw" style="display:flex;gap:8px;align-items:center;padding:5px 10px">
+            <svg width="30" height="30" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="4"/><circle cx="18" cy="18" r="14" fill="none" stroke="#F1F0EA" stroke-width="4" stroke-dasharray="26.4 88" transform="rotate(-90 18 18)" stroke-linecap="round"/><use href="#i-hammer" x="10" y="10" width="16" height="16" style="fill:none;stroke:#F1F0EA;stroke-width:1.8"/></svg>
+            <div style="text-align:left"><small>벌목장 건설 현장</small><b class="num">3 / 10</b> <span style="font-size:11px" class="dim">· 일손 2</span></div>
+          </div><div class="stem"></div><div class="dot"></div>
+        </div>
+        <div class="toast" style="left:36px;top:84px"><svg class="ic good"><use href="#i-check"/></svg>벌목장 건설 현장을 놓았어요 <span class="dim" style="font-size:12px">나무 −20</span></div>
+        <div class="prompt hs" data-g="8.4,6.4,30" style="transform:translate(24px,-40px)"><div class="o on">직접 돕기 <span class="dimn">+20</span> <span class="kc">F</span></div></div>
+        <div class="cream" style="position:absolute;right:36px;top:84px;width:360px;padding:16px 18px;z-index:30">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span class="tag">건설 현장</span><span style="font-size:12px;color:var(--on-cream-dim)">이동 무료 · 취소하면 재료 전부 돌려받음</span></div>
+          <div style="font-size:20px;font-weight:900;margin-top:6px">벌목장</div>
+          <div style="font-size:13.5px;margin:2px 0 10px">일손을 보내야 지어져요. 보낸 주민은 다 지을 때까지 원래 일을 쉬어요.</div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px"><span>진행 <b class="num">3 / 10</b></span><span style="color:var(--on-cream-dim)">이대로면 <b style="color:var(--on-cream)">오늘 밤</b> 완성</span></div>
+          <div style="height:8px;border-radius:4px;background:rgba(38,38,43,.12);overflow:hidden"><i style="display:block;width:30%;height:100%;background:#26262B"></i></div>
+          <div style="font-size:12.5px;font-weight:700;margin:14px 0 6px">일손 보내기 <span style="font-weight:500;color:var(--on-cream-dim)">2 / 2명</span></div>
+          <div style="display:grid;gap:6px" id="assign"></div>
+          <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end"><div class="btn grey">현장 옮기기</div><div class="btn primary">이대로 짓기 <span class="kc" style="background:rgba(38,38,43,.15)">Enter</span></div></div>
+        </div>
+        <div class="keys"><span><span class="kp">F</span>직접 돕기</span><span><span class="kp">X</span>옮기기·철거</span><span><span class="kp">B</span>하나 더 짓기</span><span><span class="kp">Esc</span>건설 끝</span></div>
+        <div class="mk" data-g="10,2,64" style="transform:translate(80px,-96px)">1</div>
+        <div class="mk" style="left:900px;top:76px">2</div>
+        <div class="mk" data-g="8.4,6.4,30" style="transform:translate(-16px,-52px)">3</div>
+      </div></div>
+      <ol class="notes">
+        <li><i>1</i><div><b>현장 표지.</b> 진행 원 + "3 / 10 · 일손 2". 보낸 주민은 망치를 들고 걸어간다(컬오램 신도처럼).</div></li>
+        <li><i>2</i><div><b>일손 카드.</b> 한가한 주민부터, 힘이 높거나 목수였던 사람에게 "빨리 지음" 표시. 몇 명 보내면 언제 끝나는지 바로 보인다.</div></li>
+        <li><i>3</i><div><b>[F] 직접 돕기 +20</b>(기획 09 "플레이어가 기지에 머무르면 +20").</div></li>
+      </ol>
+    </div>
+
+    <!-- step 4 -->
+    <div>
+      <div class="step-title"><span class="n">+</span><h3>옮기기 · 철거</h3><span>[X]로 들어가는 편집 모드. 컬오램 "Edit Buildings" 그대로</span></div>
+      <div class="shot"><div class="stage" id="st-b4">
+        <svg class="scene" data-scene='{"mode":"place","grid":true,"occupied":true,"hover":"workshop","built":["lumber"],"player":[8.2,5.6]}'></svg>
+        <div class="abs" style="left:50%;top:22px;transform:translateX(-50%);display:flex;gap:8px;align-items:center;background:rgba(20,22,29,.72);border-radius:999px;padding:6px 14px;z-index:30;font-size:13px"><svg class="ic"><use href="#i-move"/></svg><b>옮기기 · 철거</b><span class="dim">건물을 고르세요</span></div>
+        <div class="cream" data-g="2.5,7.5,60" style="position:absolute;transform:translate(30px,-110%);padding:10px 14px;width:236px;z-index:30">
+          <div style="font-weight:900;font-size:16px">정비소 <span class="num" style="font-size:12px;color:var(--on-cream-dim)">Lv1 · 3×3</span></div>
+          <div style="display:grid;gap:3px;font-size:12.5px;margin-top:6px">
+            <div style="display:flex;gap:6px;align-items:center"><svg class="ic" style="width:14px;height:14px"><use href="#i-move"/></svg>옮기기: 무료, 하던 일 그대로</div>
+            <div style="display:flex;gap:6px;align-items:center"><svg class="ic" style="width:14px;height:14px"><use href="#i-trash"/></svg>철거: 재료 절반 돌려받음</div>
+            <div style="display:flex;gap:6px;align-items:center;color:var(--on-cream-dim)"><svg class="ic" style="width:14px;height:14px"><use href="#i-wood"/></svg>목재판 5 · 고철 15 · 부품 2</div>
+          </div>
+        </div>
+        <div class="toast" style="left:36px;top:84px"><svg class="ic good"><use href="#i-check"/></svg>벌목장이 완성됐어요 <span class="dim" style="font-size:12px">나무 +12 / 일</span></div>
+        <div class="bottom-prompt" style="bottom:22px"><span><span class="kc">클릭</span><b>정비소</b> 옮기기</span><span><span class="kc">Del</span><b>정비소</b> 철거</span><span><span class="kc">Esc</span>끝</span></div>
+        <div class="mk" data-g="2.5,7.5,0" style="transform:translate(-80px,0)">1</div>
+        <div class="mk" style="left:640px;bottom:58px">2</div>
+      </div></div>
+      <ol class="notes">
+        <li><i>1</i><div><b>고른 건물 칸은 노랑</b>(컬오램과 같다). 옮기기·철거에 드는 것과 돌려받는 것을 크림 카드로 먼저 보여 준다.</div></li>
+        <li><i>2</i><div><b>철거는 키를 따로.</b> 실수로 지우지 않게 클릭이 아니라 Del, 누르면 확인창(크림, 회색 취소 / 노랑 실행).</div></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FACILITY ============ -->
+<section class="sec" id="facility">
+  <div class="sec-head">
+    <div class="kicker">04 · 시설</div>
+    <h2>시설 앞 [F] 목록과 시설 화면</h2>
+    <p>기지를 걸어 다니다 시설 앞에 서면 할 수 있는 일이 캐릭터 옆에 세로로 뜹니다(덕코프 작업대). 고르면 시설 화면이 열리고, 레벨업은 노드 트리로 보여 줍니다.</p>
+    <div class="refs"><span class="ref d"><b>덕코프</b> 작업대 19:58, Workbench 트리 26:22, Skill Enhancement 27:37</span><span class="ref c"><b>컬오램</b> "농부에게 말하기 Lv III", 시설 범위 마름모, 잠금 마름모</span></div>
+  </div>
+  <div class="duo">
+    <div>
+      <div class="shot"><div class="stage" id="st-f1">
+        <svg class="scene" data-scene='{"mode":"day","player":[4.9,7.6],"focus":"workshop","zoom":1.55,"center":[3.5,7.5]}'></svg>
+        <div class="prompt hs" data-g="4.9,7.6,34" style="transform:translate(30px,-50%)">
+          <div style="font-size:12px;margin:0 0 2px 10px" class="dim">정비소 <span class="num">Lv1</span></div>
+          <div class="o on">제작 <span class="kc">F</span></div>
+          <div class="o">강화</div>
+          <div class="o">수리</div>
+          <div class="o">일손 배정 <span class="dimn">1/2</span></div>
+          <div class="o">시설 레벨업</div>
+          <div style="font-size:11px;margin:2px 0 0 10px" class="dim">휠 · ↑↓ 로 넘기기</div>
+        </div>
+        <div class="wl" data-g="2.5,7.5,60"><div class="chipw"><small>정비소 Lv1</small><b>일손 1/2</b></div><div class="stem"></div><div class="dot"></div></div>
+        <div class="mk" data-g="4.9,7.6,34" style="transform:translate(10px,-110px)">1</div>
+      </div></div>
+      <div class="shot-cap"><span><b>시설 앞</b> · 덕코프 작업대 방식</span></div>
+    </div>
+    <div>
+      <div class="shot"><div class="stage" id="st-f2">
+        <svg class="scene" data-scene='{"mode":"day","zoom":1.55,"center":[3.5,7.5]}' style="filter:blur(3px) brightness(.6)"></svg>
+        <div class="abs" style="left:36px;top:26px;display:flex;align-items:center;gap:10px;z-index:30">
+          <div style="width:34px;height:34px;border-radius:50%;background:rgba(241,240,234,.12);display:grid;place-items:center"><svg class="ic"><use href="#i-back"/></svg></div>
+          <div style="font-size:22px;font-weight:700">정비소 <span class="dim" style="font-weight:500;font-size:16px">— Lv 1</span></div>
+        </div>
+        <div class="abs" style="left:50%;top:26px;transform:translateX(-50%);display:flex;gap:6px;z-index:30">
+          <span class="kp" style="height:30px;padding:0 14px;font-size:13px;border-color:rgba(241,240,234,.35)">하는 일</span>
+          <span class="kp" style="height:30px;padding:0 14px;font-size:13px;border-color:rgba(241,240,234,.35)">일손 1/2</span>
+          <span class="kp" style="height:30px;padding:0 14px;font-size:13px;background:rgba(241,240,234,.14);border-color:var(--line-strong);font-weight:700">레벨업</span>
+        </div>
+        <div class="panel" style="left:36px;top:84px;width:740px;height:566px">
+          <div class="phead">시설 레벨 <span class="cnt">Lv 1 / 3</span><span class="sp"></span><span class="pill-soft">효과 미리보기</span></div>
+          <svg width="740" height="500" viewBox="0 0 740 500" id="tree"></svg>
+        </div>
+        <div class="cream" style="position:absolute;left:796px;top:84px;width:448px;height:566px;padding:20px 22px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;gap:6px"><span class="tag">제작</span><span class="tag">정비소</span></div>
+          <div style="font-size:24px;font-weight:900">Lv 2로 올리기</div>
+          <div style="font-size:14px">무기 제작·강화·수리가 <b>50% 빨라져요</b>. 일손 자리가 하나 늘어요.</div>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:6px;font-size:14px;border-top:1px solid rgba(38,38,43,.12);padding-top:10px">
+            <span>제작 속도</span><span class="num"><span style="color:var(--on-cream-dim)">×1.0 →</span> <b>×1.5</b></span>
+            <span>일손 자리</span><span class="num"><span style="color:var(--on-cream-dim)">2 →</span> <b>3</b></span>
+            <span>전력</span><span class="num">−0</span>
+          </div>
+          <div style="font-size:12.5px;font-weight:700;margin-top:6px">필요한 것</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span class="chip short-c"><svg class="ic"><use href="#i-plank"/></svg>20 <span style="font-weight:500">/ 0</span></span>
+            <span class="chip short-c"><svg class="ic"><use href="#i-scrap"/></svg>60 <span style="font-weight:500">/ 8</span></span>
+            <span class="chip short-c"><svg class="ic"><use href="#i-parts"/></svg>15 <span style="font-weight:500">/ 3</span></span>
+          </div>
+          <div style="background:rgba(217,69,59,.1);border-radius:10px;padding:10px 12px;font-size:13px;display:flex;gap:8px;align-items:flex-start"><svg class="ic" style="color:#B3261E;margin-top:1px"><use href="#i-lock"/></svg><div><b>기지 단계 "정착지"에서 열려요.</b><div style="color:var(--on-cream-dim)">지금 캐프 · 조건 1/4 (건설 화면에서 보기)</div></div></div>
+          <div style="margin-top:auto;display:flex;justify-content:flex-end;gap:8px"><div class="btn grey">닫기</div><div class="btn" style="background:#d9d3c5;color:#8a877f">레벨업 <span class="kc" style="background:rgba(0,0,0,.08);color:#8a877f">Enter</span></div></div>
+        </div>
+        <div class="keys"><span><span class="kp">Q E</span>탭</span><span><span class="kp">클릭</span>고르기</span><span><span class="kp">Esc</span>뒤로</span></div>
+        <div class="mk" style="left:22px;top:150px">2</div>
+        <div class="mk" style="left:410px;top:214px">3</div>
+      </div></div>
+      <div class="shot-cap"><span><b>시설 화면 · 레벨업 탭</b> · 덕코프 Workbench 트리 + 컬오램 잠금 마름모</span></div>
+    </div>
+  </div>
+  <ol class="notes">
+    <li><i>1</i><div><b>세로 선택지</b>는 캐릭터 오른쪽에. 고른 줄만 하늘색 + [F]. 상태가 있는 일은 숫자를 붙인다("일손 배정 1/2").</div></li>
+    <li><i>2</i><div><b>레벨 트리.</b> 가로 띠 = 기지 단계(캐프·정착지·요새). 띠 사이 마름모에 조건 수. Lv 노드 옆에 그 레벨에서 열리는 것을 작은 노드로.</div></li>
+    <li><i>3</i><div><b>잠긴 레벨은 버튼도 잠근다.</b> 노란 버튼 대신 흐린 버튼 + 이유. 재료가 모자라면 빨간 칩. 수치는 기획 09 공식(Lv1 ×2 + 부품 5)으로 넣은 예시.</div></li>
+  </ol>
+</section>
+
+<!-- ============ RESIDENTS ============ -->
+<section class="sec" id="residents">
+  <div class="sec-head">
+    <div class="kicker">05 · 주민</div>
+    <h2>주민 목록 · 상세</h2>
+    <p>왼쪽은 얼굴 카드 격자, 오른쪽은 고른 사람의 크림 카드입니다. 참여 조건은 "그 사람이 못 하는 것"이 아니라 "기지가 아직 못 갖춘 것"으로, 무엇을 지으면 풀리는지와 함께 씁니다(기획 07).</p>
+    <div class="refs"><span class="ref c"><b>컬오램</b> 신도 이름표, "[A] 배정 | [X] 비어 있음"</span><span class="ref a"><b>UI_RULES</b> §4 장면형 화면</span></div>
+  </div>
+  <div class="shot"><div class="stage" id="st-res">
+    <svg class="scene" data-scene='{"mode":"day"}' style="filter:blur(4px) brightness(.5)"></svg>
+    <div class="abs" style="left:36px;top:26px;font-size:22px;font-weight:700;z-index:30">주민 <span class="num dim" style="font-size:16px;font-weight:600">7 / 침상 8</span></div>
+    <div class="abs" style="right:36px;top:30px;display:flex;gap:6px;z-index:30;font-size:12.5px"><span class="kp" style="height:26px;padding:0 12px;background:rgba(241,240,234,.14);border-color:var(--line-strong)">전체</span><span class="kp" style="height:26px;padding:0 12px;border-color:rgba(241,240,234,.35)">쉬는 사람 2</span><span class="kp" style="height:26px;padding:0 12px;border-color:rgba(241,240,234,.35)">도움 필요 2</span><span class="kp" style="height:26px;padding:0 12px;border-color:rgba(241,240,234,.35)">정렬: 사기</span></div>
+    <div class="panel" style="left:36px;top:80px;width:690px;height:570px;padding:12px">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px" id="res-grid"></div>
+    </div>
+    <div class="cream" style="position:absolute;left:746px;top:80px;width:498px;height:570px;padding:20px 22px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;gap:14px;align-items:center">
+        <div class="pt" style="width:84px;height:84px;background:#cfc7b6" id="res-big"></div>
+        <div>
+          <div style="font-size:12.5px;color:var(--on-cream-dim)">전에는 정비공 · 입주 2일째</div>
+          <div style="font-size:26px;font-weight:900;line-height:1.15">서하은 <span style="font-size:15px;font-weight:500;color:var(--on-cream-dim)">"렌치"</span></div>
+          <div style="display:flex;gap:6px;margin-top:4px"><span class="tag">손이 빠름</span><span class="tag">비관적</span></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;font-size:13px;border-top:1px solid rgba(38,38,43,.12);padding-top:10px">
+        <div><div style="display:flex;justify-content:space-between"><span>힘</span><b class="num">4</b></div><div style="height:6px;border-radius:3px;background:rgba(38,38,43,.12)"><i style="display:block;width:40%;height:100%;background:#26262B;border-radius:3px"></i></div></div>
+        <div><div style="display:flex;justify-content:space-between"><span>손재주</span><b class="num">7</b></div><div style="height:6px;border-radius:3px;background:rgba(38,38,43,.12)"><i style="display:block;width:70%;height:100%;background:#26262B;border-radius:3px"></i></div></div>
+        <div><div style="display:flex;justify-content:space-between"><span>감각</span><b class="num">5</b></div><div style="height:6px;border-radius:3px;background:rgba(38,38,43,.12)"><i style="display:block;width:50%;height:100%;background:#26262B;border-radius:3px"></i></div></div>
+        <div><div style="display:flex;justify-content:space-between"><span>마음</span><b class="num">3</b></div><div style="height:6px;border-radius:3px;background:rgba(38,38,43,.12)"><i style="display:block;width:30%;height:100%;background:#26262B;border-radius:3px"></i></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13.5px;align-items:center">
+        <span style="color:var(--on-cream-dim)">지금 하는 일</span><span style="display:flex;justify-content:space-between;align-items:center;background:#fffaf0;border-radius:8px;padding:5px 10px;box-shadow:inset 0 0 0 1.5px rgba(38,38,43,.15)"><span style="display:flex;gap:6px;align-items:center"><svg class="ic" style="width:15px;height:15px"><use href="#i-wrench"/></svg>정비소 · 정비 <span style="color:#2f8a3a;font-size:12px;font-weight:700">잘 맞음</span></span><span style="color:var(--on-cream-dim)">▾</span></span>
+        <span style="color:var(--on-cream-dim)">상태</span><span style="display:flex;gap:10px"><span>배고픔 <b class="num">62</b></span><span>피로 <b class="num">30</b></span><span style="color:#a0620f;font-weight:700">▲ 사기 34</span></span>
+        <span style="color:var(--on-cream-dim)">신뢰</span><span><b class="num">28</b> / 100 <span style="color:var(--on-cream-dim)">· 40이면 부탁을 들려줌</span></span>
+      </div>
+      <div style="background:rgba(87,194,201,.16);border-radius:10px;padding:10px 12px;font-size:13px;display:flex;gap:10px;align-items:flex-start">
+        <svg class="ic" style="color:#1f6f74;margin-top:1px"><use href="#i-access"/></svg>
+        <div><b>참여 조건 · 휠체어로 다녀요</b><div style="color:var(--on-cream-dim)">운동장 → 정비소는 갈 수 있어요. <b style="color:var(--on-cream)">옥상</b>은 승강기가 있어야 올라가요.</div><div style="margin-top:4px;font-size:12px;color:#1f6f74;font-weight:700">기지가 갖춘 것 1 / 2 · 승강기 짓기 ›</div></div>
+      </div>
+      <div style="margin-top:auto;display:flex;gap:8px;justify-content:flex-end"><div class="btn grey">장비</div><div class="btn cream"><svg class="ic" style="width:16px;height:16px"><use href="#i-gift"/></svg>선물</div><div class="btn primary"><svg class="ic" style="width:16px;height:16px"><use href="#i-chat"/></svg>대화하기</div></div>
+    </div>
+    <div class="keys"><span><span class="kp">클릭</span>고르기</span><span><span class="kp">T</span>대화</span><span><span class="kp">G</span>관계도</span><span><span class="kp">Esc</span>뒤로</span></div>
+    <div class="mk" style="left:22px;top:96px">1</div>
+    <div class="mk" style="left:732px;top:420px">2</div>
+    <div class="mk" style="left:732px;top:330px">3</div>
+  </div></div>
+  <ol class="notes">
+    <li><i>1</i><div><b>얼굴 카드.</b> 얼굴, 이름, 하는 일 아이콘, 급한 필요 한 개(아이콘 + 글). 사기가 낮은 사람은 카드 왼쪽 위 ▲. 빈 침상 자리는 점선 카드("자리 하나 비어 있음").</div></li>
+    <li><i>2</i><div><b>참여 조건 상자</b>는 청록. 어디까지 갈 수 있는지 + 무엇을 지으면 풀리는지 + 건설로 바로 가는 링크.</div></li>
+    <li><i>3</i><div><b>지금 하는 일</b>은 바로 바꿀 수 있는 드롭다운. 전 직업과 맞으면 "잘 맞음".</div></li>
+  </ol>
+</section>
+
+<!-- ============ BAG ============ -->
+<section class="sec" id="bag">
+  <div class="sec-head">
+    <div class="kicker">06 · 가방</div>
+    <h2>가방 (상자 뒤지는 중)</h2>
+    <p>덕코프 인벤토리를 거의 그대로 따릅니다. 위 장비 칸, 아래 가방 격자, 오른쪽 상자 판, 아래 가운데 단축칸 줄. 필드에서 열리지만 전투 HUD가 아니라 이번 범위에 넣었습니다.</p>
+    <div class="refs"><span class="ref d"><b>덕코프</b> 인벤토리 + Loot 11:30, 툴팁 31:33, Toolbox 38:57</span></div>
+  </div>
+  <div class="shot"><div class="stage" id="st-bag">
+    <div class="abs" style="inset:0;background:radial-gradient(120% 90% at 70% 40%,#3b5a45,#1b2a22 60%,#121a16)"></div>
+    <div class="abs" style="inset:0;backdrop-filter:blur(6px);background:rgba(10,12,16,.35)"></div>
+    <div class="abs" style="left:50%;top:22px;transform:translateX(-50%);display:flex;gap:14px;z-index:30;align-items:flex-start" id="bagtabs"></div>
+    <div class="panel" style="left:36px;top:96px;width:470px;height:520px">
+      <div class="phead">장비 <span class="sp"></span><span class="cnt">무게 <span style="color:var(--text)">14.2</span> / 30kg</span></div>
+      <div style="padding:2px 14px 0;display:grid;grid-template-columns:repeat(6,58px);gap:14px 12px" id="equip"></div>
+      <div class="phead" style="margin-top:22px">가방 <span class="cnt">13 / 24</span><span class="sp"></span><span class="pill-soft">정리</span></div>
+      <div class="sgrid" style="padding:0 14px;grid-template-columns:repeat(6,58px);gap:8px 12px" id="pack"></div>
+      <div style="margin:12px 14px 0"><div class="bar" style="height:5px"><i style="width:47%;background:var(--good)"></i></div></div>
+    </div>
+    <div class="panel" style="left:526px;top:96px;width:330px;height:300px">
+      <div class="phead">구급 상자 <span class="cnt">뒤지는 중 3 / 6</span></div>
+      <div class="sgrid" style="padding:4px 14px;grid-template-columns:repeat(4,58px);gap:10px 14px" id="loot"></div>
+      <div style="display:flex;gap:8px;padding:12px 14px"><span class="pill-soft">모두 가져가기</span></div>
+    </div>
+    <div class="cream" style="position:absolute;left:876px;top:96px;width:330px;overflow:hidden">
+      <div style="padding:12px 16px 0;display:flex;gap:6px"><span class="tag"><svg class="ic" style="width:13px;height:13px"><use href="#i-pin"/></svg>위치 알리기</span></div>
+      <div style="padding:8px 16px 0;display:flex;gap:6px"><span class="tag" style="background:#8B8E98;color:#fff">의료</span><span class="tag" style="background:rgba(63,176,230,.2);color:#0d5b80">▲ 희귀</span></div>
+      <div style="padding:6px 16px 0;font-size:22px;font-weight:900">구급상자</div>
+      <div style="padding:2px 16px 10px;font-size:13.5px">체력을 60 채워요. 쓰는 데 3초 걸리고, 그동안 천천히 걸어요.</div>
+      <div style="padding:8px 16px;border-top:1px solid rgba(38,38,43,.12);display:grid;grid-template-columns:1fr auto;font-size:13.5px;gap:3px"><span>회복</span><b class="num">+60</b><span>사용 시간</span><b class="num">3.0s</b></div>
+      <div style="background:var(--cream2);padding:8px 16px;display:flex;justify-content:space-between;font-size:12.5px"><span class="num">×1</span><span>1×1 · 0.6kg</span><span class="num">값 120</span></div>
+    </div>
+    <div class="abs" style="left:50%;bottom:50px;transform:translateX(-50%);display:grid;justify-items:center;gap:6px;z-index:30">
+      <div style="font-size:12.5px" class="dim">끌어다 놓아 소모품 칸 정하기</div>
+      <div style="display:flex;gap:8px" id="hotbar"></div>
+    </div>
+    <div class="keys"><span><span class="kp">클릭</span>집기</span><span><span class="kp">R</span>돌리기</span><span><span class="kp">우클릭</span>메뉴</span><span><span class="kp">Shift+클릭</span>바로 옮기기</span><span><span class="kp">Tab</span>닫기</span></div>
+    <div class="mk" style="left:22px;top:110px">1</div>
+    <div class="mk" style="left:512px;top:110px">2</div>
+    <div class="mk" style="left:862px;top:110px">3</div>
+    <div class="mk" style="left:420px;bottom:96px">4</div>
+  </div></div>
+  <ol class="notes">
+    <li><i>1</i><div><b>장비 칸 아래 부위 이름</b>(주무기·보조·근접·머리·몸·가방). 무게는 머리띠 오른쪽에 숫자 + 막대.</div></li>
+    <li><i>2</i><div><b>상자 판</b>은 오른쪽. 아직 확인 안 된 칸은 무지개빛이 지나가고(UI_RULES §5), 확인되면 번쩍.</div></li>
+    <li><i>3</i><div><b>크림 툴팁.</b> 행동 탭, 분류 + 등급(색 + 모양 + 글), 제목, 한 줄 설명, 스탯, 꼬리 줄(개수·크기·값).</div></li>
+    <li><i>4</i><div><b>단축칸 줄</b>이 가방을 열면 아래에 떠오른다(덕코프). 3~6번 키.</div></li>
+  </ol>
+</section>
+
+<!-- ============ CRAFT ============ -->
+<section class="sec" id="craft">
+  <div class="sec-head">
+    <div class="kicker">07 · 제작</div>
+    <h2>제작 · 강화 · 각인</h2>
+    <p>덕코프 Craft의 "위 아이콘 탭 + 만들 수 있는 줄은 초록 + 오른쪽 미리보기"에, 컬오램 부엌처럼 칸마다 보유 수를 붙였습니다. 만들 수 없는 줄은 이유를 줄 끝에 씁니다.</p>
+    <div class="refs"><span class="ref d"><b>덕코프</b> Craft 16:52</span><span class="ref c"><b>컬오램</b> 부엌 레시피 격자 + 오른쪽 카드</span></div>
+  </div>
+  <div class="shot"><div class="stage" id="st-craft">
+    <svg class="scene" data-scene='{"mode":"day","zoom":1.55,"center":[3.5,7.5]}' style="filter:blur(4px) brightness(.5)"></svg>
+    <div class="abs" style="left:36px;top:26px;display:flex;align-items:center;gap:10px;z-index:30">
+      <div style="width:34px;height:34px;border-radius:50%;background:rgba(241,240,234,.12);display:grid;place-items:center"><svg class="ic"><use href="#i-back"/></svg></div>
+      <div style="font-size:22px;font-weight:700">정비소 <span class="dim" style="font-weight:500;font-size:16px">— 제작</span></div>
+    </div>
+    <div class="panel" style="left:36px;top:84px;width:560px;height:566px">
+      <div style="display:flex;gap:6px;padding:12px" id="crafttabs"></div>
+      <div style="display:grid;gap:6px;padding:0 12px" id="recipes"></div>
+    </div>
+    <div class="cream" style="position:absolute;left:616px;top:84px;width:628px;height:566px;display:grid;grid-template-columns:250px 1fr;overflow:hidden">
+      <div style="background:var(--cream2);display:grid;place-items:center;position:relative">
+        <svg class="ic" style="width:130px;height:130px;color:#3a3d46;stroke-width:1.2"><use href="#i-gun"/></svg>
+        <span class="tag" style="position:absolute;left:12px;top:12px;background:rgba(95,196,107,.25);color:#1e6a2a">■ 고급</span>
+        <div style="position:absolute;bottom:14px;left:0;right:0;text-align:center;font-size:12.5px;color:var(--on-cream-dim)">담당: 서하은 · 손재주 7 · 2시간</div>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:6px"><span class="tag">무기</span><span class="tag">권총</span></div>
+        <div style="font-size:24px;font-weight:900">수제 권총</div>
+        <div style="font-size:14px">고철로 만든 권총. 소리가 커서 마물이 잘 들어요.</div>
+        <div style="display:grid;grid-template-columns:1fr auto auto;gap:4px 10px;font-size:13.5px;border-top:1px solid rgba(38,38,43,.12);padding-top:10px">
+          <span style="color:var(--on-cream-dim);font-size:12px">지금 든 것과 비교</span><span style="color:var(--on-cream-dim);font-size:12px">녹슨 권총</span><span style="font-size:12px;font-weight:700">이것</span>
+          <span>피해</span><span class="num">14</span><b class="num" style="color:#2f8a3a">18 ▲</b>
+          <span>연사</span><span class="num">2.0</span><b class="num">2.0</b>
+          <span>소음</span><span class="num">12m</span><b class="num" style="color:#B3261E">15m ▲</b>
+        </div>
+        <div style="font-size:12.5px;font-weight:700">재료</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="chip ok-c"><svg class="ic"><use href="#i-scrap"/></svg>6 <span style="font-weight:500;color:var(--on-cream-dim)">/ 8</span></span><span class="chip ok-c"><svg class="ic"><use href="#i-parts"/></svg>2 <span style="font-weight:500;color:var(--on-cream-dim)">/ 3</span></span></div>
+        <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px"><span class="btn cream" style="width:36px;padding:0">−</span><b class="num" style="font-size:18px">1</b><span class="btn cream" style="width:36px;padding:0">+</span><span style="color:var(--on-cream-dim);font-size:12.5px">최대 1개</span></div>
+          <div class="btn primary">만들기 <span class="kc" style="background:rgba(38,38,43,.15)">Enter</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="keys"><span><span class="kp">Q E</span>분류</span><span><span class="kp">↑ ↓</span>고르기</span><span><span class="kp">Enter</span>만들기</span><span><span class="kp">Esc</span>뒤로</span></div>
+    <div class="mk" style="left:22px;top:96px">1</div>
+    <div class="mk" style="left:22px;top:160px">2</div>
+    <div class="mk" style="left:870px;top:250px">3</div>
+  </div></div>
+  <ol class="notes">
+    <li><i>1</i><div><b>탭 = 하는 일</b>(제작·강화·수리·각인)과 분류(무기·탄약·방어구) 두 줄로 나눴다. 각인은 정수 공방에서만 보인다.</div></li>
+    <li><i>2</i><div><b>줄 색.</b> 만들 수 있으면 초록 바탕(덕코프), 아니면 흐리게 + 끝에 이유("부품 2 부족"). 칸 오른쪽 아래 보유 수(컬오램).</div></li>
+    <li><i>3</i><div><b>전후 비교</b>는 지금 든 것과 나란히. 좋아지면 초록 ▲, 나빠지면(소음) 빨강 ▲. 색 + 화살표 + 숫자.</div></li>
+  </ol>
+</section>
+
+<!-- ============ SORTIE ============ -->
+<section class="sec" id="sortie">
+  <div class="sec-head">
+    <div class="kicker">08 · 출격 준비</div>
+    <h2>출격 준비 (도시 지도)</h2>
+    <p>덕코프 지도의 큰 지역 이름·북쪽 표시·확대 막대에, 컬오램처럼 그린 지도를 깔았습니다. 지역마다 위험도를 색·모양·숫자로 함께 보입니다.</p>
+    <div class="refs"><span class="ref d"><b>덕코프</b> 지도 19:36 · 24:34</span><span class="ref c"><b>컬오램</b> 그림 지도 + 지역 이름 띠</span></div>
+  </div>
+  <div class="shot"><div class="stage" id="st-map">
+    <svg class="scene" id="citymap" viewBox="0 0 1280 720"></svg>
+    <div class="abs hs" style="left:50%;top:22px;transform:translateX(-50%);text-align:center;z-index:30"><div style="font-size:12.5px" class="dim">해솔시 · 3일차 · 맑음</div><div style="font-size:34px;font-weight:900;letter-spacing:-.01em">침수 상가</div></div>
+    <div class="panel" style="left:36px;top:96px;width:300px;height:520px">
+      <div class="phead">소문 · 부탁 <span class="cnt">3</span></div>
+      <div style="display:grid;gap:8px;padding:2px 12px">
+        <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:9px 11px"><div style="font-size:11.5px" class="dim">무전 소문 · 침수 상가</div><div style="font-weight:700">2층 약국에 사람이 있다</div><div style="font-size:12px;margin-top:3px;display:flex;gap:5px;align-items:center;color:var(--info)"><svg class="ic" style="width:13px;height:13px"><use href="#i-people"/></svg>구조 대상 · 휠체어</div></div>
+        <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:9px 11px"><div style="font-size:11.5px" class="dim">윤기철의 부탁</div><div style="font-weight:700">손때 묻은 대패 찾기</div><div style="font-size:12px;margin-top:3px" class="dim">침수 상가 · 목공소 근처</div></div>
+        <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:9px 11px"><div style="font-size:11.5px" class="dim">기지 단계</div><div style="font-weight:700">부품 5개 모으기</div><div style="font-size:12px;margin-top:3px" class="dim">정비소 Lv2에 필요</div></div>
+      </div>
+    </div>
+    <div class="cream" style="position:absolute;right:36px;top:96px;width:340px;padding:18px;z-index:30;display:flex;flex-direction:column;gap:9px">
+      <div style="display:flex;gap:6px"><span class="tag" style="background:rgba(232,162,58,.22);color:#8a520a">▲ 위험 2</span><span class="tag">물 · 수풀</span></div>
+      <div style="font-size:22px;font-weight:900">침수 상가</div>
+      <div style="font-size:13.5px">물에 잠긴 1층과 덩굴 덮인 2층. 페인트·천·고철이 많아요.</div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:13px;border-top:1px solid rgba(38,38,43,.12);padding-top:8px">
+        <span style="color:var(--on-cream-dim)">해질녘까지</span><span class="num">15:00</span>
+        <span style="color:var(--on-cream-dim)">탈출 지점</span><span>3곳 중 2곳 열림</span>
+        <span style="color:var(--on-cream-dim)">자리 비운 동안</span><span style="color:#8a520a;font-weight:700">▲ 낮 습격 가능성 낮음</span>
+      </div>
+      <div style="font-size:12.5px;font-weight:700">같이 갈 사람 <span style="font-weight:500;color:var(--on-cream-dim)">1 / 1</span></div>
+      <div style="display:flex;gap:8px;align-items:center" id="companion"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px"><div class="btn grey">가방 정리</div><div class="btn primary">출격 <span class="kc" style="background:rgba(38,38,43,.15)">Enter</span></div></div>
+    </div>
+    <div class="abs" style="right:386px;top:250px;z-index:30;display:grid;justify-items:center;gap:10px">
+      <div style="width:44px;height:44px;border-radius:50%;border:1.5px solid rgba(241,240,234,.8);display:grid;place-items:center;font:700 11px var(--f-num);background:rgba(20,22,29,.4)">N ▲</div>
+      <div style="width:4px;height:120px;border-radius:2px;background:rgba(241,240,234,.4);position:relative"><div style="position:absolute;left:50%;top:40px;transform:translateX(-50%);width:24px;height:24px;border-radius:50%;background:#F1F0EA"></div></div>
+    </div>
+    <div class="abs" style="left:356px;top:104px;z-index:30;background:rgba(20,22,29,.78);border-radius:10px;padding:7px 12px;font-size:12px;display:flex;gap:12px;align-items:center">
+      <span class="dim">표시</span>
+      <span style="display:inline-flex;gap:4px;align-items:center"><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#5FC46B"/></svg>위험 1</span>
+      <span style="display:inline-flex;gap:4px;align-items:center"><svg width="12" height="12"><path d="M6 1 11 11H1z" fill="#E8A23A"/></svg>위험 2~3</span>
+      <span style="display:inline-flex;gap:4px;align-items:center"><svg width="12" height="12"><rect x="1.5" y="1.5" width="9" height="9" transform="rotate(45 6 6)" fill="#D9453B"/></svg>위험 4~5</span>
+      <span style="display:inline-flex;gap:4px;align-items:center"><svg class="ic" style="width:13px;height:13px"><use href="#i-lock"/></svg>잠김</span>
+    </div>
+    <div class="keys"><span><span class="kp">클릭</span>지역 고르기</span><span><span class="kp">휠</span>확대</span><span><span class="kp">우클릭</span>표시 남기기</span><span><span class="kp">Esc</span>기지로</span></div>
+    <div class="mk" style="left:22px;top:110px">1</div>
+    <div class="mk" style="left:640px;top:14px">2</div>
+    <div class="mk" style="right:362px;top:92px">3</div>
+  </div></div>
+  <ol class="notes">
+    <li><i>1</i><div><b>왼쪽은 갈 이유.</b> 무전 소문, 주민 부탁, 기지 단계에 필요한 재료. 고르면 지도 위 지역이 빛난다.</div></li>
+    <li><i>2</i><div><b>큰 지역 이름</b>(덕코프 "Ground Zero"). 지도 위 지역은 색 + 모양 + "위험 2" 글. 잠긴 지역은 자물쇠 + 여는 조건.</div></li>
+    <li><i>3</i><div><b>오른쪽 크림 카드</b>에 시간·탈출 지점·자리 비운 동안의 습격, 동행자, 노란 출격 버튼.</div></li>
+  </ol>
+</section>
+
+<!-- ============ JOURNAL ============ -->
+<section class="sec" id="journal">
+  <div class="sec-head">
+    <div class="kicker">09 · 생존 일지</div>
+    <h2>생존 일지 · 부탁</h2>
+    <p>덕코프 Quest의 세 탭(받을 수 있음 · 진행 중 · 끝남)과 새 소식 빨간 점을 씁니다. 오른쪽은 이야기 문단과 목표 체크, 보상 칸입니다(UI_RULES 퀘스트 카드).</p>
+    <div class="refs"><span class="ref d"><b>덕코프</b> Quest 21:12</span><span class="ref c"><b>컬오램</b> 오른쪽 추적 목록</span></div>
+  </div>
+  <div class="shot"><div class="stage" id="st-jr">
+    <svg class="scene" data-scene='{"mode":"day"}' style="filter:blur(5px) brightness(.45)"></svg>
+    <div class="abs" style="left:50%;top:20px;transform:translateX(-50%);display:flex;gap:14px;z-index:30" id="jtabs"></div>
+    <div class="panel" style="left:36px;top:100px;width:420px;height:550px">
+      <div style="display:flex;gap:6px;padding:12px">
+        <span class="kp" style="height:30px;padding:0 14px;font-size:13px;background:var(--accent);color:#26262B;border-color:var(--accent);font-weight:700;position:relative">받을 수 있음 <span style="position:absolute;right:-2px;top:-2px;width:9px;height:9px;border-radius:50%;background:var(--danger)"></span></span>
+        <span class="kp" style="height:30px;padding:0 14px;font-size:13px;border-color:rgba(241,240,234,.35)">진행 중 3</span>
+        <span class="kp" style="height:30px;padding:0 14px;font-size:13px;border-color:rgba(241,240,234,.35)">끝남 5</span>
+      </div>
+      <div style="display:grid;gap:6px;padding:0 12px">
+        <div style="background:rgba(241,240,234,.14);box-shadow:inset 0 0 0 1.5px var(--line-strong);border-radius:10px;padding:9px 12px;display:flex;gap:10px;align-items:center"><div class="pt" style="width:36px;height:36px" data-face="1"></div><div style="flex:1"><div style="font-weight:700">손때 묻은 대패</div><div style="font-size:12px" class="dim">윤기철의 부탁 · 침수 상가</div></div><span style="width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></div>
+        <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:9px 12px;display:flex;gap:10px;align-items:center"><div style="width:36px;height:36px;border-radius:50%;background:rgba(87,194,201,.2);display:grid;place-items:center"><svg class="ic" style="color:var(--info)"><use href="#i-radio"/></svg></div><div style="flex:1"><div style="font-weight:700">약국의 목소리</div><div style="font-size:12px" class="dim">무전 · 침수 상가</div></div><span style="width:8px;height:8px;border-radius:50%;background:var(--danger)"></span></div>
+        <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:9px 12px;display:flex;gap:10px;align-items:center"><div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.08);display:grid;place-items:center"><svg class="ic"><use href="#i-flag"/></svg></div><div style="flex:1"><div style="font-weight:700">정착지로</div><div style="font-size:12px" class="dim">기지 · 1/4</div></div></div>
+      </div>
+    </div>
+    <div class="cream" style="position:absolute;left:476px;top:100px;width:768px;height:550px;display:grid;grid-template-columns:1fr 280px;overflow:hidden">
+      <div style="padding:22px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:12.5px;color:var(--on-cream-dim)">윤기철의 부탁 · 신뢰 40에서 열림</div>
+        <div style="font-size:26px;font-weight:900">손때 묻은 대패</div>
+        <div style="font-size:14.5px;line-height:1.65;max-width:52ch">"상가 2층 목공방에 아버지가 쓰던 대패를 두고 왔어. 물이 차기 전에 챙겼어야 했는데. 그거 하나만 있으면 다시 뭐라도 깎을 수 있을 것 같아."</div>
+        <div style="margin-top:auto;display:flex;gap:8px"><div class="btn grey">나중에</div><div class="btn primary">받기 <span class="kc" style="background:rgba(38,38,43,.15)">Enter</span></div></div>
+      </div>
+      <div style="background:var(--cream2);padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:12.5px;font-weight:700">할 일</div>
+        <div style="display:grid;gap:6px;font-size:13.5px">
+          <div style="display:flex;gap:8px;align-items:center"><span style="width:16px;height:16px;border-radius:4px;border:1.5px solid #26262B"></span>침수 상가 2층 목공방 가기</div>
+          <div style="display:flex;gap:8px;align-items:center"><span style="width:16px;height:16px;border-radius:4px;border:1.5px solid #26262B"></span>손때 묻은 대패 가져오기</div>
+          <div style="display:flex;gap:8px;align-items:center"><span style="width:16px;height:16px;border-radius:4px;border:1.5px solid #26262B"></span>윤기철에게 건네기</div>
+        </div>
+        <div style="font-size:12.5px;font-weight:700;margin-top:6px">보상</div>
+        <div style="display:flex;gap:8px" id="reward"></div>
+        <div style="font-size:12.5px;color:var(--on-cream-dim)">윤기철 신뢰 +20 · 목공소 효율 +10%</div>
+      </div>
+    </div>
+    <div class="keys"><span><span class="kp">Q E</span>탭</span><span><span class="kp">Enter</span>받기</span><span><span class="kp">Esc</span>닫기</span></div>
+    <div class="mk" style="left:22px;top:112px">1</div>
+    <div class="mk" style="left:462px;top:112px">2</div>
+  </div></div>
+  <ol class="notes">
+    <li><i>1</i><div><b>탭 셋 + 빨간 점.</b> 줄마다 누가 준 부탁인지 얼굴, 아래 작은 글로 출처·지역(덕코프 "Bunker / Ground Zero").</div></li>
+    <li><i>2</i><div><b>크림 두 열.</b> 왼쪽 이야기, 오른쪽 할 일 체크박스 · 보상 칸. 위쪽 탭은 일지·지도·녹음.</div></li>
+  </ol>
+</section>
+
+<!-- ============ SMALL ============ -->
+<section class="sec" id="small">
+  <div class="sec-head">
+    <div class="kicker">10 · 작은 화면</div>
+    <h2>대화 · 타이틀</h2>
+    <p>둘 다 덕코프 구조를 그대로 씁니다. 대화는 아래 가운데 크림 상자와 노란 이름 알약, 타이틀은 왼쪽 세로 알약 버튼입니다.</p>
+    <div class="refs"><span class="ref d"><b>덕코프</b> Jeff 대화 08:13, 메인 메뉴 00:00</span><span class="ref c"><b>컬오램</b> 일시정지 목록</span></div>
+  </div>
+  <div class="duo">
+    <div>
+      <div class="shot"><div class="stage" id="st-dlg">
+        <svg class="scene" data-scene='{"mode":"day","zoom":1.7,"center":[6.5,6.5],"player":[7.4,7.2]}'></svg>
+        <div class="abs" style="inset:auto 0 0 0;height:300px;background:linear-gradient(to top,rgba(0,0,0,.55),transparent)"></div>
+        <div class="abs" style="left:50%;bottom:150px;transform:translateX(-50%);width:720px;z-index:30">
+          <div style="position:absolute;left:28px;top:-16px;background:var(--accent);color:#26262B;font-weight:900;font-size:15px;padding:3px 16px;border-radius:999px">서하은</div>
+          <div class="cream" style="padding:22px 26px 18px;font-size:18px;line-height:1.55;font-weight:500">정비소에 일손이 하나 더 있으면 좋겠어요.<br>혼자서는 수리가 밀려서요.</div>
+        </div>
+        <div class="abs" style="left:50%;bottom:44px;transform:translateX(-50%);display:flex;gap:10px;z-index:30">
+          <div class="btn cream" style="height:44px;box-shadow:0 0 0 3px var(--accent)">1 · 누구를 보내면 좋을까요?</div>
+          <div class="btn cream" style="height:44px">2 · 조금만 버텨 줘요</div>
+          <div class="btn cream" style="height:44px">3 · 직접 도울게요</div>
+        </div>
+      </div></div>
+      <div class="shot-cap"><span><b>대화</b> · 선택지 3개, 2줄까지</span></div>
+    </div>
+    <div>
+      <div class="shot"><div class="stage" id="st-title">
+        <svg class="scene" data-scene='{"mode":"dusk"}' style="filter:blur(2px)"></svg>
+        <div class="abs" style="inset:0;background:linear-gradient(90deg,rgba(10,12,16,.75),transparent 55%)"></div>
+        <div class="abs" style="left:70px;top:120px;z-index:30">
+          <div style="display:flex;gap:6px;margin-bottom:12px"><span style="width:60px;height:6px;background:var(--info);border-radius:3px"></span><span style="width:36px;height:6px;background:var(--accent);border-radius:3px;margin-top:10px"></span></div>
+          <div style="font-size:58px;font-weight:900;line-height:1;letter-spacing:-.02em">해솔시</div>
+          <div style="font-size:16px;margin-top:8px" class="dim">아무도 두고 가지 않는다</div>
+        </div>
+        <div class="abs" style="left:70px;top:330px;display:grid;gap:10px;z-index:30;justify-items:start">
+          <div class="btn primary" style="height:46px;font-size:17px;padding:0 24px">이어하기 <span class="num" style="font-size:12px;font-weight:600;opacity:.7">3일차</span></div>
+          <div class="btn dark" style="height:38px">새 게임</div>
+          <div class="btn dark" style="height:38px"><svg class="ic" style="width:16px;height:16px;color:var(--info)"><use href="#i-access"/></svg>접근성 빠른 설정</div>
+          <div class="btn dark" style="height:38px"><svg class="ic" style="width:16px;height:16px"><use href="#i-gear"/></svg>설정</div>
+          <div class="btn dark" style="height:38px">끝내기</div>
+        </div>
+        <div class="abs num dim" style="right:24px;bottom:16px;font-size:12px">v0.3</div>
+      </div></div>
+      <div class="shot-cap"><span><b>타이틀</b> · 덕코프 왼쪽 알약 + 해솔시 띠</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ NEXT ============ -->
+<section class="sec" id="next" style="border-bottom:0">
+  <div class="sec-head">
+    <div class="kicker">11 · 다음</div>
+    <h2>게임에 넣으려면</h2>
+    <p>이 시안이 괜찮으면 아래 순서로 옮깁니다. 다른 레인 파일이 필요한 것은 따로 적었습니다.</p>
+  </div>
+  <div class="cols">
+    <div class="box"><h3>레인 D 혼자 할 수 있는 것</h3><ul>
+      <li><b>건설 화면 다시 짓기</b>: 카드 격자, 추천 탭, 상세 카드, 단계 띠. 미니 모형은 BuildingDef의 size만으로 그린다.</li>
+      <li><b>기지 HUD 네 구석 배치</b>, 할 일 메뉴 아이콘화, 획득 줄.</li>
+      <li><b>시설 앞 세로 선택지</b> 위젯(<code>ui/widgets/</code>), 주민·가방·제작·지도·일지 화면 스킨 통일.</li>
+      <li><b>UI_RULES.md 갱신</b>: 건설 카드, 단계 띠, 세로 선택지, 잠금 마름모를 §5 표에 추가.</li>
+    </ul></div>
+    <div class="box"><h3>다른 레인에 요청할 것</h3><ul>
+      <li><b>C</b>: BuildingDef에 <code>description</code>(한 줄 설명)이 없다. 지금은 <code>note</code>만 있다. 하는 일 한 줄과 "+6 나무/일" 같은 효과 글을 getter로 받아야 한다.</li>
+      <li><b>C</b>: 배치 미리보기(C-03)에서 칸마다 "놓을 수 없는 이유"를 돌려주는 함수, 범위 안 노드 수, 점유 칸 표시.</li>
+      <li><b>C</b>: 건설 현장에 일손 보내기/빼기, 예상 완성 시점 getter.</li>
+      <li><b>A</b>: 기지 단계 다음 조건 목록(정착지 1/4) getter. 퀘스트 탭 데이터.</li>
+    </ul></div>
+    <div class="box"><h3>정할 것</h3><ul>
+      <li>분류 탭을 7개로 묶는 안이 괜찮은지.</li>
+      <li>건설 메뉴를 흑백 월드 위 격자(이 시안)로 갈지, 아래 띠 카드로 갈지.</li>
+      <li>철거 키를 Del로 따로 둘지(컬오램은 같은 화면 버튼).</li>
+      <li>수치(벌목장 +6/일 등)는 모두 예시다. 실제 값은 기획 수치를 따른다.</li>
+    </ul></div>
+  </div>
+</section>
+
+<footer class="end">
+  <div>글꼴: 게임은 Pretendard · Barlow, 이 페이지는 Noto Sans KR · Barlow로 대신 그렸습니다. 그림 속 모든 숫자는 예시입니다.</div>
+  <div>레퍼런스 화면 캡처는 이 페이지에 넣지 않았습니다. 확인하려면 위 시간으로 영상을 보세요.</div>
+</footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* ---------- scaling ---------- */
+function fit(){document.querySelectorAll('.shot').forEach(function(s){var st=s.querySelector('.stage');if(st)st.style.transform='scale('+(s.clientWidth/1280)+')';});}
+if(window.ResizeObserver){var ro=new ResizeObserver(fit);document.querySelectorAll('.shot').forEach(function(s){ro.observe(s);});}
+window.addEventListener('resize',fit);
+
+/* ---------- iso helpers ---------- */
+function mkP(o){var tw=64*(o.zoom||1),th=32*(o.zoom||1),ox=600,oy=150;
+  if(o.center){var c=o.center;ox=640-(c[0]-c[1])*tw/2;oy=380-(c[0]+c[1])*th/2;}
+  return {tw:tw,th:th,z:(o.zoom||1),p:function(gx,gy){return [ox+(gx-gy)*tw/2, oy+(gx+gy)*th/2];}};}
+function pts(a){return a.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' ');}
+function shade(hex,f){var n=parseInt(hex.slice(1),16),r=n>>16,g=n>>8&255,b=n&255;
+  function c(v){return Math.max(0,Math.min(255,Math.round(f>1?v+(255-v)*(f-1):v*f)));}
+  return 'rgb('+c(r)+','+c(g)+','+c(b)+')';}
+function box(P,x,y,w,d,h,col,extra){h=h*P.z;extra=extra||'';
+  var a=P.p(x,y),b=P.p(x+w,y),c=P.p(x+w,y+d),e=P.p(x,y+d);function up(q){return [q[0],q[1]-h];}
+  return '<polygon points="'+pts([e,c,up(c),up(e)])+'" fill="'+shade(col,.78)+'" '+extra+'/>'+
+         '<polygon points="'+pts([b,c,up(c),up(b)])+'" fill="'+shade(col,.6)+'" '+extra+'/>'+
+         '<polygon points="'+pts([up(a),up(b),up(c),up(e)])+'" fill="'+shade(col,1.12)+'" '+extra+'/>';}
+function cell(P,x,y,fill,stroke,sw){var q=[P.p(x,y),P.p(x+1,y),P.p(x+1,y+1),P.p(x,y+1)];
+  return '<polygon points="'+pts(q)+'" fill="'+fill+'" stroke="'+(stroke||'none')+'" stroke-width="'+(sw||1)+'"/>';}
+function tree(P,x,y,s,col){s=(s||1)*P.z;var b=P.p(x+.5,y+.5);col=col||'#3f6b3a';
+  return '<ellipse cx="'+b[0]+'" cy="'+(b[1]+2)+'" rx="'+(20*s)+'" ry="'+(9*s)+'" fill="rgba(0,0,0,.22)"/>'+
+  '<rect x="'+(b[0]-3*s)+'" y="'+(b[1]-14*s)+'" width="'+(6*s)+'" height="'+(14*s)+'" fill="#5a4330"/>'+
+  '<polygon points="'+pts([[b[0],b[1]-70*s],[b[0]+22*s,b[1]-26*s],[b[0]-22*s,b[1]-26*s]])+'" fill="'+shade(col,.85)+'"/>'+
+  '<polygon points="'+pts([[b[0],b[1]-70*s],[b[0]+22*s,b[1]-26*s],[b[0]+2*s,b[1]-30*s]])+'" fill="'+shade(col,.7)+'"/>'+
+  '<polygon points="'+pts([[b[0],b[1]-54*s],[b[0]+26*s,b[1]-12*s],[b[0]-26*s,b[1]-12*s]])+'" fill="'+col+'"/>'+
+  '<polygon points="'+pts([[b[0],b[1]-54*s],[b[0]+26*s,b[1]-12*s],[b[0]+2*s,b[1]-16*s]])+'" fill="'+shade(col,.8)+'"/>';}
+function person(P,x,y,col,tool){var b=P.p(x,y),s=P.z;
+  return '<ellipse cx="'+b[0]+'" cy="'+b[1]+'" rx="'+(9*s)+'" ry="'+(4*s)+'" fill="rgba(0,0,0,.3)"/>'+
+  '<rect x="'+(b[0]-6*s)+'" y="'+(b[1]-24*s)+'" width="'+(12*s)+'" height="'+(20*s)+'" rx="'+(6*s)+'" fill="'+col+'"/>'+
+  '<circle cx="'+b[0]+'" cy="'+(b[1]-29*s)+'" r="'+(6.5*s)+'" fill="#e8c9a6"/>'+
+  (tool?'<path d="M'+(b[0]+6*s)+' '+(b[1]-16*s)+' l'+(9*s)+' '+(-10*s)+' m'+(-3*s)+' '+(-3*s)+' l'+(7*s)+' '+(5*s)+'" stroke="#d8d2c4" stroke-width="'+(2.2*s)+'" stroke-linecap="round"/>':'');}
+function playerFig(P,x,y){var b=P.p(x,y),s=P.z;
+  return '<ellipse cx="'+b[0]+'" cy="'+b[1]+'" rx="'+(11*s)+'" ry="'+(5*s)+'" fill="rgba(0,0,0,.35)"/>'+
+  '<rect x="'+(b[0]-7*s)+'" y="'+(b[1]-28*s)+'" width="'+(14*s)+'" height="'+(24*s)+'" rx="'+(7*s)+'" fill="#3a7fa0"/>'+
+  '<circle cx="'+b[0]+'" cy="'+(b[1]-34*s)+'" r="'+(7.5*s)+'" fill="#f0d2b0"/>'+
+  '<path d="M'+(b[0]-8*s)+' '+(b[1]-37*s)+' q'+(8*s)+' '+(-10*s)+' '+(16*s)+' 0" fill="#2b2b33"/>'+
+  '<rect x="'+(b[0]-12*s)+'" y="'+(b[1]-46*s)+'" width="'+(24*s)+'" height="'+(3*s)+'" rx="1.5" fill="#57C2C9"/>';}
+
+var BUILT=[
+  {id:'main',x:-1,y:-6.2,w:10,d:4,h:118,c:'#8b8f98'},
+  {id:'bed1',x:1.2,y:1,w:1,d:2,h:10,c:'#d8cdb4'},{id:'bed2',x:2.5,y:1,w:1,d:2,h:10,c:'#d8cdb4'},{id:'bed3',x:3.8,y:1,w:1,d:2,h:10,c:'#d8cdb4'},
+  {id:'workshop',x:1,y:6,w:3,d:3,h:44,c:'#6f8fa8'},
+  {id:'fire',x:6,y:6,w:1,d:1,h:6,c:'#7c736a'}
+];
+var LUMBER={id:'lumber',x:9,y:1,w:2,d:2,h:24,c:'#9c7a4f'};
+var TREES=[[11.6,-0.6,1.05],[12.8,0.6,1],[12.2,2.2,1.1],[13.4,-1.4,.95],[11,3.4,.9],[13.6,3.2,1],[10.2,-1.8,1],[14.4,1,1.1],
+  [-2,4,1.1],[-2.6,6,1],[-1.8,8,1.15],[-2.4,10.2,1],[-1.6,12,1.1],[-3.4,7.4,1],[-3.2,11,1],
+  [21,-2,1],[20.4,0.5,1.1],[22,2,1],[21.2,4.6,1.05],[22.4,7,1],[20.8,9.5,1.1],[22.6,12,1]];
+var RUBBLE=[[15.4,2,.6,.5,8],[17,4.2,.8,.6,12],[16.2,7.6,.6,.8,9],[18.2,9.8,.7,.6,10],[15.6,11.2,.5,.5,7],[18.4,1.2,.6,.6,9]];
+
+function scene(svg,o){
+  var P=mkP(o),mode=o.mode,out=[];
+  var bg={day:['#20302a','#2b3f35'],menu:['#20302a','#2b3f35'],place:['#1c2440','#26305a'],dusk:['#2a2433','#3c3040']}[mode]||['#20302a','#2b3f35'];
+  out.push('<defs><linearGradient id="bg'+svg.id+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+bg[0]+'"/><stop offset="1" stop-color="'+bg[1]+'"/></linearGradient>'+
+    '<pattern id="hz'+svg.id+'" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(30)"><rect width="4" height="10" fill="rgba(0,0,0,.22)"/></pattern>'+
+    '<radialGradient id="fire'+svg.id+'"><stop offset="0" stop-color="rgba(255,190,90,.75)"/><stop offset="1" stop-color="rgba(255,150,60,0)"/></radialGradient></defs>');
+  out.push('<rect width="1280" height="720" fill="url(#bg'+svg.id+')"/>');
+  /* park ground beyond */
+  out.push('<polygon points="'+pts([P.p(-6,-8),P.p(26,-8),P.p(26,18),P.p(-6,18)])+'" fill="'+(mode==='place'?'#2a3768':'#2f4a37')+'"/>');
+  /* yard (cleared) */
+  var dirt=mode==='place'?'#4a5a92':(mode==='dusk'?'#6d5d55':'#a08a68');
+  out.push('<polygon points="'+pts([P.p(0,0),P.p(14,0),P.p(14,13),P.p(0,13)])+'" fill="'+dirt+'"/>');
+  /* uncleared east */
+  out.push('<polygon points="'+pts([P.p(14,0),P.p(20,0),P.p(20,13),P.p(14,13)])+'" fill="'+(mode==='place'?'#36416e':'#5d6e4a')+'"/>');
+  out.push('<polygon points="'+pts([P.p(14,0),P.p(20,0),P.p(20,13),P.p(14,13)])+'" fill="url(#hz'+svg.id+')"/>');
+  /* path */
+  out.push('<polygon points="'+pts([P.p(5,3),P.p(6,3),P.p(6,13),P.p(5,13)])+'" fill="'+(mode==='place'?'rgba(255,255,255,.06)':'rgba(255,255,255,.1)')+'"/>');
+  /* grid */
+  if(o.grid){var g='';for(var i=0;i<=14;i++){var a=P.p(i,0),b=P.p(i,13);g+='<line x1="'+a[0]+'" y1="'+a[1]+'" x2="'+b[0]+'" y2="'+b[1]+'"/>';}
+    for(var j=0;j<=13;j++){var c=P.p(0,j),d=P.p(14,j);g+='<line x1="'+c[0]+'" y1="'+c[1]+'" x2="'+d[0]+'" y2="'+d[1]+'"/>';}
+    out.push('<g stroke="rgba(108,200,255,.38)" stroke-width="1">'+g+'</g>');}
+  /* occupied footprints (CotL red) */
+  var built=BUILT.slice();if(o.built&&o.built.indexOf('lumber')>=0)built.push(LUMBER);
+  if(o.occupied){built.forEach(function(B){if(B.id==='main')return;for(var x=0;x<B.w;x++)for(var y=0;y<B.d;y++){
+      var hov=o.hover===B.id;out.push(cell(P,Math.floor(B.x)+x,Math.floor(B.y)+y,hov?'rgba(246,199,68,.35)':'rgba(217,69,59,.12)',hov?'#F6C744':'rgba(255,120,110,.7)',hov?2:1.2));}});}
+  /* ring */
+  if(o.ring){var rc=P.p(o.ring[0],o.ring[1]),r=o.ring[2];
+    out.push('<ellipse cx="'+rc[0]+'" cy="'+rc[1]+'" rx="'+(r*P.tw/Math.SQRT2)+'" ry="'+(r*P.th/Math.SQRT2)+'" fill="rgba(87,194,201,.08)" stroke="#57C2C9" stroke-width="2" stroke-dasharray="8 6"/>');}
+  /* ghost cells */
+  if(o.ghost){var G=o.ghost;for(var gx=0;gx<G[2];gx++)for(var gy=0;gy<G[3];gy++)out.push(cell(P,G[0]+gx,G[1]+gy,G[4]?'rgba(95,196,107,.5)':'rgba(217,69,59,.5)',G[4]?'#8BF09A':'#ff8a7a',2));}
+  if(o.site){var S=o.site;for(var sx=0;sx<S[2];sx++)for(var sy=0;sy<S[3];sy++)out.push(cell(P,S[0]+sx,S[1]+sy,'rgba(241,240,234,.12)','rgba(241,240,234,.55)',1.2));}
+  /* depth-sorted objects */
+  var objs=[];
+  built.forEach(function(B){objs.push({d:B.x+B.w+B.y+B.d-1,s:function(){
+    if(B.id==='fire'){var f=P.p(6.5,6.5);return '<circle cx="'+f[0]+'" cy="'+(f[1]-8*P.z)+'" r="'+(46*P.z)+'" fill="url(#fire'+svg.id+')"/>'+box(P,6.15,6.15,.7,.7,6,'#7c736a')+
+      '<path d="M'+f[0]+' '+(f[1]-30*P.z)+' q'+(9*P.z)+' '+(12*P.z)+' 0 '+(22*P.z)+' q'+(-9*P.z)+' '+(-10*P.z)+' 0 '+(-22*P.z)+'z" fill="#ffb347"/>';}
+    var s=box(P,B.x,B.y,B.w,B.d,B.h,B.c);
+    if(B.id==='workshop'){var t=P.p(B.x,B.y),t2=P.p(B.x+B.w,B.y),t3=P.p(B.x+B.w,B.y+B.d),t4=P.p(B.x,B.y+B.d),H=B.h*P.z,R=18*P.z;
+      var mid1=[(t[0]+t4[0])/2,(t[1]+t4[1])/2-H-R],mid2=[(t2[0]+t3[0])/2,(t2[1]+t3[1])/2-H-R];
+      s+='<polygon points="'+pts([[t4[0],t4[1]-H],[t3[0],t3[1]-H],mid2,mid1])+'" fill="#4f6b82"/><polygon points="'+pts([[t[0],t[1]-H],[t2[0],t2[1]-H],mid2,mid1])+'" fill="#6886a0"/>';}
+    if(B.id==='main'){for(var k=0;k<5;k++){var w0=P.p(B.x+.5+k*1.9,B.y+B.d),w1=P.p(B.x+1.4+k*1.9,B.y+B.d),wh=B.h*P.z;
+        s+='<polygon points="'+pts([[w0[0],w0[1]-wh*.72],[w1[0],w1[1]-wh*.72],[w1[0],w1[1]-wh*.5],[w0[0],w0[1]-wh*.5]])+'" fill="rgba(255,226,160,.45)"/>'+
+           '<polygon points="'+pts([[w0[0],w0[1]-wh*.36],[w1[0],w1[1]-wh*.36],[w1[0],w1[1]-wh*.14],[w0[0],w0[1]-wh*.14]])+'" fill="rgba(255,226,160,.35)"/>';}}
+    if(B.id==='lumber'){var lp=P.p(B.x+1,B.y+1.6);s+='<g fill="#7a5532" stroke="#4d331d" stroke-width="1">'+[0,1,2].map(function(i){return '<rect x="'+(lp[0]-30+i*4)+'" y="'+(lp[1]-38-i*7)+'" width="40" height="8" rx="4"/>';}).join('')+'</g>';}
+    if(o.hover===B.id)s='<g filter="drop-shadow(0 0 6px rgba(246,199,68,.8))">'+s+'</g>';
+    return s;}});});
+  TREES.forEach(function(t){var inRing=false;if(o.ring){var dx=t[0]-o.ring[0],dy=t[1]-o.ring[1];inRing=Math.sqrt(dx*dx+dy*dy)<=o.ring[2];}
+    objs.push({d:t[0]+t[1]+1,s:function(){var col=mode==='place'?'#3b4f86':(mode==='dusk'?'#3c4f45':'#46703f');
+      var s=tree(P,t[0],t[1],t[2],col);
+      if(inRing){var b=P.p(t[0]+.5,t[1]+.5);s+='<g transform="translate('+b[0]+','+(b[1]-82*P.z)+')"><circle r="9" fill="#57C2C9"/><path d="M-4 0l3 3 5-6" stroke="#0f2a2c" stroke-width="2" fill="none" stroke-linecap="round"/></g>';}
+      return s;}});});
+  RUBBLE.forEach(function(r){objs.push({d:r[0]+r[1]+r[2]+r[3],s:function(){return box(P,r[0],r[1],r[2],r[3],r[4],mode==='place'?'#545e86':'#7d7a72');}});});
+  if(o.ghost){var G2=o.ghost;objs.push({d:G2[0]+G2[2]+G2[1]+G2[3]-1,s:function(){return '<g opacity=".62">'+box(P,G2[0],G2[1],G2[2],G2[3],24,G2[4]?'#9fe3a8':'#ff9d93','stroke="#ffffff" stroke-width=".8"')+'</g>';}});}
+  if(o.site){var S2=o.site;objs.push({d:S2[0]+S2[2]+S2[1]+S2[3]-1,s:function(){
+    var a=P.p(S2[0],S2[1]),b=P.p(S2[0]+S2[2],S2[1]),c=P.p(S2[0]+S2[2],S2[1]+S2[3]),e=P.p(S2[0],S2[1]+S2[3]),H=30*P.z;
+    var post=function(q){return '<line x1="'+q[0]+'" y1="'+q[1]+'" x2="'+q[0]+'" y2="'+(q[1]-H)+'"/>';};
+    return '<g stroke="#e9dcc0" stroke-width="2.4" stroke-linecap="round">'+post(a)+post(b)+post(c)+post(e)+
+      '<polyline fill="none" points="'+pts([[e[0],e[1]-H],[c[0],c[1]-H],[b[0],b[1]-H]])+'"/><line x1="'+e[0]+'" y1="'+e[1]+'" x2="'+c[0]+'" y2="'+(c[1]-H)+'"/></g>'+
+      '<g fill="#9c7a4f">'+box(P,S2[0]+.2,S2[1]+.3,1.2,.5,8,'#9c7a4f')+'</g>';}});}
+  var cols=['#c46b5a','#6a9a6a','#9a7ac4','#c4a35a','#5a8ac4'];
+  [[5,8.3],[7.3,4.3],[3.2,4.2],[12.2,9.2]].forEach(function(p,i){objs.push({d:p[0]+p[1],s:function(){return person(P,p[0],p[1],cols[i]);}});});
+  (o.walkers||[]).forEach(function(p,i){objs.push({d:p[0]+p[1],s:function(){return person(P,p[0],p[1],cols[(i+2)%5],true);}});});
+  if(o.player){objs.push({d:o.player[0]+o.player[1],s:function(){return playerFig(P,o.player[0],o.player[1]);}});}
+  objs.sort(function(a,b){return a.d-b.d;});
+  objs.forEach(function(ob){out.push(ob.s());});
+  if(mode==='place')out.push('<rect width="1280" height="720" fill="rgba(40,50,120,.08)"/>');
+  if(mode==='dusk')out.push('<rect width="1280" height="720" fill="rgba(120,60,90,.18)"/>');
+  svg.setAttribute('viewBox','0 0 1280 720');
+  svg.innerHTML=out.join('');
+  /* overlay placement */
+  var stage=svg.closest('.stage');
+  stage.querySelectorAll('[data-g]').forEach(function(el){var v=el.getAttribute('data-g').split(',').map(Number);var q=P.p(v[0],v[1]);
+    el.style.left=q[0]+'px';el.style.top=(q[1]-v[2]*P.z)+'px';});
+}
+var sid=0;
+document.querySelectorAll('svg.scene[data-scene]').forEach(function(svg){svg.id='sc'+(sid++);try{scene(svg,JSON.parse(svg.getAttribute('data-scene')));}catch(e){console.error(e);}});
+
+/* ---------- mini iso art for cards ---------- */
+function mini(w,d,h,col,W,H,extra){W=W||100;H=H||64;var tw=Math.min(W*1.5/(w+d),H*.85/((w+d)/2+h/32)),th=tw/2;var hh=h*tw/32;
+  var totalH=(w+d)*th+hh;var oy=(H-totalH)/2+hh;var ox=W/2-(w-d)*tw/4;
+  function p(x,y){return [ox+(x-y)*tw/2,oy+(x+y)*th/2];}
+  var s='';for(var x=0;x<w;x++)for(var y=0;y<d;y++){s+='<polygon points="'+pts([p(x,y),p(x+1,y),p(x+1,y+1),p(x,y+1)])+'" fill="rgba(0,0,0,.18)" stroke="rgba(255,255,255,.35)" stroke-width=".7"/>';}
+  var inset=.12,a=p(inset,inset),b=p(w-inset,inset),c=p(w-inset,d-inset),e=p(inset,d-inset);function up(q){return [q[0],q[1]-hh];}
+  s+='<polygon points="'+pts([e,c,up(c),up(e)])+'" fill="'+shade(col,.78)+'"/><polygon points="'+pts([b,c,up(c),up(b)])+'" fill="'+shade(col,.6)+'"/><polygon points="'+pts([up(a),up(b),up(c),up(e)])+'" fill="'+shade(col,1.15)+'"/>';
+  if(extra==='roof'){var m1=[(up(a)[0]+up(e)[0])/2,(up(a)[1]+up(e)[1])/2-hh*.45],m2=[(up(b)[0]+up(c)[0])/2,(up(b)[1]+up(c)[1])/2-hh*.45];
+    s+='<polygon points="'+pts([up(e),up(c),m2,m1])+'" fill="'+shade(col,.55)+'"/><polygon points="'+pts([up(a),up(b),m2,m1])+'" fill="'+shade(col,.8)+'"/>';}
+  if(extra==='fire'){var f=p(w/2,d/2);s+='<path d="M'+f[0]+' '+(f[1]-hh-16)+' q6 8 0 14 q-6 -6 0 -14z" fill="#ffb347"/>';}
+  if(extra==='logs'){var l=p(w*.5,d*.7);s+='<g fill="#7a5532">'+[0,1].map(function(i){return '<rect x="'+(l[0]-12+i*3)+'" y="'+(l[1]-hh-8-i*5)+'" width="20" height="5" rx="2.5"/>';}).join('')+'</g>';}
+  if(extra==='ramp'){var r1=p(0,0),r2=p(w,0),r3=p(w,d),r4=p(0,d);s='';for(var xx=0;xx<w;xx++)for(var yy=0;yy<d;yy++){s+='<polygon points="'+pts([p(xx,yy),p(xx+1,yy),p(xx+1,yy+1),p(xx,yy+1)])+'" fill="rgba(0,0,0,.18)" stroke="rgba(255,255,255,.35)" stroke-width=".7"/>';}
+    s+='<polygon points="'+pts([r4,r3,[r2[0],r2[1]-hh],[r1[0],r1[1]-hh]])+'" fill="'+shade(col,1.05)+'"/><polygon points="'+pts([r2,r3,[r2[0],r2[1]-hh]])+'" fill="'+shade(col,.6)+'"/>';}
+  return '<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'">'+s+'</svg>';}
+
+var CATC={live:'#C9A87A',prod:'#8FA35A',craft:'#6F8FA8',incl:'#4FA9AE',store:'#B59B6E',def:'#8C8C92'};
+var CATI={live:'i-home',prod:'i-sprout',craft:'i-anvil',incl:'i-access',store:'i-box',def:'i-shield'};
+function res(id){return {wood:'i-wood',stone:'i-stone',scrap:'i-scrap',plank:'i-plank',seed:'i-seed',cloth:'i-cloth',parts:'i-parts'}[id];}
+var HAVE={wood:34,stone:12,scrap:8,plank:0,seed:2,cloth:5,parts:3};
+function card(b){var cost=b.cost.map(function(c){var short=HAVE[c[0]]<c[1];return '<span class="chip'+(short?' short':'')+'"><svg class="ic"><use href="#'+res(c[0])+'"/></svg>'+c[1]+'</span>';}).join('');
+  var st=b.lock?'<span class="dim"><svg class="ic"><use href="#i-lock"/></svg>'+b.lock+'</span>':
+    (b.short?'<span class="danger"><svg class="ic"><use href="#i-warn"/></svg>'+b.short+'</span>':'<span class="good"><svg class="ic"><use href="#i-check"/></svg>지을 수 있음</span>');
+  return '<div class="bc'+(b.sel?' sel':'')+(b.lock?' lock':'')+'"><div class="art" style="background:radial-gradient(90% 90% at 50% 70%,'+CATC[b.cat]+'55,transparent 70%)">'+
+    mini(b.w,b.d,b.h,CATC[b.cat],100,64,b.x)+'<span class="sz">'+b.w+'×'+b.d+'</span><span class="cat"><svg class="ic"><use href="#'+CATI[b.cat]+'"/></svg></span>'+
+    (b.lock?'<span class="lk"><svg class="ic"><use href="#i-lock"/></svg></span>':'')+'</div>'+
+    (b.goal?'<span class="goal"><svg class="ic"><use href="#i-flag"/></svg>정착지</span>':'')+(b.nw?'<span class="new">새로</span>':'')+
+    '<div class="nm">'+b.n+'</div><div class="cost">'+cost+'</div><div class="st">'+st+'</div></div>';}
+function fill(id,arr){var el=document.getElementById(id);if(el)el.innerHTML=arr.map(card).join('');}
+fill('g-goal',[
+  {n:'목공소',cat:'craft',w:3,d:3,h:34,x:'roof',cost:[['wood',40]],short:'나무 6 부족',goal:1},
+  {n:'경사로',cat:'incl',w:1,d:2,h:16,x:'ramp',cost:[['wood',10],['stone',10]],goal:1}]);
+fill('g-now',[
+  {n:'벌목장',cat:'prod',w:2,d:2,h:16,x:'logs',cost:[['wood',20]],sel:1,nw:1},
+  {n:'채석장',cat:'prod',w:2,d:2,h:14,cost:[['wood',20],['stone',10]]},
+  {n:'침상',cat:'live',w:1,d:2,h:8,cost:[['wood',10]]},
+  {n:'텃밭',cat:'prod',w:2,d:2,h:4,cost:[['wood',10],['seed',1]]}]);
+fill('g-soon',[
+  {n:'숙소',cat:'live',w:3,d:3,h:30,x:'roof',cost:[['wood',40],['stone',20]],lock:'목공소 필요'},
+  {n:'부엌',cat:'live',w:2,d:3,h:24,x:'roof',cost:[['wood',30],['stone',20]],short:'돌 8 부족'},
+  {n:'식당',cat:'live',w:4,d:4,h:26,x:'roof',cost:[['plank',20],['stone',20]],lock:'부엌 필요'},
+  {n:'가족 숙소',cat:'live',w:3,d:3,h:30,x:'roof',cost:[['plank',20],['stone',30]],lock:'정착지에서'},
+  {n:'창고',cat:'store',w:3,d:3,h:28,x:'roof',cost:[['wood',40]],short:'나무 6 부족'},
+  {n:'목책',cat:'def',w:1,d:1,h:18,cost:[['wood',4]]}]);
+/* tabs in build panel */
+(function(){var el=document.getElementById('b1tabs');if(!el)return;var t=[['i-star','추천',1],['i-home','살림'],['i-sprout','생산'],['i-anvil','제작'],['i-access','포용'],['i-box','보관·설비'],['i-shield','방어']];
+  el.innerHTML=t.map(function(x){return '<span style="display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border-radius:999px;font-size:13.5px;font-weight:'+(x[2]?700:500)+';'+
+    (x[2]?'background:rgba(108,200,255,.22);box-shadow:inset 0 0 0 1.5px rgba(108,200,255,.7);':'background:rgba(255,255,255,.05);color:var(--dim);')+'"><svg class="ic" style="width:16px;height:16px"><use href="#'+x[0]+'"/></svg>'+x[1]+'</span>';}).join('')+
+    '<span style="margin-left:auto;align-self:center;font-size:12px" class="dim"><span class="kp" style="height:18px">Q</span> <span class="kp" style="height:18px">E</span></span>';})();
+/* detail art */
+(function(){var el=document.getElementById('detail-art');if(el)el.outerHTML=mini(2,2,26,CATC.prod,260,140,'logs').replace('<svg ','<svg id="detail-art" ');
+  var ca=document.getElementById('chip-art');if(ca)ca.outerHTML=mini(2,2,16,CATC.prod,54,40,'logs');})();
+/* red mini example */
+(function(){var el=document.getElementById('redmini');if(!el)return;var tw=20,th=10,ox=60,oy=12;function p(x,y){return [ox+(x-y)*tw/2,oy+(x+y)*th/2];}
+  var s='';for(var x=0;x<4;x++)for(var y=0;y<4;y++){s+='<polygon points="'+pts([p(x,y),p(x+1,y),p(x+1,y+1),p(x,y+1)])+'" fill="rgba(255,255,255,.04)" stroke="rgba(108,200,255,.35)" stroke-width=".6"/>';}
+  [[1,1],[2,1]].forEach(function(c){s+='<polygon points="'+pts([p(c[0],c[1]),p(c[0]+1,c[1]),p(c[0]+1,c[1]+1),p(c[0],c[1]+1)])+'" fill="rgba(217,69,59,.55)" stroke="#ff8a7a" stroke-width="1.2"/>';});
+  [[1,2],[2,2]].forEach(function(c){s+='<polygon points="'+pts([p(c[0],c[1]),p(c[0]+1,c[1]),p(c[0]+1,c[1]+1),p(c[0],c[1]+1)])+'" fill="rgba(95,196,107,.5)" stroke="#8BF09A" stroke-width="1.2"/>';});
+  var a=p(2,0),b=p(3.2,0),c=p(3.2,1.4),e=p(2,1.4);s+='<polygon points="'+pts([e,c,[c[0],c[1]-14],[e[0],e[1]-14]])+'" fill="#5b6475"/><polygon points="'+pts([b,c,[c[0],c[1]-14],[b[0],b[1]-14]])+'" fill="#454c5a"/><polygon points="'+pts([[a[0],a[1]-14],[b[0],b[1]-14],[c[0],c[1]-14],[e[0],e[1]-14]])+'" fill="#7b8496"/>';
+  el.innerHTML=s;})();
+/* old rows */
+(function(){var el=document.getElementById('oldrows');if(!el)return;var rows=[['경사로','포함 · 1×2칸','나무 10 · 돌 10','지을 수 있음'],['모닥불','생활 · 1×1칸','나무 5','지을 수 있음'],['목책','방어 · 1×1칸','나무 4','지을 수 있음'],['벌목장','생산 · 2×2칸','나무 20','지을 수 있음'],['채석장','생산 · 2×2칸','나무 20 · 돌 10','지을 수 있음'],['침상','주거 · 1×2칸','나무 10','지을 수 있음'],['가족 숙소','주거 · 3×3칸','목재판 20 · 돌 30 · 천 5','정착지 이상'],['경광등','포함 · 1×1칸','고철 5 · 부품 2','전력 부족'],['고철 해체장','생산 · 2×2칸','나무 30 · 고철 10','재료 부족']];
+  el.innerHTML=rows.map(function(r,i){return '<div style="display:flex;align-items:center;gap:14px;height:46px;padding:0 14px;border-radius:9px;border:'+(i===3?'2px solid var(--accent)':'1px solid rgba(255,255,255,.12)')+';background:rgba(255,255,255,'+(i===3?.08:.03)+')">'+
+    '<div style="flex:1;line-height:1.15"><div style="font-weight:700;font-size:15px;'+(i>5?'color:var(--dim)':'')+'">'+r[0]+'</div><div class="dim" style="font-size:11.5px">'+r[1]+'</div></div><div style="font-size:13px">'+r[2]+'</div><div style="width:110px;text-align:right;font-size:12.5px;color:'+(i>5?'var(--dim)':'var(--good)')+'">'+r[3]+'</div></div>';}).join('');})();
+
+/* portraits */
+function face(skin,hair,shirt,style){var h=style===1?'<path d="M20 30 q20 -26 40 0 v8 q-4 -12 -20 -12 q-16 0 -20 12z" fill="'+hair+'"/>':
+  style===2?'<path d="M18 36 q2 -26 22 -26 q20 0 22 26 l2 22 h-8 l-2 -20 q-14 -4 -28 0 l-2 20 h-8z" fill="'+hair+'"/>':
+  style===3?'<path d="M22 28 q18 -20 36 0 q-18 -6 -36 0z" fill="'+hair+'"/><circle cx="40" cy="14" r="7" fill="'+hair+'"/>':'<path d="M22 30 q18 -22 36 0 q-6 -4 -18 -4 q-12 0 -18 4z" fill="'+hair+'"/>';
+  return '<svg viewBox="0 0 80 80"><rect width="80" height="80" fill="#3a3f4d"/><path d="M12 80 q4 -22 28 -22 q24 0 28 22z" fill="'+shirt+'"/><circle cx="40" cy="38" r="17" fill="'+skin+'"/>'+h+'<circle cx="34" cy="40" r="1.8" fill="#2b2b33"/><circle cx="46" cy="40" r="1.8" fill="#2b2b33"/><path d="M35 47 q5 3 10 0" stroke="#7a4b3a" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>';}
+var PEOPLE=[
+  {n:'서하은',j:'정비',ji:'i-wrench',sk:'#efd0b0',hr:'#3a2a22',sh:'#4f6b82',st:2,need:['i-sad','사기 낮음','warn'],sel:1,acc:1},
+  {n:'윤기철',j:'벌목',ji:'i-axe',sk:'#d9b08a',hr:'#9a9a9a',sh:'#8a6a3e',st:4,need:null},
+  {n:'린',j:'쉬는 중',ji:'i-moon',sk:'#f2d6bb',hr:'#151518',sh:'#c46b5a',st:3,need:['i-food','배고픔','warn']},
+  {n:'조순임',j:'텃밭',ji:'i-sprout',sk:'#e0b896',hr:'#d8d8d8',sh:'#6a9a6a',st:1,need:null},
+  {n:'오만석',j:'경비',ji:'i-shield',sk:'#c99a74',hr:'#202024',sh:'#5a6070',st:4,need:['i-tired','피곤함','dim']},
+  {n:'김다리야',j:'무전',ji:'i-radio',sk:'#a8754e',hr:'#2a1a12',sh:'#9a7ac4',st:2,need:null},
+  {n:'남궁선',j:'벌목',ji:'i-axe',sk:'#efcfae',hr:'#5a3a2a',sh:'#c4a35a',st:1,need:null}];
+(function(){var el=document.getElementById('res-grid');if(!el)return;
+  el.innerHTML=PEOPLE.map(function(p){return '<div style="position:relative;display:flex;gap:10px;align-items:center;padding:10px;border-radius:12px;'+
+    (p.sel?'background:rgba(241,240,234,.14);box-shadow:inset 0 0 0 2px var(--accent)':'background:rgba(255,255,255,.05)')+'">'+
+    '<div class="pt" style="width:54px;height:54px">'+face(p.sk,p.hr,p.sh,p.st)+'</div><div style="min-width:0;flex:1">'+
+    '<div style="font-weight:700;font-size:15px;display:flex;gap:5px;align-items:center">'+p.n+(p.acc?'<svg class="ic" style="width:14px;height:14px;color:var(--info)"><use href="#i-access"/></svg>':'')+'</div>'+
+    '<div style="font-size:12px;display:flex;gap:4px;align-items:center" class="dim"><svg class="ic" style="width:13px;height:13px"><use href="#'+p.ji+'"/></svg>'+p.j+'</div>'+
+    (p.need?'<div style="font-size:11.5px;font-weight:700;display:flex;gap:4px;align-items:center;margin-top:2px" class="'+p.need[2]+'"><svg class="ic" style="width:12px;height:12px"><use href="#'+p.need[0]+'"/></svg>'+p.need[1]+'</div>':'<div style="font-size:11.5px;margin-top:2px" class="good">괜찮음</div>')+
+    '</div>'+(p.need&&p.need[2]==='warn'&&p.need[0]==='i-sad'?'<span style="position:absolute;left:6px;top:4px;font-size:11px" class="warn">▲</span>':'')+'</div>';}).join('')+
+    '<div style="display:flex;gap:10px;align-items:center;padding:10px;border-radius:12px;border:1.5px dashed rgba(241,240,234,.3);color:var(--dim);font-size:13px"><div style="width:54px;height:54px;border-radius:50%;border:1.5px dashed rgba(241,240,234,.3);display:grid;place-items:center"><svg class="ic"><use href="#i-bed"/></svg></div>침상 하나<br>비어 있음</div>';
+  var big=document.getElementById('res-big');if(big)big.innerHTML=face('#efd0b0','#3a2a22','#4f6b82',2);
+  document.querySelectorAll('[data-face]').forEach(function(e){e.innerHTML=face('#d9b08a','#9a9a9a','#8a6a3e',4);});
+  var as=document.getElementById('assign');if(as){as.innerHTML=[PEOPLE[1],PEOPLE[6],PEOPLE[2]].map(function(p,i){var on=i<2;
+    return '<div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:10px;background:'+(on?'#fffaf0':'transparent')+';box-shadow:inset 0 0 0 1.5px rgba(38,38,43,'+(on?.22:.1)+')">'+
+      '<div class="pt" style="width:34px;height:34px">'+face(p.sk,p.hr,p.sh,p.st)+'</div><div style="flex:1;line-height:1.2"><b style="font-size:13.5px">'+p.n+'</b><div style="font-size:11.5px;color:var(--on-cream-dim)">'+(i===0?'전에는 목수 · <b style="color:#2f8a3a">빨리 지음</b>':(i===1?'벌목장에서 빼 옴':'쉬는 중 · 배고픔'))+'</div></div>'+
+      '<span style="width:22px;height:22px;border-radius:6px;display:grid;place-items:center;'+(on?'background:#26262B;color:#fff':'box-shadow:inset 0 0 0 1.5px rgba(38,38,43,.35)')+'">'+(on?'<svg class="ic" style="width:14px;height:14px"><use href="#i-check"/></svg>':'')+'</span></div>';}).join('');}
+  var cp=document.getElementById('companion');if(cp){cp.innerHTML='<div style="display:flex;gap:8px;align-items:center;background:#fffaf0;border-radius:10px;padding:5px 10px 5px 5px;box-shadow:inset 0 0 0 1.5px rgba(38,38,43,.22)"><div class="pt" style="width:34px;height:34px">'+face(PEOPLE[4].sk,PEOPLE[4].hr,PEOPLE[4].sh,PEOPLE[4].st)+'</div><div style="line-height:1.2"><b style="font-size:13.5px">오만석</b><div style="font-size:11.5px;color:var(--on-cream-dim)">전에는 경찰 · 체력 100</div></div></div><span class="btn cream" style="height:32px;font-size:13px">바꾸기</span>';}
+})();
+
+/* facility tree */
+(function(){var el=document.getElementById('tree');if(!el)return;var s='';
+  var bands=[[60,'캐프'],[220,'정착지'],[380,'요새']];
+  bands.forEach(function(b,i){s+='<text x="22" y="'+(b[0]-10)+'" fill="#B9B7AF" font-size="12" font-family="Noto Sans KR">'+b[1]+'</text>';});
+  [140,300].forEach(function(y,i){s+='<line x1="16" y1="'+y+'" x2="724" y2="'+y+'" stroke="rgba(241,240,234,.55)" stroke-width="3" stroke-dasharray="10 6"/>';
+    s+='<g transform="translate(370 '+y+')"><path d="M0 -18 18 0 0 18 -18 0z" fill="#1d2029" stroke="'+(i===0?'#57C2C9':'rgba(241,240,234,.5)')+'" stroke-width="2"/><text y="4" text-anchor="middle" fill="#F1F0EA" font-size="11" font-family="Barlow" font-weight="700">'+(i===0?'1/4':'0/4')+'</text></g>';});
+  function node(x,y,label,state,icon){var col=state==='on'?'#5FC46B':(state==='sel'?'#F6C744':'rgba(241,240,234,.35)');
+    var r='<g transform="translate('+x+' '+y+')"><rect x="-30" y="-30" width="60" height="60" rx="12" fill="'+(state==='on'?'rgba(95,196,107,.18)':'#1d2029')+'" stroke="'+col+'" stroke-width="'+(state==='sel'?3:2)+'"/>'+
+      '<use href="#'+icon+'" x="-14" y="-14" width="28" height="28" style="fill:none;stroke:'+(state==='lock'?'rgba(241,240,234,.4)':'#F1F0EA')+';stroke-width:1.8"/>';
+    if(state==='lock')r+='<g transform="translate(22 -22)"><circle r="10" fill="#14161c" stroke="rgba(241,240,234,.4)"/><use href="#i-lock" x="-6" y="-6" width="12" height="12" style="fill:none;stroke:#F1F0EA;stroke-width:2"/></g>';
+    if(state==='on')r+='<g transform="translate(22 -22)"><circle r="10" fill="#5FC46B"/><path d="M-4 0l3 3 5-6" stroke="#14301a" stroke-width="2" fill="none"/></g>';
+    r+='<text y="48" text-anchor="middle" fill="'+(state==='lock'?'#8f8d86':'#F1F0EA')+'" font-size="13" font-family="Noto Sans KR" font-weight="700">'+label+'</text></g>';return r;}
+  s+='<path d="M150 64 V224 M150 224 V384" stroke="rgba(241,240,234,.35)" stroke-width="2" fill="none"/>';
+  s+='<path d="M180 64 H260 M180 224 H260 M330 224 H410 M180 384 H260 M330 384 H410" stroke="rgba(241,240,234,.25)" stroke-width="2" stroke-dasharray="4 4" fill="none"/>';
+  s+=node(150,64,'Lv 1','on','i-wrench')+node(290,64,'권총 제작','on','i-gun')+
+     node(150,224,'Lv 2','sel','i-up')+node(290,224,'강화 +3','lock','i-star')+node(440,224,'일손 3','lock','i-people')+
+     node(150,384,'Lv 3','lock','i-up')+node(290,384,'소총 제작','lock','i-gun')+node(440,384,'수리 ×2','lock','i-wrench');
+  s+='<text x="560" y="230" fill="#B9B7AF" font-size="12" font-family="Noto Sans KR">Lv 2를 고른 상태</text>';
+  el.innerHTML=s;})();
+
+/* bag */
+(function(){function slot(o){return '<div class="slot'+(o.r?' r'+o.r:'')+(o.sel?' sel':'')+(o.e?' empty':'')+(o.s?' search':'')+'">'+(o.i?'<svg class="ic"><use href="#'+o.i+'"/></svg>':'')+
+  (o.r?'<svg class="rb" viewBox="0 0 10 10">'+({2:'<rect x="1" y="1" width="8" height="8" fill="#5FC46B"/>',3:'<path d="M5 0 10 9H0z" fill="#3FB0E6"/>',4:'<path d="M5 0 10 5 5 10 0 5z" fill="#B072E8"/>'})[o.r]+'</svg>':'')+
+  (o.q?'<span class="q">×'+o.q+'</span>':'')+(o.n?'<span class="nm">'+o.n+'</span>':'')+'</div>';}
+  var eq=document.getElementById('equip');if(eq){var E=[['i-gun','주무기',2],['i-gun','보조',0],['i-axe','근접',0],['i-helmet','머리',0],['i-vest','몸',2],['i-bag','가방',0]];
+    eq.innerHTML=E.map(function(e){return '<div style="display:grid;justify-items:center;gap:3px">'+slot({i:e[0],r:e[2]})+'<span style="font-size:11px" class="dim">'+e[1]+'</span></div>';}).join('');}
+  var pk=document.getElementById('pack');if(pk){var I=[{i:'i-ammo',q:42,n:'권총탄'},{i:'i-bandage',q:3,n:'붕대'},{i:'i-medkit',r:3,n:'구급상자',sel:1},{i:'i-scrap',q:6,n:'고철'},{i:'i-cloth',q:2,n:'천'},{i:'i-parts',q:1,r:2,n:'부품'},
+      {i:'i-food',q:2,n:'통조림'},{i:'i-wood',q:4,n:'나무'},{i:'i-key',r:4,n:'열쇠'},{i:'i-crystal',q:3,r:3,n:'하급 정수'},{i:'i-radio',r:2,n:'무전 부품'},{i:'i-stone',q:5,n:'돌조각'},{i:'i-seed',q:2,n:'씨앗'}];
+    for(var k=I.length;k<18;k++)I.push({e:1});pk.innerHTML=I.map(slot).join('');}
+  var lt=document.getElementById('loot');if(lt){lt.innerHTML=[{i:'i-medkit',r:3,n:'구급상자'},{i:'i-bandage',q:2,n:'붕대'},{i:'i-parts',q:1,r:2,n:'부품'},{s:1},{s:1},{s:1},{e:1},{e:1}].map(slot).join('');}
+  var hb=document.getElementById('hotbar');if(hb){hb.innerHTML=[['3','i-bandage','×3'],['4','i-medkit',''],['5',null,''],['6',null,'']].map(function(h){return '<div style="display:grid;justify-items:center;gap:3px"><div class="slot'+(h[1]?'':' empty')+'" style="width:52px;height:52px;border-style:'+(h[1]?'solid':'dashed')+'">'+(h[1]?'<svg class="ic"><use href="#'+h[1]+'"/></svg><span class="q">'+h[2]+'</span>':'')+'</div><span class="kc" style="height:16px;font-size:10px">'+h[0]+'</span></div>';}).join('');}
+  var bt=document.getElementById('bagtabs');if(bt){var T=[['i-bag','가방','13/24칸',1],['i-map','지도'],['i-book','일지'],['i-gear','시스템']];
+    bt.innerHTML=T.map(function(t){return '<div style="display:grid;justify-items:center;gap:3px"><div style="width:42px;height:42px;border-radius:50%;display:grid;place-items:center;'+(t[3]?'background:rgba(108,200,255,.25);box-shadow:0 0 0 2px #6CC8FF,0 0 14px rgba(108,200,255,.5)':'background:rgba(241,240,234,.1)')+'"><svg class="ic" style="width:20px;height:20px"><use href="#'+t[0]+'"/></svg></div>'+(t[3]?'<span style="font-size:11px">'+t[2]+'</span>':'')+'</div>';}).join('');}
+  var jt=document.getElementById('jtabs');if(jt){var J=[['i-book','일지','부탁 2',1],['i-map','지도'],['i-radio','녹음'],['i-people','주민별']];
+    jt.innerHTML=J.map(function(t){return '<div style="display:grid;justify-items:center;gap:3px"><div style="width:42px;height:42px;border-radius:50%;display:grid;place-items:center;'+(t[3]?'background:rgba(108,200,255,.25);box-shadow:0 0 0 2px #6CC8FF,0 0 14px rgba(108,200,255,.5)':'background:rgba(241,240,234,.1)')+'"><svg class="ic" style="width:20px;height:20px"><use href="#'+t[0]+'"/></svg></div>'+(t[3]?'<span style="font-size:11px">'+t[2]+'</span>':'')+'</div>';}).join('');}
+  var rw=document.getElementById('reward');if(rw){rw.innerHTML=[{i:'i-plank',q:10,n:'목재판'},{i:'i-parts',q:2,r:2,n:'부품'}].map(function(o){return '<div style="filter:invert(.88) hue-rotate(180deg)">'+slot(o)+'</div>';}).join('');}
+  /* craft tabs + recipes */
+  var ct=document.getElementById('crafttabs');if(ct){ct.innerHTML=[['제작',1],['강화'],['수리']].map(function(t){return '<span style="height:32px;padding:0 14px;display:inline-flex;align-items:center;border-radius:999px;font-size:13.5px;'+(t[1]?'background:rgba(241,240,234,.14);box-shadow:inset 0 0 0 1.5px var(--line-strong);font-weight:700':'color:var(--dim)')+'">'+t[0]+'</span>';}).join('')+
+    '<span style="flex:1"></span>'+[['i-star',0],['i-gun',1],['i-ammo',0],['i-vest',0]].map(function(t){return '<span style="width:34px;height:34px;border-radius:50%;display:grid;place-items:center;'+(t[1]?'background:#a8865e;color:#fff':'background:rgba(255,255,255,.06);color:var(--dim)')+'"><svg class="ic"><use href="#'+t[0]+'"/></svg></span>';}).join('');}
+  var rc=document.getElementById('recipes');if(rc){var R=[['수제 권총','i-gun',1,'1',1],['나무 활','i-axe',1,'0'],['삽','i-pick',1,'1'],['쇠파이프 몽둥이','i-wrench',1,'0'],['수제 소총','i-gun',0,'0','부품 2 부족'],['소음기','i-noise',0,'0','설계도 필요']];
+    rc.innerHTML=R.map(function(r){return '<div style="display:flex;align-items:center;gap:12px;height:50px;padding:0 12px;border-radius:10px;'+(r[2]?'background:rgba(95,196,107,.32);':'background:rgba(255,255,255,.04);color:var(--dim);')+(r[4]===1?'box-shadow:inset 0 0 0 2px var(--accent);':'')+'">'+
+      '<svg class="ic" style="width:24px;height:24px"><use href="#'+r[1]+'"/></svg><b style="flex:1;font-size:15px">'+r[0]+'</b>'+(typeof r[4]==='string'?'<span style="font-size:12.5px" class="'+(r[4].indexOf('부족')>0?'danger':'dim')+'">'+r[4]+'</span>':'')+'<span class="num dim" style="font-size:12px">보유 '+r[3]+'</span></div>';}).join('');}
+})();
+
+/* city map */
+(function(){var el=document.getElementById('citymap');if(!el)return;var s='';
+  s+='<rect width="1280" height="720" fill="#2d5a6a"/>';
+  s+='<path d="M0 0 H1280 V420 C1180 470 1080 430 980 500 C880 560 760 520 660 590 C560 650 420 610 300 680 L0 720 Z" fill="#cdbf9c"/>';
+  s+='<path d="M0 0 H1280 V400 C1180 450 1080 410 980 480 C880 540 760 500 660 570 C560 630 420 590 300 660 L0 700 Z" fill="#b7ab88"/>';
+  s+='<path d="M420 260 C520 230 640 280 700 350 C740 400 700 470 620 480 C520 490 430 440 400 380 C380 330 380 280 420 260Z" fill="#6e9fae" opacity=".9"/>';
+  s+='<path d="M380 150 C470 110 580 130 600 200 C615 250 560 290 480 290 C410 290 350 250 350 200 C350 175 360 160 380 150Z" fill="#7ea35f"/>';
+  for(var i=0;i<46;i++){var x=375+((i*53)%210),y=150+((i*37)%120);s+='<circle cx="'+x+'" cy="'+y+'" r="'+(6+(i%3)*2)+'" fill="'+(i%2?'#5f8a48':'#6d974f')+'"/>';}
+  for(var k=0;k<36;k++){var bx=760+((k*71)%360),by=90+((k*43)%250);s+='<rect x="'+bx+'" y="'+by+'" width="'+(18+(k%4)*8)+'" height="'+(14+(k%3)*10)+'" fill="'+(k%2?'#9d927a':'#8f856f')+'" stroke="#776d58" stroke-width="1"/>';}
+  for(var m=0;m<14;m++){var mx=450+((m*41)%220),my=290+((m*29)%140);s+='<rect x="'+mx+'" y="'+my+'" width="22" height="16" fill="rgba(140,130,110,.75)" stroke="#5d7d88"/>';}
+  s+='<path d="M60 600 C200 520 300 420 420 360 S700 300 820 220 S1060 120 1240 90" stroke="#e8dfc6" stroke-width="10" fill="none" stroke-linecap="round" opacity=".7"/>';
+  s+='<path d="M560 660 C620 600 700 560 760 520" stroke="#e8dfc6" stroke-width="6" fill="none" opacity=".6"/>';
+  s+='<g transform="translate(590 390)"><circle r="64" fill="none" stroke="#F1F0EA" stroke-width="3" stroke-dasharray="6 6"/></g>';
+  function pin(x,y,shape,col,name,sub,lock,sel){var sh=shape==='c'?'<circle r="11" fill="'+col+'" stroke="#14161c" stroke-width="2.5"/>':shape==='t'?'<path d="M0 -13 12 9H-12z" fill="'+col+'" stroke="#14161c" stroke-width="2.5"/>':'<rect x="-9" y="-9" width="18" height="18" transform="rotate(45)" fill="'+col+'" stroke="#14161c" stroke-width="2.5"/>';
+    if(lock)sh='<circle r="13" fill="#2b2f3a" stroke="rgba(241,240,234,.6)" stroke-width="2"/><use href="#i-lock" x="-8" y="-8" width="16" height="16" style="fill:none;stroke:#F1F0EA;stroke-width:2"/>';
+    return '<g transform="translate('+x+' '+y+')">'+(sel?'<circle r="24" fill="rgba(246,199,68,.25)"/>':'')+sh+
+      '<g transform="translate(0 22)"><rect x="-'+(name.length*7+14)+'" y="0" width="'+(name.length*14+28)+'" height="38" rx="8" fill="rgba(20,22,29,.82)"/><text y="16" text-anchor="middle" fill="#F1F0EA" font-size="14" font-weight="700" font-family="Noto Sans KR">'+name+'</text><text y="31" text-anchor="middle" fill="#B9B7AF" font-size="11" font-family="Noto Sans KR">'+sub+'</text></g></g>';}
+  s+=pin(480,215,'c','#5FC46B','숲이 된 도심 공원','위험 1 · 수풀');
+  s+=pin(590,390,'t','#E8A23A','침수 상가','위험 2 · 소문 1',0,1);
+  s+=pin(745,210,'d','#D9453B','고층 업무지구','정착지 + 승강기 열쇠',1);
+  s+=pin(790,520,'t','#E8A23A','병원','정착지에서 열림',1);
+  s+=pin(1010,600,'d','#D9453B','항구','무전실 Lv2 신호',1);
+  s+='<g transform="translate(440 560)"><rect x="-26" y="-20" width="52" height="34" rx="6" fill="#F1F0EA"/><use href="#i-home" x="-11" y="-14" width="22" height="22" style="fill:none;stroke:#26262B;stroke-width:2"/><text y="34" text-anchor="middle" fill="#F1F0EA" font-size="13" font-weight="700" font-family="Noto Sans KR">기지 (학교)</text></g>';
+  el.innerHTML=s;})();
+fit();
+})();
+</script>

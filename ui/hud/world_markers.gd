@@ -9,6 +9,8 @@ extends Control
 ##   Updated from each monster's `state_changed` signal (B-07); the first value is read once.
 ## - Edge arrows: noises and alerted monsters outside the view leave an arrow on the screen edge
 ##   (Settings.sound_arrows). Shape + colour + a short label, never colour alone.
+## - Map ping (FieldState.ping): pin on the spot when on screen, else a ground arrow at the
+##   player's feet. Distance beside it.
 ## Computes no game rules: radius and states come from Lane B.
 
 const RING_SEC := 0.7
@@ -18,6 +20,8 @@ const EDGE_PAD := 60.0
 const ARROW_INSET := {"left": 70.0, "right": 70.0, "top": 140.0, "bottom": 210.0}
 const MARK_HEIGHT := 2.3
 const RING_STEPS := 40
+## Ping arrow: starts this far from the player's feet (m), 0.6 m long.
+const PING_ARROW_M := 1.4
 
 var _rings: Array[Dictionary] = []  # {pos: Vector3, radius: float, t: float}
 var _arrows: Array[Dictionary] = []  # {pos: Vector3, t: float, kind: StringName, label: String}
@@ -92,6 +96,7 @@ func _draw() -> void:
 	var view := Rect2(Vector2.ZERO, size)
 	for r in _rings:
 		_draw_ring(cam, r)
+	_draw_ping(cam, view)
 	for m in get_tree().get_nodes_in_group(&"field_monsters"):
 		var kind := mark_for(int(_states.get(m.get_instance_id(), 0)))
 		if kind == &"" or not m is Node3D:
@@ -123,6 +128,40 @@ func _draw_ring(cam: Camera3D, r: Dictionary) -> void:
 		pts.append(cam.unproject_position(wp))
 	draw_polyline(pts, Color(0, 0, 0, col.a * 0.35), float(style[1]) + 2.0, true)
 	draw_polyline(pts, col, float(style[1]), true)
+
+
+## Map ping (FieldState, set on the M map). On screen: a pin on the spot. Off screen: an arrow on
+## the ground at the player's feet pointing at it. The distance sits beside either.
+func _draw_ping(cam: Camera3D, view: Rect2) -> void:
+	if not FieldState.has_ping:
+		return
+	var p := get_tree().get_first_node_in_group(&"player") as Node3D
+	if p == null:
+		return
+	var target := FieldState.ping
+	var flat := Vector3(target.x - p.global_position.x, 0.0, target.z - p.global_position.z)
+	var label := "%dm" % roundi(flat.length())
+	var sp := cam.unproject_position(target)
+	if not cam.is_position_behind(target) and view.grow(-EDGE_PAD).has_point(sp):
+		MapView.draw_symbol(self, sp, &"ping")
+		_center_text(sp + Vector2(0, 18), label, 17, UiTokens.TEXT, true)
+		return
+	# Built flat on the ground in world space, then projected, so it lies on the floor.
+	var dir := flat.normalized()
+	var side := Vector3(-dir.z, 0.0, dir.x)
+	var back := p.global_position + Vector3.UP * 0.05 + dir * PING_ARROW_M
+	var tip := back + dir * 0.6
+	var tri: Array[Vector3] = [tip, back + side * 0.35, back - side * 0.35]
+	for w in tri:
+		if cam.is_position_behind(w):
+			return
+	var pts := PackedVector2Array()
+	for w in tri:
+		pts.append(cam.unproject_position(w))
+	draw_colored_polygon(pts, UiTokens.PING)
+	pts.append(pts[0])
+	draw_polyline(pts, Color(0, 0, 0, 0.8), 2.0, true)
+	_center_text(cam.unproject_position(tip + dir * 0.6), label, 17, UiTokens.TEXT, true)
 
 
 func _draw_mark(at: Vector2, kind: StringName) -> void:

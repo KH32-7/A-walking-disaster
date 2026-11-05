@@ -6,6 +6,7 @@
 script = ExtResource("1_8lncp")
 id = &"vegetable_garden"
 display_name = "텃밭"
+description = "주민이 씨앗을 심어 식량을 길러요."
 category = 1
 size = Vector2i(2, 2)
 cost = Dictionary[StringName, int]({
