@@ -83,6 +83,8 @@ var _street_mult := 1.0
 const STREET_LAMP_SCENES := ["parking_lot_light_pole_01.fbx"]
 ## The bulb hangs this far below the top of the post.
 const STREET_LAMP_DROP := 0.3
+## A builder "Lamp" light this close (m, on the ground) to a lamp post belongs to it.
+const BUILDER_LAMP_MATCH := 1.0
 
 
 func _ready() -> void:
@@ -385,6 +387,7 @@ func _street_lights() -> void:
 	var bulb_mesh := SphereMesh.new()
 	bulb_mesh.radius = 0.16
 	bulb_mesh.height = 0.32
+	var post_spots: Array[Vector2] = []  # the foot of every post, standing or fallen
 	for n in region.find_children("*", "Node3D", true, false):
 		if not _is_street_lamp(n):
 			continue
@@ -396,9 +399,12 @@ func _street_lights() -> void:
 		if mi == null or not mi.is_visible_in_tree():
 			continue
 		var xf := mi.global_transform
+		var box := mi.get_aabb()
+		# The pack FBX roots carry a stray offset (CityKit), so the post is located by its mesh.
+		var foot := xf * Vector3(box.get_center().x, box.position.y, box.get_center().z)
+		post_spots.append(Vector2(foot.x, foot.z))
 		if xf.basis.y.normalized().dot(Vector3.UP) < 0.9:
 			continue  # fallen post
-		var box := mi.get_aabb()
 		var top := xf * Vector3(box.get_center().x, box.end.y, box.get_center().z)
 		var at := top - Vector3.UP * STREET_LAMP_DROP
 		var spot := SpotLight3D.new()
@@ -425,6 +431,7 @@ func _street_lights() -> void:
 		_street_spots.append(spot)
 		if not no_flicker and _rng.randf() < street_light_flicker:
 			_flicker_spots.append(spot)
+	_hide_builder_lamps(region, post_spots)
 	if _street_spots.is_empty():
 		return
 	FieldState.dusk_started.connect(_set_street_mult.bind(street_light_dusk_mult))
@@ -433,6 +440,20 @@ func _street_lights() -> void:
 		_set_street_mult(street_light_night_mult)
 	elif FieldState.is_dusk():
 		_set_street_mult(street_light_dusk_mult)
+
+
+## The layout builder (field/build/layout_builder.gd LAMP_LIGHTS) also bakes a plain "Lamp" omni light
+## over each lamp post into the buildings scene, even over fallen ones. The posts' lights are the
+## spots above, so those omnis are switched off (light towers keep theirs).
+func _hide_builder_lamps(region: Node, post_spots: Array[Vector2]) -> void:
+	if post_spots.is_empty():
+		return
+	for n in region.find_children("Lamp*", "OmniLight3D", true, false):
+		var p := (n as Node3D).global_position
+		for s in post_spots:
+			if Vector2(p.x, p.z).distance_to(s) < BUILDER_LAMP_MATCH:
+				(n as OmniLight3D).visible = false
+				break
 
 
 func _is_street_lamp(n: Node) -> bool:

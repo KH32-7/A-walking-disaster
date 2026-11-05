@@ -25,11 +25,21 @@ func run() -> bool:
 	water_root.add_child(surf)
 	var standing := _lamp_post(map, Vector3(5, 0, 5), false)
 	_lamp_post(map, Vector3(-5, 0, 5), true)
+	# The layout builder's own omni over each post (also over the fallen one) and a light tower's.
+	var builder_lamps: Array[OmniLight3D] = []
+	for at: Vector3 in [Vector3(5, 6.4, 5), Vector3(-5, 6.4, 5), Vector3(30, 7.0, 0)]:
+		var lamp := OmniLight3D.new()
+		lamp.name = "Lamp"
+		map.add_child(lamp, true)
+		lamp.position = at
+		builder_lamps.append(lamp)
 	var d: RegionDressing = load("res://levels/field/flooded_mall/dressing.tscn").instantiate()
 	map.add_child(d)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	ok = _expect(d.street_light_count() == 1, "only the standing lamp post lights up (%d)" % d.street_light_count()) and ok
+	ok = _expect(not builder_lamps[0].visible and not builder_lamps[1].visible and builder_lamps[2].visible,
+		"the builder's lamp-post omnis go off, a light tower's stays") and ok
 	var spot: SpotLight3D = null
 	for c in d.get_children():
 		if c is SpotLight3D:
