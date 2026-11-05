@@ -38,11 +38,31 @@ func _ready() -> void:
 	subtitle.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_KEEP_SIZE)
 	subtitle.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	subtitle.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	subtitle.offset_bottom = -120
+	subtitle.offset_bottom = -200
 	_rebuild_theme()
 	_load_defs()
 	EventBus.settings_changed.connect(_on_settings_changed)
 	EventBus.radio_message.connect(_on_radio_message)
+	EventBus.flow_state_changed.connect(_on_flow_state_changed)
+	_on_flow_state_changed(GameState.flow_state)
+
+
+## The field HUD (D-04). Created on first use, shown only in FlowState.FIELD.
+var field_hud: FieldHud
+
+
+func show_field_hud(on: bool) -> void:
+	if on and field_hud == null:
+		field_hud = FieldHud.new()
+		field_hud.name = &"FieldHud"
+		hud.add_child(field_hud)
+	if field_hud != null:
+		field_hud.visible = on
+		field_hud.process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
+
+
+func _on_flow_state_changed(state: Enums.FlowState) -> void:
+	show_field_hud(state == Enums.FlowState.FIELD)
 
 
 # --- public API (contracts.md) ---
