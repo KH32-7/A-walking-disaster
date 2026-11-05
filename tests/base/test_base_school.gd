@@ -69,7 +69,11 @@ func _test_player(base: Node3D, layout: Node) -> bool:
 	var player := base.get_node("Player") as Node3D
 	var ok := _check(player is Player and player.global_position.distance_to(spawn.global_position) < 0.01, "플레이어가 시작점에 놓임")
 	ok = _check(base.get_node("FieldCamera") is FieldCamera, "쿼터뷰 카메라") and ok
-	ok = _check(base.get_node_or_null("GreyboxSun") != null, "dressing이 없으면 임시 조명") and ok
+	# Lane D's dressing.tscn may or may not exist yet (D-10, issue #57).
+	if ResourceLoader.exists("res://levels/base/base_school/dressing.tscn"):
+		ok = _check(base.get_node_or_null("Dressing") != null and base.get_node_or_null("GreyboxSun") == null, "dressing이 있으면 dressing을 붙이고 임시 조명은 없음") and ok
+	else:
+		ok = _check(base.get_node_or_null("GreyboxSun") != null, "dressing이 없으면 임시 조명") and ok
 	return ok
 
 
