@@ -44,8 +44,8 @@ func _start() -> void:
 		return
 	var na := ResidentText.call_name(Colony.get_resident(a))
 	var nb := ResidentText.call_name(Colony.get_resident(b))
-	set_subtitle("%s · %s" % [na, nb])
-	var chip := ["◆ 결혼 약속", UiTokens.TEXT] if state != &"none" else ["● 연인", UiTokens.TEXT]
+	set_subtitle("%s / %s" % [na, nb])
+	var chip := ["결혼 약속", UiTokens.TEXT] if state != &"none" else ["● 연인", UiTokens.TEXT]
 	draw_people([a, b], {a: [chip], b: [chip]})
 	match state:
 		&"none":
@@ -53,7 +53,7 @@ func _start() -> void:
 			dialog.set_choices([[&"close", "돌아간다"]])
 		&"ready":
 			dialog.say(na, "다음 밤이면 우리 결혼식이야. 다들 와 줄 거지?", a)
-			dialog.set_notes([["◆ 다음 밤 결혼식", UiTokens.TEXT]])
+			dialog.set_notes([["다음 밤 결혼식", UiTokens.TEXT]])
 			dialog.set_choices([[&"close", "돌아간다"]])
 		_:
 			dialog.say(na, "우리, 정말 결혼하는 거야. 준비를 도와줄래?", a)
@@ -86,7 +86,7 @@ func _on_choice(id: StringName) -> void:
 				_status = Colony.wedding_status(a, b)
 				_band(ResidentEventFlow.wedding_state(_status))
 				dialog.say(ResidentText.call_name(Colony.get_resident(b)), "고마워. 다음 밤, 모두 와 줘.", b)
-				dialog.set_notes([["◆ 다음 밤 결혼식", UiTokens.TEXT], ["▼ " + MenuScreen.cost_text(cost), UiTokens.TEXT_DIM]])
+				dialog.set_notes([["다음 밤 결혼식", UiTokens.TEXT], ["▼ " + MenuScreen.cost_text(cost), UiTokens.TEXT_DIM]])
 				dialog.set_choices([[&"close", "좋아요"]])
 				refresh_header()
 				_refresh_column()
@@ -111,7 +111,7 @@ func _refresh_column() -> void:
 			v.add_child(card_text("연인이 된 지 오래되고 관계가 깊어지면 청혼하는 밤이 와요.", true))
 			return
 		&"ready":
-			v.add_child(card_title("준비 끝 — 다음 밤 결혼식"))
+			v.add_child(card_title("준비 끝: 다음 밤 결혼식"))
 		_:
 			v.add_child(card_title("준비할 것"))
 	# What the base already has (✓), then what it still lacks in the teal box with build links.
@@ -121,13 +121,13 @@ func _refresh_column() -> void:
 		var need := int(cost[res])
 		var have := Economy.get_amount(StringName(res))
 		if state == &"ready":
-			v.add_child(ResidentEventScreen.mark_row("✓", "%s %d  ·  냈어요" % [MenuScreen.resource_name(StringName(res)), need]))
+			v.add_child(ResidentEventScreen.mark_row("✓", "%s %d / 냈어요" % [MenuScreen.resource_name(StringName(res)), need]))
 		elif have >= need:
-			v.add_child(ResidentEventScreen.mark_row("✓", "%s %d  ·  지금 %d" % [MenuScreen.resource_name(StringName(res)), need, have]))
+			v.add_child(ResidentEventScreen.mark_row("✓", "%s %d / 지금 %d" % [MenuScreen.resource_name(StringName(res)), need, have]))
 	if state == &"ready":
-		v.add_child(ResidentEventScreen.mark_row("✓", "가족 숙소  ·  두 사람이 함께 쓸 곳을 맡아 뒀어요"))
+		v.add_child(ResidentEventScreen.mark_row("✓", "가족 숙소 / 두 사람이 함께 쓸 곳을 맡아 뒀어요"))
 	elif house != &"":
-		v.add_child(ResidentEventScreen.mark_row("✓", "빈 가족 숙소  ·  %s 하나가 비어 있어요" % _building_name(house)))
+		v.add_child(ResidentEventScreen.mark_row("✓", "빈 가족 숙소 / %s 하나가 비어 있어요" % _building_name(house)))
 	var miss := ResidentEventFlow.wedding_missing(_status)
 	if state != &"ready" and not miss.is_empty():
 		var lines: Array = []
@@ -135,7 +135,7 @@ func _refresh_column() -> void:
 			var t := String(m)
 			for res in cost:
 				if t.begins_with(MenuScreen.resource_name(StringName(res)) + " "):
-					t += "  ·  지금 %d" % Economy.get_amount(StringName(res))
+					t += " / 지금 %d" % Economy.get_amount(StringName(res))
 			lines.append(t)
 		v.add_child(ResidentEventFlow.lack_box("결혼식", lines))
 	v.add_child(HSeparator.new())

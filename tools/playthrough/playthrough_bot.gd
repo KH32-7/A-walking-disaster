@@ -366,7 +366,7 @@ func _rescue_and_extract() -> bool:
 		who.global_position = point.global_position + Vector3(20, 0.1, 0)
 	print("[bot] rescue target state=", who.state, " in_party=", who.is_in_group(ExtractionManager.PARTY_GROUP),
 		" dist=", who.global_position.distance_to(player.global_position), " template=", who.spawn.template_id)
-	var asked := await _until(func() -> bool: return _confirm_dialog() != null, "구조한 사람이 멀면 '두고 갈까요?'를 물음", 20.0)
+	var asked := await _until(func() -> bool: return _confirm_dialog() != null, "구조한 사람이 멀면 '두고 갈까요?'를 물음", 30.0)  # the generator exit waits 20 s
 	if asked:
 		await _shot("leave_behind_dialog")
 		_button(_confirm_dialog(), "취소").pressed.emit()
@@ -463,7 +463,17 @@ func _quick_intro() -> void:
 	var people := get_tree().get_nodes_in_group(RescueTarget.GROUP)
 	print("[bot] park survivors: ", people.map(func(t) -> String: return "%s(%s)" % [t.profile.get("name", "?"), t.interact_label()]))
 	_check(people.size() >= 3, "공원에 구할 사람이 여럿 있음 (%d명)" % people.size())
+	var office_rect: Rect2 = UI.tutorial._building_rect(UI.tutorial._office_pos())
+	var inside := UI.tutorial._guards.filter(func(m) -> bool:
+		return is_instance_valid(m) and office_rect.has_point(Vector2(m.global_position.x, m.global_position.z)))
+	_check(office_rect.has_area() and not UI.tutorial._guards.is_empty() and inside.is_empty(),
+		"관리사무소 마물은 건물 밖에 있음 (%d마리 중 안에 %d)" % [UI.tutorial._guards.size(), inside.size()])
+	_check(UI.world_markers.banner_text().begins_with("의사는"), "목표 설명이 위쪽에 잠깐 뜸 (지금 '%s')" % UI.world_markers.banner_text())
 	await _shot("i_park_quest")
+	await get_tree().create_timer(WorldMarkers.BANNER_SEC).timeout
+	_check(UI.world_markers.banner_text() == "", "목표 설명은 잠깐 뒤 사라짐")
+	_check(not UI.subtitle.visible or UI.subtitle.current_text() != "", "빈 무전 자막 창이 남지 않음")
+	await _shot("i_park_diamond_only")
 	UI.open(&"map")
 	await _frames(20)
 	await _shot("i_park_map")
@@ -479,6 +489,10 @@ func _quick_intro() -> void:
 		if is_instance_valid(m):
 			m.take_damage(99999.0, {"source": player})
 	await get_tree().create_timer(1.5).timeout
+	var outside := Vector3(office_rect.end.x + 3.0, player.global_position.y, office_rect.get_center().y)
+	player.global_position = outside
+	await get_tree().create_timer(0.6).timeout
+	_check(UI.tutorial.current_step() == &"quest", "관리사무소 밖에선 아직 일으켜 세우기 안내 없음 (지금 %s)" % UI.tutorial.current_step())
 	if doctor != null:
 		player.global_position = doctor.global_position + Vector3(1.2, 0, 1.2)
 		await get_tree().create_timer(0.8).timeout
@@ -489,6 +503,14 @@ func _quick_intro() -> void:
 		_check(doctor.is_rescued(), "의사가 따라옴")
 		_check(UI.tutorial.current_step() == &"extract", "탈출 안내 (지금 %s)" % UI.tutorial.current_step())
 		await _shot("i_extract")
+	var em := get_tree().get_first_node_in_group(ExtractionManager.GROUP) as ExtractionManager
+	var points: Array[ExtractPoint] = em.active_points() if em != null else []
+	_check(not points.is_empty() and points.all(func(e: ExtractPoint) -> bool: return e.has_node(^"ExtractBeacon")),
+		"열린 탈출 지점마다 빛기둥 표시")
+	if not points.is_empty():
+		player.global_position = points[0].global_position + Vector3(0, 0, 9)
+		await get_tree().create_timer(1.0).timeout
+		await _shot("i_extract_point")
 
 
 ## The intro: cutscene (shots, or skipped), then the house steps done by hand.
@@ -572,8 +594,8 @@ func _intro(shots: bool) -> bool:
 		ev.pressed = true
 		UI.cinematic._input(ev)
 		n += 1
-	_check(GameState.has_flag(IntroCutscene.FLAG_TALKED), "한도윤이 의사를 부탁함")
-	_check(not Colony.get_resident(&"intro_doyun").is_empty(), "한도윤이 주민이 됨 (부상)")
+	_check(GameState.has_flag(IntroCutscene.FLAG_TALKED), "방송실 지기가 의사를 부탁함")
+	_check(Colony.get_resident(&"broadcaster").is_empty(), "방송실 지기는 주민이 아님 (고정 NPC)")
 	await get_tree().create_timer(0.8).timeout
 	_check(UI.tutorial.current_step() == &"exit", "나가기 안내 (지금 %s)" % UI.tutorial.current_step())
 	if shots:
@@ -749,7 +771,7 @@ func _build_something() -> void:
 	if Colony.active_resident_ids().is_empty():
 		_check(put == null and _label_with(site._detail, "주민이 없") != null, "주민이 없으면 현장 카드가 그렇게 알려 줌")
 	elif able.is_empty():
-		# 1일차: only the injured 한도윤 — the card says why nobody can go.
+		# Only injured residents: the card says why nobody can go.
 		_check(put == null and _label_with(site._detail, "부상") != null, "다친 주민뿐이면 현장 카드가 '부상'이라고 알려 줌")
 		_unstaffed_site = true
 	elif _check(put != null, "현장에 보낼 주민이 있음"):
@@ -867,15 +889,14 @@ func _back_home_and_sleep(next_day: int) -> bool:
 	if not await _until(func() -> bool: return GameState.flow_state == Enums.FlowState.EVENING, "결과 → 저녁"):
 		return false
 	await _frames(20)
-	# 입주 의식 for anyone rescued
+	# 새 식구 인사 for anyone rescued
 	var guard := 0
 	while UI.is_open(&"welcome") and guard < 40:
 		guard += 1
 		var w: Node = UI.get_screen(&"welcome")
 		if guard == 1:
 			await _shot("welcome")
-		if w._next_button != null:
-			w._next_button.pressed.emit()
+		w._on_choice(&"hello")  # 새 식구 인사: one line, "반가워요" (2026-11-06)
 		await _frames(4)
 	return await _evening_night(next_day)
 
@@ -887,8 +908,7 @@ func _evening_night(next_day: int) -> bool:
 		var w: Node = UI.get_screen(&"welcome")
 		if guard == 1:
 			await _shot("welcome")
-		if w._next_button != null:
-			w._next_button.pressed.emit()
+		w._on_choice(&"hello")  # 새 식구 인사: one line, "반가워요" (2026-11-06)
 		await _frames(4)
 	await _until(func() -> bool: return UI.is_open(&"evening"), "저녁 정산 화면이 열림")
 	await _frames(10)

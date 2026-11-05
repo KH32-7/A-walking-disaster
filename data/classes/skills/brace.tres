@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_skill")
 id = &"brace"
+name = "버티기"
 cooldown_sec = 18.0
 duration_sec = 3.0
 radius = 6.0

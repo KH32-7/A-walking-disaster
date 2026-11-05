@@ -94,11 +94,11 @@ static func job_block_reason(resident: Dictionary, job: JobDef) -> String:
 	if job.id == REST_JOB:
 		return ""
 	if age == Enums.AgeStage.BABY or age == Enums.AgeStage.CHILD:
-		return "아이는 일하지 않음 (돌봄방·교실)"
+		return "아이는 일하지 않음 (돌봄방, 교실)"
 	if age == Enums.AgeStage.TEEN and (not job.teen_allowed or job.combat_role):
 		return "청소년은 가벼운 작업만"
 	if int(resident["health"]) != Enums.HealthState.OK:
-		return "부상·질병 중"
+		return "부상, 질병 중"
 	return ""
 
 

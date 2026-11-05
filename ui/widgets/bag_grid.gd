@@ -9,8 +9,13 @@ signal hovered(entry: Dictionary, global_rect: Rect2)
 signal unhovered()
 signal context_requested(entry: Dictionary, at: Vector2)
 
-const CELL := 72.0
+## Cell size: the screen calls fit_rows() so the bag fills the height it has (2026-11-06 UI pass:
+## 72 px cells read small and cramped). Never below MIN_CELL or above MAX_CELL.
+const MAX_CELL := 92.0
+const MIN_CELL := 60.0
 const GAP := 6.0
+
+var cell := MAX_CELL
 
 @export var area := Bag.AREA_BAG
 
@@ -36,7 +41,15 @@ func grid_cells() -> Vector2i:
 
 func _get_minimum_size() -> Vector2:
 	var g := grid_cells()
-	return Vector2(g.x * (CELL + GAP) - GAP, g.y * (CELL + GAP) - GAP)
+	return Vector2(g.x * (cell + GAP) - GAP, g.y * (cell + GAP) - GAP)
+
+
+## Picks the largest cell that fits `rows` rows in `height` px (rows of this grid plus any rows the
+## screen stacks under it, like the safe pocket).
+func fit_rows(height: float, rows: int) -> void:
+	cell = clampf(floorf((height + GAP) / maxi(1, rows) - GAP), MIN_CELL, MAX_CELL)
+	update_minimum_size()
+	queue_redraw()
 
 
 func refresh() -> void:
@@ -50,11 +63,11 @@ func refresh() -> void:
 
 
 func cell_rect(c: Vector2i, s: Vector2i = Vector2i.ONE) -> Rect2:
-	return Rect2(Vector2(c) * (CELL + GAP), Vector2(s) * (CELL + GAP) - Vector2(GAP, GAP))
+	return Rect2(Vector2(c) * (cell + GAP), Vector2(s) * (cell + GAP) - Vector2(GAP, GAP))
 
 
 func cell_at(p: Vector2) -> Vector2i:
-	return Vector2i(floori(p.x / (CELL + GAP)), floori(p.y / (CELL + GAP)))
+	return Vector2i(floori(p.x / (cell + GAP)), floori(p.y / (cell + GAP)))
 
 
 func entry_at_point(p: Vector2) -> Dictionary:
@@ -156,7 +169,7 @@ func _draw() -> void:
 		ghost.size = t.size
 		ghost.rotated = _drag.rotated
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-		_draw_entry(ghost, Rect2(_mouse - Vector2(_drag.grab) * (CELL + GAP) - Vector2(CELL, CELL) * 0.5, r.size), true, 0.8)
+		_draw_entry(ghost, Rect2(_mouse - Vector2(_drag.grab) * (cell + GAP) - Vector2(cell, cell) * 0.5, r.size), true, 0.8)
 
 
 func _draw_entry(e: Dictionary, r: Rect2, hot: bool, alpha := 1.0) -> void:
@@ -181,13 +194,13 @@ func _draw_entry(e: Dictionary, r: Rect2, hot: bool, alpha := 1.0) -> void:
 	var f := UiThemeBuilder.font_kr(700)
 	var fn := UiThemeBuilder.font_num()
 	var name := String(info.name)
-	var fs := 12
+	var fs := 14 if cell >= 80.0 else 12
 	var w := r.size.x - 8
 	var nm := name
 	while nm.length() > 1 and f.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > w:
 		nm = nm.left(nm.length() - 1)
 	if nm != name:
-		nm = nm.left(maxi(1, nm.length() - 1)) + "…"
+		nm = nm.left(maxi(1, nm.length() - 1)) + "..."
 	var tex := ItemInfo.icon(StringName(info.get("icon", &"")))
 	if tex != null:
 		_draw_icon(tex, Rect2(r.position + Vector2(4, 4), r.size - Vector2(8, 20)), bool(e.get("rotated", false)), alpha)
@@ -201,8 +214,9 @@ func _draw_entry(e: Dictionary, r: Rect2, hot: bool, alpha := 1.0) -> void:
 	var cnt := int(info.get("count", 1))
 	if cnt > 1:
 		var t := "×%d" % cnt
-		var tw := fn.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
-		draw_string(fn, Vector2(r.end.x - tw - 5, r.position.y + 18), t, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(UiTokens.TEXT, alpha))
+		var cs := 17 if cell >= 80.0 else 15
+		var tw := fn.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, cs).x
+		draw_string(fn, Vector2(r.end.x - tw - 5, r.position.y + cs + 3), t, HORIZONTAL_ALIGNMENT_LEFT, -1, cs, Color(UiTokens.TEXT, alpha))
 
 
 ## Icon art is drawn for the unrotated footprint; a rotated entry turns it 90 degrees.

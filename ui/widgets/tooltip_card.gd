@@ -26,7 +26,7 @@ func show_info(info: Dictionary, at: Vector2) -> void:
 		var tab := PanelContainer.new()
 		tab.add_theme_stylebox_override(&"panel", _box(UiTokens.CREAM, 12, 6, [4, 4, 0, 0]))
 		tab.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-		tab.add_child(_l("◉  " + String(info.action), 14, UiTokens.TEXT_ON_CREAM, 700))
+		tab.add_child(_l(String(info.action), 14, UiTokens.TEXT_ON_CREAM, 700))
 		_v.add_child(tab)
 	var body := PanelContainer.new()
 	body.add_theme_stylebox_override(&"panel", _box(UiTokens.CREAM, 14, 12, [0, 4, 4, 4]))

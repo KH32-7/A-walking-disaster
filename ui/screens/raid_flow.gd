@@ -157,7 +157,7 @@ static func directions_text(directions: Array) -> String:
 	var parts := PackedStringArray()
 	for d in directions:
 		parts.append(DIRECTION_NAMES.get(StringName(d), String(d)))
-	return "·".join(parts) if not parts.is_empty() else "방향 모름"
+	return ", ".join(parts) if not parts.is_empty() else "방향 모름"
 
 
 static func outcome_name(outcome: int) -> String:

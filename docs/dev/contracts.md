@@ -137,6 +137,9 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
 - **FieldState**: `in_sortie()`, `lost_gear`, `boss_ready(boss_id)`, `boss_kill_count(boss_id)`.
   보스 부활 날짜 `boss_respawn_day`는 **보스 id별**이다(한 지역에 보스가 여럿일 수 있다). 지역 id로 저장된 옛 세이브는 불러올 때 그 지역의 `boss_id`로 옮긴다.
 - **보스 (B-19)**: `BossSpawner`가 `BossArena`마다 그 보스의 부활 날짜를 따로 본다. 보스마다의 공략 규칙은 `BossDef.mechanic`(`BossMechanic` 스크립트)에 둔다.
+- **동행 주민 고유 스킬 (B-29)**: `ResidentTemplate.signature_skill`(SkillDef, 실행 id는 `CompanionSkill.RUNNERS` 중 하나)과 `signature_line`.
+  `FieldCompanion.setup()`이 `ResidentPool.templates`에서 읽는다(Colony 주민 Dictionary에는 없음). 신호 `FieldCompanion.called_out(text, near)`는
+  `RescueTarget.called_out`과 같은 모양이고 `WorldMarkers`가 말풍선으로 띄운다. `SkillDef.fx`, `fx_element`로 실행 id와 다른 이펙트를 쓴다.
   훅: `on_added`, `on_tick`, `can_use(pattern)`, `on_pattern_started(pattern, area)`, `land_pattern(pattern, area)`(true면 공통 범위 타격·소환 생략),
   `filter_damage(amount, info)`(0이면 무시), `on_phase_changed`, `on_reset`, `on_died`. `BossPattern.action`이 있는 패턴은 mechanic이 직접 처리하고
   숫자는 `BossPattern.params`에 둔다. mechanic이 쓰는 BossMonster 공개 함수: `hold(sec)`(AI와 패턴 정지, mechanic이 몸을 움직임), `is_held()`, `cancel_cast()`,
@@ -203,6 +206,7 @@ B의 결과가 없으면(디버그 진행) 라우터가 기본값으로 채운�
   "region_id": StringName, "point_id": StringName,     # 탈출 못 하면 &""
   "loot": {"resources": {id: n}, "discarded": {id: n}, "items": [uid]},
   "kills": int, "kills_by_monster": {StringName: int},
+  "blueprints": Array[StringName],                     # 이번 출격에 익힌 설계도의 결과물 id (상자, 2026-11-06)
   "rescued": Array[StringName],                        # 데리고 나온 구조자 id
   "rescued_profiles": Array[Dictionary],               # rescue_completed로 받은 프로필 (라우터)
   "companions": Array[StringName], "stranded": Array[StringName],
@@ -329,7 +333,7 @@ levels/base/base_school/
 
 ## 새 게임 인트로·튜토리얼 (2026-11-06)
 
-- `IntroCutscene`(levels/base/intro/): 새 게임(`intro_pending`)이면 base_school이 붙인다. 플래그 `intro_talked`(한도윤 대화), `intro_house_done`(집에서 나옴). `phase()` = `&"cinematic"`/`&"house"`/`&"done"`.
+- `IntroCutscene`(levels/base/intro/): 새 게임(`intro_pending`)이면 base_school이 붙인다. 플래그 `intro_talked`(방송실 지기 대화. 지기는 주민이 아니다), `intro_house_done`(집에서 나옴). `phase()` = `&"cinematic"`/`&"house"`/`&"done"`.
 - `UI.tutorial: IntroTutorial` — 매 프레임 상태로 단계를 정한다. `current_step()`, `skip()`. 끝나면 `tutorial_done`.
 - `UI.spotlight: Spotlight` — `focus_world(node, text, keys, radius, lift)`, `focus_control(c, text, keys)`, `focus_rect(rect, text, keys)`, `clear()`.
 - `UI.cinematic: CinematicOverlay` — `bars(on)`, `fade_to(a)`, `cut(black)`, `title(text, sub)`, `caption(text)`, `talk(lines)`(await), `film`, `skippable` + `skip_requested`.
@@ -341,5 +345,4 @@ levels/base/base_school/
 - `BuildingDef.story_only`: 건설 목록에 안 나오고 지을 수 없음(낡은 집 `old_house`, 6×7).
 - 의무실 `infirmary`는 `requires_former_job = &"doctor"`. `main_01_left_behind`는 `tutorial_doctor` 완료 뒤 시작.
 - 구조 인원(2026-11-06): `RescueManager.max_per_sortie = 5`, `pool_count = 3` — 고정 spawns 뒤에 `ResidentPool`에서 안 쓴 생존자를 빈 RescueSpot에 더 놓는다(부상, 아이템 없이 F 일으켜 세우기). `profile_for`는 DemoProfiles 다음 ResidentPool을 찾는다. 공원 의사는 `doctor_office` 태그(관리사무소)에만 나온다.
-- 무기 완제품(2026-11-06): `LootTable.gear_chance`(0~1)·`gear_pool`(ItemDef id). 상자를 굴릴 때 그 확률로 무기 한 칸이 붙고, 꺼내면 Armory.create_item(등급 랜덤) + Bag.add_item.
 - 진행 속도(2026-11-06): `WorkRules.pace`(1.5) — 건설 진행·직업 생산·성장 일수에 곱한다(`build_progress()`, `stay_build_progress()`, `days_per_skill()`, `days_per_stat()`). `Progression.xp_pace`(1.5)는 경험치. 기획 수치 테스트는 둘 다 1.0으로 돌린다.

@@ -13074,6 +13074,7 @@ container_type = 2
 transform = Transform3D(-0.5472159, 0, 0.8369915, 0, 1, 0, -0.8369915, 0, -0.5472159, -70.14917, 0, -13.0750065)
 gizmo_extents = 0.5
 script = ExtResource("9_1r3xd")
+container_type = 3
 
 [node name="LootSpot_loot_pg_lm_1" type="Marker3D" parent="Markers" unique_id=1617398711 instance=ExtResource("8_7lmyx")]
 transform = Transform3D(0.04162588, 0, -0.9991333, 0, 1, 0, 0.9991333, 0, 0.04162588, 68.31004, 0, 70.567856)
@@ -13146,7 +13147,7 @@ container_type = 2
 transform = Transform3D(-0.97495466, 0, 0.22240378, 0, 1, 0, -0.22240378, 0, -0.97495466, -69.52602, 0, -61.049305)
 gizmo_extents = 0.5
 script = ExtResource("9_1r3xd")
-container_type = 3
+container_type = 2
 
 [node name="LootSpot_fill_21" type="Marker3D" parent="Markers" unique_id=1347298608 instance=ExtResource("8_7lmyx")]
 transform = Transform3D(0.33102462, 0, 0.9436221, 0, 1, 0, -0.9436221, 0, 0.33102462, 42.568172, 0, -94.38317)

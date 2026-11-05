@@ -6,7 +6,7 @@ extends Node3D
 ##   2. Cinematic: dawn over the clearing, the hero runs up the dirt road with swamp blobs bounding
 ##      after him, dives into the house and slams the door; the blobs splat against it.
 ##   3. Title card, then inside the house (IntroHouse): the hero catches his breath.
-##   4. Play: open the case (spotlight) → take the 권총 → equip it → talk to the injured 한도윤 →
+##   4. Play: open the case (spotlight) → take the 권총 → equip it → talk to the 방송실 지기 →
 ##      walk out. The steps and spotlights are IntroTutorial's (UI.tutorial); this scene builds the
 ##      places, runs the camera and the talk, and sets the flags it checks.
 ## Hold Esc during 1–3 to skip to 4. Owner: Lane D (presentation) with base_school (Lane C).
@@ -14,7 +14,7 @@ extends Node3D
 const GROUP := &"intro_cutscene"
 const FLAG_PENDING := &"intro_pending"  # set by SceneRouter.start_new_game
 const FLAG_HOUSE_DONE := &"intro_house_done"  # walked out of the house
-const FLAG_TALKED := &"intro_talked"  # 한도윤 asked for the doctor
+const FLAG_TALKED := &"intro_talked"  # the 방송실 지기 asked for the doctor
 const HOUSE_DEF := &"old_house"
 const HOUSE_CELL := Vector2i(17, 12)
 const HOUSE_SIZE := Vector2i(6, 7)
@@ -26,28 +26,25 @@ const DOOR_ALONG := 0.16
 const INTERIOR_AT := Vector3(600, 0, 600)
 const SLIME_SCENE := "res://art/monsters/swamp_blob.tscn"
 const SLIME_COUNT := 7
-const PATIENT := {
-	"id": &"intro_doyun",
-	"name": "한도윤",
-	"age_stage": Enums.AgeStage.ADULT,
-	"former_job": &"police",
-	"gender": &"male",  # fixed: the field, the bed and every portrait show the same man
-	"traits": [&"brave"],
-	"health": Enums.HealthState.INJURED,
-	"recover_days": 5,
-	"story": {
-		"background": "첫날, 다리를 물린 채 낡은 집에 숨어 있던 전직 경찰. 권총이 든 가방을 지키고 있었다.",
-		"fragments": ["의사를 찾아 달라고 부탁했다."],
-		"first_line": "다리만 나으면, 나도 같이 나갈게.",
-	},
+## The 방송실 지기 (docs/design/13 "주요 인물", story pass 2026-11-06): the radio voice the hero ran
+## toward. Lives in this house under the park broadcast deck, keeps the key of the supply case the
+## rescue team left at the evacuation point, and asks for the doctor. A fixed NPC, never a resident:
+## this profile only picks the model (ResidentModel) and the speaker name.
+const KEEPER_NAME := "방송실 지기"
+const KEEPER := {
+	"id": &"broadcaster",
+	"name": KEEPER_NAME,
+	"age_stage": Enums.AgeStage.ELDER,
+	"gender": &"male",
+	"former_job": &"radio_pd",
 }
 const TALK := [
-	["한도윤", "…거기 누구야? 마물은… 아, 사람이구나. 문은 제대로 잠갔지?"],
-	["한도윤", "다리를 물렸어. 피는 멎었는데, 혼자서는 못 걸어."],
-	["한도윤", "그 총, 우리 서에서 챙겨 온 거야. 잘 챙겼네. 밖에선 그거 없으면 못 버텨."],
-	["한도윤", "방송 들었어? 공원 관리사무소에 의사 선생님이 숨어 있대."],
-	["한도윤", "의사만 있으면 여기에 의무실을 차릴 수 있어. 나도, 앞으로 다칠 사람들도 살 수 있고."],
-	["한도윤", "부탁이야. 공원에 가서 그 사람을 데려와 줘."],
+	[KEEPER_NAME, "…방송 듣고 왔구먼. 문은 잘 닫았지? 그것들은 소리를 따라와."],
+	[KEEPER_NAME, "여긴 공원 방송실 아랫집이야. 대범람 날, 이 공원이 대피 집결지였지."],
+	[KEEPER_NAME, "그 상자는 구조대가 마지막 버스를 보내면서 두고 간 거야. 열쇠는 내가 맡았고."],
+	[KEEPER_NAME, "이 나이에 총은 못 쓰네. 그 옷 보니 구조대 사람이지? 자네가 쓰게."],
+	[KEEPER_NAME, "매일 방송을 했더니 관리사무소에서 응답이 왔어. 의사라는데, 마물 때문에 못 나온대."],
+	[KEEPER_NAME, "의사가 있어야 다친 사람을 받지. 그 사람부터 데려와 주게. 그다음은… 여기서 같이 버텨 보세."],
 ]
 
 var base: Node3D  # base_school
@@ -89,7 +86,7 @@ func _ready() -> void:
 	interior.name = "IntroHouse"
 	add_child(interior)
 	interior.global_position = INTERIOR_AT
-	interior.show_patient(PATIENT)
+	interior.show_patient(KEEPER, false)
 	interior.talk_requested.connect(_on_talk)
 	interior.exit_requested.connect(_on_exit)
 	_cam = Camera3D.new()
@@ -147,11 +144,11 @@ func _find_door() -> void:
 
 
 func _run() -> void:
-	# Deferred from _ready: the base may already be gone (tests that load and free it in a frame).
-	if not is_inside_tree():
-		return
-	await get_tree().process_frame
-	await get_tree().process_frame  # BuildingViews refresh is deferred
+	# BuildingViews refresh is deferred: wait two frames. The base may be freed meanwhile (tests).
+	for i in 2:
+		if not is_inside_tree():
+			return
+		await get_tree().process_frame
 	if not is_inside_tree():
 		return
 	_find_door()
@@ -180,11 +177,11 @@ func _cinematic() -> void:
 	# 1 — the broadcast over black
 	await _wait(0.8)
 	Audio.play(&"radio_static_open")
-	ci.caption("치익… 여기는… 공원 숲 방송실…", 2.4)
+	ci.caption("치익... 여기는... 공원 숲 방송실...", 2.4)
 	await _wait(2.9)
 	if _skipped: return
 	Audio.play(&"radio_blip")
-	ci.caption("살아 있는 사람, 들리면… 숲 속 공터로 와요. 여기는 아직… 치익—", 3.2)
+	ci.caption("살아 있는 사람, 들리면... 숲 속 공터로 와요. 여기는 아직... 치익...", 3.2)
 	await _wait(3.6)
 	if _skipped: return
 	# 2a — dawn wide: high over the clearing, drifting down toward the house
@@ -247,7 +244,7 @@ func _cinematic() -> void:
 	_free_slimes()
 	ci.bars(false, 0.01)
 	UI.hud.visible = false
-	await ci.title("A walking disaster", "1일차 · 봄, 새벽", 1.8).finished
+	await ci.title("A walking disaster", "1일차 / 봄, 새벽", 1.8).finished
 	ci.skippable = false
 
 
@@ -291,7 +288,7 @@ func _enter_house(from_cinematic: bool) -> void:
 		_frame(p + Vector3(1.2, 1.5, 2.6), p + Vector3(0, 1.2, 0))
 		ci.bars(true, 0.01)
 		ci.fade_to(0.0, 1.2)
-		ci.caption("하아… 하아… 살았다.", 2.2)
+		ci.caption("하아... 하아... 살았다.", 2.2)
 		var play_cam := _play_cam()
 		_dolly(p + Vector3(1.2, 1.5, 2.6), play_cam.global_position, p + Vector3(0, 1.2, 0), p, 3.0)
 		await _wait(3.1)
@@ -323,14 +320,12 @@ func _on_talk() -> void:
 	player.look_at(Vector3(interior.patient_point().x, player.global_position.y, interior.patient_point().z), Vector3.UP, true)
 	var lines := TALK.duplicate()
 	if GameState.has_flag(FLAG_TALKED):
-		lines = [["한도윤", "공원 관리사무소야. 의사 선생님을… 부탁해."]]
+		lines = [[KEEPER_NAME, "공원 관리사무소야. 의사 선생님부터 부탁하네."]]
 	UI.cinematic.bars(true, 0.5)
 	await UI.cinematic.talk(lines)
 	UI.cinematic.bars(false, 0.5)
 	if not GameState.has_flag(FLAG_TALKED):
 		GameState.set_flag(FLAG_TALKED)
-		if Colony.get_resident(PATIENT["id"]).is_empty():
-			Colony.add_resident(PATIENT.duplicate(true))
 	interior.door.enabled = true
 	player.script_input = {}
 
@@ -387,7 +382,7 @@ func _physics_process(delta: float) -> void:
 
 func _process(delta: float) -> void:
 	if interior != null and is_instance_valid(interior) and _phase == &"house":
-		# 한도윤 talks once the gun is in hand (the tutorial order: case first).
+		# The 방송실 지기 talks once the gun is in hand (the tutorial order: case first).
 		interior.patient.enabled = Armory.get_equipped(Armory.PLAYER_ID, Enums.EquipSlot.MAIN) != &""
 	if _cam_follow.is_valid():
 		_cam_follow.call(delta)

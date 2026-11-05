@@ -204,6 +204,11 @@ func _on_leave_behind(_point_id: StringName, people: Array, manager: Node) -> vo
 	manager.tree_exiting.connect(dialog.queue_free)
 
 
+## Subtitle line width over the world and while a menu is open (right of the key footer).
+const WORLD_SUBTITLE_W := 900.0
+const MENU_SUBTITLE_W := 720.0
+
+
 ## Subtitles sit low over the world; with a menu open they move up out of its buttons' way.
 func _place_subtitle() -> void:
 	if subtitle == null:
@@ -212,20 +217,21 @@ func _place_subtitle() -> void:
 	for e: Dictionary in _stack:
 		if not (e.def as ScreenDef).is_overlay:
 			menu = true
-	# Menu: bottom right of the key-footer row (the keys are on the left; they overlapped once the
-	# text got bigger). World: centred, above the HUD.
-	var preset := Control.PRESET_BOTTOM_RIGHT if menu else Control.PRESET_CENTER_BOTTOM
-	subtitle.set_anchors_and_offsets_preset(preset, Control.PRESET_MODE_KEEP_SIZE)
+	# Menu: in the key-footer row, under the panels, but on the right half so it never covers the keys
+	# on the left (it hid "Enter 출격", 2026-11-06 UI pass). World: centred, low over the world.
+	subtitle.set_width(MENU_SUBTITLE_W if menu else WORLD_SUBTITLE_W)
+	subtitle.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT if menu else Control.PRESET_CENTER_BOTTOM)
 	subtitle.grow_horizontal = Control.GROW_DIRECTION_BEGIN if menu else Control.GROW_DIRECTION_BOTH
-	subtitle.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	if menu:
-		subtitle.offset_right = -40
-	subtitle.offset_bottom = -20 if menu else -200
+	subtitle.offset_left = -52.0 if menu else 0.0
+	subtitle.offset_right = -52.0 if menu else 0.0
+	subtitle.offset_bottom = -20 if menu else -200  # world: above the bottom-centre vitals
+	subtitle.offset_top = subtitle.offset_bottom
 	# Toasts sit bottom right over the world; with a menu open that corner holds its buttons
 	# (출격, 맞이하기 …), so they move up under the header.
 	if notice_toast != null:
 		var h := get_viewport().get_visible_rect().size.y
-		notice_toast.offset_bottom = -(h - 330.0) if menu else -22.0
+		# Menu: right under the header line, above the panels (at 330 it sat on panel content).
+		notice_toast.offset_bottom = -(h - 108.0) if menu else -22.0
 
 
 
@@ -309,6 +315,9 @@ var _last_flow: Enums.FlowState = Enums.FlowState.TITLE
 
 
 func _on_flow_state_changed(state: Enums.FlowState) -> void:
+	# The field HUD shows notices itself: drop base toasts still fading, they sat on the ammo box.
+	if state == Enums.FlowState.FIELD and notice_toast != null:
+		MenuScreen.clear(notice_toast)
 	show_field_hud(state == Enums.FlowState.FIELD)
 	show_base_hud(state in BASE_STATES)
 	show_raid_hud(state in RAID_STATES)
@@ -357,7 +366,7 @@ func _on_funeral_ready(resident_ids: Array) -> void:
 
 func _on_resident_missing(resident_id: StringName) -> void:
 	LossText.note_missing(resident_id)
-	EventBus.notification_posted.emit("@residents ◆ %s을(를) 끝내 찾지 못했어요 · 실종" % LossText.display_name(resident_id), &"danger")
+	EventBus.notification_posted.emit("@residents %s을(를) 끝내 찾지 못했어요 / 실종" % LossText.display_name(resident_id), &"danger")
 
 
 func _on_loss_flow(state: Enums.FlowState) -> void:

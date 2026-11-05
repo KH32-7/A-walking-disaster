@@ -73,7 +73,7 @@ func _build_header() -> void:
 	h.add_child(back)
 	var t := label(title_text, &"LabelTitle")
 	h.add_child(t)
-	_subtitle_label = label("—  " + subtitle_text, &"LabelSection")
+	_subtitle_label = label(subtitle_text, &"LabelSection")
 	_subtitle_label.add_theme_color_override(&"font_color", UiTokens.TEXT_DIM)
 	_subtitle_label.visible = not subtitle_text.is_empty()
 	h.add_child(_subtitle_label)
@@ -91,7 +91,7 @@ func _build_header() -> void:
 func set_subtitle(text: String) -> void:
 	subtitle_text = text
 	if _subtitle_label != null:
-		_subtitle_label.text = "—  " + text
+		_subtitle_label.text = text
 		_subtitle_label.visible = not text.is_empty()
 
 
@@ -207,7 +207,7 @@ static func cost_text(cost: Dictionary) -> String:
 	var parts: PackedStringArray = []
 	for id in cost:
 		parts.append("%s %d" % [resource_name(id), int(cost[id])])
-	return " · ".join(parts)
+	return " / ".join(parts)
 
 
 static func clear(n: Node) -> void:

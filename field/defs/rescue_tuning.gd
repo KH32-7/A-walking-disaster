@@ -25,6 +25,10 @@ extends Resource
 	0: &"escort_walk", 1: &"escort_slow", 2: &"escort_wheelchair", 3: &"escort_supported", 4: &"escort_child"}
 ## Followers stop this close to the player (m).
 @export var follow_distance := 2.0
+## Near follow_distance a follower walks at the player's own speed plus this much per metre of
+## extra gap (1/s), capped at their walking speed. Keeps them from overtaking a slower player
+## (walking backward) and stopping / starting every frame.
+@export var follow_catch_up := 2.0
 ## Path refresh interval (s).
 @export var repath_sec := 0.25
 ## 숨기: look for low cover this far away (m). None = wait where they stand.

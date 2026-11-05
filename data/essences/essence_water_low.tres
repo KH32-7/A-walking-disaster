@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_ess")
 id = &"essence_water_low"
-name = "하급 수 정수"
+name = "하급 물 정수"
 element = 3
 effect_params = {
 "slow_chance": 0.2,

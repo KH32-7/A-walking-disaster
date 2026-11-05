@@ -329,7 +329,7 @@ func _on_activated(row: SettingRow) -> void:
 			start_capture(row.key)
 		"button":
 			if row.data.get("action", &"") == &"reset_bindings":
-				_ask("모든 키를 기본값으로 되돌릴까요?", "키보드·마우스와 게임패드 모두 처음 배치로 돌아가요.",
+				_ask("모든 키를 기본값으로 되돌릴까요?", "키보드, 마우스와 게임패드 모두 처음 배치로 돌아가요.",
 					"되돌리기", reset_all_bindings, row)
 
 
@@ -428,7 +428,7 @@ func _update_card(row: SettingRow) -> void:
 		"binding":
 			var kb := SettingsCatalog.default_binding_text(row.key, false)
 			var pad := SettingsCatalog.default_binding_text(row.key, true)
-			def_text = "기본 키: 키보드 %s · 패드 %s" % [kb if not kb.is_empty() else "없음", pad if not pad.is_empty() else "없음"]
+			def_text = "기본 키: 키보드 %s / 패드 %s" % [kb if not kb.is_empty() else "없음", pad if not pad.is_empty() else "없음"]
 			note = NOTE_KEYS
 		"button":
 			if row.data.get("action", &"") == &"reset_bindings":
@@ -501,15 +501,15 @@ func _refresh_preview() -> void:
 	_preview.add_child(el)
 	var st := HBoxContainer.new()
 	st.add_theme_constant_override(&"separation", 22)
-	for s: Array in [["▲ 위험", UiTokens.DANGER], ["◆ 주의", UiTokens.WARN], ["● 완료", UiTokens.GOOD],
+	for s: Array in [["▲ 위험", UiTokens.DANGER], ["주의", UiTokens.WARN], ["● 완료", UiTokens.GOOD],
 			["■ 정보", UiTokens.INFO]]:
 		var l := MenuScreen.label(String(s[0]), &"LabelHud")
 		l.add_theme_color_override(&"font_color", s[1])
 		st.add_child(l)
 	_preview.add_child(st)
-	var body_l := MenuScreen.label("가방 18/30 · 해질녘까지 04:12 · [F] 뒤지기", &"Label")
+	var body_l := MenuScreen.label("가방 18/30 / 해질녘까지 04:12 / [F] 뒤지기", &"Label")
 	_preview.add_child(body_l)
-	_preview.add_child(MenuScreen.label("작은 글: 무게 3.2 · 가격 120", &"LabelDim"))
+	_preview.add_child(MenuScreen.label("작은 글: 무게 3.2 / 가격 120", &"LabelDim"))
 
 
 func _badge(kind: ShapeBadge.Kind, value: int) -> ShapeBadge:
@@ -546,13 +546,13 @@ func start_capture(action: StringName) -> void:
 	var t := MenuScreen.label("‘%s’ 키 다시 정하기" % name_text, &"LabelSection")
 	t.add_theme_color_override(&"font_color", UiTokens.TEXT_ON_CREAM)
 	v.add_child(t)
-	var body_text := "새 키나 버튼을 누르세요. 키보드·마우스로 누르면 키보드 칸이, 게임패드로 누르면 패드 칸이 바뀌어요."
+	var body_text := "새 키나 버튼을 누르세요. 키보드, 마우스로 누르면 키보드 칸이, 게임패드로 누르면 패드 칸이 바뀌어요."
 	var b := MenuScreen.label(body_text, &"LabelOnCream")
 	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(b)
 	var kb := _bind_text(action, false)
 	var pad := _bind_text(action, true)
-	v.add_child(MenuScreen.label("지금: 키보드 %s · 패드 %s" % [kb if not kb.is_empty() else "없음",
+	v.add_child(MenuScreen.label("지금: 키보드 %s / 패드 %s" % [kb if not kb.is_empty() else "없음",
 		pad if not pad.is_empty() else "없음"], &"LabelOnCreamDim"))
 	var foot := PanelContainer.new()
 	foot.theme_type_variation = &"CardCreamFoot"

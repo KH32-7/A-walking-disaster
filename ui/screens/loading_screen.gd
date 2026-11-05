@@ -63,15 +63,15 @@ static func line_for(k: StringName, region: StringName = &"") -> String:
 	var where := region_name(region)
 	match k:
 		&"sortie":
-			return "출격 — %s" % where if where != "" else "출격"
+			return "출격: %s" % where if where != "" else "출격"
 		&"return":
-			return "귀환 — 기지로"
+			return "귀환: 기지로"
 		&"down":
-			return "쓰러짐 — 기지로 돌아간다"
+			return "쓰러짐: 기지로 돌아간다"
 		&"load":
 			if GameState.flow_state == S.FIELD and where != "":
-				return "%d일차 — %s" % [GameState.day, where]
-			return "%d일차 — 해솔시" % GameState.day
+				return "%d일차: %s" % [GameState.day, where]
+			return "%d일차: 해솔시" % GameState.day
 	return "불러오는 중"
 
 

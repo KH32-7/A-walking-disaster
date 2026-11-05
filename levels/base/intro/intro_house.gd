@@ -5,8 +5,8 @@ extends Node3D
 ## from the base map so the base never shows through. A cut-away room: the two walls on the camera's
 ## side (+X, +Z for the field camera's 45° view) are half height.
 ##
-## What is in it: the hard case with the 권총 (a LootContainer, gear slot), the injured 한도윤 on the
-## bed and the front door. IntroCutscene drives the order; this only builds and reports:
+## What is in it: the rescue team's supply case with the 권총 (a LootContainer, gear slot), the
+## 방송실 지기 standing by the bed and the front door. IntroCutscene drives the order; this only builds and reports:
 ##   chest: LootContainer          patient: Interactable (talk_requested)   door: Interactable
 ##   spawn_point() / door_point() / patient_point() world positions.
 
@@ -108,14 +108,19 @@ func patient_point() -> Vector3:
 	return patient.global_position
 
 
-## The injured resident lying on the bed (ResidentModel from his data; a capsule without assets/).
-func show_patient(profile: Dictionary) -> void:
+## The person you talk to (ResidentModel from `profile`; a capsule without assets/). `lying`: on
+## the bed, on their back; else standing beside it, facing the front door.
+func show_patient(profile: Dictionary, lying := true) -> void:
 	patient_model = Node3D.new()
 	patient_model.name = "PatientModel"
 	add_child(patient_model)
-	# Lying on his back on the bed: feet toward the room, head on the pillow by the north wall.
-	patient_model.position = Vector3(-4.65, 0.62, -1.25)
-	patient_model.rotation_degrees = Vector3(-90, 0, 0)
+	if lying:
+		# On the back on the bed: feet toward the room, head on the pillow by the north wall.
+		patient_model.position = Vector3(-4.65, 0.62, -1.25)
+		patient_model.rotation_degrees = Vector3(-90, 0, 0)
+	else:
+		patient_model.position = Vector3(-3.5, 0, -1.4)
+		patient_model.rotation_degrees = Vector3(0, 180, 0)
 	var grey := MeshInstance3D.new()
 	grey.name = "Greybox"
 	var cap := CapsuleMesh.new()

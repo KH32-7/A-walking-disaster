@@ -326,6 +326,10 @@ func load_data(data: Dictionary) -> void:
 # --- Internals ---
 
 func _check_triggers() -> void:
+	# The new-game tutorial runs alone: no rumor or request starts (and no radio about it) until it
+	# ends (사용자 요청 2026-11-06). They start on the next check after that.
+	if Radio.in_tutorial():
+		return
 	for quest_id: StringName in defs:
 		if not _states.has(quest_id) and _trigger_met(defs[quest_id]):
 			start(quest_id)

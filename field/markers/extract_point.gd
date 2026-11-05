@@ -33,6 +33,16 @@ enum Type { NORMAL, GENERATOR, KEY, BATTERY }
 		_refresh()
 
 
+## Shows (true) or removes the in-world beacon (ExtractBeacon). ExtractionManager.activate() calls
+## this for every candidate: only the points open this sortie get one.
+func set_active(on: bool) -> void:
+	var beacon := get_node_or_null(^"ExtractBeacon")
+	if on and beacon == null and not Engine.is_editor_hint():
+		add_child(ExtractBeacon.new(zone_radius))
+	elif not on and beacon != null:
+		beacon.queue_free()
+
+
 func _marker_group() -> StringName:
 	return GROUP
 

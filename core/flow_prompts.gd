@@ -51,7 +51,7 @@ func _on_flow_state_changed(state: Enums.FlowState) -> void:
 		Enums.FlowState.TITLE:
 			_show_title()
 		Enums.FlowState.BASE_STAY:
-			_show_bar("기지에 머무는 중 · %d일차" % GameState.day, "하루 마치기", SceneRouter.end_stay)
+			_show_bar("기지에 머무는 중 / %d일차" % GameState.day, "하루 마치기", SceneRouter.end_stay)
 		Enums.FlowState.NIGHT:
 			_show_night()
 

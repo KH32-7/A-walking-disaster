@@ -46,7 +46,7 @@ func _test_data() -> void:
 	var got := [def.family, def.tier, def.hp, def.defense, def.attack, def.move_speed, def.hearing_mult, def.sight_range]
 	_check(got == [Enums.Element.STONE, Enums.MonsterTier.BOSS, 3000.0, 60.0, 45.0, 2.0, 1.0, 14.0],
 			"golem matches the 04 table %s" % [got])
-	_check(Enums.element_multiplier(Enums.Element.WATER, Enums.Element.STONE) > 1.0, "water beats it (04: 수 속성)")
+	_check(Enums.element_multiplier(Enums.Element.WATER, Enums.Element.STONE) > 1.0, "water beats it (04: 물 속성)")
 
 
 func _test_wave_slam() -> void:

@@ -126,7 +126,7 @@ func show_bindings(pairs: Array) -> void:
 		box.add_child(dev)
 		var text := String(p[1])
 		if text.is_empty():
-			box.add_child(MenuScreen.label("—", &"LabelDim"))
+			box.add_child(MenuScreen.label("-", &"LabelDim"))
 		else:
 			var chip := KeyChip.new(text, KeyChip.Style.OUTLINE)
 			chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER

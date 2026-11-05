@@ -12,6 +12,7 @@ const COMPANION_SCENE := preload("res://field/companion/field_companion.tscn")
 const VINE_DEF := preload("res://data/monsters/vine_tendril.tres")
 const TUNING := preload("res://data/classes/companion_tuning.tres")
 const NOISE_TABLE := preload("res://field/noise/noise_table.tres")
+const SIGNATURE := preload("res://data/classes/skills/signature/spellbook_burst.tres")
 const TEST_HP := 10000.0
 const Mode := FieldCompanion.Mode
 const State := FieldCompanion.State
@@ -53,6 +54,7 @@ func run() -> bool:
 	_test_stranded_by_signal()
 	_test_traits()
 	_test_hud()
+	await _test_signature_skill()
 
 	_root.free()
 	for uid in _created:
@@ -130,6 +132,34 @@ func _test_skill() -> void:
 	var mid := _companion(_resident({"class_aptitude": {"gun": Enums.Aptitude.MID}}), Vector3.ZERO)
 	_check(not mid.try_skill(gun), "적성 중: no skill")
 	mid.free()
+
+
+## B-29 고유 스킬: from the pool template, any 적성, its own cooldown, the bubble line.
+func _test_signature_skill() -> void:
+	for pair in [[&"demo_mechanic", &"dash_slash"], [&"farmer_jo", &"slam"]]:
+		var t: ResidentTemplate = ResidentPool.templates.get(pair[0])
+		_check(t != null and t.signature_skill != null and t.signature_skill.id == pair[1]
+				and t.signature_line != "", "%s: signature skill %s with a line" % pair)
+
+	var gun := {"combat_class": Enums.CombatClass.GUN, "damage": 10.0}
+	var c := _companion(_resident({"class_aptitude": {"gun": Enums.Aptitude.MID}}), Vector3(20, 0, 0))
+	_check(not c.can_use_skill(Enums.CombatClass.GUN), "적성 중, no signature: no skill")
+	c.signature_skill = SIGNATURE
+	c.signature_line = "다 했네."
+	var lines := []
+	c.called_out.connect(func(text: String, _near: bool) -> void: lines.append(text))
+	c.target = await _monster(Vector3(22, 0, 0))
+	_check(CompanionSkill.skill_for(c, Enums.CombatClass.GUN) == SIGNATURE, "signature replaces the class Q")
+	_check(c.try_skill(gun), "적성 중: signature skill used")
+	_check(is_equal_approx(c.skill_time_left(), SIGNATURE.cooldown_sec * TUNING.skill_cooldown_mult),
+			"signature cooldown x skill_cooldown_mult")
+	_check(lines == ["다 했네."], "bubble line after the skill (%s)" % [lines])
+	_check(c.target.hp < TEST_HP, "signature slam hit the monster")
+	c.target.free()
+	c.free()
+	# The signature hit-stop slows time for a moment; let it end before the next test file.
+	while CombatFeel.is_stopped():
+		await get_tree().process_frame
 
 
 func _test_spawn_and_modes() -> void:

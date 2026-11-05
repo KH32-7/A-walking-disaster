@@ -1,6 +1,7 @@
 [gd_resource type="Resource" script_class="ResidentTemplate" format=3]
 
 [ext_resource type="Script" path="res://systems/defs/resident_template.gd" id="1_rtpl"]
+[ext_resource type="Resource" path="res://data/classes/skills/signature/spellbook_burst.tres" id="2_sig"]
 
 [resource]
 script = ExtResource("1_rtpl")
@@ -11,6 +12,7 @@ former_job = &"farmer"
 traits = Array[StringName]([&"easygoing", &"light_eater"])
 likes = Array[StringName]([&"tea", &"gardening"])
 dislikes = Array[StringName]([&"loud_noise", &"cold"])
+gender = &"female"
 access_needs = Array[int]([3])
 background = "평생 텃밭을 일군 70대 농부. 기억이 자주 흐려져 요양원에서 지냈고, 대피하던 날 직원들과 길이 엇갈렸다. 날짜는 헷갈려도 씨앗 이름은 하나도 틀리지 않는다."
 fragments = Array[String](["주머니에 늘 씨앗 봉투를 넣고 다닌다. 상추, 쑥갓, 강낭콩. 봉투마다 직접 쓴 파종 날짜가 적혀 있다.", "같은 이야기를 두 번 할 때가 있다. 끝까지 들어 주면 두 번째 이야기에는 꼭 새로운 농사 요령이 하나 붙는다."])
@@ -18,4 +20,6 @@ contribution = "텃밭과 씨앗을 맡아 먹을거리를 키운다."
 first_line = "어디서 왔어? 밭에 물 줄 시간인데."
 rescue_lines = Array[String](["저 풀, 데치면 먹을 수 있어.", "천천히 가자. 나는 길을 잘 잊어.", "손 놓지 마. 그럼 안 잊어버려."])
 situation = "요양원 2층 휴게실"
+signature_skill = ExtResource("2_sig")
+signature_line = "허리 아프다. 밭일보다는 쉽네."
 reviewed = true

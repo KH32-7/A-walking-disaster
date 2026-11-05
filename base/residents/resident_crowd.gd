@@ -9,6 +9,8 @@ extends Node3D
 ## Residents without a job idle near the gathering point. Stranded / dead / left residents are removed.
 
 const SPREAD := 1.5  # spread people around a shared point so they don't stack (m)
+## Builders stand this far (m) outside the edge of the site they build.
+const SITE_GAP := 0.7
 
 var grid: BaseGrid
 var layout: Node3D
@@ -96,7 +98,12 @@ func _work_position(r: Dictionary) -> Variant:
 	if not b.is_empty() and grid != null and grid.areas.has(b["zone_id"]):
 		var def := BaseDB.get_building(b["def_id"])
 		var size := BaseGrid.footprint(def, int(b["rotation"]))
-		return grid.footprint_center(b["zone_id"], Vector2i(b["cell"][0], b["cell"][1]), size) + _offset(r["id"])
+		var center := grid.footprint_center(b["zone_id"], Vector2i(b["cell"][0], b["cell"][1]), size)
+		if not b["completed"]:
+			# Builders stand just outside the site (a see-through box) so they read as working on it
+			# instead of disappearing inside it (user report 2026-11-06).
+			return center + _site_edge(r["id"], Vector2(size) * ColonyMarker.CELL_SIZE * 0.5)
+		return center + _offset(r["id"])
 	# Jobs at fixed map spots (방송실 → radio WorkSpot) or buildings off the grid.
 	for node in layout.find_children("*", "Marker3D", true, false):
 		if node is WorkSpot and node.job_id == job:
@@ -130,6 +137,16 @@ func _gather_point() -> Vector3:
 				return grid.footprint_center(b["zone_id"], Vector2i(b["cell"][0], b["cell"][1]), size)
 	var marker := layout.get_node_or_null("GatherPoint") as Node3D
 	return marker.global_position if marker else Vector3.ZERO
+
+
+## A stable spot per resident on the ring just outside a footprint of half size `half` (m).
+func _site_edge(resident_id: StringName, half: Vector2) -> Vector3:
+	var dir := _offset(resident_id)
+	dir.y = 0.0
+	dir = dir.normalized() if dir.length() > 0.01 else Vector3.FORWARD
+	# Scale the direction out to the rectangle's edge, then step past it.
+	var t := minf(half.x / maxf(absf(dir.x), 0.001), half.y / maxf(absf(dir.z), 0.001))
+	return dir * (t + SITE_GAP)
 
 
 ## Stable small offset per resident so a group spreads out around a point.

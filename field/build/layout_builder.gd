@@ -49,6 +49,8 @@ const KIT_TERRAIN := {
 }
 const KIT_GROUND_LIFT := 0.01
 const ROAD_BRIGHT := 1.5
+## Plants keep this far (m) from kit building walls; nearer, big bushes poke through into the rooms.
+const KIT_PLANT_MARGIN := 0.9
 const KitGrass := preload("res://field/buildings/kit_grass.gd")
 ## Lights on lamp props: piece -> lamp height (m). Warm, no shadows (many of them).
 const LAMP_LIGHTS := {"parking_lot_light_pole_01": 6.4, "military_light_tower_big": 7.0, "mobile_light_tower": 2.3}
@@ -161,6 +163,9 @@ const FILL_MIN_CLEAR := 9.0
 const FILL_SPACING := 16.0
 const FILL_MAX := 24
 const FILL_RADIUS := 4.5
+## A filler's supply crate stays one only this close (m) to a nest or boss arena, else it becomes a
+## toolbox: supply crates always spawn, so they must sit where the risk is (user request 2026-11-06).
+const SUPPLY_DANGER_RADIUS := 20.0
 ## Junk along building walls (outside).
 const WALL_JUNK := ["trash_bag_01", "trash_bag_02", "barrel_01", "barrel_02", "pallet", "curbside_trash_bin_01",
 	"conditioner_07", "conditioner_08", "plastic_barrel_02", "pile_garbage_02", "firewood_rack", "wheelbarrow",
@@ -308,6 +313,9 @@ var out_kit := ""
 var out_splat := ""
 var kit_cover := {}
 var shop_fill := []
+## Pack holder for dressing on upper floors (floor > 0), e.g. "roof:shop_in": it hides with that
+## building's roof while the player is inside below, instead of floating overhead (2026-11-06).
+var upper_floor_holder := ""
 ## Roads whose zone id starts with this get lane lines and power poles ("" = every road).
 var kit_street_prefix := ""
 ## Path texture instead of the street asphalt (park paths), "" = KIT_TERRAIN.road.
@@ -770,6 +778,13 @@ func _bake_splat() -> ImageTexture:
 	for i in n * n:
 		grass[i] = maxf(grass[i] - bare[i], 0.0)
 	_box_blur(grass, n, 2)
+	# The blur spreads grass back under walls; no blades inside buildings at all.
+	var walls := PackedFloat32Array()
+	walls.resize(n * n)
+	for poly: PackedVector2Array in _kit_blocked_polys():
+		_raster(walls, n, poly)
+	for i in n * n:
+		grass[i] *= 1.0 - walls[i]
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	for y in n:
 		for x in n:
@@ -1014,6 +1029,18 @@ func _build_clutter() -> void:
 				_kit_add(mesh, at, yaw + deg_to_rad(piece[6]) + dressed[i][3], 0.0, dressed[i][2])
 			pieces += 1
 	print("clutter: %d clusters, %d pieces" % [centers.size(), pieces])
+
+
+## Within SUPPLY_DANGER_RADIUS of a nest or boss arena (map file and extra nests), on the ground.
+func _near_danger(p: Vector2) -> bool:
+	for m: Dictionary in _map.markers:
+		if m["class"] in ["MonsterNest", "BossArena"] and p.distance_to(_xz(m.position)) < SUPPLY_DANGER_RADIUS:
+			return true
+	for m: Dictionary in _extra_markers:
+		if String(m.node_name).begins_with("MonsterNest_") \
+				and p.distance_to(Vector2(m.pos.x, m.pos.z)) < SUPPLY_DANGER_RADIUS:
+			return true
+	return false
 
 
 func _add_extra(scene: String, node_name: String, pos: Vector3, rot: float, props: Dictionary) -> void:
@@ -1341,7 +1368,7 @@ func _kit_blocked_polys() -> Array:
 	for id: String in _kit:
 		var parts: Dictionary = _kit[id]
 		var porch: bool = kit_buildings[id][0].get("porch", false)
-		out.append(_rect_poly((parts.rect as Rect2).grow(0.3)))
+		out.append(_rect_poly((parts.rect as Rect2).grow(KIT_PLANT_MARGIN)))
 		for seg: Dictionary in parts.segments:
 			if seg.inner or seg.kind != "e":
 				continue
@@ -1620,8 +1647,11 @@ func _build_fillers() -> void:
 		if kit[1] != "":
 			var spot := site + Vector2(FILL_RADIUS * 0.8, 0.0).rotated(-yaw - 0.6)
 			if _open(spot, keep_out, routes, 1.0) and not _in_prop(spot, 0.8):
+				var kind: String = kit[1]
+				if kind == "SUPPLY_CRATE" and not _near_danger(spot):
+					kind = "TOOLBOX"
 				_add_extra(loot_scene, "LootSpot_fill_%d" % s, Vector3(spot.x, 0.0, spot.y), _kit_rng.randf() * TAU,
-					{"container_type": kit[1], "loot_table_id": ""})
+					{"container_type": kind, "loot_table_id": ""})
 				loot += 1
 	print("fillers: %d sites, %d pieces, %d loot spots" % [sites.size(), pieces, loot])
 
@@ -2264,11 +2294,12 @@ func _build_shop_fill() -> void:
 				blockers.add_child(_box("Shelves_%s_%d" % [zone.id, taken.size()], c, foot - Vector2(0.1, 0.1), y,
 					1.85, 0.0, "blocked"))
 			else:
-				_kit_add("table_02", c, 0.0, y)
+				var holder := "" if zone.floor == 0 else upper_floor_holder
+				_kit_add("table_02", c, 0.0, y, 1.0, holder)
 				for k in 4:
 					var dir := Vector2(1.0, 0.0).rotated(k * PI * 0.5)
 					# Chairs face the table: front (-X) toward the center.
-					_kit_add("chair_01", c + dir * 0.85, atan2(-dir.y, dir.x), y)
+					_kit_add("chair_01", c + dir * 0.85, atan2(-dir.y, dir.x), y, 1.0, holder)
 				cover.add_child(_box("Cafe_%s_%d" % [zone.id, taken.size()], c, Vector2(2.2, 2.2), y, 0.9, 0.0, "cover"))
 		total += taken.size()
 		if taken.size() < want:

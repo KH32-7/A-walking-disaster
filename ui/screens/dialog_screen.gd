@@ -73,7 +73,7 @@ func _on_choice(id: StringName) -> void:
 			var res := Colony.persuade_to_stay(resident_id)
 			r = resident()
 			if res.get("ok", false):
-				dialog.say(ResidentText.call_name(r), "…알았어. 조금만 더 있어 볼게.", resident_id)
+				dialog.say(ResidentText.call_name(r), "...알았어. 조금만 더 있어 볼게.", resident_id)
 				dialog.set_notes([["● 남기로 했어요", UiTokens.GOOD]])
 			else:
 				dialog.say(ResidentText.call_name(r), "미안. 아직은 네 말을 다 믿기 어려워.", resident_id)
@@ -108,5 +108,5 @@ static func trust_notes(before: int, after: int) -> Array:
 	var s0 := TrustRules.stage_of(before)
 	var s1 := TrustRules.stage_of(after)
 	if s1 > s0:
-		notes.append(["◆ %s — %s" % [TrustRules.STAGE_NAMES[s1], TrustRules.STAGE_UNLOCKS[s1]], UiTokens.ACCENT])
+		notes.append(["%s: %s" % [TrustRules.STAGE_NAMES[s1], TrustRules.STAGE_UNLOCKS[s1]], UiTokens.ACCENT])
 	return notes

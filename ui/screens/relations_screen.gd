@@ -98,7 +98,7 @@ func _fill() -> void:
 	var nodes: Array = data[0]
 	if (_sel == &"" or not nodes.any(func(n: Dictionary) -> bool: return n.id == _sel)) and not nodes.is_empty():
 		_sel = nodes[0].id
-	_count.text = "%d명 · 관계 %d" % [nodes.size(), (data[1] as Array).size()]
+	_count.text = "%d명 / 관계 %d" % [nodes.size(), (data[1] as Array).size()]
 	_graph.set_data(nodes, data[1], _sel)
 	MenuScreen.clear(_list)
 	if _sel == &"":

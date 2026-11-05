@@ -26,9 +26,9 @@ const MARGIN_M := 14.0
 const SIDE_W := 400.0
 const LEGEND_W := 330.0
 ## Extraction type -> words (ExtractPoint.Type). Ids are not names; B has no display name yet.
-const EXTRACT_TYPES := ["탈출", "탈출 · 발전기", "탈출 · 열쇠 필요", "탈출 · 배터리 필요"]
+const EXTRACT_TYPES := ["탈출", "탈출 / 발전기", "탈출 / 열쇠 필요", "탈출 / 배터리 필요"]
 const LEGEND := [[&"player", "나"], [&"companion", "일행"], [&"extract", "탈출 지점"], [&"objective", "목표"],
-	[&"route", "숨은 경로"], [&"recording", "녹음기"], [&"lost_gear", "유실물"], [&"ping", "핑"], [&"danger", "마물 둥지·보스"]]
+	[&"route", "숨은 경로"], [&"recording", "녹음기"], [&"lost_gear", "유실물"], [&"ping", "핑"], [&"danger", "마물 둥지, 보스"]]
 const REFRESH_SEC := 0.5
 ## Right click within this many pixels of the ping clears it instead of moving it.
 const PING_CLEAR_PX := 22.0
@@ -331,7 +331,7 @@ func _find_marker(marker: StringName) -> Node3D:
 
 
 static func _short(text: String) -> String:
-	return text if text.length() <= 14 else text.left(13) + "…"
+	return text if text.length() <= 14 else text.left(13) + "..."
 
 
 func _update_player() -> void:
@@ -358,9 +358,9 @@ func _fill_side(objectives: Array, exits: Array, routes: int) -> void:
 		t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		v.add_child(t)
 		var quest: QuestDef = Quests.get_def(StringName(o.quest_id))
-		var sub := "%s · 남은 %d" % [quest.title if quest != null else "", int(o.remaining)]
+		var sub := "%s / 남은 %d" % [quest.title if quest != null else "", int(o.remaining)]
 		if not o.found:
-			sub += " · 위치는 현장에서"
+			sub += " / 위치는 현장에서"
 		v.add_child(MenuScreen.label(sub, &"LabelDim", 14))
 		row.add_child(v)
 		_goals.add_child(row)
@@ -380,7 +380,7 @@ func _fill_side(objectives: Array, exits: Array, routes: int) -> void:
 		v.add_child(MenuScreen.label(String(e.label), &"Label", 17))
 		var info := "대기 %d초" % int(e.wait)
 		if float(e.noise) > 0.0:
-			info += " · 소음 %dm" % int(e.noise)
+			info += " / 소음 %dm" % int(e.noise)
 		v.add_child(MenuScreen.label(info, &"LabelDim", 14))
 		row.add_child(v)
 		if p != null:
@@ -391,7 +391,7 @@ func _fill_side(objectives: Array, exits: Array, routes: int) -> void:
 	if map.art_mode:
 		_seen_label.text = "지역 전체 지도예요.\n숨은 경로 %d" % routes
 	else:
-		_seen_label.text = "어두운 곳은 아직 가 보지 않은 곳이에요.\n밝힌 칸 %d · 숨은 경로 %d" % [seen, routes]
+		_seen_label.text = "어두운 곳은 아직 가 보지 않은 곳이에요.\n밝힌 칸 %d / 숨은 경로 %d" % [seen, routes]
 
 
 static func _wrap(l: Label) -> Label:

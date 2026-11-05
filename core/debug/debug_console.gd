@@ -266,7 +266,7 @@ func _cmd_radio(args: PackedStringArray) -> String:
 		return "아침 방송"
 	if not Radio.triggers.has(StringName(args[0])):
 		return "없는 무전: %s" % args[0]
-	return "보냄" if Radio.say(StringName(args[0]), {"direction": "북쪽", "minutes": 3, "region": "침수 상가", "range": "승리 쪽", "day": GameState.day}) else "막힘 (쿨다운·빈도·1회 제한)"
+	return "보냄" if Radio.say(StringName(args[0]), {"direction": "북쪽", "minutes": 3, "region": "침수 상가", "range": "승리 쪽", "day": GameState.day}) else "막힘 (쿨다운, 빈도, 1회 제한)"
 
 
 func _cmd_godmode(args: PackedStringArray) -> String:

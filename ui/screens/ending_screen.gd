@@ -138,7 +138,7 @@ func _kicker() -> String:
 	if ENDING_NAMES.has(ending):
 		parts.append(ENDING_NAMES[ending])
 	parts.append("%d일차" % GameState.day)
-	return " · ".join(parts)
+	return " / ".join(parts)
 
 
 ## {status: count} over the cards (display only).
@@ -191,7 +191,7 @@ func _refresh() -> void:
 	for s: StringName in [&"active", &"missing", &"left", &"dead"]:
 		if counts.has(s):
 			parts.append("%s %d명" % [STATUS[s].word, counts[s]])
-	_summary.text = "  ·  ".join(parts) if not parts.is_empty() else "기록된 주민이 없어요"
+	_summary.text = "  /  ".join(parts) if not parts.is_empty() else "기록된 주민이 없어요"
 	MenuScreen.clear(_card_holder)
 	_card_holder.add_child(_make_card(cards[index] if not cards.is_empty() else {}))
 	_counter.text = "%d / %d" % [index + 1 if not cards.is_empty() else 0, cards.size()]

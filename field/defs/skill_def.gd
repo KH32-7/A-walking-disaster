@@ -6,6 +6,8 @@ extends Resource
 ## All numbers are 가안.
 
 @export var id: StringName = &""
+## Shown under the skill key on the field HUD while it is ready (design 03 "스킬").
+@export var name: String = ""
 @export var cooldown_sec: float = 10.0
 ## precision_shot: focus time / suppressive_fire, shadow_step, brace: how long it lasts.
 @export var duration_sec: float = 0.0
@@ -27,6 +29,10 @@ extends Resource
 @export var damage_taken_mult: float = 1.0
 ## Weapon stat that scales the cooldown (sniper rifle "정조준 쿨 -50%": aim_cooldown_mult 0.5).
 @export var cooldown_stat: StringName = &""
+## Fx id shown instead of `id` (&"" = id). Signature skills reuse a runner (id) with their own look.
+@export var fx: StringName = &""
+## Element passed to the Fx (tints / picks the element texture).
+@export var fx_element: Enums.Element = Enums.Element.NONE
 
 
 ## Cooldown for a skill used with a weapon of these Armory stats.

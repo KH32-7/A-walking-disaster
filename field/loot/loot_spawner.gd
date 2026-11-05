@@ -8,7 +8,8 @@ const CONTAINER_SCENE := preload("res://field/loot/loot_container.tscn")
 
 ## Region whose loot tables apply when a LootSpot has no loot_table_id.
 @export var region_id: StringName = &"flooded_mall"
-## Share of LootSpots that get a container each sortie (가안, tune with B-12).
+## Share of LootSpots that get a container each sortie (가안, tune with B-12). Supply crate spots
+## are not drawn: they always get one.
 @export_range(0.0, 1.0, 0.05) var spawn_ratio: float = 0.6
 ## Only LootSpots under this node are used. Empty = this node's parent.
 @export var spots_root: NodePath
@@ -32,12 +33,16 @@ func spawn(rng: RandomNumberGenerator) -> Array[LootContainer]:
 			c.queue_free()
 	spawned.clear()
 	var spots := _find_spots()
-	var count := roundi(spots.size() * spawn_ratio)
+	# Supply crates stand in fixed dangerous places (next to nests and bosses), so they come every
+	# sortie: the place itself tells the player it is worth the risk. Only the rest is drawn.
+	var fixed := spots.filter(func(s: LootSpot) -> bool: return s.container_type == LootSpot.ContainerType.SUPPLY_CRATE)
+	var rest := spots.filter(func(s: LootSpot) -> bool: return s.container_type != LootSpot.ContainerType.SUPPLY_CRATE)
+	var count := roundi(rest.size() * spawn_ratio)
 	if spawn_ratio > 0.0:
-		count = maxi(count, mini(1, spots.size()))
-	_shuffle(spots, rng)
-	for i in count:
-		var c := _make_container(spots[i], rng)
+		count = maxi(count, mini(1, rest.size()))
+	_shuffle(rest, rng)
+	for spot: LootSpot in fixed + rest.slice(0, count):
+		var c := _make_container(spot, rng)
 		if c:
 			spawned.append(c)
 	return spawned

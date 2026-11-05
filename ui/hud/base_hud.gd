@@ -40,8 +40,8 @@ func _ready() -> void:
 
 
 func refresh() -> void:
-	_day.text = "%d일차 · %s" % [GameState.day, SEASONS[int(GameState.season()) % 4]]
-	_phase.text = PHASES[clampi(int(GameState.phase), 0, 4)] + (" · 비" if GameState.is_raining() else "")
+	_day.text = "%d일차 / %s" % [GameState.day, SEASONS[int(GameState.season()) % 4]]
+	_phase.text = PHASES[clampi(int(GameState.phase), 0, 4)] + (" / 비" if GameState.is_raining() else "")
 	MenuScreen.clear(_res)
 	for id in RESOURCES:
 		var h := HBoxContainer.new()

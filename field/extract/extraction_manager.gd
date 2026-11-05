@@ -70,10 +70,14 @@ var _sortie_sec := 0.0
 var _kills: Dictionary = {}
 var _result: Dictionary = {}
 var _emergency: EmergencyReturn
+## Blueprints not known when the sortie began: flag -> output_id. The result lists the ones learned since.
+var _blueprints_before := {}
 
 
 func _ready() -> void:
 	add_to_group(GROUP)
+	for b: Dictionary in LootTable.unknown_blueprints():
+		_blueprints_before[b.flag] = b.output_id
 	_emergency = EmergencyReturn.new()
 	_emergency.name = "EmergencyReturn"
 	add_child(_emergency)
@@ -116,6 +120,8 @@ func activate(seed_value: int) -> void:
 		candidates[i] = candidates[j]
 		candidates[j] = swap
 	_active = candidates.slice(0, ACTIVE_COUNT)
+	for c in candidates:
+		c.set_active(c in _active)
 	active_points_changed.emit(active_point_ids())
 
 
@@ -334,6 +340,14 @@ func _on_monster_killed(monster_id: StringName, _element: Enums.Element, _positi
 		_kills[monster_id] = int(_kills.get(monster_id, 0)) + 1
 
 
+func _learned_blueprints() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for flag: StringName in _blueprints_before:
+		if GameState.has_flag(flag):
+			out.append(_blueprints_before[flag])
+	return out
+
+
 ## Sortie result, the base of EventBus.sortie_ended (docs/dev/contracts.md "출격 결과").
 ## SceneRouter adds rescued_profiles, down and xp, and merges loot.
 func _build_result(extracted: bool, point_id: StringName, loot: Dictionary,
@@ -350,6 +364,8 @@ func _build_result(extracted: bool, point_id: StringName, loot: Dictionary,
 		"loot": loot,
 		"kills": total,
 		"kills_by_monster": _kills.duplicate(),
+		# Output ids of the blueprints learned this sortie (loot containers, 2026-11-06).
+		"blueprints": _learned_blueprints(),
 		"rescued": rescued,
 		"companions": companions,
 		"stranded": stranded,
