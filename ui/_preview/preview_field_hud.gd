@@ -20,6 +20,7 @@ func _ready() -> void:
 	water.anchor_right = 1.0
 	water.anchor_bottom = 1.0
 	add_child(water)
+	UI.close_all()  # the title screen (D-19) opens on boot; this preview only wants the HUD
 	UI.show_field_hud(true)
 	_hud = UI.field_hud
 	_hud.auto_bind = false
@@ -33,7 +34,10 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
-	_hud.set_state(Fake.make(_t + 6.5))
+	var st: Dictionary = Fake.make(_t + 6.5)
+	if "--view=boss" in OS.get_cmdline_user_args():
+		st["boss"] = {"name": "고목 거인", "hp": 2140.0, "hp_max": 4000.0, "phase": 2, "phase_count": 2}
+	_hud.set_state(st)
 	if _t > 1.2 and _t - delta <= 1.2:
 		for a in OS.get_cmdline_user_args():
 			if a.begins_with("--shot="):
