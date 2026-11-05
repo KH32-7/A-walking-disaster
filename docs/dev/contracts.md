@@ -45,7 +45,12 @@
 
 - **GameState**: `day`, `phase`, `flow_state`, `season()`, `has_flag()`, `set_flag()`, `start_next_day()`, `set_phase()`, `set_flow_state()` (SceneRouter 전용)
 - **Economy**: `get_amount(id)`, `can_afford(cost)`, `apply(changes)`, `apply_detailed(changes)`(버려진 양 보고), `get_def(id)`, `storage_cap()`, `capped_total()`, `free_space()`, `uses_cap(id)`, `set_cap_bonus(bonus)`(C: 창고 건물)
-- **Armory**: `get_equipped(owner_id, slot)`, `get_item_stats(item_uid)` (+ A-07에서 추가하는 장착/해제 함수)
+- **Armory**: `get_equipped(owner_id, slot)`, `get_item_stats(item_uid)`, `equip(owner_id, slot, uid)`, `unequip(owner_id, slot)`,
+  `list_equipped(owner_id)`, `list_storage(slot)`, `can_go_in_slot(def_id, slot)`, `get_combat_class(owner_id)`,
+  `get_owner_summary(owner_id)`(방어력 합, 방어구 소음 합(상한 +3m), 최대 체력, 이동 배율, 가방 격자), `create_item(def_id, rarity, rng)`,
+  `remove_item(uid)`, `get_item(uid)`(읽기 전용), `get_def(def_id)`, `wear(uid, amount)`(B: 내구도), `set_lost(uid, lost)`(B: 쓰러짐·회수).
+  owner_id는 `Armory.PLAYER_ID` 또는 주민 id. 무기고 보관은 `STORAGE_ID`, 유실물은 `LOST_ID`.
+  **`get_item_stats().damage`·`defense`는 등급·강화·부가 옵션·내구도까지 반영된 최종값**이다. B의 피해 공식에서 `(1+0.06U)`를 다시 곱하지 않는다.
 - **Radio**: `say(template_id, context, priority)`
 - **Settings**: `get_value(key)`, `set_value(key, value)`
 - **SaveSystem**: `register_provider(key, provider)`, `save_slot(slot) -> bool`, `load_slot(slot) -> bool`, `has_slot(slot)`, `delete_slot(slot)`, `slot_info(slot)`(불러오기 화면용), `autosave()`, `save_suspend()`, `has_suspend()`, `load_suspend()`, `current_slot`

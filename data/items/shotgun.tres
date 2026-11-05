@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/item_def.gd" id="1_35xtt"]
+
+[resource]
+script = ExtResource("1_35xtt")
+id = &"shotgun"
+name = "산탄총"
+base_stats = {
+"attack_interval": 0.9,
+"damage": 9,
+"knockback": true,
+"magazine": 6,
+"noise": 18,
+"pellets": 8,
+"range": 8
+}
+attachment_slot = true
+size = Vector2i(1, 3)

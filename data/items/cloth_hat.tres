@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/item_def.gd" id="1_st1d8"]
+
+[resource]
+script = ExtResource("1_st1d8")
+id = &"cloth_hat"
+name = "천 모자"
+slot = 2
+base_stats = {
+"defense": 3,
+"noise_mod": 0.0,
+"weight": &"light"
+}

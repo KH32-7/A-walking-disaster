@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/item_def.gd" id="1_pcrvj"]
+
+[resource]
+script = ExtResource("1_pcrvj")
+id = &"baseball_bat"
+name = "야구 방망이"
+combat_class = 2
+base_stats = {
+"attack_interval": 0.65,
+"damage": 28,
+"knockback_mult": 1.5,
+"magazine": 0,
+"noise": 6,
+"pellets": 1,
+"range": 1.7
+}
+size = Vector2i(1, 3)

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="Affix" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/affix.gd" id="1_8duth"]
+
+[resource]
+script = ExtResource("1_8duth")
+id = &"max_hp"
+label = "최대 체력 +%d"
+stat = &"max_hp"
+min_value = 10
+max_value = 30
+allowed_slots = Array[int]([2, 3, 4, 5])

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/item_def.gd" id="1_0wc0d"]
+
+[resource]
+script = ExtResource("1_0wc0d")
+id = &"work_vest"
+name = "작업 조끼"
+slot = 3
+base_stats = {
+"bag_bonus_cells": 2,
+"defense": 12,
+"noise_mod": 1.0,
+"weight": &"medium"
+}
+size = Vector2i(2, 2)

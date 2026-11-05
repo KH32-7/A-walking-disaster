@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/item_def.gd" id="1_pf3gb"]
+
+[resource]
+script = ExtResource("1_pf3gb")
+id = &"machete"
+name = "마체테"
+combat_class = 1
+base_stats = {
+"attack_interval": 0.4,
+"damage": 22,
+"magazine": 0,
+"noise": 3,
+"pellets": 1,
+"range": 1.6,
+"vs_green_bonus": 0.2
+}
+size = Vector2i(1, 2)

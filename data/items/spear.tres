@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/item_def.gd" id="1_7vlr8"]
+
+[resource]
+script = ExtResource("1_7vlr8")
+id = &"spear"
+name = "긴 날 창"
+combat_class = 1
+base_stats = {
+"attack_interval": 0.55,
+"damage": 26,
+"magazine": 0,
+"noise": 4,
+"pellets": 1,
+"range": 2.8
+}
+size = Vector2i(1, 3)

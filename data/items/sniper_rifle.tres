@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/item_def.gd" id="1_ijy6p"]
+
+[resource]
+script = ExtResource("1_ijy6p")
+id = &"sniper_rifle"
+name = "저격총"
+base_stats = {
+"aim_cooldown_mult": 0.5,
+"attack_interval": 1.6,
+"damage": 90,
+"magazine": 5,
+"noise": 25,
+"pellets": 1,
+"range": 40
+}
+attachment_slot = true
+size = Vector2i(1, 3)

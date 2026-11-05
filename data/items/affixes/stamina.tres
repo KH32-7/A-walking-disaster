@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="Affix" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/affix.gd" id="1_ga5qk"]
+
+[resource]
+script = ExtResource("1_ga5qk")
+id = &"stamina"
+label = "스태미나 소모 %d%%"
+stat = &"stamina_pct"
+min_value = -20
+max_value = -10
+allowed_slots = Array[int]([0, 1, 2, 3, 4, 5])

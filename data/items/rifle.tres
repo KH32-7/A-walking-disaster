@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/item_def.gd" id="1_j2rhb"]
+
+[resource]
+script = ExtResource("1_j2rhb")
+id = &"rifle"
+name = "소총"
+base_stats = {
+"attack_interval": 0.5,
+"damage": 35,
+"magazine": 20,
+"noise": 20,
+"pellets": 1,
+"range": 28
+}
+attachment_slot = true
+size = Vector2i(1, 3)
