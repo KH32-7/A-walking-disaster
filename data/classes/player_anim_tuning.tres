@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_tuning")
-walk_mult = 0.35
+walk_mult = 0.15
 sprint_mult = 0.95
 aim_walk_mult = 1.0
 back_walk_mult = 1.3
