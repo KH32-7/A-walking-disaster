@@ -4,6 +4,7 @@
 // `player_position` is set every frame by art/roof_fader.gd (no global uniform needed).
 shader_type spatial;
 render_mode diffuse_toon, specular_disabled;
+#include "res://art/shaders/toon_local_light.gdshaderinc"
 
 uniform vec4 albedo : source_color = vec4(0.82, 0.80, 0.76, 1.0);
 uniform sampler2D albedo_texture : source_color, filter_linear_mipmap, hint_default_white;
@@ -44,7 +45,11 @@ void fragment() {
 
 void light() {
 	float ndl = dot(NORMAL, LIGHT);
-	float lit = smoothstep(0.02, 0.08, ndl) * smoothstep(0.45, 0.55, ATTENUATION);
-	vec3 shade = mix(shade_color.rgb, vec3(1.0), lit);
-	DIFFUSE_LIGHT += ALBEDO * shade * LIGHT_COLOR / PI;
+	if (!LIGHT_IS_DIRECTIONAL) {
+		DIFFUSE_LIGHT += ALBEDO * LIGHT_COLOR * toon_local_light(ATTENUATION, ndl) / PI;
+	} else {
+		float lit = smoothstep(0.02, 0.08, ndl) * smoothstep(0.45, 0.55, ATTENUATION);
+		vec3 shade = mix(shade_color.rgb, vec3(1.0), lit);
+		DIFFUSE_LIGHT += ALBEDO * shade * LIGHT_COLOR / PI;
+	}
 }

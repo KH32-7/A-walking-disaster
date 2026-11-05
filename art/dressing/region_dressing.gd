@@ -7,7 +7,8 @@ extends Node3D
 ##   environment (sky, fog, sun, glow), toon skin (each greybox StandardMaterial3D colour is drawn
 ##   with the toon shader instead - layout files are untouched), flood water shader on deep-water
 ##   surfaces, vines along wall tops, dead neon signs, warm lights in IndoorZones, floating debris,
-##   and for the base: laundry lines, a bonfire light, flower pots.
+##   street lights on the standing pack lamp posts (field), and for the base: laundry lines, a
+##   bonfire light, flower pots.
 ## Everything is seeded, so the same map always looks the same.
 ## Design 16 "아트 방향": 회백 콘크리트 + 청록 수면 + 초록 덩굴, 맑은 하늘, 꺼진 네온.
 
@@ -53,12 +54,35 @@ enum Kind { FIELD, BASE }
 @export var debris_count := 24
 @export var interior_lights := true
 @export var vine_color := Color("5e9a4a")
+@export_group("Street lights")
+## Standing pack lamp posts (STREET_LAMP_SCENES) get a downward spot light and a glowing bulb, so
+## the streets get pools of light and the map reads in depth. Fallen posts stay dark.
+@export var street_lights := true
+@export var street_light_color := Color("ffd59a")
+@export var street_light_energy := 3.0
+## Multiplier from dusk (FieldState.dusk_started) on, and again at night.
+@export var street_light_dusk_mult := 1.6
+@export var street_light_night_mult := 2.4
+@export var street_light_range := 14.0
+@export_range(10.0, 89.0) var street_light_angle := 55.0
+## Spots further than this from the camera stop casting shadows (and fade out at twice this).
+@export var street_light_shadow_distance := 45.0
+## About this share of the lamps flicker (seeded).
+@export_range(0.0, 1.0) var street_light_flicker := 0.15
 
 var _rng := RandomNumberGenerator.new()
 var _toon_cache: Dictionary = {}
 var _bobbers: Array[Node3D] = []
 var _t := 0.0
 var _fire: OmniLight3D
+var _street_spots: Array[SpotLight3D] = []
+var _flicker_spots: Array[SpotLight3D] = []
+var _street_mult := 1.0
+
+## Pack lamp posts that light up (CityKit places them into the region's buildings scene).
+const STREET_LAMP_SCENES := ["parking_lot_light_pole_01.fbx"]
+## The bulb hangs this far below the top of the post.
+const STREET_LAMP_DROP := 0.3
 
 
 func _ready() -> void:
@@ -79,6 +103,8 @@ func _ready() -> void:
 		_neon(walls)
 	if interior_lights:
 		_interior_lights(layout)
+	if street_lights and kind == Kind.FIELD:
+		_street_lights()
 	if kind == Kind.BASE:
 		_base_life(layout, walls)
 
@@ -92,6 +118,12 @@ func _process(delta: float) -> void:
 			b.rotation.z = sin(_t * 0.9 + i * 2.0) * 0.06
 	if _fire != null:
 		_fire.light_energy = 1.4 + sin(_t * 9.0) * 0.12 + sin(_t * 23.0) * 0.08
+	for i in _flicker_spots.size():
+		var s := _flicker_spots[i]
+		if is_instance_valid(s):
+			# Mostly on, with short dips (a bad contact, not a strobe: reduce_flash keeps it gentle).
+			var dip := 1.0 if sin(_t * 1.7 + i * 3.1) > -0.85 else 0.35
+			s.light_energy = street_light_energy * _street_mult * dip
 
 
 func _find_layout() -> Node3D:
@@ -337,6 +369,92 @@ func _interior_lights(layout: Node) -> void:
 		l.shadow_enabled = false
 		add_child(l)
 		l.global_position = at + Vector3.UP * 2.4
+
+
+## Lights every standing lamp post of the region (its buildings scene is a sibling, put there by
+## CityKit before this node is added). Without the private assets/ there are no posts and no lights.
+func _street_lights() -> void:
+	var region := get_parent()
+	var no_flicker := bool(Settings.get_value(&"reduce_flash"))
+	var bulb_mat := StandardMaterial3D.new()
+	bulb_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	bulb_mat.albedo_color = street_light_color.lightened(0.3)
+	bulb_mat.emission_enabled = true
+	bulb_mat.emission = street_light_color
+	bulb_mat.emission_energy_multiplier = 3.0
+	var bulb_mesh := SphereMesh.new()
+	bulb_mesh.radius = 0.16
+	bulb_mesh.height = 0.32
+	for n in region.find_children("*", "Node3D", true, false):
+		if not _is_street_lamp(n):
+			continue
+		var mi := n as MeshInstance3D
+		if mi == null:
+			for c in n.find_children("*", "MeshInstance3D", true, false):
+				mi = c as MeshInstance3D
+				break
+		if mi == null or not mi.is_visible_in_tree():
+			continue
+		var xf := mi.global_transform
+		if xf.basis.y.normalized().dot(Vector3.UP) < 0.9:
+			continue  # fallen post
+		var box := mi.get_aabb()
+		var top := xf * Vector3(box.get_center().x, box.end.y, box.get_center().z)
+		var at := top - Vector3.UP * STREET_LAMP_DROP
+		var spot := SpotLight3D.new()
+		spot.name = &"StreetLight"
+		spot.light_color = street_light_color
+		spot.light_energy = street_light_energy
+		spot.spot_range = street_light_range
+		spot.spot_angle = street_light_angle
+		spot.spot_attenuation = 0.8
+		spot.shadow_enabled = true
+		spot.distance_fade_enabled = true
+		spot.distance_fade_begin = street_light_shadow_distance
+		spot.distance_fade_shadow = street_light_shadow_distance
+		spot.distance_fade_length = street_light_shadow_distance
+		add_child(spot)
+		spot.global_position = at
+		spot.global_rotation = Vector3(-PI / 2.0, 0.0, 0.0)  # straight down
+		var bulb := MeshInstance3D.new()
+		bulb.mesh = bulb_mesh
+		bulb.material_override = bulb_mat
+		bulb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(bulb)
+		bulb.global_position = at
+		_street_spots.append(spot)
+		if not no_flicker and _rng.randf() < street_light_flicker:
+			_flicker_spots.append(spot)
+	if _street_spots.is_empty():
+		return
+	FieldState.dusk_started.connect(_set_street_mult.bind(street_light_dusk_mult))
+	FieldState.night_started.connect(_set_street_mult.bind(street_light_night_mult))
+	if FieldState.is_night():
+		_set_street_mult(street_light_night_mult)
+	elif FieldState.is_dusk():
+		_set_street_mult(street_light_dusk_mult)
+
+
+func _is_street_lamp(n: Node) -> bool:
+	var path := n.scene_file_path
+	if path.is_empty():
+		return false
+	for file: String in STREET_LAMP_SCENES:
+		if path.ends_with("/" + file):
+			return true
+	return false
+
+
+func _set_street_mult(mult: float) -> void:
+	_street_mult = mult
+	for s in _street_spots:
+		if is_instance_valid(s):
+			s.light_energy = street_light_energy * mult
+
+
+## Standing lit lamp posts (tests and previews).
+func street_light_count() -> int:
+	return _street_spots.size()
 
 
 # ---------------- base ----------------
