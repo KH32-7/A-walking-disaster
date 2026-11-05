@@ -1,4 +1,4 @@
-# vfx/ (D-18, 레인 D)
+# vfx/ (D-18)
 
 게임플레이는 `Fx.spawn(effect_id, position, params)`만 부른다. 이펙트 노드를 직접 만들지 않는다.
 그림은 전부 VFX 팩(`res://assets/vfx/`, Magic Arsenal, Elemental Spells, Stylized Shoot & Hit)의
@@ -58,4 +58,4 @@
 3. `tests/ui/test_fx.gd`의 `GAMEPLAY_IDS`에 넣는다(게임플레이가 부르는 id면).
 
 `Settings.reduce_flash`: `flash = true` 레이어와 점광원, 피격 번쩍임이 약해진다. Fx는 카메라를 움직이지 않는다
-(히트스톱, 카메라 흔들림, 넉백은 레인 B).
+(히트스톱, 카메라 흔들림, 넉백은 field/ 쪽 코드).

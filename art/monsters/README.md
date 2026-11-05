@@ -1,4 +1,4 @@
-# art/monsters/ (D-17, 레인 D)
+# art/monsters/ (D-17)
 
 마물 모델 씬. `<def.id>.tscn` = `MonsterVisual` + `assets/monsters/<계열>/<id>.glb`.
 B의 `Monster`가 `_ready`에서 이 파일을 찾아 `Visual` 자식으로 붙이고 회색 상자(Body 등)를 숨긴다.

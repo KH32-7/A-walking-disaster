@@ -4,7 +4,7 @@
 **LLM·생성형 AI는 쓰지 않는다**(팀 결정). A-15는 제외, A-16·A-17은 손으로 쓴 데이터·템플릿으로 대체한다.
 다른 세 레인이 기대는 기반이라 **M0 태스크를 가장 먼저** 끝낸다.
 
-- 소유: `core/`, `systems/`, `ai/`, `tools/`, `project.godot`, `main.tscn`, `data/{items,recipes,resources,essences,quests,radio,resident_pool}/`, `tests/core/`, `tests/run_tests.gd`, `docs/dev/`, `docs/design/`, `.github/`
+- 주로 다룬 폴더(기록, M2 이후 소유권 없음): `core/`, `systems/`, `ai/`, `tools/`, `project.godot`, `main.tscn`, `data/{items,recipes,resources,essences,quests,radio,resident_pool}/`, `tests/core/`, `tests/run_tests.gd`, `docs/dev/`, `docs/design/`, `.github/`
 - 이미 있는 뼈대: 오토로드 9개(`EventBus`, `Settings`, `GameState`, `InputSetup`, `SaveSystem`, `Economy`, `Armory`, `Radio`, `SceneRouter`), `Enums`
 
 ## 체크리스트

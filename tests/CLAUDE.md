@@ -1,4 +1,4 @@
-# tests/ — 레인별 하위 폴더
+# tests/ — 테스트
 
-tests/core(A), tests/field(B), tests/base(C), tests/ui(D). 자기 폴더에만 추가한다.
-파일 이름 test_*.gd, run() -> bool 함수를 둔다(A-02의 러너가 호출).
+tests/core, tests/field, tests/base, tests/ui로 기능별 폴더가 나뉘어 있다. 맞는 폴더에 넣는다.
+파일 이름 test_*.gd, run() -> bool 함수를 둔다(tests/run_tests.gd 러너가 호출).

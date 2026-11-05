@@ -1,6 +1,6 @@
 # 에셋 파이프라인 (D-02)
 
-유료·라이선스 에셋을 비공개 `assets/` 서브모듈에 넣는 순서. 레인 D가 관리하고, 다른 레인은 필요한 에셋을 D에게 요청한다.
+유료·라이선스 에셋을 비공개 `assets/` 서브모듈에 넣는 순서. 필요한 사람이 직접 넣는다(M2 이후 레인 구분 없음).
 루트 `CLAUDE.md`의 "Committing asset changes"(서브모듈 먼저 커밋·푸시 → 메인 저장소 포인터)를 같이 따른다.
 
 ## 1. 사기 전에 라이선스 확인
@@ -58,6 +58,6 @@ git add assets
 git commit -m "[D-xx] Update assets: city_ruins"
 ```
 
-- 메인 저장소의 `assets` 포인터는 레인 D만 올린다. 두 사람이 동시에 올리면 충돌한다.
+- 메인 저장소의 `assets` 포인터는 누구나 올린다. 두 사람이 동시에 올리면 충돌하므로, 올리기 전에 `git pull`로 main의 포인터를 받는다.
 - 메인 저장소에는 유료 파일이 하나도 없어야 한다. `tests/ui/test_no_paid_assets.gd`가
   `assets/`·`addons/`·`art/`·`ui/theme/fonts/` 밖의 모델·텍스처·오디오·`.unitypackage`를 찾으면 실패한다.
