@@ -92,11 +92,12 @@ func set_flag(flag: StringName, value: Variant = true) -> void:
 
 # --- Save provider (see SaveSystem) ---
 func save_data() -> Dictionary:
-	return {"day": day, "phase": phase, "weather": weather, "flags": flags}
+	return {"day": day, "phase": phase, "flow_state": flow_state, "weather": weather, "flags": flags}
 
 
 func load_data(data: Dictionary) -> void:
 	day = int(data.get("day", 1))
 	phase = int(data.get("phase", Enums.Phase.MORNING)) as Enums.Phase
+	flow_state = int(data.get("flow_state", Enums.FlowState.TITLE)) as Enums.FlowState
 	weather = int(data.get("weather", Enums.Weather.CLEAR)) as Enums.Weather
 	flags = data.get("flags", {})
