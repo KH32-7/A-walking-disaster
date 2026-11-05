@@ -53,7 +53,7 @@ func _add(traits: Array = [], extra: Dictionary = {}) -> StringName:
 
 func _test_defs() -> bool:
 	var ids := BaseDB.night_events().keys()
-	var ok := _check(ids.size() == 7, "밤 이벤트 7종: %s" % [ids])
+	var ok := _check(ids.size() == 8 and &"prejudice_talk" in ids, "밤 이벤트 7종 + 편견 해소 대화 (C-16): %s" % [ids])
 	ok = _check(BaseDB.get_night_event(&"wedding").priority and not BaseDB.get_night_event(&"bonfire").priority, "결혼식은 우선") and ok
 	ok = _check(BaseDB.get_night_event(&"quarrel").choices == [&"watch", &"mediate"], "다툼: 지켜보기·중재") and ok
 	return ok

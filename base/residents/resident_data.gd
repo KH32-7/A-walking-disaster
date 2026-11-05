@@ -24,6 +24,7 @@ class_name ResidentData
 ##   gender: StringName (&"female" / &"male", GENDERS) — from the profile, rolled when missing.
 ##          연애·결혼은 성별과 상관없고, 출산은 여성 주민만 (C-15)
 ##   study_days: {job_id: days} — 교실에서 배운 날 (세대 간 전수, C-15)
+##   story_revealed: bool — 편견이 풀리며 사연이 모두 공개됨 (C-16)
 ##   health: Enums.HealthState, recover_days: int
 ##   relations: {resident_id: -100..100} (C-14)
 ##   assignment: {job: StringName, building_id: StringName}
@@ -103,6 +104,7 @@ static func create(profile: Dictionary, rng: RandomNumberGenerator) -> Dictionar
 		"known_likes": [],
 		"gender": roll_gender(profile, rng),
 		"study_days": {},
+		"story_revealed": false,
 		"class_aptitude": roll_aptitude(rng),
 		"hunger": START_HUNGER,
 		"fatigue": START_FATIGUE,
@@ -167,6 +169,7 @@ static func normalize(src: Dictionary) -> Dictionary:
 	r["known_likes"] = _names(r.get("known_likes", []))
 	r["gender"] = parse_gender(r.get("gender", ""), r["id"])
 	r["study_days"] = _int_map(r.get("study_days", {}), 0, 1 << 30)
+	r["story_revealed"] = bool(r.get("story_revealed", false))
 	var apt := {}
 	for key in CLASS_KEYS:
 		apt[key] = clampi(int(_read(r.get("class_aptitude", {}), key, Enums.Aptitude.MID)), 0, Enums.Aptitude.size() - 1)
