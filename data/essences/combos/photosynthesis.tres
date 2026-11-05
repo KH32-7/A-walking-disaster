@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ComboDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/combo_def.gd" id="1_combo"]
+
+[resource]
+script = ExtResource("1_combo")
+id = &"photosynthesis"
+element_b = 4
+name = "광합성"
+description = "처치 시 반경 5m 아군·구조자 체력 +10"
+trigger = &"kill"
+effect_params = {
+"radius": 5.0,
+"heal": 10
+}

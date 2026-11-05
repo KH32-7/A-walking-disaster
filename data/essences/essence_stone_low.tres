@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="EssenceDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/essence_def.gd" id="1_ess"]
+
+[resource]
+script = ExtResource("1_ess")
+id = &"essence_stone_low"
+name = "하급 석 정수"
+element = 2
+effect_params = {
+"stagger_bonus": 0.2,
+"guard_break_chance": 0.1
+}
+scaling_keys = Array[StringName]([&"stagger_bonus", &"guard_break_chance"])
+resist_ratio = 0.2
+name_prefix = "돌 박힌"
+vfx_shape = &"square"
