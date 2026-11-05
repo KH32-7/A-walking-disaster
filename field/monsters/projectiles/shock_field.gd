@@ -7,6 +7,9 @@ extends Node3D
 var info: Dictionary = {}
 var shooter: Monster
 
+## Below this much time left, no new zap: float drift must not add a 7th zap at the 3 s edge.
+const END_EPSILON := 0.0001
+
 var _left := MonsterRules.SHOCK_FIELD_SEC
 var _tick := 0.0
 
@@ -19,12 +22,15 @@ func _physics_process(delta: float) -> void:
 func advance(delta: float) -> void:
 	if not is_inside_tree() or _left <= 0.0:
 		return
+	# Zap on the tick boundaries inside the lifetime: t = 0, 0.5, ... 2.5 (6 zaps for 3 s).
+	# A boundary passed this step happened at (now + delta + _tick); it counts only if some
+	# lifetime was still left at that moment.
 	_tick -= delta
-	while _tick <= 0.0 and _left > 0.0:
+	while _tick <= 0.0 and _left - delta - _tick > END_EPSILON:
 		_tick += MonsterRules.SHOCK_FIELD_TICK_SEC
 		zap()
 	_left -= delta
-	if _left <= 0.0:
+	if _left <= END_EPSILON:
 		queue_free()
 
 
