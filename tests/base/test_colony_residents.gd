@@ -65,7 +65,8 @@ func _test_profile_overrides() -> bool:
 	ok = _check(r["stats"].size() == 4 and r["stats"][&"str"] >= 2, "빠진 능력치는 굴림") and ok
 	ok = _check(r["access_needs"] == [Enums.AccessNeed.MOBILITY], "참여 조건 유지") and ok
 	ok = _check(r["traits"] == [&"quick_hands", &"brave"], "프로필 특성 유지") and ok
-	var child := ResidentData.create(DemoProfiles.PROFILES[2], rng)
+	var child_profile: Dictionary = DemoProfiles.PROFILES.filter(func(pr: Dictionary) -> bool: return pr["id"] == &"demo_child")[0]
+	var child := ResidentData.create(child_profile, rng)
 	ok = _check(&"monster_mark" in child["traits"] and child["age_stage"] == Enums.AgeStage.CHILD, "데모 아이: 마물 흔적, 아이") and ok
 	return ok
 
