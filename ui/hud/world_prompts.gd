@@ -19,6 +19,9 @@ var _chip_label: Label
 var _chip_key: KeyChip
 var _chip_sub: Label
 var _font: Font
+## Hold progress (0..1) drawn as a ring around the [F] key while opening / helping, -1 = none.
+var _hold_progress := -1.0
+var _ring: Control  # drawn above the chip
 
 
 func _ready() -> void:
@@ -53,6 +56,11 @@ func _ready() -> void:
 	_chip.add_child(h)
 	add_child(_chip)
 	_chip.visible = false
+	_ring = Control.new()
+	_ring.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ring.draw.connect(_draw_ring)
+	add_child(_ring)
 
 
 func _process(_delta: float) -> void:
@@ -68,10 +76,12 @@ func _process(_delta: float) -> void:
 	else:
 		_update_chip(cam, player)
 	queue_redraw()
+	_ring.queue_redraw()
 
 
 ## Base: no player — "[클릭] 서하은 · 이야기하기" beside whatever is under the mouse (BaseCamera.hover).
 func _update_click_chip(cam: BaseCamera) -> void:
+	_hold_progress = -1.0
 	var h := cam.hover
 	_chip.visible = not h.is_empty()
 	if not _chip.visible:
@@ -93,14 +103,16 @@ func _update_chip(cam: Camera3D, player: Node3D) -> void:
 	# the last thing used, so it alone would hide every prompt after the first chest.
 	var using: Node = player.call(&"interacting") if player.has_method(&"interacting") else null
 	var hold := using != null and using.has_method(&"hold_state") and not (using.call(&"hold_state") as Dictionary).is_empty()
-	# While holding: the field HUD has its own hold bar; elsewhere (the intro house) the chip shows
-	# the progress so a press visibly did something.
-	var field_bar := UI.field_hud != null and UI.field_hud.is_visible_in_tree()
-	if hold and not field_bar:
+	# While holding (opening a lock or door, helping someone up): the chip stays on that thing with
+	# the label and percent, and a ring fills around the [F] key (user request 2026-11-06: the head
+	# bar was hard to see). Field and intro house alike.
+	_hold_progress = -1.0
+	if hold:
 		var hs: Dictionary = using.call(&"hold_state")
-		text = "%s %d%%" % [String(hs.get("label", "")), roundi(float(hs.get("progress", 0.0)) * 100.0)]
+		_hold_progress = clampf(float(hs.get("progress", 0.0)), 0.0, 1.0)
+		text = "%s %d%%" % [String(hs.get("label", "")), roundi(_hold_progress * 100.0)]
 		target = using as Node3D
-	_chip.visible = text != "" and (not hold or not field_bar) and target != null
+	_chip.visible = text != "" and target != null
 	if not _chip.visible:
 		return
 	_chip_key.key_text = "F"
@@ -114,6 +126,21 @@ func _update_chip(cam: Camera3D, player: Node3D) -> void:
 	var sz := _chip.get_combined_minimum_size()
 	_chip.size = sz
 	_chip.position = Vector2(p.x + 18.0, p.y - sz.y * 0.5)  # just right of the thing, at its height
+
+
+## Ring around the [F] key: dark track, accent arc from 12 o'clock clockwise.
+const RING_GAP := 6.0
+const RING_WIDTH := 4.0
+
+func _draw_ring() -> void:
+	if _hold_progress < 0.0 or not _chip.visible:
+		return
+	var key := _chip_key.get_global_rect()
+	var c := get_global_transform().affine_inverse() * key.get_center()
+	var r := maxf(key.size.x, key.size.y) * 0.5 + RING_GAP
+	_ring.draw_arc(c, r, 0.0, TAU, 48, Color(0, 0, 0, 0.7), RING_WIDTH + 3.0, true)
+	if _hold_progress > 0.0:
+		_ring.draw_arc(c, r, -PI * 0.5, -PI * 0.5 + TAU * _hold_progress, 48, UiTokens.ACCENT, RING_WIDTH, true)
 
 
 ## Closer than this (m) the player is on the exit: its marker would sit on the hold bar, so it hides.
