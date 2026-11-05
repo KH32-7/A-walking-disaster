@@ -2,7 +2,8 @@ extends RefCounted
 ## B-12: flooded mall layout. Markers match the confirmed map file, the navmesh reaches every
 ## marker from the north spawn, every extract point from both spawns, and the wheelchair layer
 ## leaves the mall's 2F only by the hidden ramp. The assembly spawns the player, monsters and loot,
-## roaming packs, activates 2 extract points and has a B-04 IndoorZone per building.
+## roaming packs, activates 2 extract points and has a B-04 IndoorZone per building. The four boss arenas
+## (2026-11-06: every boss lives here) are reachable and the BossSpawner wakes one boss in each.
 
 const LAYOUT := "res://levels/field/flooded_mall/layout.tscn"
 const ASSEMBLY := "res://levels/field/flooded_mall/flooded_mall.tscn"
@@ -10,12 +11,14 @@ const NAV_WALK := 1
 const NAV_WHEELCHAIR := 2
 const REACH := 1.5 ## path end within this distance (xz) of the target
 ## Map file markers plus the generator's extras (build_layout.gd EXTRA_NESTS, extra LootSpots):
-## loot 19 + 54 (B-26: denser loot) + 11 (B-26: filler scenes in dead space), nests 3 + 3.
+## loot 19 + 54 (B-26: denser loot) + 9 (B-26: filler scenes in dead space; the boss arenas keep two
+## fillers out since 2026-11-06), nests 3 + 3.
 const MARKER_COUNTS := {
-	PlayerSpawn.GROUP: 2, ExtractPoint.GROUP: 3, LootSpot.GROUP: 84, MonsterNest.GROUP: 6,
-	RescueSpot.GROUP: 4, HiddenRoute.GROUP: 1, Recording.GROUP: 2, BossArena.GROUP: 0,
+	PlayerSpawn.GROUP: 2, ExtractPoint.GROUP: 3, LootSpot.GROUP: 82, MonsterNest.GROUP: 6,
+	RescueSpot.GROUP: 4, HiddenRoute.GROUP: 1, Recording.GROUP: 2, BossArena.GROUP: 4,
 }
 const EXTRACT_IDS := [&"mall_dock", &"mall_gas_station", &"mall_north_gate"]
+const BOSS_IDS := [&"sunken_sign_serpent", &"surgical_lamp_wraith", &"neon_colossus", &"breakwater_golem"]
 const NAV_SYNC_MAX_FRAMES := 300
 ## Nest interval after the generator's NEST_INTERVAL_MULT (map file 180s).
 const NEST_INTERVAL := 60.0
@@ -82,7 +85,7 @@ func _check_paths(map: RID, stair_foot: Vector3) -> void:
 		_expect(_reaches(map, main, target, NAV_WALK), "main spawn reaches extract %s" % node.id)
 		_expect(_reaches(map, east, target, NAV_WALK), "east spawn reaches extract %s" % node.id)
 	# Whole map walkable: every other marker from the north gate.
-	for group: StringName in [LootSpot.GROUP, MonsterNest.GROUP, RescueSpot.GROUP, Recording.GROUP]:
+	for group: StringName in [LootSpot.GROUP, MonsterNest.GROUP, RescueSpot.GROUP, Recording.GROUP, BossArena.GROUP]:
 		for node in _tree.get_nodes_in_group(group):
 			_expect(_reaches(map, main, node.global_position, NAV_WALK), "main spawn reaches %s" % node.name)
 	var route := _tree.get_nodes_in_group(HiddenRoute.GROUP)[0] as HiddenRoute
@@ -100,11 +103,23 @@ func _check_paths(map: RID, stair_foot: Vector3) -> void:
 
 
 func _check_assembly() -> void:
+	var saved_respawn := FieldState.boss_respawn_day.duplicate()
+	FieldState.boss_respawn_day = {}
 	var mall := (load(ASSEMBLY) as PackedScene).instantiate() as Node3D
 	_tree.root.add_child(mall)
 	for i in 5:
 		await _tree.process_frame
 		await _tree.physics_frame
+	var bosses: Array[StringName] = []
+	for node in _tree.get_nodes_in_group(BossMonster.BOSS_GROUP):
+		bosses.append((node as BossMonster).def.id)
+		_expect((node as BossMonster).state == Enums.AIState.SLEEP, "%s starts asleep" % node.name)
+	bosses.sort()
+	var want: Array[StringName] = []
+	want.assign(BOSS_IDS)
+	want.sort()
+	_expect(bosses == want, "the mall's BossSpawner puts all four bosses out %s" % [bosses])
+	FieldState.boss_respawn_day = saved_respawn
 	var players := _tree.get_nodes_in_group(Player.GROUP)
 	_expect(players.size() == 1, "assembly spawns one player")
 	if players.size() == 1:

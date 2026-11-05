@@ -180,6 +180,8 @@ func _set_submerged(on: bool, sec: float = 0.4, rise: bool = true) -> void:
 	var core := boss.get_node_or_null(^"WeakPoint/Core") as Node3D
 	if core:
 		core.visible = not on
+	# The red enemy outline (Monster._set_outline) would show it through the water; the ripples do that job.
+	boss._set_outline(not on)
 
 
 func _to_target() -> Vector3:

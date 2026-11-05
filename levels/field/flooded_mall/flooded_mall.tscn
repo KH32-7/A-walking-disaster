@@ -17,6 +17,7 @@
 [ext_resource type="Script" path="res://field/companion/companion_manager.gd" id="15_companions"]
 [ext_resource type="Script" path="res://field/monsters/roaming_spawner.gd" id="16_roaming"]
 [ext_resource type="Script" path="res://field/routes/hidden_route_manager.gd" id="90_hidden_routes"]
+[ext_resource type="Script" path="res://field/monsters/boss/boss_spawner.gd" id="91_boss_spawner"]
 
 [sub_resource type="Environment" id="Env_greybox"]
 background_mode = 1
@@ -38,6 +39,10 @@ region_id = &"flooded_mall"
 [node name="RoamingSpawner" type="Node3D" parent="."]
 script = ExtResource("16_roaming")
 monster_defs = Array[Resource]([ExtResource("4_vine"), ExtResource("5_pod"), ExtResource("6_blob")])
+region_id = &"flooded_mall"
+
+[node name="BossSpawner" type="Node3D" parent="."]
+script = ExtResource("91_boss_spawner")
 region_id = &"flooded_mall"
 
 [node name="LootSpawner" type="Node3D" parent="."]
