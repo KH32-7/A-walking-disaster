@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="TraitDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/trait_def.gd" id="1_lmyir"]
+
+[resource]
+script = ExtResource("1_lmyir")
+id = &"big_eater"
+display_name = "대식가"
+description = "식량 소모 +1"
+effects = Dictionary[StringName, float]({
+&"food_use": 1.0
+})
+exclusive_with = Array[StringName]([&"light_eater"])

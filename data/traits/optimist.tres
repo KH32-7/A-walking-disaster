@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="TraitDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/trait_def.gd" id="1_8v4ur"]
+
+[resource]
+script = ExtResource("1_8v4ur")
+id = &"optimist"
+display_name = "낙천적"
+description = "사기 하한 30"
+effects = Dictionary[StringName, float]({
+&"morale_floor": 30.0
+})
+exclusive_with = Array[StringName]([&"pessimist"])

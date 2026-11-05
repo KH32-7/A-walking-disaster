@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="TraitDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/trait_def.gd" id="1_n6qaq"]
+
+[resource]
+script = ExtResource("1_n6qaq")
+id = &"timid"
+display_name = "겁이 많음"
+description = "체력 30% 이하에서 도주, 대신 습격 때 대피가 가장 빠름"
+effects = Dictionary[StringName, float]({
+&"evacuate_first": 1.0,
+&"flee_hp_ratio": 0.3
+})
+exclusive_with = Array[StringName]([&"brave"])

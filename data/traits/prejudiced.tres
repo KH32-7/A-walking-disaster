@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="TraitDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/trait_def.gd" id="1_3wktw"]
+
+[resource]
+script = ExtResource("1_3wktw")
+id = &"prejudiced"
+display_name = "편견"
+description = "특정 주민에게 관계 증가 ×0.3. 해소 이벤트로 사라짐"
+effects = Dictionary[StringName, float]({
+&"prejudice_relation_mult": 0.3
+})
+randomizable = false
+removable = true

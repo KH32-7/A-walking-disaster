@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="TraitDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/trait_def.gd" id="1_38man"]
+
+[resource]
+script = ExtResource("1_38man")
+id = &"loner"
+display_name = "혼자가 편함"
+description = "관계 증가 ×0.5, 혼자 일하는 작업장 효율 +15%"
+effects = Dictionary[StringName, float]({
+&"relation_gain_mult": 0.5,
+&"solo_work_efficiency": 0.15
+})
+exclusive_with = Array[StringName]([&"chatty"])

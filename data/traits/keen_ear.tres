@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="TraitDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/trait_def.gd" id="1_utgnf"]
+
+[resource]
+script = ExtResource("1_utgnf")
+id = &"keen_ear"
+display_name = "예민한 귀"
+description = "경비 배정 시 습격 예고 +6시간"
+effects = Dictionary[StringName, float]({
+&"raid_warning_hours": 6.0
+})

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="JobDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/job_def.gd" id="1_oqpro"]
+
+[resource]
+script = ExtResource("1_oqpro")
+id = &"medical"
+display_name = "의료"
+workplace = &"infirmary"
+main_stat = "heart"
+effects = Dictionary[StringName, float]({
+&"heal_per_day": 2.0
+})
+elder_efficiency = 1.2
+note = "구급상자 제작"

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="JobDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/job_def.gd" id="1_4f51w"]
+
+[resource]
+script = ExtResource("1_4f51w")
+id = &"maintenance"
+display_name = "정비"
+workplace = &"workshop"
+main_stat = "dex"
+note = "탄약·소모품 제작, 자동 수리 (A-09)"
