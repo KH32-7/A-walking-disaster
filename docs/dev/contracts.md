@@ -96,7 +96,7 @@
   - B(필드)는 라우터 함수를 부르지 않는다. 탈출·쓰러짐 결과를 `FieldState.last_sortie_result()`에 채우고(이슈 #27)
     `extraction_completed`를 보낸다. `player_downed`는 라우터가 그 프레임 끝에 처리하므로 B의 쓰러짐 처리(가방·유실물·결과)가 먼저 끝난다.
     `rescue_completed`, `companion_stranded`, `emergency_return_requested`도 듣는다. 결과 형식은 아래 "출격 결과".
-  - 허용되지 않은 전환은 거부(false + 오류). 디버그·테스트용 `advance()`가 기본 경로로 한 단계 진행.
+  - 허용되지 않은 전환은 거부(false + 오류). 디버그·테스트용 `advance(region_id = &"")`가 기본 경로로 한 단계 진행. 출격 준비에서는 `region_id`, 비어 있으면 `default_region()`(맵이 있는 첫 지역)으로 출격. 콘솔 `next [region_id]`.
   - main.tscn의 `World` 아래에 기지/필드 씬을 바꿔 넣는다. 씬 파일이 아직 없으면 비워 둔다.
 - **Colony**: `get_resident(id)`, `active_resident_ids()`, `base_noise()`, `threat`, `tier`,
   `population()`, `bed_count()`, `free_beds()`, `add_resident(profile) -> id`(구조자 입주도 이것), `assign_bed(resident_id, bed_id)`,

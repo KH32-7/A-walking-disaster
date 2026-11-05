@@ -153,7 +153,7 @@ func _register_builtins() -> void:
 	register(&"clear", _cmd_clear, "clear - 화면 지우기")
 	register(&"res", _cmd_res, "res <resource_id> <n> - 창고 자원 더하기/빼기")
 	register(&"day", _cmd_day, "day next - 오늘 남은 단계를 기본 경로로 넘겨 다음 날 아침으로")
-	register(&"next", _cmd_next, "next - 하루 흐름 한 단계 진행 (SceneRouter.advance)")
+	register(&"next", _cmd_next, "next [region_id] - 하루 흐름 한 단계 진행 (SceneRouter.advance, 출격 준비에서는 지역 선택)")
 	register(&"phase", _cmd_phase, "phase <%s>" % "|".join(Enums.Phase.keys()).to_lower())
 	register(&"flow", _cmd_flow, "flow <%s>" % "|".join(Enums.FlowState.keys()).to_lower())
 	register(&"godmode", _cmd_godmode, "godmode [on|off] - 플레이어 무적")
@@ -207,8 +207,9 @@ func _cmd_day(args: PackedStringArray) -> String:
 	return "%d일차 아침" % GameState.day
 
 
-func _cmd_next(_args: PackedStringArray) -> String:
-	if not SceneRouter.advance():
+func _cmd_next(args: PackedStringArray) -> String:
+	var region := StringName(args[0]) if args.size() > 0 else &""
+	if not SceneRouter.advance(region):
 		return "진행 실패 (%s)" % Enums.FlowState.keys()[SceneRouter.state()]
 	return "flow = %s, %d일차" % [Enums.FlowState.keys()[SceneRouter.state()], GameState.day]
 

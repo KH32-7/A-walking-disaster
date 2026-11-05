@@ -27,6 +27,8 @@ func run() -> bool:
 	_tree.root.add_child(_main)
 	await _frames(3)
 	var ok := _expect(_prompt_count() > 0, "title prompt not shown")
+	var dr := SceneRouter.default_region()
+	ok = ok and _expect(ResourceLoader.exists(SceneRouter.REGION_SCENE_FMT % [dr, dr]), "default_region %s has no map" % dr)
 	ok = ok and _expect(SceneRouter.start_new_game(0), "start_new_game refused")
 	for day in 2:
 		ok = ok and await _sortie_day()
