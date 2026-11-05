@@ -109,6 +109,7 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
     `extraction_completed`를 보낸다. `player_downed`는 라우터가 그 프레임 끝에 처리하므로 B의 쓰러짐 처리(가방·유실물·결과)가 먼저 끝난다.
     `rescue_completed`, `companion_stranded`, `emergency_return_requested`도 듣는다. 결과 형식은 아래 "출격 결과".
   - 허용되지 않은 전환은 거부(false + 오류). 디버그·테스트용 `advance(region_id = &"")`가 기본 경로로 한 단계 진행. 출격 준비에서는 `region_id`, 비어 있으면 `default_region()`(맵이 있는 첫 지역)으로 출격. 콘솔 `next [region_id]`.
+  - `current_region()`: 지금 출격한 지역 id(FIELD가 아니면 `&""`). Audio가 필드 음악을 고를 때 쓴다.
   - main.tscn의 `World` 아래에 기지/필드 씬을 바꿔 넣는다. 씬 파일이 아직 없으면 비워 둔다.
 - **Colony**: `get_resident(id)`, `active_resident_ids()`, `base_noise()`, `threat`, `tier`,
   `population()`, `bed_count()`, `free_beds()`, `add_resident(profile) -> id`(구조자 입주도 이것), `assign_bed(resident_id, bed_id)`,
@@ -146,7 +147,9 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   숫자는 `BossPattern.params`에 둔다. mechanic이 쓰는 BossMonster 공개 함수: `hold(sec)`(AI와 패턴 정지, mechanic이 몸을 움직임), `is_held()`, `cancel_cast()`,
   `area_for(pattern, target_pos)`, `area_targets(area)`, `hit_area(pattern, area)`, `summon(pattern)`.
   보스 모델(`MonsterVisual`)은 `play_once(clip)`, `sink(on, sec, rise)`를 mechanic에 내준다.
-- **Audio**: `play(event_id, position)`, `set_music_state(state)`
+- **Audio**: `play(event_id, position)`, `set_music_state(state)`(`title`/`base`/`festival`/`field`/`chase`/`night`/`raid`, 흐름 상태가 자동으로 정함).
+  필드 음악은 지역마다 다르다: `data/ui/music_layers/*.tres`의 `region`이 `SceneRouter.current_region()`과 같은 층만 나고, 그 지역 층이 없으면 `region`이 빈 층을 쓴다.
+  `full_track` 곡(완성곡)인 추격 층은 필드 곡 위에 겹치지 않고 크로스페이드한다.
 - **Fx**: `spawn(effect_id, position, params)`. 이펙트 id 표는 [vfx/README.md](../../vfx/README.md)(D).
   피격 흰 번쩍임과 피해 숫자는 `FxFeedback`이 신호를 듣고 띄운다(게임플레이가 부르지 않음): `Monster.damaged`, `Player.health_changed`,
   `FieldCompanion.damaged(amount, info)`, `RescueTarget.damaged(amount, info)`(`Monster.damaged`와 같은 모양, 상태 틱은 번쩍임 없음), `ResidentAgent.hurt`.

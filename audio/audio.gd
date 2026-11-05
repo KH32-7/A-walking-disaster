@@ -7,12 +7,15 @@ extends Node
 ## monster_<family>_<action> -> monster_<action>, then by prefix (gunshot_* -> gunshot_default).
 ## No file yet -> Synth placeholder.
 ## Buses SFX / Voice / Music / UI are created at start; volumes follow Settings volume_*.
-## Music (D-20): set_music_state(&"base" | &"festival" | &"field" | &"chase" | &"night" | &"raid"); the flow
-## state drives it automatically. Each state is a set of stems (data/ui/music_layers/*.tres, MusicLayerDef)
-## sharing one tempo and length; all stems of a timeline start together and only their volumes fade:
+## Music (D-20): set_music_state(&"title" | &"base" | &"festival" | &"field" | &"chase" | &"night" | &"raid"); the
+## flow state drives it automatically. Each state is a set of stems (data/ui/music_layers/*.tres, MusicLayerDef)
+## sharing one tempo and length, or one full_track song; all layers of a timeline start together and only their
+## volumes fade:
 ##   - base: one more instrument per population step (Colony.population() >= unlock_population),
 ##     refreshed on resident_joined / resident_left / resident_died.
-##   - chase: tension stems over field while any field monster is in CHASE / ATTACK ("!", state_changed).
+##   - field / chase: per region (MusicLayerDef.region, SceneRouter.current_region()); the empty-region layers
+##     are the fallback. chase: tension stems over field while any field monster is in CHASE / ATTACK
+##     ("!", state_changed); a full_track chase song crossfades with the field song instead.
 ##   - festival: festival stems over base on the wedding night event and on the festival day.
 ##   - night: low strings. raid: percussion.
 ## music_layers_changed(ids) / sound_played(ev, pos) are for captions and visual cues.
@@ -55,19 +58,19 @@ const AMBIENCE := {
 }
 const AMBIENCE_FADE_SEC := 2.0
 const FLOW_MUSIC := {
-	Enums.FlowState.BASE_MORNING: &"base", Enums.FlowState.BASE_STAY: &"base", Enums.FlowState.SORTIE_PREP: &"base",
+	Enums.FlowState.TITLE: &"title", Enums.FlowState.BASE_MORNING: &"base", Enums.FlowState.BASE_STAY: &"base", Enums.FlowState.SORTIE_PREP: &"base",
 	Enums.FlowState.EVENING: &"base", Enums.FlowState.FIELD: &"field", Enums.FlowState.NIGHT: &"night",
 	Enums.FlowState.NIGHT_RAID: &"raid", Enums.FlowState.BASE_DAY_RAID: &"raid", Enums.FlowState.NIGHT_EVENT: &"night",
 }
 ## Music state -> layer states heard in it.
 const STATE_LAYERS := {
-	&"base": [&"base"], &"festival": [&"base", &"festival"],
+	&"title": [&"title"], &"base": [&"base"], &"festival": [&"base", &"festival"],
 	&"field": [&"field"], &"chase": [&"field", &"chase"],
 	&"night": [&"night"], &"raid": [&"raid"],
 }
 ## Layer state -> timeline. Stems of one timeline start together and stay in sync.
 const TIMELINE := {
-	&"base": &"base", &"festival": &"base", &"field": &"field", &"chase": &"field",
+	&"title": &"title", &"base": &"base", &"festival": &"base", &"field": &"field", &"chase": &"field",
 	&"night": &"night", &"raid": &"raid",
 }
 
@@ -82,9 +85,14 @@ var chase_active := false
 var festival_active := false
 ## >= 0: use this instead of Colony.population() (previews, tests). Call refresh_music() after.
 var population_override := -1
+## Not empty: use this field region instead of SceneRouter.current_region() (previews, tests). Call
+## refresh_music() after.
+var region_override: StringName = &""
 var _p2: Array[AudioStreamPlayer] = []
 var _p3: Array[AudioStreamPlayer3D] = []
 var _timeline: StringName = &""
+## Field region the current timeline was started for (&"" outside the field).
+var _region: StringName = &""
 ## Players of the current timeline: layer id -> AudioStreamPlayer.
 var _layer_players: Dictionary = {}
 var _layer_tweens: Dictionary = {}
@@ -215,7 +223,7 @@ func set_music_state(state: StringName) -> void:
 ## Ambience ids heard in a music state (pure: no playback).
 static func ambience_for(state: StringName, raining: bool) -> Array[StringName]:
 	var out: Array[StringName] = []
-	if state == &"":
+	if state == &"" or state == &"title":
 		return out
 	for id: StringName in AMBIENCE:
 		if state in AMBIENCE[id] or (id == AMB_RAIN and raining):
@@ -272,19 +280,48 @@ func _fade_amb(id: StringName, p: AudioStreamPlayer, target_db: float) -> Tween:
 	return tw
 
 
-## Layer ids heard for a music state, population and overlays (pure: no playback).
-func layers_for(state: StringName, population: int, chase := false, festival := false) -> Array[StringName]:
+## Layer ids heard for a music state, population, overlays and field region (pure: no playback).
+## Per layer state: the region's own layers if it has any, else the empty-region ones. A full_track overlay
+## (chase, festival) replaces the layers under it.
+func layers_for(state: StringName, population: int, chase := false, festival := false,
+		region: StringName = &"") -> Array[StringName]:
 	var states: Array = STATE_LAYERS.get(state, []).duplicate()
 	if chase and &"field" in states and not &"chase" in states:
 		states.append(&"chase")
 	if festival and &"base" in states and not &"festival" in states:
 		states.append(&"festival")
+	var picked := {}
+	for s: StringName in states:
+		var own: Array[StringName] = []
+		var any: Array[StringName] = []
+		for id in layer_order:
+			var l: MusicLayerDef = layers[id]
+			if l.state != s or population < l.unlock_population:
+				continue
+			if l.region == &"":
+				any.append(id)
+			elif l.region == region:
+				own.append(id)
+		picked[s] = own if not own.is_empty() else any
+	for i in range(1, states.size()):
+		if (picked[states[i]] as Array).any(func(id: StringName) -> bool: return (layers[id] as MusicLayerDef).full_track):
+			picked[states[0]] = []
 	var out: Array[StringName] = []
 	for id in layer_order:
-		var l: MusicLayerDef = layers[id]
-		if l.state in states and population >= l.unlock_population:
-			out.append(id)
+		for s: StringName in states:
+			if id in picked[s]:
+				out.append(id)
+				break
 	return out
+
+
+## Field region the music follows (&"" outside the field timeline).
+func field_region() -> StringName:
+	if region_override != &"":
+		return region_override
+	if TIMELINE.get(STATE_LAYERS.get(music_state, [&""])[0], &"") != &"field":
+		return &""
+	return SceneRouter.current_region()
 
 
 ## Layers playing now (fading in or at full volume).
@@ -309,10 +346,11 @@ func population() -> int:
 
 ## Recompute the audible layers and fade towards them.
 func refresh_music() -> void:
-	var want := layers_for(music_state, population(), chase_active, festival_active)
+	var region := field_region()
+	var want := layers_for(music_state, population(), chase_active, festival_active, region)
 	var timeline: StringName = TIMELINE.get(STATE_LAYERS.get(music_state, [&""])[0], &"")
-	if timeline != _timeline:
-		_start_timeline(timeline)
+	if timeline != _timeline or region != _region:
+		_start_timeline(timeline, region)
 	for id: StringName in _layer_players:
 		var p: AudioStreamPlayer = _layer_players[id]
 		var l: MusicLayerDef = layers[id]
@@ -334,8 +372,9 @@ func refresh_music() -> void:
 		music_layers_changed.emit(want.duplicate())
 
 
-## Fade out the old timeline and start every stem of the new one in the same frame (in sync, silent).
-func _start_timeline(timeline: StringName) -> void:
+## Fade out the old timeline and start every layer of the new one that can be heard in `region`, in the same
+## frame (in sync, silent).
+func _start_timeline(timeline: StringName, region: StringName) -> void:
 	for id: StringName in _layer_players:
 		var old: AudioStreamPlayer = _layer_players[id]
 		if _layer_tweens.has(id):
@@ -346,18 +385,28 @@ func _start_timeline(timeline: StringName) -> void:
 	_layer_players.clear()
 	_layer_tweens.clear()
 	_timeline = timeline
+	_region = region
 	if timeline == &"":
 		return
+	var can := {}
+	for s: StringName in STATE_LAYERS:
+		if TIMELINE.get(STATE_LAYERS[s][0], &"") == timeline:
+			for overlays in [false, true]:
+				for id in layers_for(s, 1 << 20, overlays, overlays, region):
+					can[id] = true
 	var started: Array[AudioStreamPlayer] = []
 	for id in layer_order:
 		var l: MusicLayerDef = layers[id]
-		if TIMELINE.get(l.state, &"") != timeline:
+		if not can.has(id):
 			continue
 		var p := AudioStreamPlayer.new()
 		p.bus = &"Music"
 		p.volume_db = SILENT_DB
-		p.stream = load(l.stream) if not l.stream.is_empty() and ResourceLoader.exists(l.stream) \
+		var stream: AudioStream = load(l.stream) if not l.stream.is_empty() and ResourceLoader.exists(l.stream) \
 			else MusicSynth.make(l.synth)
+		if &"loop" in stream:
+			stream.set(&"loop", true)
+		p.stream = stream
 		p.set_meta(&"fresh", true)
 		add_child(p)
 		_layer_players[id] = p
