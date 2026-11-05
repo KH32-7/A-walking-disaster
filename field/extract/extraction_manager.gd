@@ -69,10 +69,14 @@ var _noise: NoiseEmitter
 var _sortie_sec := 0.0
 var _kills: Dictionary = {}
 var _result: Dictionary = {}
+var _emergency: EmergencyReturn
 
 
 func _ready() -> void:
 	add_to_group(GROUP)
+	_emergency = EmergencyReturn.new()
+	_emergency.name = "EmergencyReturn"
+	add_child(_emergency)
 	EventBus.monster_killed.connect(_on_monster_killed)
 	EventBus.player_downed.connect(_on_player_downed)
 	if auto_activate:
@@ -350,5 +354,7 @@ func _build_result(extracted: bool, point_id: StringName, loot: Dictionary,
 		"companions": companions,
 		"stranded": stranded,
 		"duration_sec": _sortie_sec,
+		# B-22: the player answered a day raid warning with "go back".
+		"emergency_return": _emergency != null and _emergency.state == EmergencyReturn.State.RETURNING,
 		"xp": 0,  # SceneRouter fills this (Progression.finish_sortie)
 	}
