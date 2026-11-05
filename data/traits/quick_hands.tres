@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="TraitDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/trait_def.gd" id="1_ggr2i"]
+
+[resource]
+script = ExtResource("1_ggr2i")
+id = &"quick_hands"
+display_name = "손이 빠름"
+description = "제작 작업 +15%"
+effects = Dictionary[StringName, float]({
+&"craft_efficiency": 0.15
+})

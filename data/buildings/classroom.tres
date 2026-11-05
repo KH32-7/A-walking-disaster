@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_ubmyi"]
+
+[resource]
+script = ExtResource("1_ubmyi")
+id = &"classroom"
+display_name = "교실"
+category = 5
+size = Vector2i(4, 3)
+cost = Dictionary[StringName, int]({
+&"plank": 30,
+&"textbook": 3
+})
+capacity = 1
+effects = Dictionary[StringName, float]({
+&"students": 4.0,
+&"study_speed_mult": 2.0
+})
+note = "교사 1 + 학생 4, 세대 간 전수"

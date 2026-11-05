@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_bbuyl"]
+
+[resource]
+script = ExtResource("1_bbuyl")
+id = &"picture_sign"
+display_name = "그림 표지판"
+category = 5
+cost = Dictionary[StringName, int]({
+&"paint": 1,
+&"wood": 5
+})
+effects = Dictionary[StringName, float]({
+&"access_hearing_partial": 1.0,
+&"access_language": 1.0
+})

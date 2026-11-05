@@ -1,0 +1,225 @@
+[gd_scene load_steps=16 format=3]
+
+[ext_resource type="Script" path="res://base/_sandbox/base_sandbox.gd" id="1_sandbox"]
+[ext_resource type="PackedScene" path="res://base/markers/zone_marker.tscn" id="2_zone"]
+[ext_resource type="PackedScene" path="res://base/markers/build_area.tscn" id="3_build"]
+[ext_resource type="PackedScene" path="res://base/markers/resource_node.tscn" id="4_res"]
+[ext_resource type="PackedScene" path="res://base/markers/raid_spawn_point.tscn" id="5_raid"]
+[ext_resource type="PackedScene" path="res://base/markers/work_spot.tscn" id="6_work"]
+[ext_resource type="PackedScene" path="res://base/markers/outpost_node.tscn" id="7_outpost"]
+
+[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
+
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("sky_mat")
+
+[sub_resource type="Environment" id="env"]
+background_mode = 2
+sky = SubResource("sky")
+ambient_light_source = 3
+tonemap_mode = 2
+
+[sub_resource type="StandardMaterial3D" id="mat_ground"]
+albedo_color = Color(0.42, 0.47, 0.38, 1)
+
+[sub_resource type="StandardMaterial3D" id="mat_building"]
+albedo_color = Color(0.72, 0.7, 0.66, 1)
+
+[sub_resource type="StandardMaterial3D" id="mat_greybox_person"]
+albedo_color = Color(0.85, 0.55, 0.45, 1)
+
+[sub_resource type="CapsuleMesh" id="person_mesh"]
+material = SubResource("mat_greybox_person")
+radius = 0.3
+height = 1.7
+
+[sub_resource type="CylinderMesh" id="wheelchair_mesh"]
+material = SubResource("mat_greybox_person")
+top_radius = 0.45
+bottom_radius = 0.45
+height = 1.2
+
+[node name="BaseSandbox" type="Node3D"]
+script = ExtResource("1_sandbox")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 30, 0)
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+current = true
+fov = 40.0
+
+[node name="Greybox" type="Node3D" parent="."]
+
+[node name="Ground" type="CSGBox3D" parent="Greybox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+use_collision = true
+size = Vector3(130, 1, 110)
+material = SubResource("mat_ground")
+
+[node name="MainHall" type="CSGBox3D" parent="Greybox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, -25)
+use_collision = true
+size = Vector3(40, 6, 14)
+material = SubResource("mat_building")
+
+[node name="Inside" type="CSGBox3D" parent="Greybox/MainHall"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+operation = 2
+size = Vector3(39.4, 6, 13.4)
+
+[node name="Door" type="CSGBox3D" parent="Greybox/MainHall"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.5, 7)
+operation = 2
+size = Vector3(4, 3, 2)
+
+[node name="Gym" type="CSGBox3D" parent="Greybox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, 4, -22)
+use_collision = true
+size = Vector3(20, 8, 16)
+material = SubResource("mat_building")
+
+[node name="Inside" type="CSGBox3D" parent="Greybox/Gym"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+operation = 2
+size = Vector3(19.4, 8, 15.4)
+
+[node name="Door" type="CSGBox3D" parent="Greybox/Gym"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, -2.5, 0)
+operation = 2
+size = Vector3(2, 3, 4)
+
+[node name="Capsules" type="Node3D" parent="Greybox"]
+
+[node name="PersonA" type="MeshInstance3D" parent="Greybox/Capsules"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0.85, -14)
+mesh = SubResource("person_mesh")
+
+[node name="PersonB" type="MeshInstance3D" parent="Greybox/Capsules"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.85, -14)
+mesh = SubResource("person_mesh")
+
+[node name="PersonWheelchair" type="MeshInstance3D" parent="Greybox/Capsules"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0.6, -14)
+mesh = SubResource("wheelchair_mesh")
+
+[node name="People" type="Node3D" parent="Greybox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -13)
+
+[node name="Markers" type="Node3D" parent="."]
+
+[node name="Zone_MainHall" parent="Markers" instance=ExtResource("2_zone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -25)
+zone_id = &"main_hall"
+size_cells = Vector2i(20, 7)
+indoor = true
+starts_cleared = true
+
+[node name="Zone_Playground" parent="Markers" instance=ExtResource("2_zone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2)
+zone_id = &"playground"
+size_cells = Vector2i(20, 12)
+clear_work = 40
+clear_yield = Dictionary[StringName, int]({
+&"stone": 30
+})
+
+[node name="Zone_Gym" parent="Markers" instance=ExtResource("2_zone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, 0, -22)
+zone_id = &"gym"
+size_cells = Vector2i(10, 8)
+indoor = true
+clear_work = 30
+clear_yield = Dictionary[StringName, int]({
+&"scrap": 20
+})
+
+[node name="Build_MainHall" parent="Markers" instance=ExtResource("3_build")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -25)
+zone_id = &"main_hall"
+size_cells = Vector2i(18, 5)
+
+[node name="Build_Playground" parent="Markers" instance=ExtResource("3_build")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2)
+zone_id = &"playground"
+size_cells = Vector2i(20, 12)
+
+[node name="Tree1" parent="Markers" instance=ExtResource("4_res")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -36, 0, 8)
+
+[node name="Tree2" parent="Markers" instance=ExtResource("4_res")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 0, 15)
+
+[node name="Tree3" parent="Markers" instance=ExtResource("4_res")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -33, 0, 20)
+
+[node name="Debris1" parent="Markers" instance=ExtResource("4_res")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 32)
+kind = 1
+
+[node name="Debris2" parent="Markers" instance=ExtResource("4_res")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 34)
+kind = 1
+
+[node name="Raid_North" parent="Markers" instance=ExtResource("5_raid")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -48)
+
+[node name="Raid_East" parent="Markers" instance=ExtResource("5_raid")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 58, 0, 0)
+direction = "east"
+
+[node name="Raid_South" parent="Markers" instance=ExtResource("5_raid")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 48)
+direction = "south"
+
+[node name="Raid_West" parent="Markers" instance=ExtResource("5_raid")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -58, 0, 0)
+direction = "west"
+
+[node name="Work_Radio" parent="Markers" instance=ExtResource("6_work")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 0, -27)
+job_id = &"radio"
+
+[node name="Work_Woodcutting" parent="Markers" instance=ExtResource("6_work")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -34, 0, 14)
+job_id = &"woodcutting"
+capacity = 2
+
+[node name="Work_Salvage" parent="Markers" instance=ExtResource("6_work")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 31)
+job_id = &"salvage"
+capacity = 2
+
+[node name="Outpost_North" parent="Markers" instance=ExtResource("7_outpost")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, -50)
+node_id = &"outpost_north"
+direction = "north"
+
+[node name="Outpost_East" parent="Markers" instance=ExtResource("7_outpost")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 0, 12)
+node_id = &"outpost_east"
+direction = "east"
+
+[node name="Outpost_South" parent="Markers" instance=ExtResource("7_outpost")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 50)
+node_id = &"outpost_south"
+direction = "south"
+
+[node name="Outpost_West" parent="Markers" instance=ExtResource("7_outpost")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -60, 0, 12)
+node_id = &"outpost_west"
+direction = "west"
+
+[node name="Debug" type="CanvasLayer" parent="."]
+
+[node name="Info" type="Label" parent="Debug"]
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 900.0
+offset_bottom = 90.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6

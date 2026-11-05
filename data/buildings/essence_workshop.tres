@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_1wcxc"]
+
+[resource]
+script = ExtResource("1_1wcxc")
+id = &"essence_workshop"
+display_name = "정수 공방"
+category = 4
+size = Vector2i(3, 3)
+cost = Dictionary[StringName, int]({
+&"essence_low": 5,
+&"scrap": 20,
+&"stone": 40
+})
+capacity = 1
+power_use = Array[int]([0, 2, 2])
+requires_flags = Array[StringName]([&"blueprint_essence_workshop"])
+note = "각인, 정제(Lv2). 하급 정수 id는 A-10 정의에 맞출 것"

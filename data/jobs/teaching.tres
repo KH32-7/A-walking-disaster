@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="JobDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/job_def.gd" id="1_4uj3j"]
+
+[resource]
+script = ExtResource("1_4uj3j")
+id = &"teaching"
+display_name = "교육"
+workplace = &"classroom"
+main_stat = "heart"
+effects = Dictionary[StringName, float]({
+&"study_speed_mult": 2.0
+})
+elder_efficiency = 1.2

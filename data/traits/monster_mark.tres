@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="TraitDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/trait_def.gd" id="1_3jbxv"]
+
+[resource]
+script = ExtResource("1_3jbxv")
+id = &"monster_mark"
+display_name = "마물 흔적"
+description = "정수 공방 효율 +50%, 편견 이벤트의 대상"
+effects = Dictionary[StringName, float]({
+&"essence_workshop_efficiency": 0.5
+})
+randomizable = false

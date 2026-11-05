@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/building_def.gd" id="1_jbqjg"]
+
+[resource]
+script = ExtResource("1_jbqjg")
+id = &"training_ground"
+display_name = "훈련장"
+category = 7
+size = Vector2i(4, 4)
+cost = Dictionary[StringName, int]({
+&"wood": 30
+})
+capacity = 4
+effects = Dictionary[StringName, float]({
+&"class_change": 1.0,
+&"combat_mastery_days": 5.0
+})
+noise = 2.0
