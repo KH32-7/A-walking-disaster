@@ -1,0 +1,74 @@
+[gd_resource type="Resource" script_class="FxDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/fx_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://vfx/defs/fx_layer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+kind = 2
+texture = ""
+element_textures = PackedStringArray("", "res://assets/vfx/magic_arsenal/textures/cleave_life.png", "res://assets/vfx/magic_arsenal/textures/cleave_light.png", "res://assets/vfx/magic_arsenal/textures/cleave_water.png", "res://assets/vfx/magic_arsenal/textures/cleave_light.png")
+grow = Vector2(0.5, 0.8)
+lifetime = 0.14
+color = Color(1.0, 1.0, 1.0, 0.95)
+fade_out = 0.5
+align = 3
+spin = false
+offset = Vector3(0.0, 0.35, -0.5)
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/glow01.png"
+amount = 1
+size = Vector2(0.35, 0.35)
+speed = Vector2(0.0, 0.0)
+lifetime = 0.1
+end_scale = 1.6
+spin = false
+color = Color(1.0, 1.0, 1.0, 0.85)
+flash = true
+fade_out = 0.8
+tint_element = true
+offset = Vector3(0.0, 0.3, 0.0)
+
+[sub_resource type="Resource" id="layer_2"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/smallglow01.png"
+amount = 5
+align = 1
+stretch = 4.0
+size = Vector2(0.04, 0.07)
+speed = Vector2(2.5, 5.0)
+gravity = 9.0
+lifetime = 0.25
+color = Color(1.0, 0.9, 0.7, 1.0)
+spin = false
+fade_out = 0.5
+tint_element = true
+offset = Vector3(0.0, 0.3, 0.0)
+follow_direction = true
+direction = Vector3(0.0, 0.0, -1.0)
+spread_deg = 50.0
+
+[sub_resource type="Resource" id="layer_3"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/earth_spray.png"
+blend = 1
+amount = 5
+size = Vector2(0.06, 0.12)
+speed = Vector2(1.5, 3.0)
+gravity = 12.0
+direction = Vector3(0.0, 1.0, 0.0)
+spread_deg = 50.0
+lifetime = 0.4
+color = Color(0.45, 0.4, 0.35, 1.0)
+offset = Vector3(0.0, 0.2, 0.0)
+
+[resource]
+script = ExtResource("1_def")
+id = &"monster_bite"
+max_alive = 16
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1"), SubResource("layer_2"), SubResource("layer_3")])

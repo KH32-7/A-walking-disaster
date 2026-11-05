@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://art/monsters/monster_visual.gd" id="1_vis"]
+[ext_resource type="PackedScene" path="res://assets/monsters/water/mist.glb" id="2_model"]
+
+[node name="Visual" type="Node3D"]
+script = ExtResource("1_vis")
+model = ExtResource("2_model")
+model_scale = 1.0
+model_offset = Vector3(0, 0, 0)

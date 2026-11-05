@@ -8,3 +8,4 @@ func on_state_changed(old_state: Enums.AIState, new_state: Enums.AIState) -> voi
 	# Only on spotting: ATTACK -> CHASE is the same encounter.
 	if new_state == Enums.AIState.CHASE and old_state != Enums.AIState.ATTACK:
 		EventBus.noise_emitted.emit(monster.global_position, MonsterRules.ALARM_SCREAM_RADIUS, monster)
+		Fx.spawn(&"monster_scream", monster.global_position, {"element": monster.def.family})
