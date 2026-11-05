@@ -25,7 +25,7 @@ extends Node3D
 ## Drawn larger than life so the hero reads from the top-down camera (user feedback 2026-11-06).
 ## Collision is the player's capsule and does not change.
 @export var model_scale := 1.3
-## Animation playback multipliers and limits (live-tunable with the \ key in debug builds).
+## Animation playback multipliers and limits.
 @export var anim_tuning: PlayerAnimTuning = preload("res://data/classes/player_anim_tuning.tres")
 ## Node shown when the model can't be loaded.
 @export var fallback: NodePath = ^"../Greybox"
@@ -218,10 +218,6 @@ func _move_mult() -> float:
 		return anim_tuning.sprint_mult
 	return anim_tuning.walk_mult
 
-
-## Current walk playback speed (1.0 = clip speed). For the debug panel (\ key).
-func walk_playback() -> float:
-	return _speed_scale
 
 
 func _clip_length(clip: String) -> float:
