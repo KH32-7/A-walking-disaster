@@ -36,10 +36,10 @@ func run() -> bool:
 	for i in 3:
 		await get_tree().physics_frame
 	s = p.hud_state()
-	_expect(s.get("prompt") == {"key": "F", "label": "약품장 뒤지기"}, "prompt names the container")
+	_expect(s.get("prompt") == {"key": "F", "label": "뒤지기"}, "prompt says what F does (short: [F] 뒤지기)")
 	p.interact()
 	s = p.hud_state()
-	_expect(s.get("hold", {}).get("label") == "약품장 뒤지는 중", "hold bar while opening")
+	_expect(s.get("hold", {}).get("label") == "뒤지는 중", "hold bar while opening")
 	_expect(s.get("prompt") == {}, "no prompt while holding")
 
 	var point := ExtractPoint.new()

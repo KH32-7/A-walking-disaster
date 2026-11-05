@@ -43,7 +43,7 @@ const DEFAULT_COMBAT := preload("res://data/classes/combat_tuning.tres")
 const MODE_LABELS := {Mode.AGGRESSIVE: "공격적", Mode.CAUTIOUS: "신중", Mode.COVER: "엄호"}
 const DOWNED_LABEL := "쓰러짐"
 const RETREAT_LABEL := "물러남"
-const REVIVE_PROMPT := "%s 일으키기"
+const REVIVE_PROMPT := "일으키기"
 const REVIVE_HOLD_LABEL := "일으키는 중"
 const WORLD_MASK := 1 << (Enums.LAYER_WORLD - 1)
 const MAX_COVER_PASSES := WeaponHolder.MAX_COVER_PASSES
@@ -188,7 +188,7 @@ func begin_open(interactor: Node3D) -> bool:
 
 ## HUD prompt while downed.
 func interact_label() -> String:
-	return REVIVE_PROMPT % display_name
+	return REVIVE_PROMPT
 
 
 ## HUD hold bar while being helped up, {} otherwise.

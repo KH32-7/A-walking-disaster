@@ -108,7 +108,8 @@ static func _prompt(player: Player, hold: Dictionary) -> Dictionary:
 	var target := player.interact_target()
 	if target == null or not target.has_method(&"interact_label"):
 		return {}
-	return {"key": PROMPT_KEY, "label": target.interact_label()}
+	var label: String = target.interact_label()
+	return {} if label == "" else {"key": PROMPT_KEY, "label": label}
 
 
 static func _bearing(direction: Vector3) -> float:

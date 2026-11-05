@@ -34,9 +34,14 @@ static func show_on(holder: Control, def_id: StringName, fallback: Control) -> v
 		return
 	if tex == null:
 		return  # tried before: no model
+	# Capture ids, not the nodes: the card may be freed (screen closed) before the picture is ready.
+	var holder_id := holder.get_instance_id()
+	var fallback_id := fallback.get_instance_id() if fallback != null else 0
 	_instance().request(def_id, func(t: Texture2D) -> void:
-		if is_instance_valid(holder) and t != null:
-			_attach(holder, t, fallback if is_instance_valid(fallback) else null))
+		var h := instance_from_id(holder_id) as Control
+		var f := instance_from_id(fallback_id) as Control if fallback_id != 0 else null
+		if h != null and is_instance_valid(h) and not h.is_queued_for_deletion() and t != null:
+			_attach(h, t, f if f != null and is_instance_valid(f) else null))
 
 
 ## Models exist and the renderer draws (not headless / dummy).

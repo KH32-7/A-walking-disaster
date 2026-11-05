@@ -129,7 +129,7 @@ func _build_body(b: Control) -> void:
 	gauge.custom_minimum_size = Vector2(440, 12)
 	thv.add_child(gauge)
 	right.add_child(th[0])
-	_go = MenuScreen.button("밤으로", &"ButtonSecondary")
+	_go = MenuScreen.button("밤으로", &"ButtonPrimary")
 	_go.size_flags_horizontal = Control.SIZE_SHRINK_END
 	_go.custom_minimum_size = Vector2(240, 0)
 	_go.pressed.connect(close)

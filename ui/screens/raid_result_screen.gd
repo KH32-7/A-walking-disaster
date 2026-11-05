@@ -142,7 +142,7 @@ func _build_body(b: Control) -> void:
 	var fill := Control.new()
 	fill.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right.add_child(fill)
-	_go = MenuScreen.button("계속", &"ButtonSecondary")
+	_go = MenuScreen.button("계속", &"ButtonPrimary")
 	_go.size_flags_horizontal = Control.SIZE_SHRINK_END
 	_go.custom_minimum_size = Vector2(240, 0)
 	_go.modulate.a = 0.0

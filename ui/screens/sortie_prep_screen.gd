@@ -32,8 +32,25 @@ func close() -> void:
 	SceneRouter.cancel_sortie_prep()
 
 
+## A region can be picked when its map exists AND its unlock conditions are met (RegionDef, Lane B
+## data: flags such as extracted_city_park, base tier, facility level, quest).
 static func is_open_region(id: StringName) -> bool:
-	return ResourceLoader.exists(SceneRouter.REGION_SCENE_FMT % [id, id])
+	if not ResourceLoader.exists(SceneRouter.REGION_SCENE_FMT % [id, id]):
+		return false
+	var def := RegionDef.load_def(id)
+	return def == null or def.is_unlocked()
+
+
+## Words for a region's state, so a closed row says why (not colour alone).
+static func region_status(id: StringName, fallback_unlock: String) -> String:
+	var def := RegionDef.load_def(id)
+	if not ResourceLoader.exists(SceneRouter.REGION_SCENE_FMT % [id, id]):
+		return "준비 중 · 아직 갈 수 없어요"
+	if def != null and not def.is_unlocked():
+		return "잠김 · " + (def.unlock_text if def.unlock_text != "" else fallback_unlock)
+	if not ResourceLoader.exists("res://levels/field/%s/dressing.tscn" % id):
+		return "갈 수 있음 · 시험용 지형"
+	return "갈 수 있음"
 
 
 func _build_body(b: Control) -> void:
@@ -104,7 +121,7 @@ func _region_row(reg: Dictionary) -> Control:
 	v.add_child(nm)
 	v.add_child(MenuScreen.label("마물 %s  ·  %s" % [reg.families, reg.res], &"LabelDim", 13))
 	h.add_child(v)
-	var st := MenuScreen.label("갈 수 있음" if open else "잠김 · " + String(reg.unlock), &"LabelHud", 13)
+	var st := MenuScreen.label(region_status(reg.id, String(reg.unlock)), &"LabelHud", 13)
 	st.add_theme_color_override(&"font_color", UiTokens.GOOD if open else UiTokens.TEXT_DIM)
 	h.add_child(st)
 	b.add_child(h)
@@ -253,7 +270,19 @@ func _fill_companions() -> void:
 	risk.add_theme_color_override(&"font_color", UiTokens.WARN if pct > 0 else UiTokens.TEXT)
 	_right.add_child(risk)
 	_right.add_child(MenuScreen.label("소문", &"LabelSection", 16))
-	_right.add_child(MenuScreen.label("방송실 지기: 상가 3층 승강기에 누가 있다더군.", &"LabelDim", 14))
+	# 소문 = what the active quests say (Quests, Lane A), not a fixed line.
+	var lines: PackedStringArray = []
+	for q: Dictionary in Quests.active_quests():
+		for o: Dictionary in q["objectives"]:
+			if not bool(o["done"]):
+				lines.append("· %s — %s" % [String(q["title"]), String(o["text"])])
+				break
+	if lines.is_empty():
+		lines.append("· 오늘은 들어온 소문이 없어요.")
+	var rumor := MenuScreen.label("
+".join(lines.slice(0, 3)), &"LabelDim", 14)
+	rumor.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_right.add_child(rumor)
 	var sp := Control.new()
 	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_right.add_child(sp)

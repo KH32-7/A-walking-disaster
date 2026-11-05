@@ -25,6 +25,9 @@ var _threat_label: Label
 var _threat: ThreatGauge
 var _notes: VBoxContainer
 var _menu_buttons: Dictionary = {}
+## "[F] 서하은와 이야기하기": what the player can use right here (UI_RULES §1.5).
+var _prompt: HBoxContainer
+var _prompt_label: Label
 
 
 func _ready() -> void:
@@ -92,9 +95,12 @@ func push_note(text: String, severity: StringName = &"info") -> void:
 	while _notes.get_child_count() > NOTE_MAX:
 		_notes.get_child(0).queue_free()
 		_notes.remove_child(_notes.get_child(0))
+	# Capture the id, not the card: it may be gone already (more notes came, the HUD was rebuilt).
+	var note_id := b.get_instance_id()
 	get_tree().create_timer(NOTE_SEC).timeout.connect(func() -> void:
-		if is_instance_valid(b):
-			b.queue_free())
+		var n := instance_from_id(note_id) as Node
+		if n != null and is_instance_valid(n):
+			n.queue_free())
 
 
 func note_count() -> int:
@@ -197,6 +203,29 @@ func _build() -> void:
 	mp.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	mp.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	mp.position.y -= 28
+	_prompt = HBoxContainer.new()
+	_prompt.add_theme_constant_override(&"separation", 10)
+	_prompt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_prompt.add_child(KeyChip.new("F"))
+	_prompt_label = _lbl("", &"LabelHud", 19)
+	_prompt_label.add_theme_color_override(&"font_shadow_color", UiTokens.SHADOW)
+	_prompt.add_child(_prompt_label)
+	add_child(_prompt)
+	_prompt.visible = false
+
+
+func _process(_delta: float) -> void:
+	if _prompt == null:
+		return
+	var p := get_tree().get_first_node_in_group(&"player")
+	var target: Node = p.call(&"interact_target") if p != null and p.has_method(&"interact_target") and UI.stack_ids().is_empty() else null
+	var text := String(target.call(&"interact_label")) if target != null and target.has_method(&"interact_label") else ""
+	_prompt.visible = text != ""
+	if _prompt.visible:
+		_prompt_label.text = text
+		var vp := get_viewport_rect().size
+		var sz := _prompt.get_combined_minimum_size()
+		_prompt.position = Vector2((vp.x - sz.x) * 0.5, vp.y - 150.0)
 
 
 func _sep() -> Control:

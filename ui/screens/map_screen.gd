@@ -28,7 +28,7 @@ const LEGEND_W := 330.0
 ## Extraction type -> words (ExtractPoint.Type). Ids are not names; B has no display name yet.
 const EXTRACT_TYPES := ["탈출", "탈출 · 발전기", "탈출 · 열쇠 필요", "탈출 · 배터리 필요"]
 const LEGEND := [[&"player", "나"], [&"companion", "일행"], [&"extract", "탈출 지점"], [&"objective", "목표"],
-	[&"route", "숨은 경로"], [&"recording", "녹음기"], [&"lost_gear", "유실물"], [&"ping", "핑"]]
+	[&"route", "숨은 경로"], [&"recording", "녹음기"], [&"lost_gear", "유실물"], [&"ping", "핑"], [&"danger", "마물 둥지·보스"]]
 const REFRESH_SEC := 0.5
 ## Right click within this many pixels of the ping clears it instead of moving it.
 const PING_CLEAR_PX := 22.0
@@ -156,6 +156,9 @@ func _fit_map(b: Control) -> void:
 static func region_name(id: StringName) -> String:
 	if id == &"":
 		return "필드"
+	var def := RegionDef.load_def(id)
+	if def != null and def.name != "":
+		return def.name
 	return String(Journal.REGION_NAMES.get(id, String(id)))
 
 
@@ -269,6 +272,11 @@ func _collect() -> void:
 		var label := exit_label(int(p.type), place_near(_place_labels, p.global_position))
 		marks.append({"pos": p.global_position, "kind": &"extract", "label": label})
 		exits.append({"pos": p.global_position, "label": label, "wait": p.wait_sec, "noise": p.noise_radius, "id": p.id})
+	for n in _markers(MonsterNest.GROUP):
+		marks.append({"pos": n.global_position, "kind": &"danger", "label": "마물 둥지"})
+	for a in _markers(BossArena.GROUP):
+		marks.append({"pos": a.global_position, "kind": &"danger", "label": "보스 구역"})
+	map.title = region_name(region_id)
 	var objectives: Array = []
 	for o: Dictionary in Quests.active_field_objectives(region_id):
 		var node := _find_marker(StringName(o.get("marker", &"")))

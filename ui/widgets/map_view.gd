@@ -150,6 +150,8 @@ func _blank() -> Texture2D:
 
 ## Label rectangles placed this frame; a label that would cover another moves up or is skipped
 ## (the side panels list everything anyway).
+## Region name drawn big at the top of the map (덕코프 지도처럼).
+var title := ""
 var _labels: Array[Rect2] = []
 
 
@@ -163,6 +165,9 @@ func _draw_ink() -> void:
 	_draw_place_labels()
 	if has_player:
 		_draw_player(to_map(player_pos))
+	if title != "" and place_labels.is_empty():  # with place names the header already names the region
+		var tw := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 34).x
+		_text(Vector2((size.x - tw) * 0.5, 52), title, font, 34, UiTokens.TEXT)
 	# frame, north tick, scale bar
 	_ink.draw_rect(Rect2(Vector2.ZERO, size), UiTokens.LINE_STRONG, false, 2.0)
 	var n := Vector2(size.x - 30, 34)
@@ -285,6 +290,10 @@ static func draw_symbol(ci: CanvasItem, at: Vector2, kind: StringName) -> void:
 			ci.draw_colored_polygon(pin, UiTokens.PING)
 			ci.draw_circle(head, 9.0, UiTokens.PING)
 			ci.draw_circle(head, 3.5, UiTokens.INK)
+		&"danger":
+			var tri := PackedVector2Array([at + Vector2(0, -12), at + Vector2(11, 8), at + Vector2(-11, 8)])
+			ci.draw_colored_polygon(_grow(tri, at, 3.0), out)
+			ci.draw_colored_polygon(tri, UiTokens.DANGER)
 		&"route":
 			for i in 3:
 				var x := at.x - 14 + i * 11

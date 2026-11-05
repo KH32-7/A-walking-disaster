@@ -27,3 +27,8 @@ func begin_open(_interactor: Node3D) -> bool:
 			t.restore_power()
 	power_restored.emit()
 	return true
+
+
+## [F] prompt words.
+func interact_label() -> String:
+	return "" if is_on else "전원 켜기"

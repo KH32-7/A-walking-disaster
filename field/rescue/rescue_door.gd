@@ -42,3 +42,10 @@ func take_damage(amount: float, _info: Dictionary = {}) -> void:
 	health = maxf(health - amount, 0.0)
 	if health == 0.0:
 		broken.emit()
+
+
+## [F] prompt words: pick the lock while standing still (B-10 갇힘).
+func interact_label() -> String:
+	if target == null or target.state != RescueTarget.State.WAITING:
+		return ""
+	return "문 따기"

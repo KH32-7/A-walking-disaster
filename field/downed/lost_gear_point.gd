@@ -17,7 +17,7 @@ func _ready() -> void:
 
 ## Prompt the HUD shows next to the interact key (#28).
 func interact_label() -> String:
-	return "유실물 줍기"
+	return "줍기"
 
 
 ## Player.interact() calls begin_open on interactables, so this keeps LootContainer's name.
