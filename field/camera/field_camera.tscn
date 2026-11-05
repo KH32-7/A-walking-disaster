@@ -1,0 +1,8 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://field/camera/field_camera.gd" id="1_camera"]
+
+[node name="FieldCamera" type="Camera3D"]
+current = true
+fov = 60.0
+script = ExtResource("1_camera")

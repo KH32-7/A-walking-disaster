@@ -12,6 +12,14 @@
 [ext_resource type="Resource" path="res://data/monsters/swamp_blob.tres" id="10_blob"]
 [ext_resource type="PackedScene" path="res://field/markers/loot_spot.tscn" id="11_spot"]
 [ext_resource type="Script" path="res://field/loot/loot_spawner.gd" id="12_loot_spawner"]
+[ext_resource type="PackedScene" path="res://field/camera/field_camera.tscn" id="13_camera"]
+[ext_resource type="Script" path="res://field/camera/indoor_zone.gd" id="14_indoor"]
+
+[sub_resource type="BoxShape3D" id="Shape_house"]
+size = Vector3(8, 3, 8)
+
+[sub_resource type="StandardMaterial3D" id="Mat_roof"]
+albedo_color = Color(0.45, 0.3, 0.25, 1)
 
 [node name="BFieldWiringTest" type="Node3D"]
 script = ExtResource("1_test")
@@ -66,6 +74,24 @@ container_type = 4
 script = ExtResource("12_loot_spawner")
 spots_root = NodePath("../LootSpots")
 spawn_ratio = 1.0
+
+[node name="FieldCamera" parent="." node_paths=PackedStringArray("target") instance=ExtResource("13_camera")]
+target = NodePath("../Player")
+
+[node name="DemoHouse" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0, -20)
+script = ExtResource("14_indoor")
+building_id = &"demo_house"
+
+[node name="Collision" type="CollisionShape3D" parent="DemoHouse"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+shape = SubResource("Shape_house")
+
+[node name="Roof" type="CSGBox3D" parent="DemoHouse" groups=["field_roof"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.2, 0)
+size = Vector3(8, 0.3, 8)
+material = SubResource("Mat_roof")
+metadata/building_id = &"demo_house"
 
 [node name="DebugLayer" type="CanvasLayer" parent="."]
 

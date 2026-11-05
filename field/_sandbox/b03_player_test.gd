@@ -1,20 +1,18 @@
 extends Node3D
 ## B-03 sandbox: field sandbox + player. Run alone (F6).
-## The sandbox camera follows the player until B-04 brings the real camera.
+## Uses the B-04 FieldCamera: Z/C rotate, wheel zoom (sandbox-registered actions).
+
+const SandboxCameraInput := preload("res://field/_sandbox/sandbox_camera_input.gd")
 
 @onready var _player: Player = $Player
-@onready var _camera: Camera3D = $FieldSandbox/Camera3D
 @onready var _label: Label = $DebugLayer/PlayerLabel
-
-var _camera_offset := Vector3.ZERO
 
 
 func _ready() -> void:
-	_camera_offset = _camera.global_position - _player.global_position
+	SandboxCameraInput.ensure()
 
 
 func _process(_delta: float) -> void:
-	_camera.global_position = _player.global_position + _camera_offset
 	_label.text = "Move: %s\nAiming: %s\nSpeed: %.1f m/s\nStamina: %.0f\nHealth: %.0f" % [
 		Player.MoveState.keys()[_player.move_state],
 		_player.is_aiming,
