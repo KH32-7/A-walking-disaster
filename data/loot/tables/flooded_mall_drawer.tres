@@ -1,0 +1,55 @@
+[gd_resource type="Resource" script_class="LootTable" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://field/defs/loot_table.gd" id="1_table"]
+[ext_resource type="Script" path="res://field/defs/loot_entry.gd" id="2_entry"]
+
+[sub_resource type="Resource" id="Entry_0"]
+script = ExtResource("2_entry")
+item_id = &"scrap"
+weight = 40.0
+min_count = 1
+max_count = 3
+
+[sub_resource type="Resource" id="Entry_1"]
+script = ExtResource("2_entry")
+item_id = &"cloth"
+weight = 15.0
+min_count = 1
+max_count = 2
+
+[sub_resource type="Resource" id="Entry_2"]
+script = ExtResource("2_entry")
+item_id = &"food"
+weight = 30.0
+min_count = 1
+max_count = 3
+
+[sub_resource type="Resource" id="Entry_3"]
+script = ExtResource("2_entry")
+item_id = &"ammo_pistol"
+weight = 10.0
+min_count = 3
+max_count = 8
+
+[sub_resource type="Resource" id="Entry_4"]
+script = ExtResource("2_entry")
+item_id = &"ammo_shell"
+weight = 5.0
+min_count = 2
+max_count = 4
+
+[sub_resource type="Resource" id="Entry_5"]
+script = ExtResource("2_entry")
+item_id = &"paint"
+weight = 10.0
+min_count = 1
+max_count = 1
+
+[resource]
+script = ExtResource("1_table")
+id = &"flooded_mall_drawer"
+region_id = &"flooded_mall"
+container_type = 0
+roll_min = 1
+roll_max = 3
+entries = Array[ExtResource("2_entry")]([SubResource("Entry_0"), SubResource("Entry_1"), SubResource("Entry_2"), SubResource("Entry_3"), SubResource("Entry_4"), SubResource("Entry_5")])
