@@ -271,7 +271,7 @@ func _status_tag(st: Dictionary) -> Control:
 func _chip(card: Dictionary, selected: bool) -> Control:
 	var st: Dictionary = STATUS.get(StringName(card.get("status", &"active")), STATUS[&"active"])
 	var h := HBoxContainer.new()
-	h.add_theme_constant_override(&"separation", 6)
+	h.add_theme_constant_override(&"separation", 10)
 	var m := StatusMark.new()
 	m.shape = st.shape
 	m.color = st.color

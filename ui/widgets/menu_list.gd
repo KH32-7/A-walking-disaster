@@ -15,7 +15,7 @@ var _rows: Dictionary = {}  # StringName -> Button
 
 
 func _init() -> void:
-	add_theme_constant_override(&"separation", 4)
+	add_theme_constant_override(&"separation", 8)
 
 
 ## Adds a row. `note` is the dim text on the right (slot day, "준비 중", key...).

@@ -201,7 +201,7 @@ func _outcome_range(prediction: Dictionary) -> String:
 
 
 func _direction_name(direction: StringName) -> String:
-	return DIRECTION_NAMES.get(direction, String(direction) if direction != &"" else "어느")
+	return DIRECTION_NAMES.get(direction, String(direction) if direction != &"" else "어느 쪽")
 
 
 func _region_name(region_id: StringName) -> String:

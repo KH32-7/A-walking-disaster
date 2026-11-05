@@ -335,7 +335,7 @@ func _candidate_row(node_id: StringName, rid: StringName, full: bool, may_be_pri
 	h.add_theme_constant_override(&"separation", 12)
 	h.add_child(FaceDot.new(LossText.display_name(rid), 36, why != "", LossText.face_mark(rid)))
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override(&"separation", -2)
+	v.add_theme_constant_override(&"separation", 2)
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.add_child(MenuScreen.label(LossText.display_name(rid), &"LabelHud", 16))
 	var job := BaseDB.get_job(Colony.job_of(rid))

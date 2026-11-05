@@ -12,6 +12,12 @@ extends Node
 const MAIN := "res://main.tscn"
 const STEP_TIMEOUT := 25.0
 
+var _pop_before := 0
+## Yesterday's site had nobody able to work on it (day 1: only the injured), so no progress is due.
+var _unstaffed_site := false
+var _doctor_node: RescueTarget = null
+## Resource the next evening report must show as produced (&"" = no check).
+var _watch_produced := &""
 var out_dir := "user://playthrough"
 var _main: Node
 var _log: BotLogger
@@ -70,6 +76,10 @@ func _run() -> void:
 		await _quick_base()
 		_finish()
 		return
+	if "--quick=screens" in OS.get_cmdline_user_args():
+		await _quick_screens()
+		_finish()
+		return
 	if "--quick=cinema" in OS.get_cmdline_user_args():
 		# Only the cutscene, for --write-movie (look at it as a video, then delete it).
 		await _until(func() -> bool: return UI.is_open(&"title"), "타이틀", 60.0)
@@ -97,6 +107,8 @@ func _run() -> void:
 		ok = await _day3()
 	if ok:
 		ok = await _day4()
+	if ok:
+		ok = await _day5()
 	_finish()
 
 
@@ -137,8 +149,12 @@ func _day1() -> bool:
 		return false
 	if not await _field_walk():
 		return false
+	_pop_before = Colony.active_resident_ids().size()
+	if not await _rescue_doctor():
+		return false
 	if not await _field_extract():
 		return false
+	_check((SceneRouter.last_sortie_result.get("rescued", []) as Array).size() >= 1, "공원: 의사를 데리고 함께 탈출함")
 	return await _back_home_and_sleep(2)
 
 
@@ -147,13 +163,21 @@ func _day2() -> bool:
 	await _shot("base_morning_d2")
 	_check(GameState.has_flag(&"extracted_city_park"), "공원 탈출 기록이 남음 (침수 상가 해금 조건)")
 	_check(GameState.has_flag(&"tutorial_done") and UI.tutorial.current_step() == &"", "2일차 아침: 첫날 안내가 끝남")
+	var doc := _resident_with_job(&"doctor")
+	_check(doc != &"", "구한 의사가 주민이 됨 (주민 %d → %d명)" % [_pop_before, Colony.active_resident_ids().size()])
+	_check(Colony.active_resident_ids().size() == _pop_before + 1, "주민 수가 한 명 늘어남")
+	if doc != &"":
+		_check(int(Colony.get_resident(doc).get("health", 0)) == Enums.HealthState.OK, "의사는 다치지 않아 바로 일할 수 있음")
+	var inf: Array = Colony.can_build(&"infirmary").reasons
+	_check(not inf.any(func(r: String) -> bool: return "의사" in r), "의사가 오면 의무실의 전직 의사 조건이 풀림 (남은 조건 %s)" % [inf])
 	var site_ok := false
 	for uid: StringName in Colony.buildings.keys():
 		var b := Colony.get_building(uid)
 		if b["def_id"] == _built_def and (b["completed"] or int(b["progress"]) > 0):
 			site_ok = true
-	if _built_def != &"":
+	if _built_def != &"" and not _unstaffed_site:
 		_check(site_ok, "어제 놓은 %s 건설이 진행됨" % _built_def)
+	_unstaffed_site = false
 	await _build_something()
 	UI.base_hud._menu_buttons[&"@sortie"].pressed.emit()
 	if not await _until(func() -> bool: return UI.is_open(&"sortie_prep"), "출격 준비 화면이 열림"):
@@ -183,7 +207,7 @@ func _day3() -> bool:
 	_step("day3")
 	await _shot("base_morning_d3")
 	var people := Colony.active_resident_ids()
-	if not _check(not people.is_empty(), "구조한 사람이 주민이 됨 (%d명)" % people.size()):
+	if not _check(people.size() >= _pop_before + 2, "침수 상가에서 구한 사람도 주민이 됨 (%d명)" % people.size()):
 		return false
 	var done_before := Colony.buildings.keys().filter(func(u: StringName) -> bool: return Colony.get_building(u)["completed"]).size()
 	_check(done_before >= 2, "어제 놓은 현장을 새 주민이 저녁에 지음 (완성 %d개)" % done_before)
@@ -213,8 +237,11 @@ func _day3() -> bool:
 	return await _evening_night(4)
 
 
-## 4일차: park again, go down this time.
+## 4일차: a lumber yard with the doctor on it, then the park again, going down this time.
+## The evening report must show the wood the lumber yard made.
 func _day4() -> bool:
+	_step("day4_lumber")
+	var wood_job := await _staff(&"lumber_yard", &"woodcutting")
 	if not await _sortie(&"city_park"):
 		return false
 	await _frames(20)
@@ -224,7 +251,83 @@ func _day4() -> bool:
 	if not await _until(func() -> bool: return GameState.flow_state == Enums.FlowState.RESULT, "쓰러짐 → 결과 화면"):
 		return false
 	_check(bool(SceneRouter.last_sortie_result.get("downed", false)), "결과가 '쓰러짐'으로 기록됨")
+	_watch_produced = &"wood" if wood_job else &""
 	return await _back_home_and_sleep(5)
+
+
+## 5일차: a quarry with the doctor on it, stay home; the evening shows the stone.
+func _day5() -> bool:
+	_step("day5_quarry")
+	await _shot("base_morning_d5")
+	var ok := await _staff(&"quarry", &"quarrying")
+	UI.base_hud._menu_buttons[&"@stay"].pressed.emit()
+	if not await _until(func() -> bool: return GameState.flow_state == Enums.FlowState.BASE_STAY, "5일차 머무르기"):
+		return false
+	_flow_prompt_button("하루 마치기").pressed.emit()
+	if not await _until(func() -> bool: return GameState.flow_state == Enums.FlowState.EVENING, "하루 마치기 → 저녁"):
+		return false
+	_watch_produced = &"stone" if ok else &""
+	return await _evening_night(6)
+
+
+## Builds `def_id` where the grid allows (paid when affordable, else given), finishes it and sends a
+## healthy resident to `job_id` there. True when someone works there now.
+func _staff(def_id: StringName, job_id: StringName) -> bool:
+	var base := _world_scene()
+	var spot := _find_spot(base.grid, def_id)
+	if not _check(not spot.is_empty(), "%s를 놓을 자리가 있음" % def_id):
+		return false
+	var pay: bool = Colony.can_build(def_id).ok
+	var uid := Colony.place_building(def_id, spot["cell"], 0, spot["zone_id"], pay)
+	if not _check(uid != &"", "%s 건설 현장을 놓음" % def_id):
+		return false
+	Colony.complete_building(uid)
+	var worker := &""
+	for id: StringName in Colony.active_resident_ids():
+		var r := Colony.get_resident(id)
+		if int(r.get("health", 0)) == Enums.HealthState.OK:
+			worker = id
+			break
+	if not _check(worker != &"", "일할 수 있는 주민이 있음"):
+		return false
+	var reason := Colony.job_block_reason(worker, job_id, uid)
+	var ok := _check(Colony.assign_job(worker, job_id, uid), "%s에 %s 배정 (%s)" % [def_id, Colony.get_resident(worker).get("name", ""), reason])
+	UI.open(&"residents", {"id": worker})
+	await _frames(15)
+	await _shot("residents_" + String(job_id))
+	UI.close(&"residents")
+	await _frames(5)
+	return ok
+
+
+func _resident_with_job(former_job: StringName) -> StringName:
+	for id: StringName in Colony.active_resident_ids():
+		if Colony.get_resident(id).get("former_job", &"") == former_job:
+			return id
+	return &""
+
+
+## Park: walk to the 관리사무소, help the doctor up with F, bring him to the exit (he follows).
+func _rescue_doctor() -> bool:
+	_step("rescue_doctor")
+	var player: Node3D = get_tree().get_first_node_in_group(&"player")
+	var doctor: RescueTarget = null
+	for t in get_tree().get_nodes_in_group(RescueTarget.GROUP):
+		if StringName((t as RescueTarget).profile.get("id", &"")) == &"demo_doctor":
+			doctor = t
+	if not _check(doctor != null, "공원 관리사무소에 의사가 있음"):
+		return false
+	player.global_position = doctor.global_position + Vector3(1.0, 0, 0.6)
+	await _frames(10)
+	_check(doctor.interact_label() != "", "의사 앞에서 [F] 안내: %s" % doctor.interact_label())
+	_check(UI.world_prompts._chip.visible, "의사 옆에 [F] 툴팁이 보임")
+	await _shot("doctor_prompt")
+	(player as Player).interact()
+	await _frames(10)
+	if not _check(doctor.is_rescued(), "F를 누르면 의사가 따라옴"):
+		return false
+	_doctor_node = doctor
+	return true
 
 
 func _rescue_and_extract() -> bool:
@@ -478,6 +581,66 @@ func _intro(shots: bool) -> bool:
 	return await _until(func() -> bool: return get_tree().get_first_node_in_group(IntroCutscene.GROUP) == null, "집을 나와 기지로", 10.0)
 
 
+## Every base screen once, with a few residents and resources, one shot each (UI review).
+## The shots show paid assets: delete them after looking.
+func _quick_screens() -> void:
+	_step("quick_screens")
+	await _until(func() -> bool: return UI.is_open(&"title"), "타이틀")
+	await _shot("s_title")
+	UI.get_screen(&"title").list.focus_row(&"new")
+	await _frames(3)
+	(UI.get_screen(&"title").find_child("start", true, false) as Button).pressed.emit()
+	await _until(func() -> bool: return GameState.flow_state == Enums.FlowState.BASE_MORNING, "기지")
+	await _loading_done()
+	await _intro(false)
+	UI.tutorial.skip()
+	for p: Dictionary in DemoProfiles.PROFILES:
+		if Colony.get_resident(p.id).is_empty():
+			Colony.add_resident(p.duplicate(true))
+	Economy.set_cap_bonus(500)
+	Economy.apply({&"wood": 60, &"stone": 40, &"food": 30, &"scrap": 20, &"cloth": 10, &"plank": 25, &"medicine": 6})
+	await get_tree().create_timer(1.5).timeout
+	await _shot("s_base_hud")
+	var someone: StringName = Colony.active_resident_ids()[0]
+	for entry: Array in [[&"build", {}], [&"residents", {"id": someone}], [&"craft", {}], [&"armory", {}],
+			[&"journal", {}], [&"outposts", {}], [&"relations", {}], [&"dialog", {"resident_id": someone}],
+			[&"gift", {"resident_id": someone}], [&"welcome", {"resident_id": someone}], [&"settings", {}],
+			[&"pause", {}]]:
+		UI.open(entry[0], entry[1])
+		await _frames(25)
+		await get_tree().create_timer(0.6).timeout
+		_check(UI.is_open(entry[0]), "%s 화면이 열림" % entry[0])
+		await _shot("s_" + String(entry[0]))
+		UI.close(entry[0])
+		await _frames(8)
+	UI.base_hud._menu_buttons[&"@sortie"].pressed.emit()
+	await _until(func() -> bool: return UI.is_open(&"sortie_prep"), "출격 준비")
+	await _frames(20)
+	await _shot("s_sortie_prep")
+	var prep: Node = UI.get_screen(&"sortie_prep")
+	var rows := 0
+	for c in prep._regions_box.get_children():
+		if c is Button:
+			rows += 1
+	_check(rows == 2, "출격 준비에 맵이 있는 지역 2곳만 뜸 (%d곳)" % rows)
+	prep.close()
+	await _frames(10)
+	UI.base_hud._menu_buttons[&"@stay"].pressed.emit()
+	await _until(func() -> bool: return GameState.flow_state == Enums.FlowState.BASE_STAY, "머무르기")
+	_flow_prompt_button("하루 마치기").pressed.emit()
+	await _until(func() -> bool: return UI.is_open(&"evening") or UI.is_open(&"welcome"), "저녁")
+	var guard := 0
+	while UI.is_open(&"welcome") and guard < 40:
+		guard += 1
+		var w: Node = UI.get_screen(&"welcome")
+		if w._next_button != null:
+			w._next_button.pressed.emit()
+		await _frames(4)
+	await _until(func() -> bool: return UI.is_open(&"evening"), "저녁 정산")
+	await _frames(20)
+	await _shot("s_evening")
+
+
 ## Short look at the base: 45° camera, no player, grid while placing, [클릭] chip on hover.
 func _quick_base() -> void:
 	_step("quick_base")
@@ -487,6 +650,8 @@ func _quick_base() -> void:
 	(UI.get_screen(&"title").find_child("start", true, false) as Button).pressed.emit()
 	await _until(func() -> bool: return GameState.flow_state == Enums.FlowState.BASE_MORNING, "기지")
 	await _loading_done()
+	await _intro(false)
+	UI.tutorial.skip()
 	await get_tree().create_timer(1.0).timeout
 	_check(get_viewport().get_camera_3d() is BaseCamera, "기지 카메라가 BaseCamera")
 	_check(get_tree().get_first_node_in_group(&"player") == null, "기지에 걷는 플레이어가 없음")
@@ -576,8 +741,14 @@ func _build_something() -> void:
 	await _frames(5)
 	var site: Node = UI.get_screen(&"build")
 	var put := _button(site._detail, "배정")
+	var able := Colony.active_resident_ids().filter(func(id: StringName) -> bool:
+		return int(Colony.get_resident(id).get("health", 0)) == Enums.HealthState.OK)
 	if Colony.active_resident_ids().is_empty():
 		_check(put == null and _label_with(site._detail, "주민이 없") != null, "주민이 없으면 현장 카드가 그렇게 알려 줌")
+	elif able.is_empty():
+		# 1일차: only the injured 한도윤 — the card says why nobody can go.
+		_check(put == null and _label_with(site._detail, "부상") != null, "다친 주민뿐이면 현장 카드가 '부상'이라고 알려 줌")
+		_unstaffed_site = true
 	elif _check(put != null, "현장에 보낼 주민이 있음"):
 		put.pressed.emit()
 		await _frames(3)
@@ -668,6 +839,9 @@ func _field_extract() -> bool:
 		return false
 	var player: Node3D = get_tree().get_first_node_in_group(&"player")
 	player.global_position = point.global_position + Vector3(0, 0.1, 0)
+	if _doctor_node != null and is_instance_valid(_doctor_node):
+		_doctor_node.global_position = point.global_position + Vector3(1.0, 0.1, 0.5)  # he kept up
+		_doctor_node = null
 	await _frames(20)
 	await _shot("field_extracting")
 	return await _until(func() -> bool: return GameState.flow_state == Enums.FlowState.RESULT, "탈출 지점에 서 있으면 탈출 완료", 30.0)
@@ -683,7 +857,10 @@ func _back_home_and_sleep(next_day: int) -> bool:
 	await get_tree().create_timer(2.2).timeout
 	await _shot("result_d%d" % (next_day - 1))
 	var res: Node = UI.get_screen(&"result")
-	res._go.pressed.emit()
+	if res != null:  # already gone = something moved on to the evening (a key press in the window)
+		res._go.pressed.emit()
+	else:
+		print("[bot] result screen closed before the bot pressed it (state %s)" % Enums.FlowState.keys()[GameState.flow_state])
 	if not await _until(func() -> bool: return GameState.flow_state == Enums.FlowState.EVENING, "결과 → 저녁"):
 		return false
 	await _frames(20)
@@ -712,6 +889,10 @@ func _evening_night(next_day: int) -> bool:
 		await _frames(4)
 	await _until(func() -> bool: return UI.is_open(&"evening"), "저녁 정산 화면이 열림")
 	await _frames(10)
+	if _watch_produced != &"":
+		var made := float((SceneRouter.last_evening_report.get("produced", {}) as Dictionary).get(_watch_produced, 0.0))
+		_check(made > 0.0, "저녁 정산: 배정한 주민이 %s를 생산함 (+%s)" % [_watch_produced, made])
+		_watch_produced = &""
 	await _shot("evening_d%d" % (next_day - 1))
 	UI.get_screen(&"evening")._go.pressed.emit()
 	if not await _until(func() -> bool: return GameState.flow_state in [Enums.FlowState.NIGHT, Enums.FlowState.NIGHT_EVENT, Enums.FlowState.NIGHT_RAID], "저녁 → 밤"):

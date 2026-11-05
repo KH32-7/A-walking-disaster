@@ -51,11 +51,13 @@ void light() {
 		float shadow_atten = band_step(0.5, ATTENUATION);
 		level *= shadow_atten;
 		vec3 shade = mix(shade_color.rgb, vec3(1.0), level);
-		DIFFUSE_LIGHT += ALBEDO * shade * LIGHT_COLOR / PI;
+		// toon_amount 0 (global, see toon_local_light.gdshaderinc): plain smooth Lambert, no rim.
+		vec3 smooth_shade = vec3(clamp(ndl, 0.0, 1.0) * ATTENUATION);
+		DIFFUSE_LIGHT += ALBEDO * mix(smooth_shade, shade, toon_amount) * LIGHT_COLOR / PI;
 
 		float rim = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
 		rim = band_step(rim_width, rim) * clamp(ndl + 0.4, 0.0, 1.0);
-		DIFFUSE_LIGHT += rim_color.rgb * rim * rim_amount * LIGHT_COLOR / PI;
+		DIFFUSE_LIGHT += rim_color.rgb * rim * rim_amount * toon_amount * LIGHT_COLOR / PI;
 
 		if (specular_amount > 0.0) {
 			vec3 h = normalize(LIGHT + VIEW);

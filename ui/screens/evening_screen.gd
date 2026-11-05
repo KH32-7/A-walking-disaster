@@ -26,12 +26,31 @@ func close() -> void:
 	SceneRouter.confirm_evening()
 
 
+## SceneRouter enters EVENING before it settles the day, and UI opens this screen on the state
+## change: without a welcome first, the screen would draw the old report. It redraws once the
+## settlement arrives (기지 검사 2026-11-06: 벌목 +11이 정산 화면에 안 보이던 문제).
+func _on_evening_settled(r: Dictionary) -> void:
+	report = r
+	if _steps != null:
+		_steps.queue_free()
+		_steps = null
+	if body != null:
+		MenuScreen.clear(body)
+		_build_body(body)
+
+
+var _steps: Control
+
+
 func _build_body(b: Control) -> void:
+	if not EventBus.evening_settled.is_connected(_on_evening_settled):
+		EventBus.evening_settled.connect(_on_evening_settled)
 	if report.is_empty():
 		report = SceneRouter.last_evening_report
 	var steps := StepDots.new()
 	steps.steps = ["결과", "저녁 정산", "밤"]
 	steps.current = 1
+	_steps = steps
 	add_child(steps)
 	steps.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE)
 	steps.grow_horizontal = Control.GROW_DIRECTION_BEGIN
@@ -48,7 +67,7 @@ func _build_body(b: Control) -> void:
 	var g := GridContainer.new()
 	g.columns = 4
 	g.add_theme_constant_override(&"h_separation", 40)
-	g.add_theme_constant_override(&"v_separation", 4)
+	g.add_theme_constant_override(&"v_separation", 8)
 	for h in ["자원", "생산", "소비", "합계"]:
 		g.add_child(MenuScreen.label(h, &"LabelDim", 13))
 	var produced: Dictionary = report.get("produced", {})

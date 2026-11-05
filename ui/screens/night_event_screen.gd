@@ -60,7 +60,7 @@ func _build_body(b: Control) -> void:
 	var top := VBoxContainer.new()
 	top.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	top.alignment = BoxContainer.ALIGNMENT_CENTER
-	top.add_theme_constant_override(&"separation", 6)
+	top.add_theme_constant_override(&"separation", 10)
 	b.add_child(top)
 	top.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	_day_label = MenuScreen.label("", &"LabelDim", 16)
@@ -160,7 +160,7 @@ func _draw_people(deltas: Dictionary) -> void:
 func _link(a: StringName, b: StringName, deltas: Dictionary) -> Control:
 	var v := VBoxContainer.new()
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
-	v.add_theme_constant_override(&"separation", 4)
+	v.add_theme_constant_override(&"separation", 8)
 	v.custom_minimum_size = Vector2(150, 270)
 	var stage := Colony.relation_stage(a, b)
 	var s := RelationGraph.LineSample.new(stage)

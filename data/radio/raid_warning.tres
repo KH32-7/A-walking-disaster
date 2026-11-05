@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_e1v7a")
 id = &"raid_warning"
-lines = Array[String](["습격입니다! {direction} 쪽, 곧 들이닥칩니다!", "{direction} 방향에서 옵니다. 모두 자리로!", "경보! {direction} 쪽입니다. 아이들은 대피소로!", "마물 무리가 {direction}에서 다가옵니다. 서두르세요!", "{direction} 쪽 담장으로 무리가 붙습니다. 준비하세요!"])
+lines = Array[String](["습격입니다! {direction}, 곧 들이닥칩니다!", "{direction} 방향에서 옵니다. 모두 자리로!", "경보! {direction}입니다. 아이들은 대피소로!", "마물 무리가 {direction}에서 다가옵니다. 서두르세요!", "{direction} 담장으로 무리가 붙습니다. 준비하세요!"])
 cooldown_sec = 30.0
 priority = 3
 guidance = false

@@ -212,7 +212,15 @@ func _place_subtitle() -> void:
 	for e: Dictionary in _stack:
 		if not (e.def as ScreenDef).is_overlay:
 			menu = true
-	subtitle.offset_bottom = -20 if menu else -200  # menu: in the key-footer row, under the panels
+	# Menu: bottom right of the key-footer row (the keys are on the left; they overlapped once the
+	# text got bigger). World: centred, above the HUD.
+	var preset := Control.PRESET_BOTTOM_RIGHT if menu else Control.PRESET_CENTER_BOTTOM
+	subtitle.set_anchors_and_offsets_preset(preset, Control.PRESET_MODE_KEEP_SIZE)
+	subtitle.grow_horizontal = Control.GROW_DIRECTION_BEGIN if menu else Control.GROW_DIRECTION_BOTH
+	subtitle.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	if menu:
+		subtitle.offset_right = -40
+	subtitle.offset_bottom = -20 if menu else -200
 	# Toasts sit bottom right over the world; with a menu open that corner holds its buttons
 	# (출격, 맞이하기 …), so they move up under the header.
 	if notice_toast != null:

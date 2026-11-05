@@ -49,7 +49,7 @@ func _test_data() -> void:
 		for p in boss.patterns:
 			ids.append(p.id)
 		_check(ids == [&"tail_swing", &"splash", &"dive"], "patterns %s" % [ids])
-	_check(Enums.element_multiplier(Enums.Element.LIGHT, Enums.Element.WATER) > 1.0, "light beats it (04: 광 속성)")
+	_check(Enums.element_multiplier(Enums.Element.LIGHT, Enums.Element.WATER) > 1.0, "light beats it (04: 번개 속성)")
 
 
 func _test_immune_underwater() -> void:
