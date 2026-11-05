@@ -90,6 +90,7 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   목소리는 `RadioVoice`(`UI.radio_voice`)가 낸다. 완성된 문장마다 녹음 클립 `RadioVoice.clip_path(speaker_id, text)`
   (`res://assets/audio/voice/<speaker_id>/<문장 MD5 앞 12자>.mp3`)이 있으면 그것을, 없으면 OS TTS를 쓴다.
   **무전 문장을 고치면 그 문장의 클립이 안 맞게 되니 다시 녹음한다.** 방송실 지기 목소리: Higgsfield ElevenLabs v4, 프리셋 Gideon.
+  자막을 직접 그리는 컷신은 `UI.radio_voice.say(speaker_id, text, interrupt := false)`로 목소리만 낸다(인트로 방송).
 - **Settings**: `get_value(key)`, `set_value(key, value) -> bool`(모르는 키·틀린 타입 거부), `apply_preset(id, new_game)`, `matching_preset()`,
   `reset_to_defaults(include_difficulty)`. 키 목록은 `Settings.DEFAULTS`. 난이도 프리셋은 `story`·`normal`·`hard`·`hardcore`
   (`Settings.PRESETS`), 항목을 따로 바꾸면 `difficulty`가 `custom`이 된다. 하드코어는 새 게임에서만 고른다.
