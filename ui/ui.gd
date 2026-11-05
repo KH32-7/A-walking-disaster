@@ -86,9 +86,18 @@ var tutorial: TutorialGuide
 ## [F] chip beside the usable thing + exit diamonds, in the world (field and base).
 var world_prompts: WorldPrompts
 var radio_voice: RadioVoice
+## The player's blind status (boss flash) as a dark screen. Its own layer between the HUD and screens.
+var blind_overlay: BlindOverlay
 
 
 func _add_d16_nodes() -> void:
+	var blind_layer := CanvasLayer.new()
+	blind_layer.name = &"BlindLayer"
+	blind_layer.layer = 15
+	add_child(blind_layer)
+	blind_overlay = BlindOverlay.new()
+	blind_overlay.name = &"BlindOverlay"
+	blind_layer.add_child(blind_overlay)
 	explore = FieldExplore.new()
 	explore.name = &"FieldExplore"
 	add_child(explore)
