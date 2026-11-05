@@ -12,6 +12,8 @@ extends Node3D
 ##   stance     Blend2        free <-> aim, eased so switching weapons doesn't pop
 ##   reload     OneShot       upper body only, so legs keep walking
 ##   shoot      OneShot       upper body only
+##   swing_out  OneShot       full body, blunt combo hits 1 and 3 (outward slash)
+##   swing_in   OneShot       full body, blunt combo hit 2 (inward slash); out and in chain
 ##   dodge      OneShot       full body, time-scaled to the dodge length
 ##   life       Transition    alive / downed
 ##
@@ -49,6 +51,9 @@ const DODGE_FADE_IN := 0.05
 const DODGE_FADE_OUT := 0.15
 const UPPER_FADE := 0.12
 const DOWNED_FADE := 0.25
+## Blunt swings: each swing fades in over the previous one, so a combo reads as one motion.
+const SWING_FADE_IN := 0.1
+const SWING_FADE_OUT := 0.2
 ## A single shot keeps the firing pose this long before easing back.
 const SHOT_HOLD_SEC := 0.3
 ## Where shots are drawn from (muzzle flash, tracers): this hand bone, pushed this far along the aim.
@@ -312,11 +317,27 @@ func _place_gun() -> void:
 	_gun.global_transform = Transform3D(b, grip - b * (_gun_spec["grip"] as Vector3))
 
 
-func _on_attacked(kind: StringName, _combo_step: int) -> void:
+func _on_attacked(kind: StringName, combo_step: int) -> void:
+	if kind == &"swing":
+		_swing(combo_step)
+		return
 	if kind != &"shot" or _tree == null or not _holding_gun():
 		return
 	_tree.set(&"parameters/shoot/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
 	_shot_left = SHOT_HOLD_SEC
+
+
+## Blunt weapons alternate the outward (odd combo steps) and inward (even) slash. The new swing
+## fades in while the other one fades out. Blades and bare hands have no swing clip yet.
+func _swing(combo_step: int) -> void:
+	if _tree == null or _weapons == null:
+		return
+	if int(_weapons.current_stats().get("combat_class", -1)) != Enums.CombatClass.BLUNT:
+		return
+	var play := &"swing_in" if combo_step % 2 == 0 else &"swing_out"
+	var other := &"swing_out" if play == &"swing_in" else &"swing_in"
+	_tree.set(StringName("parameters/%s/request" % other), AnimationNodeOneShot.ONE_SHOT_REQUEST_FADE_OUT)
+	_tree.set(StringName("parameters/%s/request" % play), AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
 
 
 func _on_reload_started(duration_sec: float) -> void:
@@ -394,6 +415,15 @@ func _build_tree(upper: Array[NodePath]) -> AnimationNodeBlendTree:
 		bt.add_node(node, one)
 		bt.connect_node(node, 0, last)
 		bt.connect_node(node, 1, speed_node)
+		last = node
+
+	for spec: Array in [["swing_out", "blunt_swing_out"], ["swing_in", "blunt_swing_in"]]:
+		var node := StringName(spec[0])
+		var clip_node := StringName(spec[0] + "_clip")
+		bt.add_node(clip_node, _clip(spec[1]))
+		bt.add_node(node, _one_shot(SWING_FADE_IN, SWING_FADE_OUT))
+		bt.connect_node(node, 0, last)
+		bt.connect_node(node, 1, clip_node)
 		last = node
 
 	bt.add_node(&"dodge_clip", _clip("dodge"))
