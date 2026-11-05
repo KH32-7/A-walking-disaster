@@ -100,6 +100,7 @@ func _test_save_round_trip() -> bool:
 	for p in DemoProfiles.PROFILES:
 		Colony.add_resident(p)
 	Colony.add_resident({})
+	var migrant := Colony.add_resident({"traits": [], "origin_tags": ["migrant"]})  # 이슈 #108 (B-20)
 	Colony.threat = 4
 	Colony.residents[&"demo_mechanic"]["relations"][&"demo_carpenter"] = 35
 	Colony.residents[&"demo_mechanic"]["job_skill"][&"maintenance"] = 2
@@ -107,6 +108,7 @@ func _test_save_round_trip() -> bool:
 	Colony.load_data(JSON.parse_string(before))  # same path as a real save file
 	var after := JSON.stringify(Colony.save_data(), "", true)
 	var ok := _check(before == after, "저장 → JSON → 불러오기 → 저장 이 같음")
+	ok = _check(Colony.get_resident(migrant)["origin_tags"] == [&"migrant"], "출신 태그 origin_tags가 입주·저장 뒤에도 남음 (#108)") and ok
 	var mech := Colony.get_resident(&"demo_mechanic")
 	ok = _check(mech["relations"].get(&"demo_carpenter") == 35 and typeof(mech["stats"][&"dex"]) == TYPE_INT, "불러온 뒤 키·타입 복원") and ok
 	var id: StringName = Colony.add_resident({})

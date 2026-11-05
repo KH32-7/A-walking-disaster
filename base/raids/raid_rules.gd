@@ -40,6 +40,8 @@ const TYPES := {
 const DIRECTIONS: Array[StringName] = [&"north", &"east", &"south", &"west"]
 ## Day raid radio warning with a guard post (10 "예고").
 const DAY_WARNING_SEC := 60.0
+## 출격 중 낮 습격: 출격 시작 뒤 이만큼 지나 경보가 온다 (초, 가안).
+const FIELD_RAID_AFTER_SEC := Vector2(90.0, 300.0)
 
 ## Defense facility effects in the automatic judgment (10 "방어 시설", C-18, 가안).
 const DECOY_CUT_MAX := 0.3            # 소음 미끼: 하나당 강도 −10%, 합쳐서 최대 −30%
