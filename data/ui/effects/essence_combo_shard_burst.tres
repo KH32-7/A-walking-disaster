@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="FxDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/fx_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://vfx/defs/fx_layer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/modular/spike02.png"
+blend = 1
+align = 1
+stretch = 2.0
+amount = 12
+size = Vector2(0.15, 0.25)
+speed = Vector2(5.0, 9.0)
+gravity = 6.0
+spin = false
+lifetime = 0.45
+direction = Vector3(0.0, 0.3, 0.0)
+spread_deg = 180.0
+color = Color(0.75, 0.66, 0.5, 1.0)
+follow_radius = true
+offset = Vector3(0.0, 0.8, 0.0)
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/earth_dust.png"
+blend = 1
+amount = 6
+size = Vector2(0.4, 0.7)
+end_scale = 2.0
+speed = Vector2(0.5, 1.2)
+lifetime = 0.8
+color = Color(0.6, 0.55, 0.45, 0.5)
+follow_radius = true
+offset = Vector3(0.0, 0.6, 0.0)
+
+[resource]
+script = ExtResource("1_def")
+id = &"essence_combo_shard_burst"
+base_radius = 2.0
+max_alive = 6
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1")])

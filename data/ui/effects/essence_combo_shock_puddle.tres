@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="FxDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/fx_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://vfx/defs/fx_layer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+kind = 2
+texture = "res://assets/vfx/magic_arsenal/textures/ground_lightning.png"
+grow = Vector2(2.0, 2.0)
+lifetime = 0.4
+color = Color(1.0, 0.95, 0.6, 0.8)
+fade_out = 0.7
+loop = true
+fade_in = 0.3
+follow_radius = true
+spin = true
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/storm_spark.png"
+loop = true
+explosiveness = 0.0
+amount = 8
+emit_radius = 0.8
+speed = Vector2(0.5, 1.5)
+size = Vector2(0.15, 0.3)
+lifetime = 0.3
+color = Color(1.0, 0.95, 0.6, 1.0)
+follow_radius = true
+
+[resource]
+script = ExtResource("1_def")
+id = &"essence_combo_shock_puddle"
+base_radius = 1.5
+lifetime = 1.0
+lifetime_param = &"duration"
+max_alive = 8
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1")])

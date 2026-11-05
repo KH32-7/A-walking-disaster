@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="FxDef" format=3]
+
+[ext_resource type="Script" path="res://vfx/defs/fx_def.gd" id="1_def"]
+[ext_resource type="Script" path="res://vfx/defs/fx_layer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/shadow_cloud.png"
+blend = 1
+amount = 10
+emit_radius = 0.4
+size = Vector2(0.5, 0.8)
+end_scale = 1.8
+speed = Vector2(0.3, 1.0)
+lifetime = 0.6
+color = Color(0.15, 0.12, 0.2, 0.7)
+fade_in = 0.1
+offset = Vector3(0.0, 0.8, 0.0)
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+kind = 0
+texture = "res://assets/vfx/magic_arsenal/textures/shadow_mothball.png"
+amount = 6
+size = Vector2(0.15, 0.3)
+speed = Vector2(1.0, 2.0)
+lifetime = 0.5
+color = Color(0.6, 0.5, 0.8, 0.8)
+offset = Vector3(0.0, 0.8, 0.0)
+
+[resource]
+script = ExtResource("1_def")
+id = &"shadow_step"
+max_alive = 4
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1")])
