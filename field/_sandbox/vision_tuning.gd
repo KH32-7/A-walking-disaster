@@ -23,7 +23,7 @@ var _shade: VisionShade
 var _mat: ShaderMaterial
 var _defaults := {}
 var _sliders := {}  # key -> HSlider (uniform name, "shade_0..2", "turn")
-var _shade_color := Color(0.45, 0.45, 0.55)
+var _shade_color := Color(0.70, 0.70, 0.78)
 
 
 func _ready() -> void:

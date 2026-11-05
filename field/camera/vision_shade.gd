@@ -23,6 +23,8 @@ func _ready() -> void:
 	material_override = _mat
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	extra_cull_margin = 16384.0
+	DebugConsole.register(&"vision", _cmd_vision,
+		"vision <out|boost|circle|cone|feather|range> <값...> - 시야 라이트 값 바꾸기")
 
 
 func _process(delta: float) -> void:
@@ -36,3 +38,20 @@ func _process(delta: float) -> void:
 	_has_yaw = true
 	_mat.set_shader_parameter(&"player_xz", Vector2(p.global_position.x, p.global_position.z))
 	_mat.set_shader_parameter(&"facing_xz", Vector2(sin(_yaw), cos(_yaw)))
+
+
+## Debug console: tune the light inside a real field, where it is darker than the sandbox.
+func _cmd_vision(args: PackedStringArray) -> String:
+	const KEYS := {"boost": &"lit_boost", "cone": &"cone_half_deg", "feather": &"cone_feather_deg",
+		"range": &"cone_range"}
+	if args.size() == 2 and args[0] == "out":
+		var v := float(args[1])
+		_mat.set_shader_parameter(&"out_shade", Color(v, v, v + 0.08))
+	elif args.size() == 3 and args[0] == "circle":
+		_mat.set_shader_parameter(&"circle_start", float(args[1]))
+		_mat.set_shader_parameter(&"circle_end", float(args[2]))
+	elif args.size() == 2 and KEYS.has(args[0]):
+		_mat.set_shader_parameter(KEYS[args[0]], float(args[1]))
+	else:
+		return "사용법: vision out 0.7 / vision boost 1.2 / vision circle 1 2.1 / vision cone 32"
+	return "적용함"

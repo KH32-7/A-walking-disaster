@@ -12,7 +12,7 @@ uniform float cone_half_deg = 32.0;
 uniform float cone_feather_deg = 13.0;
 uniform float cone_fade_start = 11.5;
 uniform float cone_range = 18.0;
-uniform vec3 out_shade : source_color = vec3(0.45, 0.45, 0.55);
+uniform vec3 out_shade : source_color = vec3(0.70, 0.70, 0.78);
 uniform float lit_boost = 1.32;
 
 void vertex() {
