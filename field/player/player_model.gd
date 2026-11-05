@@ -7,8 +7,8 @@ extends Node3D
 ## Clips come from res://assets/characters/anims/humanoid.res (tools/build_humanoid_anims.gd); root
 ## motion is already removed there. An AnimationTree built here blends them:
 ##
-##   free_loco  BlendSpace1D  idle .. walk          (no gun: body faces the move direction)
-##   aim_loco   BlendSpace2D  aim_rifle + 4 walks   (gun: body faces the cursor, walk by direction)
+##   free_loco  BlendSpace1D  idle .. crouched walk (bare hands / melee)
+##   aim_loco   BlendSpace2D  aim_rifle + 4 walks   (any gun: walk by direction to the cursor)
 ##   stance     Blend2        free <-> aim, eased so switching weapons doesn't pop
 ##   reload     OneShot       upper body only, so legs keep walking
 ##   shoot      OneShot       upper body only
@@ -126,7 +126,7 @@ func _process(delta: float) -> void:
 	_step_dodge(dodging)
 	_step_turn(delta, ground if dodging else Vector3.ZERO)
 
-	var gun := _player.faces_cursor()
+	var gun := _holding_gun()
 	var k := 1.0 - exp(-BLEND_SHARPNESS * delta)
 	var amount := clampf(speed / FULL_WALK_SPEED, 0.0, 1.0)
 	_free_blend = lerpf(_free_blend, amount, k)
@@ -225,15 +225,22 @@ func muzzle_point(forward: Vector3) -> Variant:
 	return skeleton.global_transform * skeleton.get_bone_global_pose(_hand).origin + forward * MUZZLE_AHEAD
 
 
+## Rifle stance with any gun in hand (pistol included). Bare hands or a melee weapon use the plain
+## idle / crouched walk and no rifle shoot / reload poses, even while right-click aiming / blocking
+## (user decision 2026-11-06).
+func _holding_gun() -> bool:
+	return _weapons != null and WeaponHolder.is_gun(_weapons.current_stats())
+
+
 func _on_attacked(kind: StringName, _combo_step: int) -> void:
-	if kind != &"shot" or _tree == null:
+	if kind != &"shot" or _tree == null or not _holding_gun():
 		return
 	_tree.set(&"parameters/shoot/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
 	_shot_left = SHOT_HOLD_SEC
 
 
 func _on_reload_started(duration_sec: float) -> void:
-	if _tree == null:
+	if _tree == null or not _holding_gun():
 		return
 	_tree.set(&"parameters/reload_speed/scale", _clip_length("reload") / maxf(duration_sec, 0.1))
 	_tree.set(&"parameters/reload/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)

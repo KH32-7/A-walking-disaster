@@ -79,7 +79,7 @@ func _sync() -> void:
 
 func _on_slider(value: float, key: StringName, property: StringName) -> void:
 	_values[property].text = "%.2f" % value
-	_res[key].set(property, value)
+	_res[key].set(property, snappedf(value, 0.001))  # no 0.15000000000000002 in the saved .tres
 
 
 func _on_save() -> void:
