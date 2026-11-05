@@ -33,7 +33,9 @@ func run() -> bool:
 	EventBus.phase_changed.connect(on_phase)
 	EventBus.flow_state_changed.connect(on_flow)
 
-	var ok := _check_three_days() and _check_refused() and _check_stay_branch() and _check_load_to_prep()
+	var ok := _check_three_days() and _check_refused() and _check_stay_branch()
+	ok = ok and await _check_load_to_prep()
+	ok = ok and _check_merge_loot()
 
 	EventBus.phase_changed.disconnect(on_phase)
 	EventBus.flow_state_changed.disconnect(on_flow)
@@ -112,12 +114,24 @@ func _check_load_to_prep() -> bool:
 	# Morning autosave -> prep -> field autosaves as SORTIE_PREP; loading returns to prep.
 	var ok := SceneRouter.open_sortie_prep() and SceneRouter.go_to_field({"region_id": &"debug_region"})
 	var slot := SaveSystem.current_slot
-	EventBus.player_downed.emit()  # ends the sortie, autosaves RESULT
+	EventBus.player_downed.emit()  # the router finishes at the end of the frame (after Lane B's handlers)
+	ok = _expect(GameState.flow_state == Enums.FlowState.FIELD, "downed finished before Lane B's handlers ran") and ok
+	await Engine.get_main_loop().process_frame
 	ok = _expect(ok and GameState.flow_state == Enums.FlowState.RESULT
 		and not SceneRouter.last_sortie_result["extracted"], "downed -> result") and ok
 	var loaded := SceneRouter.load_game(slot)
 	return ok and _expect(loaded and GameState.flow_state == Enums.FlowState.RESULT, "load after result: %s"
 		% Enums.FlowState.keys()[GameState.flow_state])
+
+
+func _check_merge_loot() -> bool:
+	var merged := SceneRouter._merge_loot(
+		{"resources": {&"wood": 5}, "discarded": {&"wood": 2}, "items": [&"it_1"]},
+		{"resources": {&"wood": 1, &"parts": 3}, "discarded": {}, "items": [&"it_1", &"it_2"]})
+	var r := SceneRouter.last_sortie_result
+	return _expect(merged["resources"] == {&"wood": 6, &"parts": 3} and merged["discarded"] == {&"wood": 2}
+			and merged["items"] == [&"it_1", &"it_2"], "merge_loot %s" % merged) 		and _expect(r.has("downed") and r.has("kills") and r.has("rescued_profiles") and r.has("down")
+			and r["loot"].has("resources"), "result keys %s" % [r.keys()])
 
 
 func _wipe() -> void:

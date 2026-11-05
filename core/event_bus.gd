@@ -15,7 +15,8 @@ signal flow_state_changed(state: Enums.FlowState)
 signal weather_changed(weather: Enums.Weather)
 ## loadout: {"region_id": StringName, "companions": Array[StringName], "gear": Dictionary}
 signal sortie_started(loadout: Dictionary)
-## result: {"extracted": bool, "loot": Array, "rescued": Array, "stranded": Array, "xp": int}
+## result: see docs/dev/contracts.md "출격 결과" (extracted, downed, region_id, point_id, loot, kills,
+## kills_by_monster, rescued, rescued_profiles, companions, stranded, duration_sec, down, xp).
 signal sortie_ended(result: Dictionary)
 ## report: Colony.settle_day() result {"changes", "produced", "consumed", "morale", "events"} plus
 ## "discarded": {res_id: int} (storage-cap overflow, added by SceneRouter after Economy.apply_detailed).

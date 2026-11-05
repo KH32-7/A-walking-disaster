@@ -3,7 +3,7 @@ extends RefCounted
 ## the suspend save deletes itself on load. Uses a throwaway save dir, never the real saves.
 
 const TEST_DIR := "user://test_saves"
-const PROVIDERS := [&"game", &"difficulty", &"economy", &"armory", &"bag", &"field", &"colony"]
+const PROVIDERS := [&"game", &"difficulty", &"economy", &"armory", &"bag", &"progression", &"field", &"colony"]
 
 var _backup: Dictionary = {}
 var _old_dir: String
