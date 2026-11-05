@@ -2,6 +2,9 @@ extends Node
 ## Emitted (by Colony itself) whenever buildings are placed, moved, completed, damaged or removed,
 ## and after loading. Building views (base/building) and Lane D screens redraw on it.
 signal buildings_changed
+## Emitted when a resident's trust changes (C-12). stage = TrustRules stage 0..4,
+## reason = &"talk", &"gift", &"deep_talk", &"sortie_return", &"rescued" or the caller's tag.
+signal trust_changed(resident_id: StringName, trust: int, stage: int, reason: StringName)
 ## Autoload `Colony`. Owner: Lane C.
 ## Residents, buildings, relationships, raids threat - everything that lives in the base.
 ## Other lanes read through the getters below; they never edit resident data directly.
@@ -38,6 +41,8 @@ var cleared_zones: Dictionary = {}
 ## Clearing progress (zone_id -> int) and zones whose one-time start cost is paid (C-10).
 var clear_progress: Dictionary = {}
 var clear_started: Dictionary = {}
+## Day of the stay-day deep talk (하루 1번, C-12). 0 = none.
+var deep_talk_day := 0
 
 var _next_resident_num := 1
 var _next_building_num := 1
@@ -50,6 +55,7 @@ func _ready() -> void:
 	SaveSystem.register_provider(&"colony", self)
 	EventBus.rescue_completed.connect(_on_rescue_completed)
 	EventBus.flow_state_changed.connect(_on_flow_state_changed)
+	EventBus.sortie_ended.connect(_on_sortie_ended)
 	_reset()
 	# DebugConsole loads after Colony and registers its placeholders in _ready; replace them after.
 	_register_debug_commands.call_deferred()
@@ -1578,7 +1584,7 @@ func residents_in_crisis() -> Array[StringName]:
 
 
 ## 대화로 붙잡기 (07: 신뢰도 40 이상이면 성공). Returns {"ok": bool, "reason": String}.
-## TODO(C-12/C-13): "원하는 것을 들어주기" (personal request) as the other way to keep them.
+## TODO(C-13): "원하는 것을 들어주기" (personal request, A-13) as the other way to keep them.
 func persuade_to_stay(resident_id: StringName) -> Dictionary:
 	var r: Dictionary = residents.get(resident_id, {})
 	if r.is_empty() or not r["leave_crisis"]:
@@ -1589,6 +1595,106 @@ func persuade_to_stay(resident_id: StringName) -> Dictionary:
 	r["low_morale_days"] = 0
 	r["morale"] = maxi(int(r["morale"]), NeedsRules.PERSUADE_MORALE)
 	return {"ok": true, "reason": ""}
+
+
+# --- Trust, talk, gifts (C-12, 07 "신뢰도") ---------------------------------------
+## Lines come from Lane A (Radio / AI 대화); the resident screen is D-13. Colony only keeps the numbers.
+
+## Adds trust (clamped 0..100) and returns the new value (-1 = no such resident).
+## A-13 calls this for 개인 요청 완료 (+20). `reason` tags the change for trust_changed listeners.
+## Emits trust_changed, and a notification when a new stage opens.
+func add_trust(resident_id: StringName, amount: int, reason: StringName = &"") -> int:
+	if not residents.has(resident_id):
+		return -1
+	var r: Dictionary = residents[resident_id]
+	var before := int(r["trust"])
+	var after := clampi(before + amount, 0, 100)
+	r["trust"] = after
+	var stage := TrustRules.stage_of(after)
+	if after != before:
+		trust_changed.emit(resident_id, after, stage, reason)
+	if stage > TrustRules.stage_of(before):
+		EventBus.notification_posted.emit("%s와(과) %s 사이가 되었다 (%s)" % [r["name"], TrustRules.STAGE_NAMES[stage],
+			TrustRules.STAGE_UNLOCKS[stage]], &"info")
+	return after
+
+
+## 0 낯섬 .. 4 가족 같은 (TrustRules.STAGE_NAMES).
+func trust_stage(resident_id: StringName) -> int:
+	return TrustRules.stage_of(int(residents.get(resident_id, {}).get("trust", 0)))
+
+
+## Story fragments the player has opened so far (사연 1 at 경계 풀림, 사연 2 at 가까움).
+func unlocked_story(resident_id: StringName) -> Array[String]:
+	var out: Array[String] = []
+	var r: Dictionary = residents.get(resident_id, {})
+	if r.is_empty():
+		return out
+	var stage := trust_stage(resident_id)
+	var fragments: Array = r["story"]["fragments"]
+	for i in mini(fragments.size(), TrustRules.FRAGMENT_STAGES.size()):
+		if stage >= TrustRules.FRAGMENT_STAGES[i]:
+			out.append(String(fragments[i]))
+	return out
+
+
+## What the player may still do with this resident today: {"talk", "gift", "deep_talk": bool}.
+func trust_actions(resident_id: StringName) -> Dictionary:
+	var r: Dictionary = residents.get(resident_id, {})
+	var here := not r.is_empty() and int(r["status"]) == Enums.ResidentStatus.ACTIVE
+	var today := GameState.day
+	return {
+		"talk": here and int(r["talked_day"]) != today,
+		"gift": here and int(r["gift_day"]) != today,
+		"deep_talk": here and SceneRouter.stayed_today and deep_talk_day != today,
+	}
+
+
+## 하루 대화 1회 (+3). Returns {"ok", "reason", "trust"}.
+func talk(resident_id: StringName) -> Dictionary:
+	if not trust_actions(resident_id).get("talk", false):
+		return {"ok": false, "reason": "오늘은 이미 이야기했다" if residents.has(resident_id) else "없는 주민", "trust": -1}
+	residents[resident_id]["talked_day"] = GameState.day
+	return {"ok": true, "reason": "", "trust": add_trust(resident_id, TrustRules.TALK, &"talk")}
+
+
+## 머무르기 날 깊은 대화 (기획 01: 주민 1명과 1회 추가, 하루 1번). Also uses up that day's talk.
+func deep_talk(resident_id: StringName) -> Dictionary:
+	if not trust_actions(resident_id).get("deep_talk", false):
+		var why := "없는 주민"
+		if residents.has(resident_id):
+			why = "머무르는 날만" if not SceneRouter.stayed_today else "오늘 깊은 대화는 이미 했다"
+		return {"ok": false, "reason": why, "trust": -1}
+	deep_talk_day = GameState.day
+	residents[resident_id]["talked_day"] = GameState.day
+	return {"ok": true, "reason": "", "trust": add_trust(resident_id, TrustRules.DEEP_TALK, &"deep_talk")}
+
+
+## &"liked" / &"normal" / &"disliked" for giving `resource_id` (TrustRules.gift_reaction).
+func gift_reaction(resident_id: StringName, resource_id: StringName) -> StringName:
+	return TrustRules.gift_reaction(residents.get(resident_id, {}), resource_id)
+
+
+## 선물 (하루 1번): takes 1 from Economy. Returns {"ok", "reason", "reaction", "trust"}.
+func give_gift(resident_id: StringName, resource_id: StringName) -> Dictionary:
+	if not trust_actions(resident_id).get("gift", false):
+		return {"ok": false, "reason": "오늘은 이미 선물했다" if residents.has(resident_id) else "없는 주민", "reaction": &"", "trust": -1}
+	if Economy.get_amount(resource_id) < 1:
+		return {"ok": false, "reason": "%s이(가) 없다" % resource_id, "reaction": &"", "trust": -1}
+	Economy.apply({resource_id: -1})
+	residents[resident_id]["gift_day"] = GameState.day
+	var reaction := gift_reaction(resident_id, resource_id)
+	var amount: int = TrustRules.GIFT_AMOUNT[reaction]
+	return {"ok": true, "reason": "", "reaction": reaction, "trust": add_trust(resident_id, amount, &"gift")}
+
+
+## 함께 출격해 살아 돌아옴 +5 (companions who are not stranded).
+func _on_sortie_ended(result: Dictionary) -> void:
+	var stranded: Array = result.get("stranded", [])
+	for c in result.get("companions", []):
+		var id := StringName(c)
+		if not id in stranded and residents.has(id) and int(residents[id]["status"]) == Enums.ResidentStatus.ACTIVE:
+			add_trust(id, TrustRules.SORTIE_RETURN, &"sortie_return")
 
 
 ## Injury countdown (의무실이 있으면 1일), sickness (겨울·배고픔), contagion, medicine cures.
@@ -1705,6 +1811,7 @@ func _on_rescue_completed(rescued: Dictionary) -> void:
 	var id := StringName(rescued.get("id", &""))
 	if residents.has(id) and int(residents[id]["status"]) in [Enums.ResidentStatus.STRANDED, Enums.ResidentStatus.MISSING]:
 		residents[id]["status"] = Enums.ResidentStatus.ACTIVE
+		add_trust(id, TrustRules.RESCUED_FROM_STRAND, &"rescued")
 		var free := free_beds()
 		if residents[id]["bed_id"] == &"" and not free.is_empty():
 			assign_bed(id, free[0])
@@ -1747,6 +1854,7 @@ func _reset() -> void:
 	tier = Enums.BaseTier.CAMP
 	_next_resident_num = 1
 	last_raid_day = 0
+	deep_talk_day = 0
 	active_raid = {}
 	_rng.randomize()
 	_refresh_effects()
@@ -1764,6 +1872,7 @@ func save_data() -> Dictionary:
 		"next_resident_num": _next_resident_num,
 		"next_building_num": _next_building_num,
 		"last_raid_day": last_raid_day,
+		"deep_talk_day": deep_talk_day,
 		"cleared_zones": cleared_zones,
 		"clear_progress": clear_progress,
 		"clear_started": clear_started,
@@ -1801,6 +1910,7 @@ func load_data(data: Dictionary) -> void:
 		power_priority_override[StringName(uid)] = int(saved_prio[uid])
 	_next_building_num = maxi(int(data.get("next_building_num", 1)), 1)
 	last_raid_day = int(data.get("last_raid_day", 0))
+	deep_talk_day = int(data.get("deep_talk_day", 0))
 	cleared_zones = {}
 	for zone_id in data.get("cleared_zones", {}):
 		cleared_zones[StringName(zone_id)] = true
@@ -1826,6 +1936,8 @@ func _register_debug_commands() -> void:
 		"job <resident_id> <job_id> [building_uid] - 작업 배정 (job list: 직업 목록)")
 	DebugConsole.register(&"settle", _cmd_settle,
 		"settle - 하루 정산을 돌리고 Economy에 반영 (A-05 전 테스트용)")
+	DebugConsole.register(&"trust", _cmd_trust,
+		"trust <id> | trust talk|deep|add <id> [n] | trust gift <id> <resource_id> - 신뢰도·대화·선물")
 	DebugConsole.register(&"zone", _cmd_zone,
 		"zone list | zone clear <id> (즉시 개간) | job <주민> construction <zone_id> 로 개간 배정")
 	DebugConsole.register(&"tier", func(_args: PackedStringArray) -> String:
@@ -1855,6 +1967,40 @@ func _register_debug_commands() -> void:
 		"raid now [day|night] | raid threat <0~100> | raid info - 습격 강제·위협도 설정·방어력/예상")
 	DebugConsole.register(&"build", _cmd_build,
 		"build <building_id> | build list - 비용 없이 건물을 바로 완성 / 건물·전력·소음 목록")
+
+
+func _cmd_trust(args: PackedStringArray) -> String:
+	var usage := "사용법: trust <id> | trust talk|deep|add <id> [n] | trust gift <id> <resource_id>"
+	if args.is_empty():
+		return usage
+	var sub := args[0]
+	var id := StringName(args[1]) if args.size() > 1 else &""
+	if args.size() == 1:
+		id = StringName(sub)
+		sub = "show"
+	if not residents.has(id):
+		return "없는 주민: %s" % id
+	var res := {}
+	match sub:
+		"show":
+			return "%s 신뢰 %d · %s · 열린 사연 %s · 오늘 가능 %s" % [id, residents[id]["trust"],
+				TrustRules.STAGE_NAMES[trust_stage(id)], unlocked_story(id), trust_actions(id)]
+		"talk":
+			res = talk(id)
+		"deep":
+			res = deep_talk(id)
+		"add":
+			return "%s 신뢰 %d" % [id, add_trust(id, int(args[2]) if args.size() > 2 else TrustRules.TALK, &"debug")]
+		"gift":
+			if args.size() < 3:
+				return usage
+			res = give_gift(id, StringName(args[2]))
+		_:
+			return usage
+	if not res["ok"]:
+		return "실패: " + String(res["reason"])
+	var extra: String = (" (%s)" % res["reaction"]) if res.has("reaction") else ""
+	return "%s 신뢰 %d%s" % [id, res["trust"], extra]
 
 
 func _cmd_zone(args: PackedStringArray) -> String:
