@@ -78,6 +78,8 @@ var _noisy := false
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
 @onready var _noise: NoiseEmitter = $Noise
+## Status effects (B-14). Lane D listens to its signals.
+@onready var status: StatusHolder = StatusHolder.attach(self)
 
 
 ## Call before adding to the tree.
@@ -107,6 +109,8 @@ func _physics_process(delta: float) -> void:
 	tick(delta)
 	if state == State.FOLLOW and _supporting:
 		return
+	# Slow / bind scale the walking velocity; knockback replaces it (B-14).
+	velocity = status.steer(velocity)
 	if not is_on_floor():
 		velocity.y -= _gravity * delta
 	move_and_slide()
@@ -236,9 +240,12 @@ func revive(interactor: Node3D) -> bool:
 
 
 ## Damage from monsters (B-07 calls take_damage(amount, info) on layer 3 bodies).
-func take_damage(amount: float, _info: Dictionary = {}) -> void:
+## Status effects ride in info (StatusHolder header).
+func take_damage(amount: float, info: Dictionary = {}) -> void:
 	if not EXPOSED.has(state) or amount <= 0.0:
 		return
+	amount = status.scale_damage(amount, info)
+	status.apply_hit(info)
 	health = maxf(health - amount, 0.0)
 	if not _low_health_said and health > 0.0 and health <= tuning.max_health * tuning.low_health_ratio:
 		_low_health_said = true
@@ -274,6 +281,7 @@ func is_startled() -> bool:
 
 ## One step (timers, following, noise). _physics_process calls it; tests can call it directly.
 func tick(delta: float) -> void:
+	status.step(delta)
 	match state:
 		State.LOCKPICKING:
 			_tick_lockpick(delta)
@@ -496,6 +504,7 @@ func _go_down() -> void:
 	_before_down = state
 	_set_supporting(false)
 	_stop()
+	status.clear()
 	_down_left = tuning.downed_sec
 	_set_state(State.DOWNED)
 	downed.emit()

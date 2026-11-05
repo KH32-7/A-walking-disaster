@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="StatusEffect" format=3]
+
+[ext_resource type="Script" path="res://field/defs/status_effect.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"knockback"
+duration_sec = 0.25
+tick_damage = 0.0
+move_mult = 1.0
+stacks_max = 1
+stops_actions = true
+knockback_m = 1.5

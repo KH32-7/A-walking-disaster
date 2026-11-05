@@ -58,8 +58,10 @@ var _wait_time := 0.0
 var _arrived := false
 var _attack_cooldown := 0.0
 var _sight_timer := 0.0
-var _stun_left := 0.0
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)
+
+## Status effects (B-14). Lane D listens to its signals for icons over the head.
+@onready var status: StatusHolder = StatusHolder.attach(self)
 
 
 func _ready() -> void:
@@ -93,6 +95,8 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	tick(delta)
+	# Slow / bind scale the AI's velocity; knockback replaces it (B-14).
+	velocity = status.steer(velocity)
 	if not is_on_floor():
 		velocity.y -= _gravity * delta
 	else:
@@ -108,9 +112,11 @@ func tick(delta: float) -> void:
 	_clock += delta
 	_state_time += delta
 	_sight_timer -= delta
-	if _stun_left > 0.0:
-		# Stunned (B-06 perfect block): no moving, turning or attacking.
-		_stun_left -= delta
+	status.step(delta)
+	if _dead:
+		return
+	if not status.can_act():
+		# Staggered or knocked back (B-14): no moving, turning or attacking.
 		_stop()
 		return
 	if _is_leash_state() and _flat_distance(home) > MonsterRules.RETURN_DISTANCE:
@@ -137,19 +143,27 @@ func tick(delta: float) -> void:
 ## Damage entry point for weapons (B-06). `amount` is the attacker-side damage
 ## (03 formula A, U, M, C). The monster applies the part (P), element (E) and
 ## defense (R) factors. info keys: "element" (Enums.Element), "source" (Node),
-## "weak_point" (bool, set by MonsterWeakPoint), "position" (Vector3).
+## "weak_point" (bool, set by MonsterWeakPoint), "position" (Vector3),
+## "status" (B-14, see StatusHolder). Armor break halves R, wet raises LIGHT damage.
+## Status tick damage is flat and does not make the monster react.
 func take_damage(amount: float, info: Dictionary = {}) -> void:
 	if _dead:
 		return
-	var element: Enums.Element = info.get("element", Enums.Element.NONE)
-	var part := MonsterRules.WEAK_POINT_MULT if info.get("weak_point", false) else 1.0
-	var dealt := amount * part * Enums.element_multiplier(element, def.family) \
-			* MonsterRules.defense_factor(def.defense)
+	var tick := StatusHolder.is_tick(info)
+	var dealt := amount
+	if not tick:
+		var element: Enums.Element = info.get("element", Enums.Element.NONE)
+		var part := MonsterRules.WEAK_POINT_MULT if info.get("weak_point", false) else 1.0
+		dealt = status.scale_damage(amount * part * Enums.element_multiplier(element, def.family) \
+				* MonsterRules.defense_factor(def.defense * status.defense_mult()), info)
 	hp -= dealt
 	damaged.emit(dealt, info)
 	if hp <= 0.0:
 		_die()
 		return
+	if tick:
+		return
+	status.apply_hit(info)
 	_react_to_hit(info)
 
 
@@ -239,13 +253,13 @@ func target_from_source(source: Node) -> Node3D:
 	return null
 
 
-## No action for `sec` seconds (perfect block). B-14 will own status effects.
+## No action for `sec` seconds (perfect block). Same as the &"stagger" status.
 func stun(sec: float) -> void:
-	_stun_left = maxf(_stun_left, sec)
+	status.apply(&"stagger", {"duration": sec})
 
 
 func is_stunned() -> bool:
-	return _stun_left > 0.0
+	return status.has(&"stagger")
 
 
 func can_move() -> bool:
