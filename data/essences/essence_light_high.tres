@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="EssenceDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/essence_def.gd" id="1_ess"]
+
+[resource]
+script = ExtResource("1_ess")
+id = &"essence_light_high"
+name = "상급 광 정수"
+element = 4
+grade = 2
+effect_params = {
+"chain_chance": 0.35,
+"chain_damage_ratio": 0.6,
+"chain_targets": 2,
+"chain_range": 4.0
+}
+scaling_keys = Array[StringName]([&"chain_chance", &"chain_damage_ratio"])
+resist_ratio = 0.4
+name_prefix = "번개 서린"
+vfx_shape = &"bolt"
