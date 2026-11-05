@@ -10,6 +10,8 @@ const PLAYER_ID := &"player"
 const STORAGE_ID := &"storage"
 ## Owner of gear dropped where the player went down (FieldState.lost_gear tracks where).
 const LOST_ID := &"lost"
+## Owner of gear carried in the field bag (Bag). Goes back to storage on extraction.
+const BAG_ID := &"bag"
 
 const ITEMS_DIR := "res://data/items"
 const AFFIXES_DIR := "res://data/items/affixes"
@@ -141,6 +143,17 @@ func set_lost(item_uid: StringName, lost: bool) -> void:
 		item.owner = STORAGE_ID
 
 
+## Bag only: a stored item goes into the field bag (true) or back to storage (false).
+func set_carried(item_uid: StringName, carried: bool) -> void:
+	var item := get_item(item_uid)
+	if item == null:
+		return
+	if carried and item.owner == STORAGE_ID:
+		item.owner = BAG_ID
+	elif not carried and item.owner == BAG_ID:
+		item.owner = STORAGE_ID
+
+
 # --- Equipping ---
 
 ## True if an item of this def may go in `slot`: weapons in MAIN, light weapons also in SUB,
@@ -167,7 +180,7 @@ func get_equipped(owner_id: StringName, slot: Enums.EquipSlot) -> StringName:
 ## Fails for lost items, items someone else is wearing (unequip them first) and slot mismatches.
 func equip(owner_id: StringName, slot: Enums.EquipSlot, item_uid: StringName) -> bool:
 	var item := get_item(item_uid)
-	if item == null or owner_id in [STORAGE_ID, LOST_ID, &""]:
+	if item == null or owner_id in [STORAGE_ID, LOST_ID, BAG_ID, &""]:
 		return false
 	if item.owner == owner_id and item.slot == slot:
 		return true
