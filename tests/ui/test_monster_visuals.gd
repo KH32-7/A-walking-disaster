@@ -8,7 +8,7 @@ const MONSTER_DIR := "res://data/monsters/"
 const FX_IDS := [&"monster_claw", &"monster_slam", &"monster_bite", &"monster_splash", &"monster_scream",
 	&"monster_cast", &"monster_death", &"boss_slam", &"boss_root_burst", &"boss_summon_pods"]
 ## Extra visuals for monsters that have no MonsterDef yet (bosses and water / neon types to come).
-const EXTRA_VISUALS := [&"breakwater_golem", &"sunken_sign_serpent", &"surgery_lamp_wraith", &"neon_colossus"]
+const EXTRA_VISUALS := [&"breakwater_golem", &"sunken_sign_serpent", &"surgical_lamp_wraith", &"neon_colossus"]
 const PROBE_MODEL := "res://assets/monsters/foliage/vine_tendril.glb"
 const PROBE_TEXTURE := "res://assets/vfx/magic_arsenal/textures/modular/glow01.png"
 
@@ -40,6 +40,12 @@ func run() -> bool:
 		var fx_id: StringName = def.get("attack_fx") if "attack_fx" in def else &""  # Lane B field (B-req)
 		if fx_id != &"":
 			ok = _expect(Fx.has_effect(fx_id), "%s attack_fx %s is an Fx id" % [def.id, fx_id]) and ok
+	# Region bosses that have no MonsterDef yet must still find their model by the same id.
+	for f in DirAccess.get_files_at("res://data/regions/"):
+		var region := load("res://data/regions/" + f.trim_suffix(".remap")) if f.trim_suffix(".remap").ends_with(".tres") else null
+		var boss_id: StringName = region.get("boss_id") if region and "boss_id" in region else &""
+		if boss_id != &"":
+			ok = _expect(ResourceLoader.exists(VISUAL_DIR + String(boss_id) + ".tscn"), "region boss %s has a visual scene" % boss_id) and ok
 	var boss := load(MONSTER_DIR + "bosses/ancient_tree_giant.tres")
 	if boss and "patterns" in boss:
 		for pattern in boss.patterns:
