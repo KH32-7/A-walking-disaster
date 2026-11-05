@@ -152,7 +152,8 @@ func _test_romance() -> bool:
 	var ok := _check(groups.size() == 1 and a in groups[0] and b in groups[0], "고백: 관계 50 이상 미혼 성인, 연애에 관심 없음·아이 제외 %s" % [groups])
 	var morale := int(Colony.residents[a]["morale"])
 	Colony._apply_night_event({"event_id": &"confession", "participants": [a, b], "choices": [&"watch", &"cheer"], "night_day": 20}, &"cheer")
-	ok = _check(Colony.relation_stage(a, b) == &"lovers" and Colony.partner_of(a) == b, "고백 → 연인") and ok
+	ok = _check(Colony.relation_stage(a, b) == &"lover" and Colony.partner_of(a) == b, "고백 → 연인") and ok
+	ok = _check(_stages.any(func(s): return s[2] == &"lover"), "고백은 relationship_changed(lover) — 일지(A-17)가 읽음") and ok
 	ok = _check(int(Colony.residents[a]["morale"]) == mini(morale + 5, 100), "응원하면 사기 +5") and ok
 	ok = _check(Colony._night_candidates(&"confession").is_empty() and Colony._night_candidates(&"date").size() == 1, "연인은 고백 대상이 아니고 데이트 대상") and ok
 	Colony._apply_night_event({"event_id": &"date", "participants": [a, b], "choices": [&"watch"], "night_day": 20}, &"")
@@ -211,6 +212,7 @@ func _test_breakup() -> bool:
 		Colony.residents[id]["morale"] = 50
 	Colony._apply_night_event({"event_id": &"breakup", "participants": [a, b], "choices": [&"watch"], "night_day": 20}, &"")
 	ok = _check(Colony.partner_of(a) == &"" and int(Colony.residents[a]["morale"]) == 35, "이별: 관계 해소, 사기 −15") and ok
+	ok = _check(not _stages.is_empty() and _stages.back()[2] == RelationRules.SEPARATED, "이별은 relationship_changed(separated) — 일지(A-17)가 읽음") and ok
 	return ok
 
 
@@ -250,7 +252,7 @@ func _test_sortie_and_save() -> bool:
 	Colony._set_lovers(a, b, 20)
 	Colony.festival_day = 22
 	Colony.load_data(JSON.parse_string(JSON.stringify(Colony.save_data())))
-	ok = _check(Colony.relation_stage(a, b) == &"lovers" and Colony.relation(b, a) == 5 and Colony.festival_day == 22, "저장 후 관계·연인·축제 날 유지") and ok
+	ok = _check(Colony.relation_stage(a, b) == &"lover" and Colony.relation(b, a) == 5 and Colony.festival_day == 22, "저장 후 관계·연인·축제 날 유지") and ok
 	ok = _check(Colony.relation_meta[RelationRules.pair_key(a, b)]["a"] is StringName, "불러온 뒤 id는 StringName") and ok
 	return ok
 

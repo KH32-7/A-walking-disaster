@@ -10,9 +10,11 @@ const RIVAL_AT := -50          # 앙숙: −50 이하
 const AWKWARD_AT := -10        # 서먹함: −49 ~ −10
 const FRIEND_AT := 30          # 친구: 30 ~ 59
 const BEST_FRIEND_AT := 60     # 절친: 60 이상
+## Stage ids match what Journal (A-17) reads: friend, lover, married, separated (이별 때 한 번).
+const SEPARATED := &"separated"
 const STAGE_NAMES := {
 	&"rival": "앙숙", &"awkward": "서먹함", &"acquainted": "아는 사이", &"friend": "친구",
-	&"best_friend": "절친", &"lovers": "연인", &"married": "배우자",
+	&"best_friend": "절친", &"lover": "연인", &"married": "배우자", &"separated": "헤어짐",
 }
 
 ## 같은 작업장 효과
@@ -62,7 +64,7 @@ static func stage_of(value: int, flags: Array = []) -> StringName:
 	if Enums.RelationFlag.MARRIED in flags:
 		return &"married"
 	if Enums.RelationFlag.LOVERS in flags:
-		return &"lovers"
+		return &"lover"
 	if value <= RIVAL_AT:
 		return &"rival"
 	if value <= AWKWARD_AT:
