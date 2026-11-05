@@ -21,7 +21,7 @@ var _flash := {}
 ## Seconds of that flash.
 const FLASH_SEC := 0.7
 ## Screen height taken by everything but the bag rows: header, footer, panel title, pocket caption.
-const BAG_CHROME_H := 330.0
+const BAG_CHROME_H := 400.0
 ## Loot and equipment cell sizes (px) and their name text (2026-11-06 UI pass: was 84 / 92 / 12-13).
 const LOOT_CELL := 100.0
 const EQUIP_CELL := 100.0
