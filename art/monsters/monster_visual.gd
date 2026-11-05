@@ -38,6 +38,7 @@ var _locked := false   # a one-shot (attack, hit, wake...) is playing
 var _dead := false
 var _frozen := false
 var _size := Vector3.ONE
+var _sink_tween: Tween
 
 
 func _ready() -> void:
@@ -83,12 +84,20 @@ func play_once(clip: StringName) -> void:
 
 
 ## Sinks the model below the ground (serpent underwater) or brings it back up, `rise` playing Rise.
+## Once under it is hidden too: clear water would still show it (its ripples tell where it is).
 func sink(on: bool, sec: float = 0.4, rise: bool = true) -> void:
 	var model_node := get_node_or_null(^"Model") as Node3D
 	if model_node == null:
 		return
 	var y := model_offset.y - (_size.y * 1.05 if on else 0.0)
-	create_tween().tween_property(model_node, ^"position:y", y, sec)
+	if _sink_tween:
+		_sink_tween.kill()
+	_sink_tween = create_tween()
+	if not on:
+		model_node.visible = true
+	_sink_tween.tween_property(model_node, ^"position:y", y, sec)
+	if on:
+		_sink_tween.tween_callback(model_node.hide)
 	if not on and rise:
 		play_once(&"Rise")
 

@@ -3577,6 +3577,90 @@
   ],
   "markers": [
     {
+      "id": "boss_serpent",
+      "class": "BossArena",
+      "scene": "res://field/markers/boss_arena.tscn",
+      "node_name": "BossArena_boss_serpent",
+      "floor": 0,
+      "position": [
+        5.0,
+        0.0,
+        12.0
+      ],
+      "plan_position": [
+        80,
+        87
+      ],
+      "props": {
+        "boss_id": "sunken_sign_serpent",
+        "radius": 14
+      },
+      "note": "가라앉은 간판뱀. 잠긴 골목 물길(지나갈 수 있는 얕은 물). 물 밖에 나왔을 때만 피해, 광 속성. 잠수 돌진, 물보라, 꼬리. 첫 처치 전설 칼."
+    },
+    {
+      "id": "boss_wraith",
+      "class": "BossArena",
+      "scene": "res://field/markers/boss_arena.tscn",
+      "node_name": "BossArena_boss_wraith",
+      "floor": 0,
+      "position": [
+        -58.0,
+        0.0,
+        60.0
+      ],
+      "plan_position": [
+        17,
+        135
+      ],
+      "props": {
+        "boss_id": "surgical_lamp_wraith",
+        "radius": 14
+      },
+      "note": "수술등 망령. 잠긴 놀이공원 남쪽. 진짜만 그림자, 녹 속성. 섬광, 메스, 분신 2. 첫 처치 의무실 Lv3 설계도."
+    },
+    {
+      "id": "boss_colossus",
+      "class": "BossArena",
+      "scene": "res://field/markers/boss_arena.tscn",
+      "node_name": "BossArena_boss_colossus",
+      "floor": 0,
+      "position": [
+        14.0,
+        0.0,
+        -57.0
+      ],
+      "plan_position": [
+        89,
+        18
+      ],
+      "props": {
+        "boss_id": "neon_colossus",
+        "radius": 16
+      },
+      "note": "네온 거신. 버스 차고지(버스가 레이저를 막는 엄폐물). 전원 케이블 3개를 끊으면 무력화, 녹 속성. 첫 처치 태양광 패널 설계도."
+    },
+    {
+      "id": "boss_golem",
+      "class": "BossArena",
+      "scene": "res://field/markers/boss_arena.tscn",
+      "node_name": "BossArena_boss_golem",
+      "floor": 0,
+      "position": [
+        61.0,
+        0.0,
+        28.0
+      ],
+      "plan_position": [
+        136,
+        103
+      ],
+      "props": {
+        "boss_id": "breakwater_golem",
+        "radius": 12
+      },
+      "note": "방파제 골렘. 선착장 나무 잔교. 둔기로 방어 태세 해제, 수 속성. 첫 처치 발전기 코어 2, 무전탑 설계도."
+    },
+    {
       "id": "ex_dock",
       "class": "ExtractPoint",
       "scene": "res://field/markers/extract_point.tscn",
@@ -4975,6 +5059,48 @@
     "upper_floor",
     "flooded_edge"
   ],
+  "bosses": [
+    {
+      "boss_id": "sunken_sign_serpent",
+      "marker_id": "boss_serpent",
+      "center": [
+        5.0,
+        0.0,
+        12.0
+      ],
+      "radius_m": 14
+    },
+    {
+      "boss_id": "surgical_lamp_wraith",
+      "marker_id": "boss_wraith",
+      "center": [
+        -58.0,
+        0.0,
+        60.0
+      ],
+      "radius_m": 14
+    },
+    {
+      "boss_id": "neon_colossus",
+      "marker_id": "boss_colossus",
+      "center": [
+        14.0,
+        0.0,
+        -57.0
+      ],
+      "radius_m": 16
+    },
+    {
+      "boss_id": "breakwater_golem",
+      "marker_id": "boss_golem",
+      "center": [
+        61.0,
+        0.0,
+        28.0
+      ],
+      "radius_m": 12
+    }
+  ],
   "design_note": "예시안 2 (Claude 초안, 지형형). 고쳐 쓰는 출발점. 맵 정보 칸의 '예시안 모두 지우기'로 한 번에 지움.\n\n- 큰 구조: 대범람으로 넘친 하천이 지구를 북쪽 강변과 남쪽 두 덩어리로 끊음. 남쪽은 다시 잠긴 골목 물길이 남서(주유소, 놀이공원)와 남동(상가, 하역장, 선착장)으로 나눔. 동쪽과 남쪽 끝은 바다.\n- 도보 대부분은 야외. 건물은 들어가는 목적지이고, 이동은 길, 다리, 덤불 사이에서 함.\n- 다리 2개(서쪽 다리, 해솔대교)가 병목. 하천은 깊어서 다리로만 건넌. 골목 물길은 허리 깊이라 걸어서 건널 수 있지만 늪 덩어리 영역. 보도교는 무릎 물 지름길.\n- 안전에서 위험으로: 북쪽 강변(출격 1, 진입로 바로 옆)이 안전. 다리를 건널수록 물이 많고 위험. 플레이어는 물과 다리만 보고 위험도를 읽음.\n- 출격 1: 북쪽 강변 한 바퀴(진입로, 마트, 덤불 둑, 약국, 진입로). 다리를 안 건넘. 덤불 둑 둥지는 진입로에서 55m라 첫 전투 총소리(권총 15m)가 탈출구를 안 깨움.\n- 출격 2: 북동쪽 해안길로 들어와 해솔대교를 건너고, 물길에서 정수, 상가 2층에서 두 명 구조, 숨은 경사로로 하역장. 한 방향으로 흐르고 되돌아오지 않음.\n- 휠체어: 상가는 이 지구 유일한 2층 건물. 승강기는 전력이 없고 계단은 못 씀. 그래서 옥상 데크의 숨은 하역 경사로가 '없으면 못 나가는 길'이 됨.\n- 탈출 3곳: 진입로(일반), 하역장(일반), 주유소(발전기, 20초, 소음 25m). 데모 활성은 진입로, 하역장으로 가정. 주유소는 남서쪽을 탐험한 사람의 비상구이고, 발전기를 켜면 놀이공원 가장자리 포자 꽃망울(청각 x1.5, 37.5m)이 들을 수 있음.\n- 랜드마크 6개: 해솔마트, 버스 차고지, 주유소, 해솔 상가, 하역장, 선착장. 구역마다 성격이 다름(마트 실내, 차고지 트인 마당과 버스 엄폐, 주유소 비상구, 상가 2층, 선착장 끝은 퇴로 하나).\n- 남쪽 주택가: 주유소 아래 작은 집 6채와 골목. 집마다 루팅 1곳(장롱, 의원 약장, 공구함, 서랍, 세탁소 선반, 구멍가게). 둥지가 없어 비교적 안전하지만, 물길 쪽 반지하 집은 늪 덩어리 영역과 붙어 있음. 데모 동선 밖, 탐험 보상.\n- 상가 자원(02): 페인트는 상가 1층, 천과 통조림은 마트와 편의점, 고철은 차고지 정비실과 하역장.",
   "checks": {
     "PlayerSpawn": 2,
@@ -4983,7 +5109,7 @@
     "MonsterNest": 3,
     "RescueSpot": 4,
     "HiddenRoute": 1,
-    "BossArena": 0,
+    "BossArena": 4,
     "Recording": 2,
     "landmarks": 6,
     "zones": 44,
@@ -4993,5 +5119,6 @@
     },
     "every_rescue_target_has_spot": true,
     "every_recording_placed": true
-  }
+  },
+  "bosses_note": "2026-11-06 사용자 요청: 다른 지역 맵을 만들지 않으므로 보스 4종(간판뱀, 수술등 망령, 네온 거신, 방파제 골렘)을 침수 상가에 둔다. 모두 잠든 채로 시작, 주 이동 경로에서 떨어진 자리. 부활 날짜는 보스별."
 }
