@@ -58,7 +58,10 @@
   `lose_contents()`(쓰러짐: 안전 주머니 제외 소실. 보호 모드 `keep_bag_on_down`이면 B가 호출하지 않음).
   영역은 `Bag.AREA_BAG` / `Bag.AREA_POCKET`(2칸). 가방 속 장비의 Armory 소유자는 `Armory.BAG_ID`.
 - **Radio**: `say(template_id, context, priority)`
-- **Settings**: `get_value(key)`, `set_value(key, value)`
+- **Settings**: `get_value(key)`, `set_value(key, value) -> bool`(모르는 키·틀린 타입 거부), `apply_preset(id, new_game)`, `matching_preset()`,
+  `reset_to_defaults(include_difficulty)`. 키 목록은 `Settings.DEFAULTS`. 난이도 프리셋은 `story`·`normal`·`hard`·`hardcore`
+  (`Settings.PRESETS`), 항목을 따로 바꾸면 `difficulty`가 `custom`이 된다. 하드코어는 새 게임에서만 고른다.
+  접근성·소리 설정은 `user://settings.cfg`에 바로 저장되고, 난이도 항목은 게임 저장(`difficulty` provider)에도 들어간다.
 - **SaveSystem**: `register_provider(key, provider)`, `save_slot(slot) -> bool`, `load_slot(slot) -> bool`, `has_slot(slot)`, `delete_slot(slot)`, `slot_info(slot)`(불러오기 화면용), `autosave()`, `save_suspend()`, `has_suspend()`, `load_suspend()`, `current_slot`
 - **SceneRouter**: `go_to_base()`, `go_to_field(loadout)`
 - **Colony**: `get_resident(id)`, `active_resident_ids()`, `base_noise()`, `threat`, `tier`,
@@ -122,7 +125,7 @@
 ## 저장
 
 각 레인은 provider 하나만 등록한다(`save_data() -> Dictionary`, `load_data(Dictionary)`). 값은 JSON으로 쓸 수 있는 것만
-(Object·Resource 대신 id). 키: `game`(A), `economy`(A), `armory`(A), `bag`(A), `field`(B), `colony`(C). D는 저장할 게임 상태가 없다
+(Object·Resource 대신 id). 키: `game`(A), `difficulty`(A, Settings의 난이도 항목), `economy`(A), `armory`(A), `bag`(A), `field`(B), `colony`(C). D는 저장할 게임 상태가 없다
 (설정은 `Settings`가 따로 저장).
 
 - 파일은 Godot 타입 JSON(`JSON.from_native`)이라 `int`/`float`, `StringName`, `Vector3` 등이 그대로 돌아온다. Object·Resource는 안 된다.
