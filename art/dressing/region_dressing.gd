@@ -79,13 +79,13 @@ enum Kind { FIELD, BASE }
 @export_group("Night")
 ## Field only. At FieldState.night_started the map fades to this over night_fade_sec, the street lamps
 ## come on and Fx.night_lights lets muzzle flashes light the ground (day: no muzzle light).
-@export var night_sun_color := Color("8094c4")
-@export var night_sun_energy := 0.25
-@export var night_ambient := Color("34405a")
-@export var night_ambient_energy := 0.4
-@export var night_sky_top := Color("0b1424")
-@export var night_sky_horizon := Color("1c2940")
-@export var night_fog_color := Color("172030")
+@export var night_sun_color := Color("a8b8dc")
+@export var night_sun_energy := 0.7
+@export var night_ambient := Color("7a8aa8")
+@export var night_ambient_energy := 0.45
+@export var night_sky_top := Color("22345a")
+@export var night_sky_horizon := Color("465a80")
+@export var night_fog_color := Color("3a4a66")
 @export var night_fade_sec := 4.0
 
 var _rng := RandomNumberGenerator.new()
