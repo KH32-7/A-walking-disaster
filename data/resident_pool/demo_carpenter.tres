@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="ResidentTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/resident_template.gd" id="1_rtpl"]
+
+[resource]
+script = ExtResource("1_rtpl")
+id = &"demo_carpenter"
+name = "윤기철"
+age_stage = 4
+former_job = &"carpenter"
+traits = Array[StringName]([&"diligent", &"pessimist"])
+likes = Array[StringName]([&"tea", &"woodwork"])
+dislikes = Array[StringName]([&"loud_noise", &"canned_fish"])
+access_needs = Array[int]([0])
+stats = {
+&"str": 3,
+&"dex": 7,
+&"sense": 4,
+&"heart": 5
+}
+background = "40년 동안 동네 목공소를 꾸려 온 60대 전직 목수. 대피 버스를 기다리다 다리를 다쳐 철물점 창고에 몸을 숨겼다. 걸음은 느리지만 손은 아직 정확하다."
+fragments = Array[String](["대피 버스는 계단이 높아 지팡이로는 오를 수 없었다. 그날 이후 어디를 가든 문턱 높이부터 재는 버릇이 생겼다.", "목공소 문을 닫던 날 쓰던 대패를 아직 품에 지니고 있다. 누가 배우겠다고 하면 날 세우는 법부터 가르치고 싶다."])
+contribution = "경사로와 문턱을 직접 만들고 목공을 가르친다."
+first_line = "문 좀 잡아 주게. 다리가 말을 안 들어서."
+rescue_lines = Array[String](["천천히 가세. 넘어지면 더 늦어.", "저 문틀, 경첩이 다 녹슬었구먼.", "계단보다 저쪽 비탈이 낫겠어."])
+situation = "철물점 창고"
+demo = true
+reviewed = true

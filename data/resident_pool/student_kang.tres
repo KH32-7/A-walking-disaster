@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="ResidentTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/resident_template.gd" id="1_rtpl"]
+
+[resource]
+script = ExtResource("1_rtpl")
+id = &"student_kang"
+name = "강도윤"
+age_stage = 2
+former_job = &"student"
+traits = Array[StringName]([&"brave", &"chatty"])
+likes = Array[StringName]([&"electronics", &"instant_noodles"])
+dislikes = Array[StringName]([&"waiting", &"being_ignored"])
+access_needs = Array[int]([])
+stats = {
+&"dex": 5
+}
+background = "청소년 쉼터에서 지내던 열여섯 살. 버려진 휴대폰을 고쳐 팔며 용돈을 벌었다. 쉼터 동생들을 먼저 대피 버스에 태우고, 자리가 모자라 혼자 남았다."
+fragments = Array[String](["쉼터 선생님이 준 드라이버 세트를 무엇보다 아낀다. 나사 모양만 보고도 어느 회사 제품인지 맞힌다.", "자기 생일을 아무도 모른다고 생각한다. 쉼터 달력에 그날 동그라미가 쳐져 있었다는 걸 아직 모른다."])
+contribution = "작은 전자기기와 무전기를 고친다."
+first_line = "와, 진짜 사람이다. 배터리 남는 거 있어요?"
+rescue_lines = Array[String](["저 무전기, 나중에 고쳐 볼게요.", "조용히요? 알았어요. 입 다물게요.", "쉼터 애들은 버스 탔겠죠? 그렇겠죠?"])
+situation = "휴대폰 수리점 뒷방"

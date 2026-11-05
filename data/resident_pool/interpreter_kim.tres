@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="ResidentTemplate" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/resident_template.gd" id="1_rtpl"]
+
+[resource]
+script = ExtResource("1_rtpl")
+id = &"interpreter_kim"
+name = "김다리야"
+age_stage = 3
+former_job = &"interpreter"
+traits = Array[StringName]([&"optimist", &"keen_ear"])
+likes = Array[StringName]([&"black_tea", &"music"])
+dislikes = Array[StringName]([&"shouting", &"cold_food"])
+access_needs = Array[int]([])
+background = "고려인 3세 통역사. 동네 이주민 센터에서 러시아어와 한국어를 오가며 이웃들의 서류를 도왔다. 대피 방송을 받아 적어 이웃들에게 전하느라 마지막 버스를 놓쳤다."
+fragments = Array[String](["할머니는 한국어를 '옛날 말'이라고 불렀다. 다리야의 한국어에 가끔 오래된 낱말이 섞이는 건 할머니에게 배웠기 때문이다.", "센터 이웃들의 이름과 연락처를 공책에 적어 두었다. 그 사람들이 어디로 갔는지 언젠가는 꼭 알고 싶다."])
+contribution = "말이 다른 주민들 사이를 통역하고 방송을 받아 적는다."
+first_line = "Спасибо. 아, 고맙다는 뜻이에요."
+rescue_lines = Array[String](["저 표지판, 제가 읽을게요.", "방송 들리면 말해 줘요. 받아 적을게요.", "조금만 쉬어요. 숨이 차서요."])
+situation = "이주민 센터 상담실"

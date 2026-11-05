@@ -23,6 +23,7 @@
 | `UI` | `ui/ui.gd` | D | 화면 열고 닫기, HUD |
 | `SceneRouter` | `core/scene_router.gd` | A | 기지↔필드 씬 전환, 하루 흐름 진행 |
 | `DebugConsole` | `core/debug/debug_console.gd` | A | 개발용 치트 콘솔(백틱 키). 디버그 빌드에서만 동작 |
+| `ResidentPool` | `systems/resident_pool.gd` | A | 손으로 쓴 생존자 풀(`data/resident_pool/`), 검수된 프로필만 꺼냄 |
 
 `_mcp_game_helper`는 Godot AI 플러그인 것이라 건드리지 않는다.
 
@@ -85,6 +86,11 @@
 - **DebugConsole**: `register(name, callable, help)`, `execute(line)`, `is_open()`, `godmode`(B가 읽음).
   각 레인은 자기 스크립트에서 `register`로 명령을 추가한다(콘솔 파일은 고치지 않음). 같은 이름으로 다시 등록하면 교체된다.
   `raid`, `resident`는 C가, `give`는 A-07이 교체할 자리표시 명령이다. 출시 빌드에서는 등록·실행이 모두 무시된다.
+- **ResidentPool**: `draw(filter) -> profile`(검수 완료·미사용 중 무작위, 없으면 `{}`), `get_profile(id)`(사용 여부 무관, 이야기에 고정된 구조자),
+  `available_ids(filter)`, `reviewed_ids()`, `mark_used(id)`, `is_used(id)`. 프로필은 `Colony.add_resident(profile)`에 그대로 넣는 형식이고,
+  주민이 들어오면(`resident_joined`, 주민 id = 풀 id) 자동으로 사용 표시된다. filter 키: `demo`, `age_stage`, `access_need`, `former_job`,
+  `region_id`, `exclude`. 프로필의 추가 키 `contribution`, `first_line`, `rescue_lines`(호위 대사 3줄), `situation`은 Colony가 무시하고
+  구조 연출·UI가 읽는다. `reviewed = true`이고 검증(`ResidentTemplate.validate`, 금지어 `tools/resident_banned_words.txt`)을 통과한 항목만 나온다.
 
 새 공개 함수가 필요하면 그 오토로드의 소유 레인이 추가하고 여기에 한 줄 적는다.
 
@@ -145,6 +151,7 @@
   탈출 직후(결과 화면). 새 게임은 `SaveSystem.reset_all()`로 모든 provider를 `load_data({})`.
 - 필드 중 종료는 `save_suspend()`. `load_suspend()`는 불러온 뒤 파일을 지운다.
 - 저장 형식이 호환되지 않게 바뀌면 A가 `SaveSystem.SAVE_VERSION`을 올린다. 버전이 다른 파일은 불러오지 않는다.
+- `resident_pool`(A): 생존자 풀에서 이미 구조한 항목 id 목록(`{"used": [...]}`).
 
 ## 아이템 id 규칙
 
