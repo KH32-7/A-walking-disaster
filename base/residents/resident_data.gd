@@ -12,6 +12,7 @@ class_name ResidentData
 ##   appearance: Dictionary (preset ids, colors; filled by the 입주 의식 C-13 / Lane D)
 ##   former_job: StringName (keys of FORMER_JOB_MAIN_STAT)
 ##   traits, likes, dislikes: Array[StringName]
+##   origin_tags: Array[StringName] — 출신 태그 (예: migrant). B-20 숨은 경로가 읽음 (이슈 #108)
 ##   access_needs: Array[int] (Enums.AccessNeed)
 ##   stats: {str, dex, sense, heart: 1..10}
 ##   job_skill: {job_id: 0..5}, job_days: {job_id: days worked}, stat_days: {stat: work days} (C-05)
@@ -93,6 +94,7 @@ static func create(profile: Dictionary, rng: RandomNumberGenerator) -> Dictionar
 		"traits": roll_traits(rng),
 		"likes": [],
 		"dislikes": [],
+		"origin_tags": [],
 		"access_needs": [],
 		"stats": roll_stats(former_job, rng),
 		"job_skill": {},
@@ -156,6 +158,7 @@ static func normalize(src: Dictionary) -> Dictionary:
 	r["traits"] = _names(r.get("traits", []))
 	r["likes"] = _names(r.get("likes", []))
 	r["dislikes"] = _names(r.get("dislikes", []))
+	r["origin_tags"] = _names(r.get("origin_tags", []))
 	var needs: Array = []
 	for n in r.get("access_needs", []):
 		needs.append(int(n))
