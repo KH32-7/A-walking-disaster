@@ -448,11 +448,30 @@ func is_open(screen_id: StringName) -> bool:
 	return _index_of(screen_id) >= 0
 
 
-## True while a screen that would pause the game is open (pause menu, settings, journal, dialog,
-## emergency return ...). In the field the game keeps running, so field input readers ignore
-## player input while this is true.
+## True while the player's input belongs to the UI: a screen that would pause the game (pause menu,
+## settings, journal, dialog, emergency return ...), any other menu except the field map, a confirm
+## dialog, a cinematic talk, or the mouse over a HUD button. In the field the game keeps running, so
+## field input readers (move, shoot, dodge, skills ...) ignore player input while this is true.
 func blocks_play() -> bool:
-	return _blocks_play
+	if _blocks_play:
+		return true
+	# Clicks / Space meant for a menu fired the gun or dodged (user report 2026-11-06). The field map
+	# stays playable: it is real time and its right click pings.
+	for e: Dictionary in _stack:
+		if e.id != &"map" and not (e.def as ScreenDef).is_overlay:
+			return true
+	if cinematic != null and cinematic.is_talking():
+		return true
+	if overlay != null:
+		for child in overlay.get_children():
+			if child is ConfirmDialog and not child.is_queued_for_deletion():
+				return true
+	var hovered: Control = get_viewport().gui_get_hovered_control() if is_inside_tree() else null
+	while hovered != null:
+		if hovered is BaseButton:
+			return true
+		hovered = hovered.get_parent() as Control
+	return false
 
 
 func top() -> StringName:
