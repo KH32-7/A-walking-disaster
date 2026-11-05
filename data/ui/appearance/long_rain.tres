@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AppearancePreset" format=3]
+
+[ext_resource type="Script" path="res://ui/defs/appearance_preset.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"long_rain"
+display_name = "긴 머리 · 우비"
+hair = "long"
+hair_color = Color(0.3529, 0.2275, 0.1569, 1)
+skin = Color(0.9020, 0.7608, 0.6275, 1)
+outfit_color = Color(0.9059, 0.7647, 0.3529, 1)
+outfit_accent = Color(0.1490, 0.1490, 0.1686, 1)

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AppearancePreset" format=3]
+
+[ext_resource type="Script" path="res://ui/defs/appearance_preset.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"elder_grey"
+display_name = "흰머리 · 목수 앞치마"
+hair = "short"
+hair_color = Color(0.7882, 0.7882, 0.7686, 1)
+skin = Color(0.8863, 0.7216, 0.5804, 1)
+outfit_color = Color(0.5412, 0.4157, 0.2824, 1)
+outfit_accent = Color(0.2314, 0.2314, 0.2588, 1)
+age_stage = 4
