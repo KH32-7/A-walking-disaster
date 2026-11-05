@@ -15,6 +15,11 @@ func _ready() -> void:
 	collision_mask = 0
 
 
+## Prompt the HUD shows next to the interact key (#28).
+func interact_label() -> String:
+	return "유실물 줍기"
+
+
 ## Player.interact() calls begin_open on interactables, so this keeps LootContainer's name.
 ## Picks everything up at once.
 func begin_open(_interactor: Node3D) -> bool:

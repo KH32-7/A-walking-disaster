@@ -45,6 +45,8 @@ var _dodge_dir := Vector3.ZERO
 var _facing := Vector3.FORWARD
 var _aim_point: Variant = null
 var _bound_left := 0.0
+## Interactable the player last started using (HUD hold bar).
+var _interacting: Node3D
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
 @onready var _noise: NoiseEmitter = $Noise
@@ -73,6 +75,25 @@ func _physics_process(delta: float) -> void:
 ## Returns false when nothing is in reach or it refused.
 ## Uses a shape query, not an Area3D: Jolt areas do not report static bodies by default.
 func interact() -> bool:
+	var target := interact_target()
+	if target == null or not target.begin_open(self):
+		return false
+	_interacting = target
+	return true
+
+
+## Interactable last started with interact(), or null once it is gone.
+func interacting() -> Node3D:
+	return _interacting if is_instance_valid(_interacting) else null
+
+
+## Everything the field HUD (D-04) draws, rebuilt every call. Keys: issue #28.
+func hud_state() -> Dictionary:
+	return PlayerHudState.build(self)
+
+
+## Nearest interactable (something with begin_open) in reach, or null.
+func interact_target() -> Node3D:
 	var sphere := SphereShape3D.new()
 	sphere.radius = stats.interact_range
 	var query := PhysicsShapeQueryParameters3D.new()
@@ -89,7 +110,7 @@ func interact() -> bool:
 		if dist < best_dist:
 			best = body
 			best_dist = dist
-	return best != null and best.begin_open(self)
+	return best
 
 
 func is_bound() -> bool:
