@@ -64,7 +64,7 @@ static func roll(drop_table: MonsterDropTable, family: Enums.Element, mult: floa
 		out.resources[id] = out.resources.get(id, 0) + drop_table.bonus_resources[id]
 	for i in _hits(drop_table.gear_chance, mult, rng):
 		var rarity := rng.rand_weighted(PackedFloat32Array(drop_table.gear_rarity_weights))
-		var def_id := _pick_gear(drop_table.gear_pool, rarity, rng)
+		var def_id := pick_gear(drop_table.gear_pool, rarity, rng)
 		if rarity >= 0 and def_id != &"":
 			out.gear.append({"def_id": def_id, "rarity": rarity})
 	return out
@@ -110,7 +110,8 @@ static func _hits(chance: float, mult: float, rng: RandomNumberGenerator) -> int
 	return hits
 
 
-static func _pick_gear(pool: Array[StringName], rarity: int, rng: RandomNumberGenerator) -> StringName:
+## A def from the pool whose rarity_min allows this rarity, or &"" (also used by LootTable).
+static func pick_gear(pool: Array[StringName], rarity: int, rng: RandomNumberGenerator) -> StringName:
 	var fits: Array[StringName] = []
 	for def_id in pool:
 		var def := Armory.get_def(def_id)

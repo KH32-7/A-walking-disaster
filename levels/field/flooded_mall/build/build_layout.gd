@@ -92,14 +92,16 @@ const ZONE_LOOT := {
 	"shop_in": ["TOOLBOX", "DRAWER", "MEDICINE"],
 	"shop2_in": ["DRAWER", "MEDICINE"],
 }
-## B-26 (user feedback 2026-11-05: farming felt thin): more spots, a locked supply crate at the depot
-## checkpoint and the dock, and the flooded park and the pier get spots too.
+## B-26 (user feedback 2026-11-05: farming felt thin): more spots, and the flooded park and the pier
+## get spots too. Supply crates (2026-11-06) only where the risk is, since they always spawn: the depot
+## checkpoint next to its nest, the flooded park by the wraith's arena, the pier by its nest and the
+## golem. The dock keeps the map file's crate only.
 const LANDMARK_LOOT := {
 	"depot_lm": ["TOOLBOX", "TOOLBOX", "DRAWER", "SUPPLY_CRATE", "MEDICINE"],
-	"dock_lm": ["TOOLBOX", "DRAWER", "SUPPLY_CRATE", "TOOLBOX"],
+	"dock_lm": ["TOOLBOX", "DRAWER", "TOOLBOX", "TOOLBOX"],
 	"gas_lm": ["TOOLBOX", "DRAWER", "TOOLBOX"],
-	"veg_sw": ["DRAWER", "TOOLBOX", "MEDICINE"],
-	"pier_lm": ["TOOLBOX", "DRAWER"],
+	"veg_sw": ["DRAWER", "TOOLBOX", "SUPPLY_CRATE"],
+	"pier_lm": ["TOOLBOX", "SUPPLY_CRATE"],
 }
 
 const CLUTTER_SEED := 20261106

@@ -84,8 +84,9 @@ const ZONE_LOOT := {
 	"shed_in": ["TOOLBOX"],
 }
 ## The plaza's toolbox is next to the sleeping boss (risk and reward, like the supply crate).
+## The amphitheatre's last spot, next to its nest, is a supply crate (2026-11-06: always spawns).
 const LANDMARK_LOOT := {
-	"amph_lm": ["DRAWER", "TOOLBOX", "DRAWER"],
+	"amph_lm": ["DRAWER", "TOOLBOX", "SUPPLY_CRATE"],
 	"pg_lm": ["DRAWER", "MEDICINE", "TOOLBOX"],
 	"plaza_lm": ["TOOLBOX"],
 }
