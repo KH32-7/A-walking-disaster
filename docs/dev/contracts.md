@@ -48,7 +48,7 @@
 - **Armory**: `get_equipped(owner_id, slot)`, `get_item_stats(item_uid)` (+ A-07에서 추가하는 장착/해제 함수)
 - **Radio**: `say(template_id, context, priority)`
 - **Settings**: `get_value(key)`, `set_value(key, value)`
-- **SaveSystem**: `register_provider(key, provider)`, `save_slot(slot)`, `load_slot(slot)`
+- **SaveSystem**: `register_provider(key, provider)`, `save_slot(slot) -> bool`, `load_slot(slot) -> bool`, `has_slot(slot)`, `delete_slot(slot)`, `slot_info(slot)`(불러오기 화면용), `autosave()`, `save_suspend()`, `has_suspend()`, `load_suspend()`, `current_slot`
 - **SceneRouter**: `go_to_base()`, `go_to_field(loadout)`
 - **Colony**: `get_resident(id)`, `active_resident_ids()`, `base_noise()`, `threat`, `tier`
 - **FieldState**: `in_sortie()`, `lost_gear`
@@ -79,6 +79,12 @@
 각 레인은 provider 하나만 등록한다(`save_data() -> Dictionary`, `load_data(Dictionary)`). 값은 JSON으로 쓸 수 있는 것만
 (Object·Resource 대신 id). 키: `game`(A), `economy`(A), `armory`(A), `field`(B), `colony`(C). D는 저장할 게임 상태가 없다
 (설정은 `Settings`가 따로 저장).
+
+- 파일은 Godot 타입 JSON(`JSON.from_native`)이라 `int`/`float`, `StringName`, `Vector3` 등이 그대로 돌아온다. Object·Resource는 안 된다.
+- `load_data`는 빈 Dictionary를 받을 수 있어야 한다(파일에 그 키가 없으면 `{}`로 호출해 기본값으로 되돌림).
+- 슬롯 0~2. 자동 저장은 `current_slot`에: 아침 시작(`day_started`), 출격 직전(`sortie_started`), 탈출 직후(`extraction_completed`).
+- 필드 중 종료는 `save_suspend()`. `load_suspend()`는 불러온 뒤 파일을 지운다.
+- 저장 형식이 호환되지 않게 바뀌면 A가 `SaveSystem.SAVE_VERSION`을 올린다. 버전이 다른 파일은 불러오지 않는다.
 
 ## 데이터(.tres)와 스키마
 
