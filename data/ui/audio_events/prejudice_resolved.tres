@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AudioEventDef" format=3]
+
+[ext_resource type="Script" path="res://audio/defs/audio_event_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"prejudice_resolved"
+stream = "res://assets/audio/sfx/magic_arsenal/cast/magic_cast_life.wav"
+synth = &"ting"
+bus = 3
+priority = 2
+positional = false
+caption = ""

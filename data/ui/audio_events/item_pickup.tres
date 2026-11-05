@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 id = &"item_pickup"
+stream = "res://assets/audio/sfx/action_rpg_sfx_v2/foley/foley_coin_drop_impact_light_01_01.wav"
 synth = &"pickup"
 bus = 3
 priority = 0

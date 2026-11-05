@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AudioEventDef" format=3]
+
+[ext_resource type="Script" path="res://audio/defs/audio_event_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"spike_trap"
+stream = "res://assets/audio/sfx/action_rpg_sfx_v2/foley/foley_trap_metal_spike_sharp_hit_pierce_01_02.wav"
+synth = &"thud"
+bus = 0
+priority = 1
+positional = true
+caption = "가시 함정"

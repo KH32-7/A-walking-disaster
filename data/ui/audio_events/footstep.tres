@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 id = &"footstep"
+stream = "res://assets/audio/sfx/cc0/kenney_impact_sounds/footstep_concrete_001.ogg"
 synth = &"step"
 bus = 0
 priority = 0

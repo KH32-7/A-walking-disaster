@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 id = &"monster_growl"
+stream = "res://assets/audio/sfx/cc0/oga_monster_snarls/monster_snarl_5.ogg"
 synth = &"monster_growl"
 bus = 0
 priority = 1
