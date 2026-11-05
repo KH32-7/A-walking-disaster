@@ -46,6 +46,8 @@ signal resources_changed(changes: Dictionary)
 signal item_added(item_uid: StringName)
 signal item_removed(item_uid: StringName)
 signal equipment_changed(owner_id: StringName, slot: Enums.EquipSlot)
+## Field bag contents or size changed (Lane A's Bag). Lane D redraws the grid.
+signal bag_changed()
 
 # --- Messages (anyone emits, Lane D shows) ---
 ## severity: &"info", &"warn", &"danger"

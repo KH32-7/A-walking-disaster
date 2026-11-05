@@ -14,6 +14,7 @@
 | `SaveSystem` | `core/save_system.gd` | A | 저장·불러오기 (레인별 provider) |
 | `Economy` | `systems/economy.gd` | A | 창고 자원 |
 | `Armory` | `systems/armory.gd` | A | 장비 인스턴스, 누가 무엇을 장착했나, 최종 스탯 |
+| `Bag` | `systems/bag.gd` | A | 필드 가방 격자 + 안전 주머니 |
 | `Radio` | `ai/radio.gd` | A | 방송실 지기 무전 (트리거·문장) |
 | `FieldState` | `field/field_state.gd` | B | 필드 쪽 영속 상태 |
 | `Colony` | `base/colony.gd` | C | 주민·건물·관계·습격 위협도 |
@@ -34,7 +35,7 @@
 | `day_started`, `phase_changed`, `flow_state_changed`, `sortie_started`, `sortie_ended`, `evening_settled` | A | 전부 |
 | `noise_emitted`, `monster_killed`, `player_downed`, `rescue_completed`, `companion_stranded`, `extraction_completed`, `emergency_return_requested` | B | A·C·D |
 | `resident_joined/left/died`, `building_completed/damaged`, `relationship_changed`, `night_event_started`, `raid_warning/started/resolved` | C | A·B·D |
-| `resources_changed`, `item_added/removed`, `equipment_changed` | A | D |
+| `resources_changed`, `item_added/removed`, `equipment_changed`, `bag_changed` | A | D |
 | `notification_posted` | 누구나 | D |
 | `radio_message`, `journal_entry_added` | A | D |
 | `settings_changed`, `game_saved`, `game_loaded` | A | 전부 |
@@ -51,6 +52,11 @@
   `remove_item(uid)`, `get_item(uid)`(읽기 전용), `get_def(def_id)`, `wear(uid, amount)`(B: 내구도), `set_lost(uid, lost)`(B: 쓰러짐·회수).
   owner_id는 `Armory.PLAYER_ID` 또는 주민 id. 무기고 보관은 `STORAGE_ID`, 유실물은 `LOST_ID`.
   **`get_item_stats().damage`·`defense`는 등급·강화·부가 옵션·내구도까지 반영된 최종값**이다. B의 피해 공식에서 `(1+0.06U)`를 다시 곱하지 않는다.
+- **Bag**: `resize_for_player()`(출격 준비), `add_resource(id, n) -> 못 넣은 양`, `add_item(uid) -> entry_id`, `take_from_storage(id, n)`,
+  `move(entry_id, pos, rotated, area)`, `remove(entry_id, amount)`, `consume(id, n)`, `count(id)`, `entries(area)`, `entry_at(cell, area)`,
+  `can_place(size, pos, rotated, area)`, `is_cell(cell, area)`, `unload_to_base()`(탈출: 자원→Economy, 장비→무기고),
+  `lose_contents()`(쓰러짐: 안전 주머니 제외 소실. 보호 모드 `keep_bag_on_down`이면 B가 호출하지 않음).
+  영역은 `Bag.AREA_BAG` / `Bag.AREA_POCKET`(2칸). 가방 속 장비의 Armory 소유자는 `Armory.BAG_ID`.
 - **Radio**: `say(template_id, context, priority)`
 - **Settings**: `get_value(key)`, `set_value(key, value)`
 - **SaveSystem**: `register_provider(key, provider)`, `save_slot(slot) -> bool`, `load_slot(slot) -> bool`, `has_slot(slot)`, `delete_slot(slot)`, `slot_info(slot)`(불러오기 화면용), `autosave()`, `save_suspend()`, `has_suspend()`, `load_suspend()`, `current_slot`
@@ -82,7 +88,7 @@
 ## 저장
 
 각 레인은 provider 하나만 등록한다(`save_data() -> Dictionary`, `load_data(Dictionary)`). 값은 JSON으로 쓸 수 있는 것만
-(Object·Resource 대신 id). 키: `game`(A), `economy`(A), `armory`(A), `field`(B), `colony`(C). D는 저장할 게임 상태가 없다
+(Object·Resource 대신 id). 키: `game`(A), `economy`(A), `armory`(A), `bag`(A), `field`(B), `colony`(C). D는 저장할 게임 상태가 없다
 (설정은 `Settings`가 따로 저장).
 
 - 파일은 Godot 타입 JSON(`JSON.from_native`)이라 `int`/`float`, `StringName`, `Vector3` 등이 그대로 돌아온다. Object·Resource는 안 된다.
