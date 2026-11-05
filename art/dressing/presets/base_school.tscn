@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://art/dressing/region_dressing.gd" id="1_dress"]
+
+[node name="Dressing" type="Node3D"]
+script = ExtResource("1_dress")
+kind = 1
+seed_value = 3
+sky_top = Color(0.42, 0.7, 0.9, 1)
+sun_color = Color(1, 0.94, 0.84, 1)
+sun_energy = 1.35
+fog_density = 0.0015
+vines_per_10m = 1.5
+neon_signs = 0
+debris_count = 0
