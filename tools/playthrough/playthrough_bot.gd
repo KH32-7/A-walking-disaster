@@ -66,6 +66,10 @@ func _run() -> void:
 	_main.name = &"Main"
 	get_tree().root.add_child(_main)
 	await _frames(10)
+	if "--quick=prompts" in OS.get_cmdline_user_args():
+		await _quick_prompts()
+		_finish()
+		return
 	var ok := await _day1()
 	if ok:
 		ok = await _day2()
@@ -257,6 +261,43 @@ func _confirm_dialog() -> ConfirmDialog:
 		if n is ConfirmDialog and not n.is_queued_for_deletion():
 			return n
 	return null
+
+
+## Short look at the world prompts: [F] chip beside a container, exit diamonds (QA 화면 확인용).
+func _quick_prompts() -> void:
+	_step("quick_prompts")
+	await _until(func() -> bool: return UI.is_open(&"title"), "타이틀")
+	UI.get_screen(&"title").list.focus_row(&"new")
+	await _frames(3)
+	(UI.get_screen(&"title").find_child("start", true, false) as Button).pressed.emit()
+	await _until(func() -> bool: return GameState.flow_state == Enums.FlowState.BASE_MORNING, "기지")
+	await _loading_done()
+	UI.tutorial.skip()
+	if not await _sortie(&"city_park"):
+		return
+	await _frames(20)
+	var player: Node3D = get_tree().get_first_node_in_group(&"player")
+	var box: Node3D = null
+	var best := INF
+	for n in get_tree().get_nodes_in_group(&"loot_containers"):
+		if n is Node3D and player.global_position.distance_to(n.global_position) < best:
+			best = player.global_position.distance_to(n.global_position)
+			box = n
+	if box == null:
+		for n in get_tree().root.find_children("*", "LootContainer", true, false):
+			box = n
+			break
+	if _check(box != null, "상자가 있음"):
+		player.global_position = box.global_position + Vector3(1.0, 0, 0.6)
+		await get_tree().create_timer(1.5).timeout  # camera catches up
+		_check(UI.world_prompts._chip.visible, "상자 옆에 [F] 칩이 뜸: %s" % UI.world_prompts._chip_label.text)
+		await _shot("prompt_container")
+	var em := get_tree().get_first_node_in_group(&"field_extraction")
+	var pts: Array = em.active_points()
+	if not pts.is_empty():
+		player.global_position = (pts[0] as Node3D).global_position + Vector3(6, 0, 6)
+		await _frames(20)
+		await _shot("exit_marker")
 
 
 # ---------------- base ----------------

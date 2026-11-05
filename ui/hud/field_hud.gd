@@ -247,7 +247,8 @@ func _apply_hold(h: Dictionary) -> void:
 
 
 func _apply_prompt(p: Dictionary) -> void:
-	_prompt.visible = not p.is_empty() and not _hold.visible
+	# The [F] prompt now sits beside the thing itself (WorldPrompts); the bottom line stays off.
+	_prompt.visible = false and not p.is_empty() and not _hold.visible
 	if _prompt.visible:
 		_prompt_key.key_text = String(p.get("key", "F"))
 		_prompt_label.text = String(p.get("label", ""))
