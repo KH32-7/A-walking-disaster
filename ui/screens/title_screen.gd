@@ -185,7 +185,7 @@ func _continue() -> void:
 
 func _open_screen(id: StringName) -> void:
 	if UI.has_screen(id):
-		UI.open(id)
+		UI.open(id, {"new_game": true})  # D-15: before a game starts, hardcore may be picked
 
 
 func _enter_detail() -> void:

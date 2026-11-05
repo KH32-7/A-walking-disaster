@@ -152,11 +152,14 @@ const PRESET_DESC := {
 const ACTIONS := [
 	[&"move_up", "위로 이동"], [&"move_down", "아래로 이동"], [&"move_left", "왼쪽으로 이동"],
 	[&"move_right", "오른쪽으로 이동"], [&"attack", "공격·사격"], [&"aim", "조준·막기"],
+	[&"aim_up", "조준 위"], [&"aim_down", "조준 아래"], [&"aim_left", "조준 왼쪽"], [&"aim_right", "조준 오른쪽"],
 	[&"dodge", "구르기"], [&"sprint", "달리기"], [&"reload", "재장전"], [&"interact", "상호작용"],
 	[&"weapon_1", "무기 1"], [&"weapon_2", "무기 2"], [&"weapon_swap", "무기 교체"],
 	[&"item_1", "소모품 1"], [&"item_2", "소모품 2"], [&"item_3", "소모품 3"], [&"item_4", "소모품 4"],
 	[&"skill_q", "스킬 1"], [&"skill_e", "스킬 2"], [&"essence_release", "정수 해방"],
-	[&"companion_command", "동행 명령"], [&"bag", "가방"], [&"map", "지도"], [&"pause", "일시정지"],
+	[&"companion_command", "동행 명령"], [&"camera_rotate_left", "카메라 왼쪽으로 돌리기"],
+	[&"camera_rotate_right", "카메라 오른쪽으로 돌리기"], [&"camera_zoom_in", "카메라 가까이"],
+	[&"camera_zoom_out", "카메라 멀리"], [&"bag", "가방"], [&"map", "지도"], [&"pause", "일시정지"],
 ]
 
 ## The quick accessibility screen (title). Design 14: subtitles, sound visualisation, colour,
@@ -296,6 +299,17 @@ static func nearest_index(opts: Array, value: Variant) -> int:
 				best = j
 		return best
 	return 0
+
+
+## Remappable action ids: ACTIONS order, then any InputSetup action added later (raw name).
+static func action_ids() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for a: Array in ACTIONS:
+		out.append(a[0])
+	for a: StringName in InputSetup.DEFAULTS:
+		if not a in out:
+			out.append(a)
+	return out
 
 
 static func action_name(action: StringName) -> String:

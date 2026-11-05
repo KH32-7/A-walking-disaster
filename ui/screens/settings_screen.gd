@@ -233,10 +233,11 @@ func _rows_for(id: StringName) -> Array:
 			var out: Array = []
 			for r: Dictionary in SettingsCatalog.tab_rows(id):
 				if r.get("key", &"") == &"bindings_reset":
-					for a: Array in SettingsCatalog.ACTIONS:
-						if InputMap.has_action(a[0]):
-							out.append({"key": a[0], "kind": "binding", "label": a[1],
-								"desc": "%s에 쓸 키입니다. Enter를 누른 뒤 새 키나 버튼을 누르세요." % a[1]})
+					for a: StringName in SettingsCatalog.action_ids():
+						if InputMap.has_action(a):
+							var nm := SettingsCatalog.action_name(a)
+							out.append({"key": a, "kind": "binding", "label": nm,
+								"desc": "%s에 쓸 키입니다. Enter를 누른 뒤 새 키나 버튼을 누르세요." % nm})
 				out.append(r)
 			return out
 		&"difficulty":
@@ -672,12 +673,12 @@ func apply_binding(action: StringName, ev: InputEvent) -> StringName:
 ## [action, event] of another remappable action already using `ev`, or [].
 func find_conflict(ev: InputEvent, except: StringName) -> Array:
 	var id := SettingsCatalog.event_id(ev)
-	for a: Array in SettingsCatalog.ACTIONS:
-		if a[0] == except or not InputMap.has_action(a[0]):
+	for a: StringName in SettingsCatalog.action_ids():
+		if a == except or not InputMap.has_action(a):
 			continue
-		for e in InputMap.action_get_events(a[0]):
+		for e in InputMap.action_get_events(a):
 			if SettingsCatalog.event_id(e) == id:
-				return [a[0], e]
+				return [a, e]
 	return []
 
 
