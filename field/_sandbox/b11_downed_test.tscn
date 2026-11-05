@@ -1,0 +1,24 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://field/_sandbox/b11_downed_test.gd" id="1_test"]
+[ext_resource type="PackedScene" path="res://field/_sandbox/field_sandbox.tscn" id="2_sandbox"]
+[ext_resource type="Script" path="res://field/downed/lost_gear_spawner.gd" id="3_spawner"]
+
+[node name="B11DownedTest" type="Node3D"]
+script = ExtResource("1_test")
+
+[node name="FieldSandbox" parent="." instance=ExtResource("2_sandbox")]
+
+[node name="SpawnPoint" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 6)
+
+[node name="LostGearSpawner" type="Node3D" parent="."]
+script = ExtResource("3_spawner")
+
+[node name="DebugLayer" type="CanvasLayer" parent="."]
+
+[node name="DownedLabel" type="Label" parent="DebugLayer"]
+offset_left = 12.0
+offset_top = 140.0
+offset_right = 900.0
+offset_bottom = 460.0
