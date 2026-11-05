@@ -61,6 +61,12 @@ func _check_live() -> bool:
 		var p := tree.get_first_node_in_group(&"player") as Node3D
 		ok = ok and _expect(absf(angle_difference(deg_to_rad(mm.heading()),
 			deg_to_rad(HudMinimap.bearing(p.call(&"facing"))))) < 0.2, "heading does not follow the player")
+		# Next to the bus depot its landmark name shows on the minimap.
+		p.global_position = Vector3(21.0, p.global_position.y, -80.0)
+		for i in 5:
+			await tree.process_frame
+		var names: Array = mm._live_names.map(func(n: Dictionary) -> String: return n.text)
+		ok = ok and _expect("버스 차고지" in names, "landmark name near the player not on the minimap: %s" % [names])
 
 	UI.close_all()
 	tree.root.remove_child(main)

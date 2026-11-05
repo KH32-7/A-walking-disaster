@@ -48,6 +48,8 @@ var map: MapView
 var _sub: SubViewport
 var _goals: VBoxContainer
 var _exits: VBoxContainer
+## RegionDef.map_labels of this region (place names on the map, names for the exits).
+var _place_labels: Array = []
 var _dusk: Label
 var _seen_label: Label
 var _t := 0.0
@@ -128,6 +130,9 @@ func _build_body(b: Control) -> void:
 	map.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	b.resized.connect(_fit_map.bind(b))
 	_fit_map(b)
+	var def := RegionDef.load_def(region_id)
+	_place_labels = def.map_labels if def != null else []
+	map.place_labels = _place_labels
 	var art: Array = OVERVIEWS.get(region_id, [])
 	if not art.is_empty() and ResourceLoader.exists(art[0]):
 		map.set_art(load(art[0]) as Texture2D, art[1])
@@ -222,6 +227,29 @@ func _bounds() -> Rect2:
 	return Rect2(r.get_center() - Vector2(s, s) * 0.5, Vector2(s, s))
 
 
+## "하역장 탈출", "주유소 탈출 · 발전기"; just the type words when no place is near.
+static func exit_label(type: int, place: String) -> String:
+	var kind := String(EXTRACT_TYPES[clampi(type, 0, EXTRACT_TYPES.size() - 1)])
+	return kind if place.is_empty() else "%s %s" % [place, kind]
+
+
+## Name of the closest landmark or road (then any place) within `max_m` metres, "" if none.
+static func place_near(labels: Array, pos: Vector3, max_m := 30.0) -> String:
+	var best := ""
+	var best_score := INF
+	for l: Dictionary in labels:
+		var p: Vector2 = l.get("pos", Vector2.ZERO)
+		var d := p.distance_to(Vector2(pos.x, pos.z))
+		if d > max_m:
+			continue
+		# Landmarks and roads name a spot best; areas, water and small spots only when nothing else.
+		var score := d if StringName(l.get("kind", &"")) in [&"landmark", &"road"] else d + max_m
+		if score < best_score:
+			best_score = score
+			best = String(l.get("text", ""))
+	return best
+
+
 func _extraction() -> Node:
 	return get_tree().get_first_node_in_group(ExtractionManager.GROUP)
 
@@ -238,7 +266,7 @@ func _collect() -> void:
 	for p: ExtractPoint in _markers(ExtractPoint.GROUP):
 		if em != null and not p.id in active:
 			continue
-		var label := String(EXTRACT_TYPES[clampi(int(p.type), 0, EXTRACT_TYPES.size() - 1)])
+		var label := exit_label(int(p.type), place_near(_place_labels, p.global_position))
 		marks.append({"pos": p.global_position, "kind": &"extract", "label": label})
 		exits.append({"pos": p.global_position, "label": label, "wait": p.wait_sec, "noise": p.noise_radius, "id": p.id})
 	var objectives: Array = []
