@@ -92,7 +92,7 @@ func _build_body(b: Control) -> void:
 	var dv: VBoxContainer = dp[1]
 	var rows: Array = []
 	for uid in dmg.get("damaged", []):
-		rows.append(["✕  " + RaidFlow.building_name(StringName(uid)), "멈춤 · 수리 필요", UiTokens.DANGER])
+		rows.append(["✕  " + RaidFlow.building_name(StringName(uid)), "멈춤 / 수리 필요", UiTokens.DANGER])
 	var loss: Dictionary = dmg.get("durability_loss", {})
 	for uid in loss:
 		rows.append(["▼  " + RaidFlow.building_name(StringName(uid)), "내구도 −%d" % int(loss[uid]), UiTokens.WARN])
@@ -118,14 +118,14 @@ func _build_body(b: Control) -> void:
 	var gv: VBoxContainer = gp[1]
 	rows = []
 	for id in loot:
-		rows.append(["◆  " + MenuScreen.resource_name(StringName(id)), "+%d" % int(loot[id]), UiTokens.ACCENT])
+		rows.append([MenuScreen.resource_name(StringName(id)), "+%d" % int(loot[id]), UiTokens.ACCENT])
 	if int(used.get("decoys", 0)) > 0:
-		rows.append(["·  소음 미끼 장치", "%d개 씀" % int(used.decoys), UiTokens.TEXT])
+		rows.append(["소음 미끼 장치", "%d개 씀" % int(used.decoys), UiTokens.TEXT])
 	if int(used.get("traps", 0)) > 0:
-		rows.append(["·  가시 함정", "%d개 1회씩 씀" % int(used.traps), UiTokens.TEXT])
+		rows.append(["가시 함정", "%d개 1회씩 씀" % int(used.traps), UiTokens.TEXT])
 	var ess: Dictionary = used.get("essence", {})
 	for id in ess:
-		rows.append(["·  " + MenuScreen.resource_name(StringName(id)), "−%d (정수 등불)" % int(ess[id]), UiTokens.TEXT])
+		rows.append(["- " + MenuScreen.resource_name(StringName(id)), "−%d (정수 등불)" % int(ess[id]), UiTokens.TEXT])
 	_table(gv, rows, "없음")
 	right.add_child(gp[0])
 
@@ -171,7 +171,7 @@ func _mode_line() -> String:
 		m = "직접 방어전"
 	elif mode == Enums.RaidMode.PLAYED:
 		m = "자동 판정 (기지에 있음, 방어 +%d%%)" % roundi((RaidRules.PLAYED_BONUS - 1.0) * 100.0)
-	return "%d일차 %s  ·  %s" % [int(result.get("day", GameState.day)), RaidFlow.time_text(result), m]
+	return "%d일차 %s / %s" % [int(result.get("day", GameState.day)), RaidFlow.time_text(result), m]
 
 
 ## Rows [[name, value, colour], ...] in the 정산표 stripe style.

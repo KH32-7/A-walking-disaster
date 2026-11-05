@@ -63,7 +63,7 @@ func _build_body(b: Control) -> void:
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_list = VBoxContainer.new()
-	_list.add_theme_constant_override(&"separation", 6)
+	_list.add_theme_constant_override(&"separation", 10)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(_list)
 	(rel[1] as VBoxContainer).add_child(sc)
@@ -98,7 +98,7 @@ func _fill() -> void:
 	var nodes: Array = data[0]
 	if (_sel == &"" or not nodes.any(func(n: Dictionary) -> bool: return n.id == _sel)) and not nodes.is_empty():
 		_sel = nodes[0].id
-	_count.text = "%d명 · 관계 %d" % [nodes.size(), (data[1] as Array).size()]
+	_count.text = "%d명 / 관계 %d" % [nodes.size(), (data[1] as Array).size()]
 	_graph.set_data(nodes, data[1], _sel)
 	MenuScreen.clear(_list)
 	if _sel == &"":

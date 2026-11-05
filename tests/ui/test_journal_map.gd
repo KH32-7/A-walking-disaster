@@ -154,7 +154,7 @@ func _test_map() -> bool:
 			"flooded mall uses its painted overview over the whole layout") and ok
 		var landmarks: Array = s.map.place_labels.filter(func(l: Dictionary) -> bool: return l.kind == &"landmark")
 		ok = _expect(landmarks.size() == 6, "flooded mall map shows its 6 landmark names") and ok
-		ok = _expect(MapScreen.exit_label(ExtractPoint.Type.GENERATOR, "주유소") == "주유소 탈출 · 발전기",
+		ok = _expect(MapScreen.exit_label(ExtractPoint.Type.GENERATOR, "주유소") == "주유소 탈출 / 발전기",
 			"exit label names the place and the exit type") and ok
 		ok = _expect(MapScreen.place_near(s.map.place_labels, Vector3(55.5, 0, 97.5)) == "하역장",
 			"the dock exit is named after the 하역장 landmark") and ok

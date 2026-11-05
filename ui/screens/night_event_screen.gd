@@ -60,7 +60,7 @@ func _build_body(b: Control) -> void:
 	var top := VBoxContainer.new()
 	top.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	top.alignment = BoxContainer.ALIGNMENT_CENTER
-	top.add_theme_constant_override(&"separation", 6)
+	top.add_theme_constant_override(&"separation", 10)
 	b.add_child(top)
 	top.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	_day_label = MenuScreen.label("", &"LabelDim", 16)
@@ -120,7 +120,7 @@ func _next() -> void:
 	_index += 1
 	_total = maxi(_total, _index + queued.size() - 1)
 	var def := BaseDB.get_night_event(StringName(_ev.event_id))
-	_day_label.text = "%d일차 밤  ·  %d / %d" % [GameState.day, _index, _total]
+	_day_label.text = "%d일차 밤 / %d / %d" % [GameState.day, _index, _total]
 	_title.text = def.display_name if def != null else String(_ev.event_id)
 	_desc.text = def.description if def != null else ""
 	_before = {}
@@ -160,7 +160,7 @@ func _draw_people(deltas: Dictionary) -> void:
 func _link(a: StringName, b: StringName, deltas: Dictionary) -> Control:
 	var v := VBoxContainer.new()
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
-	v.add_theme_constant_override(&"separation", 4)
+	v.add_theme_constant_override(&"separation", 8)
 	v.custom_minimum_size = Vector2(150, 270)
 	var stage := Colony.relation_stage(a, b)
 	var s := RelationGraph.LineSample.new(stage)
@@ -221,7 +221,7 @@ func _show_result() -> void:
 		return
 	if not frag.is_empty():
 		notes.append([text, UiTokens.TEXT])
-		notes.append(["◆ 사연 한 조각", UiTokens.ACCENT])
+		notes.append(["사연 한 조각", UiTokens.ACCENT])
 		var r := Colony.get_resident(StringName(frag.resident_id))
 		dialog.say(ResidentText.call_name(r), String(frag.text), StringName(frag.resident_id))
 	else:
@@ -249,7 +249,7 @@ func _show_fragment() -> void:
 	var target := StringName(who[1])
 	var i := clampi(_fragment_i, 0, _fragments.size() - 1)
 	dialog.say(ResidentText.call_name(Colony.get_resident(target)), String(_fragments[i]), target)
-	dialog.set_notes([[String(_result.get("text", "")), UiTokens.TEXT], ["◆ 사연이 드러났어요  %d / %d" % [i + 1, _fragments.size()], UiTokens.ACCENT]])
+	dialog.set_notes([[String(_result.get("text", "")), UiTokens.TEXT], ["사연이 드러났어요  %d / %d" % [i + 1, _fragments.size()], UiTokens.ACCENT]])
 	_end_choices([[&"more", "이야기를 더 듣는다"]] if i + 1 < _fragments.size() else [])
 
 

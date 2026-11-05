@@ -129,7 +129,7 @@ func _build() -> void:
 	band.theme_type_variation = &"PanelBand"
 	var bh := HBoxContainer.new()
 	bh.add_child(_lbl("경비 배치", &"LabelSection", 20))
-	var hint := _lbl("끌어다 놓기 · 눌러서 고르고 자리 누르기", &"LabelDim", 13)
+	var hint := _lbl("끌어다 놓기 / 눌러서 고르고 자리 누르기", &"LabelDim", 13)
 	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	bh.add_child(hint)
@@ -185,13 +185,13 @@ func _apply() -> void:
 	_hold_label.text = _mmss(hold)
 	_monsters_label.text = "▲ 남은 마물 %d" % int(state.get("monsters_left", 0)) if phase == &"fight" else ""
 	var door: Dictionary = state.get("shelter_door", {})
-	_door_label.text = "대피소 문  %d / %d" % [int(door.get("hp", 0)), int(door.get("max", 0))] if not door.is_empty() else "대피소 문  —"
+	_door_label.text = "대피소 문  %d / %d" % [int(door.get("hp", 0)), int(door.get("max", 0))] if not door.is_empty() else "대피소 문  -"
 	var share := float(door.get("hp", 0)) / maxf(1.0, float(door.get("max", 1)))
 	_door_bar.value = share if not door.is_empty() else 0.0
 	_door_bar.fill_color = UiTokens.DANGER if share < 0.34 else UiTokens.TEXT
 	var traps: Dictionary = state.get("traps", {})
 	_traps_label.visible = not traps.is_empty()
-	_traps_label.text = "◆ 가시 함정 %d / %d 준비됨" % [int(traps.get("ready", 0)), int(traps.get("total", 0))]
+	_traps_label.text = "가시 함정 %d / %d 준비됨" % [int(traps.get("ready", 0)), int(traps.get("total", 0))]
 	_place_panel.visible = phase == &"prep" and not (state.get("spots", []) as Array).is_empty()
 	_roster.visible = phase == &"fight"
 	if _roster.visible:
@@ -249,7 +249,7 @@ func _fill_roster() -> void:
 	for g: Dictionary in guards:
 		var down := bool(g.get("down", false))
 		var where: String = spot_names.get(StringName(g.get("spot", &"")), "대기")
-		var l := _lbl("%s  %s · %s" % ["✕" if down else "●", String(g.get("name", "")), "쓰러짐" if down else where], &"LabelHud", 15)
+		var l := _lbl("%s  %s / %s" % ["✕" if down else "●", String(g.get("name", "")), "쓰러짐" if down else where], &"LabelHud", 15)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		l.add_theme_color_override(&"font_color", UiTokens.DANGER if down else UiTokens.TEXT)
 		_roster.add_child(l)

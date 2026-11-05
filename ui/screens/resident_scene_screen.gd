@@ -110,7 +110,7 @@ func trust_card() -> Control:
 	v.add_child(head)
 	v.add_child(TrustTrack.new(trust, stage))
 	if stage + 1 < TrustRules.STAGES.size():
-		var nx := MenuScreen.label("다음  %s (%d) — %s" % [TrustRules.STAGE_NAMES[stage + 1], TrustRules.STAGES[stage + 1],
+		var nx := MenuScreen.label("다음  %s (%d): %s" % [TrustRules.STAGE_NAMES[stage + 1], TrustRules.STAGES[stage + 1],
 			TrustRules.STAGE_UNLOCKS[stage + 1]], &"LabelOnCreamDim", 14)
 		nx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		v.add_child(nx)
@@ -127,7 +127,7 @@ func trust_card() -> Control:
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override(&"separation", 10)
 		var can: bool = row[1]
-		var mark := MenuScreen.label("○" if can else "✓" if row[0] != "깊은 대화" else "—", &"LabelOnCream", 16)
+		var mark := MenuScreen.label("○" if can else "✓" if row[0] != "깊은 대화" else "-", &"LabelOnCream", 16)
 		mark.custom_minimum_size = Vector2(20, 0)
 		h.add_child(mark)
 		var nm := MenuScreen.label(String(row[0]), &"LabelOnCream", 16)

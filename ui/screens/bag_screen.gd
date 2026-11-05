@@ -16,6 +16,16 @@ var _bag_count: Label
 var _shimmer_t := 0.0
 var _equip_grid: GridContainer
 var _equip_cells := {}
+## Loot slots identified just now that flash once on the next _fill_loot (rare gear, blueprints).
+var _flash := {}
+## Seconds of that flash.
+const FLASH_SEC := 0.7
+## Screen height taken by everything but the bag rows: header, footer, panel title, pocket caption.
+const BAG_CHROME_H := 400.0
+## Loot and equipment cell sizes (px) and their name text (2026-11-06 UI pass: was 84 / 92 / 12-13).
+const LOOT_CELL := 100.0
+const EQUIP_CELL := 100.0
+const CELL_FONT := 15
 
 
 func _init() -> void:
@@ -35,14 +45,14 @@ func open_with(args: Dictionary) -> void:
 
 func _bind(c: Node) -> void:
 	if container != null and is_instance_valid(container):
-		for pair in [[&"slot_revealed", _on_loot_changed3], [&"slot_taken", _on_loot_changed3],
+		for pair in [[&"slot_revealed", _on_revealed], [&"slot_taken", _on_loot_changed3],
 				[&"reveal_finished", _fill_loot], [&"session_ended", close]]:
 			if container.is_connected(pair[0], pair[1]):
 				container.disconnect(pair[0], pair[1])
 	container = c
 	if c == null:
 		return
-	c.connect(&"slot_revealed", _on_loot_changed3)
+	c.connect(&"slot_revealed", _on_revealed)
 	c.connect(&"slot_taken", _on_loot_changed3)
 	c.connect(&"reveal_finished", _fill_loot)
 	c.connect(&"session_ended", close)
@@ -83,8 +93,8 @@ func _build_body(b: Control) -> void:
 	EventBus.equipment_changed.connect(_on_equipment_changed)
 	(ep[1] as VBoxContainer).add_child(eg)
 	var sum: Dictionary = Armory.get_owner_summary(Armory.PLAYER_ID)
-	(ep[1] as VBoxContainer).add_child(MenuScreen.label("방어 %d · 방어구 소음 %+.1fm" % [int(sum.get("defense", 0)),
-		float(sum.get("armor_noise", 0.0))], &"LabelDim", 14))
+	(ep[1] as VBoxContainer).add_child(MenuScreen.label("방어 %d / 방어구 소음 %+.1fm" % [int(sum.get("defense", 0)),
+		float(sum.get("armor_noise", 0.0))], &"LabelDim", 15))
 	row.add_child(ep[0])
 	var bp := MenuScreen.panel("가방", "")
 	(bp[0] as Control).size_flags_vertical = Control.SIZE_SHRINK_BEGIN
@@ -95,11 +105,15 @@ func _build_body(b: Control) -> void:
 	var ph := HBoxContainer.new()
 	ph.add_theme_constant_override(&"separation", 12)
 	ph.add_child(MenuScreen.label("안전 주머니", &"LabelSection", 16))
-	ph.add_child(MenuScreen.label("쓰러져도 남아요", &"LabelDim", 13))
+	ph.add_child(MenuScreen.label("쓰러져도 남아요", &"LabelDim", 14))
 	(bp[1] as VBoxContainer).add_child(ph)
 	_pocket = BagGrid.new()
 	_pocket.area = Bag.AREA_POCKET
 	(bp[1] as VBoxContainer).add_child(_pocket)
+	# Cells as large as the screen height allows (bag rows + pocket row share it).
+	var rows := _bag.grid_cells().y + _pocket.grid_cells().y
+	for g: BagGrid in [_bag, _pocket]:
+		g.fit_rows(get_viewport_rect().size.y - BAG_CHROME_H, rows)
 	row.add_child(bp[0])
 	for g: BagGrid in [_bag, _pocket]:
 		g.hovered.connect(_on_hover)
@@ -131,6 +145,19 @@ func _on_loot_changed3(_i: int, _id: StringName, _n: int) -> void:
 	_fill_loot()
 
 
+## Rare (희귀 or better) gear or a blueprint gets one flash and a chime when it is identified.
+func _on_revealed(i: int, _id: StringName, _n: int) -> void:
+	var slots: Array = container.call(&"get_slots") if container != null and is_instance_valid(container) else []
+	if i < slots.size() and _is_jackpot(slots[i]):
+		_flash[i] = true
+		Audio.play(&"loot_rare")
+	_fill_loot()
+
+
+static func _is_jackpot(s: Dictionary) -> bool:
+	return s.has("blueprint") or int(s.get("rarity", -1)) >= Enums.Rarity.RARE
+
+
 func _fill_loot() -> void:
 	if _loot_box == null or container == null or not is_instance_valid(container):
 		return
@@ -147,7 +174,7 @@ func _fill_loot() -> void:
 
 func _loot_cell(i: int, s: Dictionary) -> Control:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(84, 84)
+	b.custom_minimum_size = Vector2(LOOT_CELL, LOOT_CELL)
 	b.focus_mode = Control.FOCUS_NONE
 	var sb := StyleBoxFlat.new()
 	sb.set_corner_radius_all(UiTokens.SLOT_RADIUS)
@@ -166,22 +193,31 @@ func _loot_cell(i: int, s: Dictionary) -> Control:
 		b.modulate.a = 0.35
 		b.disabled = true
 	else:
-		var gear := bool(s.get("gear", false))
-		var info := _gear_info(StringName(s.item_id)) if gear else ItemInfo.for_resource(StringName(s.item_id))
-		var tex := ItemInfo.icon(StringName(s.item_id))
+		var info := _loot_info(s)
+		var tex := ItemInfo.icon(StringName(s.get("output_id", s.item_id)))
+		# Gear shows its rarity as text too (ui rule: never colour alone), blueprints say so in the name.
+		var line2: String = info.get("line2", "×%d" % int(s.count))
 		if tex != null:
 			b.icon = tex
 			b.expand_icon = true
 			b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-			b.text = String(info.name) if gear else "%s ×%d" % [info.name, int(s.count)]
+			b.text = ("%s %s" % [info.name, line2]).strip_edges()
 		else:
-			b.text = String(info.name) if gear else "%s\n×%d" % [info.name, int(s.count)]
-		if gear:  # gear stands out from resources: accent fill and rim
-			sb.bg_color = Color(UiTokens.ACCENT, 0.28)
-			sb.border_color = UiTokens.ACCENT
-		b.add_theme_font_size_override(&"font_size", 13)
+			b.text = ("%s\n%s" % [info.name, line2]).strip_edges()
+		b.add_theme_font_size_override(&"font_size", CELL_FONT)
 		b.add_theme_color_override(&"font_color", UiTokens.TEXT)
+		var flash := Color.TRANSPARENT
+		if s.has("rarity"):
+			flash = UiTokens.rarity_color(int(s.rarity))
+			sb.bg_color = Color(flash, 0.35)
+		elif s.has("blueprint"):
+			flash = UiTokens.CREAM
+			sb.bg_color = Color(UiTokens.CREAM, 0.85)
+			b.add_theme_color_override(&"font_color", UiTokens.TEXT_ON_CREAM)
+		if _flash.has(i):
+			_flash.erase(i)
+			_play_flash(b, flash)
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		b.pressed.connect(func() -> void:
 			if int(container.call(&"take", i)) <= 0:
@@ -208,15 +244,6 @@ func _fill_equip() -> void:
 		_equip_grid.add_child(cell)
 
 
-## Name and tooltip of a gear slot in a container (an ItemDef id, not an item yet).
-static func _gear_info(def_id: StringName) -> Dictionary:
-	var def := Armory.get_def(def_id)
-	var name := def.name if def != null else String(def_id)
-	var tag: String = ItemInfo.SLOT_NAMES[clampi(int(def.slot), 0, 6)] if def != null else "장비"
-	return {"name": name, "tooltip": {"title": name, "rarity": 0, "tags": [tag],
-		"desc": "누르면 가방에 들어가요. 가방에서 우클릭 → 장착", "stats": []}}
-
-
 ## Loot cell of slot `index` (tutorial spotlight). null when not built.
 func loot_cell(index: int) -> Control:
 	if _loot_box == null or index < 0 or index >= _loot_box.get_child_count():
@@ -238,6 +265,39 @@ func equip_cell(slot: int) -> Control:
 	return _equip_cells.get(slot, null)
 
 
+## Name, second line and tooltip for an identified loot slot: resource, gear (item_id = def id) or blueprint.
+func _loot_info(s: Dictionary) -> Dictionary:
+	if s.has("blueprint"):
+		var bdef := Armory.get_def(StringName(s.output_id))
+		var bname := String(bdef.name) if bdef != null else String(s.output_id)
+		return {"name": bname, "line2": "설계도", "tooltip": {"title": "%s 설계도" % bname, "rarity": -1,
+			"tags": ["설계도"], "desc": "꺼내면 바로 익혀요. 기지에서 만들 수 있게 돼요.", "stats": []}}
+	if s.get("gear", false) or s.has("rarity"):
+		var def := Armory.get_def(StringName(s.item_id))
+		var name := String(def.name) if def != null else String(s.item_id)
+		var rname: String = UiTokens.RARITY_NAMES[clampi(int(s.rarity), 0, UiTokens.RARITY_NAMES.size() - 1)]
+		var tags := [rname]
+		if def != null:
+			tags.append(ItemInfo.SLOT_NAMES[clampi(int(def.slot), 0, ItemInfo.SLOT_NAMES.size() - 1)])
+		return {"name": name, "line2": rname, "tooltip": {"title": name, "rarity": int(s.rarity), "tags": tags,
+			"desc": "누르면 가방에 들어가요. 가방에서 우클릭 → 장착", "stats": []}}
+	return ItemInfo.for_resource(StringName(s.item_id))
+
+
+## One bright pulse over the cell that fades out. Off with reduce_flash (the colour stays as the cue).
+func _play_flash(b: Button, color: Color) -> void:
+	if color.a <= 0.0 or bool(Settings.get_value(&"reduce_flash")):
+		return
+	var glow := ColorRect.new()
+	glow.color = Color(color, 0.9)
+	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	glow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	b.add_child(glow)
+	var tw := glow.create_tween()
+	tw.tween_property(glow, ^"color:a", 0.0, FLASH_SEC).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(glow.queue_free)
+
+
 func take_all() -> void:
 	if container == null or not is_instance_valid(container):
 		return
@@ -252,7 +312,7 @@ func _equip_cell(slot: int) -> Control:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override(&"separation", 3)
 	var p := PanelContainer.new()
-	p.custom_minimum_size = Vector2(92, 92)
+	p.custom_minimum_size = Vector2(EQUIP_CELL, EQUIP_CELL)
 	var sb := StyleBoxFlat.new()
 	sb.set_corner_radius_all(UiTokens.SLOT_RADIUS)
 	sb.border_color = Color(1, 1, 1, 0.18)
@@ -276,7 +336,7 @@ func _equip_cell(slot: int) -> Control:
 	else:
 		p.modulate.a = 0.6
 	p.add_theme_stylebox_override(&"panel", sb)
-	var l := MenuScreen.label(text, &"LabelHud", 12)
+	var l := MenuScreen.label(text, &"LabelHud", 14)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
@@ -284,7 +344,7 @@ func _equip_cell(slot: int) -> Control:
 		l.size_flags_vertical = Control.SIZE_SHRINK_END
 	p.add_child(l)
 	v.add_child(p)
-	var cap := MenuScreen.label(ItemInfo.SLOT_NAMES[slot], &"LabelHud", 14)
+	var cap := MenuScreen.label(ItemInfo.SLOT_NAMES[slot], &"LabelHud", 15)
 	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(cap)
 	return v

@@ -16,4 +16,4 @@ cost = Dictionary[StringName, int]({
 })
 capacity = 2
 noise = 2.0
-note = "무기 제작·강화·수리, 탄약"
+note = "무기 제작, 강화, 수리, 탄약"

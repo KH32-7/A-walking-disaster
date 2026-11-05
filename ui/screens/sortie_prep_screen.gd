@@ -6,11 +6,11 @@ extends MenuScreen
 ## Region names come from data/regions (Lane B) when present; until then the design 02 table below.
 
 const REGIONS := [
-	{"id": &"city_park", "name": "숲이 된 도심 공원", "danger": 1, "families": "수풀", "res": "씨앗 · 약초 · 천", "unlock": "시작부터"},
-	{"id": &"flooded_mall", "name": "침수 상가", "danger": 2, "families": "물 · 수풀", "res": "페인트 · 천 · 통조림 · 고철", "unlock": "공원 탈출 1회"},
-	{"id": &"hospital", "name": "병원", "danger": 3, "families": "물 · 빛", "res": "의약품 · 의료 기구", "unlock": "기지 단계 정착지"},
-	{"id": &"office_district", "name": "고층 업무지구", "danger": 4, "families": "빛 · 잔해", "res": "전자부품 · 모터 · 무전 부품", "unlock": "정착지 + 승강기 열쇠"},
-	{"id": &"harbor", "name": "항구", "danger": 5, "families": "잔해 · 물", "res": "연료 · 발전기 코어 · 철판", "unlock": "방송실 Lv2"},
+	{"id": &"city_park", "name": "숲이 된 도심 공원", "danger": 1, "families": "수풀", "res": "씨앗 / 약초 / 천", "unlock": "시작부터"},
+	{"id": &"flooded_mall", "name": "침수 상가", "danger": 2, "families": "물 / 수풀", "res": "페인트 / 천 / 통조림 / 고철", "unlock": "공원 탈출 1회"},
+	{"id": &"hospital", "name": "병원", "danger": 3, "families": "물 / 빛", "res": "의약품 / 의료 기구", "unlock": "기지 단계 정착지"},
+	{"id": &"office_district", "name": "고층 업무지구", "danger": 4, "families": "빛 / 잔해", "res": "전자부품 / 모터 / 무전 부품", "unlock": "정착지 + 승강기 열쇠"},
+	{"id": &"harbor", "name": "항구", "danger": 5, "families": "잔해 / 물", "res": "연료 / 발전기 코어 / 철판", "unlock": "방송실 Lv2"},
 ]
 const MAX_COMPANIONS := 1
 
@@ -45,11 +45,11 @@ static func is_open_region(id: StringName) -> bool:
 static func region_status(id: StringName, fallback_unlock: String) -> String:
 	var def := RegionDef.load_def(id)
 	if not ResourceLoader.exists(SceneRouter.REGION_SCENE_FMT % [id, id]):
-		return "준비 중 · 아직 갈 수 없어요"
+		return "준비 중 / 아직 갈 수 없어요"
 	if def != null and not def.is_unlocked():
-		return "잠김 · " + (def.unlock_text if def.unlock_text != "" else fallback_unlock)
+		return "잠김 / " + (def.unlock_text if def.unlock_text != "" else fallback_unlock)
 	if not ResourceLoader.exists("res://levels/field/%s/dressing.tscn" % id):
-		return "갈 수 있음 · 시험용 지형"
+		return "갈 수 있음 / 시험용 지형"
 	return "갈 수 있음"
 
 
@@ -58,7 +58,7 @@ func _build_body(b: Control) -> void:
 	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	row.add_theme_constant_override(&"separation", 22)
 	b.add_child(row)
-	var l := MenuScreen.panel("지역", "위험도 · 계열 · 자원", Vector2(640, 0))
+	var l := MenuScreen.panel("지역", "위험도 / 계열 / 자원", Vector2(640, 0))
 	(l[0] as Control).size_flags_vertical = Control.SIZE_EXPAND_FILL
 	row.add_child(l[0])
 	_regions_box = l[1]
@@ -87,7 +87,9 @@ func _fill_regions() -> void:
 	MenuScreen.clear(_regions_box)
 	var band := _regions_box.get_child(0) if _regions_box.get_child_count() > 0 else null
 	for reg: Dictionary in REGIONS:
-		_regions_box.add_child(_region_row(reg))
+		# Only the regions that have a map (사용자 요청 2026-11-06: 맵이 2개인데 5개가 떠 있음).
+		if ResourceLoader.exists(SceneRouter.REGION_SCENE_FMT % [reg.id, reg.id]):
+			_regions_box.add_child(_region_row(reg))
 
 
 func _region_row(reg: Dictionary) -> Control:
@@ -119,7 +121,7 @@ func _region_row(reg: Dictionary) -> Control:
 	if not open:
 		nm.add_theme_color_override(&"font_color", UiTokens.TEXT_DIM)
 	v.add_child(nm)
-	v.add_child(MenuScreen.label("마물 %s  ·  %s" % [reg.families, reg.res], &"LabelDim", 13))
+	v.add_child(MenuScreen.label("마물 %s / %s" % [reg.families, reg.res], &"LabelDim", 13))
 	h.add_child(v)
 	var st := MenuScreen.label(region_status(reg.id, String(reg.unlock)), &"LabelHud", 13)
 	st.add_theme_color_override(&"font_color", UiTokens.GOOD if open else UiTokens.TEXT_DIM)
@@ -188,7 +190,7 @@ func _fill_loadout() -> void:
 		grid.add_child(box)
 	_mid.add_child(grid)
 	var sum: Dictionary = Armory.get_owner_summary(Armory.PLAYER_ID)
-	var sl := MenuScreen.label("방어 %d  ·  방어구 소음 %+.1fm  ·  최대 체력 +%d" % [int(sum.get("defense", 0)),
+	var sl := MenuScreen.label("방어 %d / 방어구 소음 %+.1fm / 최대 체력 +%d" % [int(sum.get("defense", 0)),
 		float(sum.get("armor_noise", 0.0)), int(sum.get("max_hp", 0))], &"LabelDim", 14)
 	_mid.add_child(sl)
 	var eb := MenuScreen.button("장비 바꾸기", &"ButtonSoft")
@@ -204,7 +206,7 @@ func _fill_loadout() -> void:
 		var cv: VBoxContainer = card[1]
 		cv.add_child(_cream_label("목적지", 13, true))
 		cv.add_child(_cream_label(String(reg.name), 22))
-		cv.add_child(_cream_label("위험도 %d · 마물 %s" % [reg.danger, reg.families], 15))
+		cv.add_child(_cream_label("위험도 %d / 마물 %s" % [reg.danger, reg.families], 15))
 		cv.add_child(_cream_label("이런 걸 찾을 수 있어요: %s" % reg.res, 15))
 		cv.add_child(_cream_label("해질녘까지 %d분. 해가 지면 마물이 강해집니다." % int(GameState.SORTIE_DUSK_SEC / 60.0), 14, true))
 		_mid.add_child(card[0])
@@ -236,7 +238,7 @@ func _fill_companions() -> void:
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		var why := ""
 		if int(r.get("health", 0)) != 0:
-			why = "다침·아픔"
+			why = "다침, 아픔"
 		elif int(r.get("age_stage", 3)) < Enums.AgeStage.TEEN:
 			why = "어려서 못 감"
 		elif block != "":
@@ -265,7 +267,7 @@ func _fill_companions() -> void:
 	_right.add_child(MenuScreen.label("기지를 비우는 동안", &"LabelSection", 16))
 	var ch: Dictionary = RaidRules.raid_chance(Enums.RaidTime.DAY, Colony.threat)
 	var pct := roundi(float(ch.get("chance", 0.0)) * 100.0)
-	var risk := MenuScreen.label("낮 습격 확률 %d%%  ·  위협도 %s %d" % [pct, BaseHud.ThreatGauge.zone_name(Colony.threat),
+	var risk := MenuScreen.label("낮 습격 확률 %d%% / 위협도 %s %d" % [pct, BaseHud.ThreatGauge.zone_name(Colony.threat),
 		Colony.threat], &"LabelHud", 15)
 	risk.add_theme_color_override(&"font_color", UiTokens.WARN if pct > 0 else UiTokens.TEXT)
 	_right.add_child(risk)
@@ -275,10 +277,10 @@ func _fill_companions() -> void:
 	for q: Dictionary in Quests.active_quests():
 		for o: Dictionary in q["objectives"]:
 			if not bool(o["done"]):
-				lines.append("· %s — %s" % [String(q["title"]), String(o["text"])])
+				lines.append("%s: %s" % [String(q["title"]), String(o["text"])])
 				break
 	if lines.is_empty():
-		lines.append("· 오늘은 들어온 소문이 없어요.")
+		lines.append("오늘은 들어온 소문이 없어요.")
 	var rumor := MenuScreen.label("
 ".join(lines.slice(0, 3)), &"LabelDim", 14)
 	rumor.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

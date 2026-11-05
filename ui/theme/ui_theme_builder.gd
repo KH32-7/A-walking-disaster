@@ -29,14 +29,18 @@ static func build(text_size: int = 1, high_contrast: bool = false) -> Theme:
 	t.set_color(&"font_shadow_color", &"Label", Color(0, 0, 0, 0))
 
 	# --- panels ---
-	_panel(t, &"PanelSlate", &"PanelContainer", UiTokens.slate(high_contrast), 0, Color.TRANSPARENT, 0, 16)
+	# Roomier padding (사용자 피드백 2026-11-06: 칸과 글자 사이가 좁음).
+	_panel(t, &"PanelSlate", &"PanelContainer", UiTokens.slate(high_contrast), 0, Color.TRANSPARENT, 0, 20)
 	_panel(t, &"PanelMenu", &"PanelContainer", UiTokens.slate_menu(high_contrast), UiTokens.PANEL_RADIUS,
-		Color.TRANSPARENT, 0, 14)
-	_panel(t, &"PanelSlateInner", &"PanelContainer", UiTokens.SLATE_2, UiTokens.CARD_RADIUS, line, 1, 12)
+		Color.TRANSPARENT, 0, 22)
+	_panel(t, &"PanelSlateInner", &"PanelContainer", UiTokens.SLATE_2, UiTokens.CARD_RADIUS, line, 1, 16)
 	_panel(t, &"PanelBand", &"PanelContainer", Color(1, 1, 1, 0.08), UiTokens.BAND_RADIUS,
-		Color.TRANSPARENT, 0, 10)
-	_panel(t, &"CardCream", &"PanelContainer", UiTokens.CREAM, UiTokens.CARD_RADIUS, Color.TRANSPARENT, 0, 14)
-	_panel(t, &"CardCreamFoot", &"PanelContainer", UiTokens.CREAM_2, 0, Color.TRANSPARENT, 0, 8)
+		Color.TRANSPARENT, 0, 14)
+	_panel(t, &"CardCream", &"PanelContainer", UiTokens.CREAM, UiTokens.CARD_RADIUS, Color.TRANSPARENT, 0, 20)
+	_panel(t, &"CardCreamFoot", &"PanelContainer", UiTokens.CREAM_2, 0, Color.TRANSPARENT, 0, 12)
+	t.set_constant(&"line_spacing", &"Label", 4)
+	t.set_constant(&"separation", &"VBoxContainer", 8)
+	t.set_constant(&"separation", &"HBoxContainer", 10)
 
 	# --- buttons: pill shapes (§5) ---
 	_button(t, &"ButtonPrimary", UiTokens.ACCENT, UiTokens.ACCENT_TEXT, k, Color.TRANSPARENT)

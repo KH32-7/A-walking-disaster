@@ -67,7 +67,7 @@ func open_with(args: Dictionary) -> void:
 func _build_body(b: Control) -> void:
 	set_subtitle("%d일차" % GameState.day)
 	_tab_bar = HBoxContainer.new()
-	_tab_bar.add_theme_constant_override(&"separation", 6)
+	_tab_bar.add_theme_constant_override(&"separation", 10)
 	b.add_child(_tab_bar)
 	_tab_bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE)
 	_tab_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -85,7 +85,7 @@ func _build_body(b: Control) -> void:
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_list = VBoxContainer.new()
-	_list.add_theme_constant_override(&"separation", 4)
+	_list.add_theme_constant_override(&"separation", 8)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(_list)
 	(lp[1] as VBoxContainer).add_child(sc)
@@ -242,7 +242,7 @@ func _show_recordings() -> void:
 			("%d일차" % int(r.day)) if r.has("day") else "", id == _recording, _pick_recording.bind(id))
 	var card := _page_card(String(sel.get("speaker", "이름 모를 목소리")), String(sel.get("place", "")))
 	var v: VBoxContainer = card[1]
-	var tape := MenuScreen.label("▶  녹음 자막", &"LabelOnCreamDim")
+	var tape := MenuScreen.label("녹음 자막", &"LabelOnCreamDim")
 	v.add_child(tape)
 	var text := MenuScreen.label(String(sel.get("text", "")), &"LabelOnCream", 19)
 	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -275,7 +275,7 @@ func _show_quests() -> void:
 		for o: Dictionary in q.objectives:
 			done += 1 if o.done else 0
 		var tag := _days_left_text(int(q.days_left))
-		_add_row(q.id, String(q.title), "%s · 목표 %d/%d" % [_type_text(q), done, q.objectives.size()], tag,
+		_add_row(q.id, String(q.title), "%s / 목표 %d/%d" % [_type_text(q), done, q.objectives.size()], tag,
 			q.id == _quest, _pick_quest.bind(q.id), UiTokens.WARN if int(q.days_left) in [0, 1] else UiTokens.TEXT_DIM)
 	_build_quest_card(quests[ids.find(_quest)])
 
@@ -290,7 +290,7 @@ func _type_text(q: Dictionary) -> String:
 	var text: String = QUEST_TYPES[clampi(t, 0, QUEST_TYPES.size() - 1)]
 	var def: QuestDef = Quests.get_def(StringName(q.get("id", &"")))
 	if t == Enums.QuestType.PERSONAL and def != null:
-		text += " · " + REQUEST_TYPES[clampi(int(def.request_type), 0, 3)]
+		text += " / " + REQUEST_TYPES[clampi(int(def.request_type), 0, 3)]
 	return text
 
 
@@ -330,7 +330,7 @@ func _build_quest_card(q: Dictionary) -> void:
 	var title := MenuScreen.label(String(q.title), &"LabelTitle")
 	story.add_child(title)
 	var giver := StringName(q.giver_id)
-	var meta_text := _type_text(q) + ("  ·  의뢰 " + giver_name(giver) if giver != &"" else "  ·  무전으로 들은 이야기")
+	var meta_text := _type_text(q) + (" / 의뢰 " + giver_name(giver) if giver != &"" else " / 무전으로 들은 이야기")
 	var meta := MenuScreen.label(meta_text, &"LabelDim", 16)
 	story.add_child(meta)
 	var desc := MenuScreen.label(String(q.description), &"Label", 18)
@@ -596,7 +596,7 @@ func _cream_line(text: String, dim := false) -> Label:
 func _entry_line(text: String, names: PackedStringArray) -> Control:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override(&"separation", 14)
-	var mark := MenuScreen.label("—", &"LabelOnCreamDim", 20)
+	var mark := MenuScreen.label("-", &"LabelOnCreamDim", 20)
 	mark.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	h.add_child(mark)
 	var v := VBoxContainer.new()
@@ -606,7 +606,7 @@ func _entry_line(text: String, names: PackedStringArray) -> Control:
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(l)
 	if not names.is_empty():
-		v.add_child(MenuScreen.label(" · ".join(names), &"LabelOnCreamDim", 14))
+		v.add_child(MenuScreen.label(" / ".join(names), &"LabelOnCreamDim", 14))
 	h.add_child(v)
 	return h
 

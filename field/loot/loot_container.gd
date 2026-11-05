@@ -60,7 +60,8 @@ signal slot_taken(index: int, item_id: StringName, count: int)
 @export var loot_table: LootTable
 
 var state := State.CLOSED
-## [{"item_id": StringName, "count": int, "identified": bool}], count 0 = taken.
+## [{"item_id": StringName, "count": int, "identified": bool}], count 0 = taken. Gear slots also
+## have "rarity", blueprint slots "blueprint" and "output_id" (LootTable.roll).
 var _slots: Array[Dictionary] = []
 var _rolled := false
 var _locked := false
@@ -131,7 +132,9 @@ func roll_contents(rng: RandomNumberGenerator) -> void:
 	_slots.clear()
 	if loot_table:
 		for drop in loot_table.roll(rng):
-			_slots.append({"item_id": drop.item_id, "count": drop.count, "identified": false})
+			var slot := drop.duplicate()  # keeps gear "rarity" and blueprint "blueprint"/"output_id"
+			slot["identified"] = false
+			_slots.append(slot)
 	_rolled = true
 
 
@@ -173,6 +176,7 @@ func cancel_open() -> void:
 
 
 ## Moves the slot into the bag. Returns how many were taken (0 if unidentified or bag full).
+## Gear is created in Armory only when it fits (like MonsterDropPile). A blueprint is learned at once.
 func take(index: int) -> int:
 	if state != State.OPEN or index < 0 or index >= _slots.size():
 		return 0
@@ -185,6 +189,11 @@ func take(index: int) -> int:
 			if uid != &"":
 				Armory.remove_item(uid)
 			return 0
+		slot.count = 0
+		slot_taken.emit(index, slot.item_id, 1)
+		return 1
+	if slot.has("blueprint"):
+		_learn_blueprint(slot)
 		slot.count = 0
 		slot_taken.emit(index, slot.item_id, 1)
 		return 1
@@ -301,6 +310,16 @@ func _next_unidentified() -> int:
 		if not _slots[i].identified:
 			return i
 	return -1
+
+
+func _learn_blueprint(slot: Dictionary) -> void:
+	var def := Armory.get_def(slot.output_id)
+	var name := String(def.name) if def != null else String(slot.output_id)
+	if GameState.has_flag(slot.blueprint):
+		EventBus.notification_posted.emit("이미 아는 설계도예요: %s" % name, &"info")
+		return
+	GameState.set_flag(slot.blueprint)
+	EventBus.notification_posted.emit("설계도를 익혔어요: %s" % name, &"info")
 
 
 func _has_key() -> bool:

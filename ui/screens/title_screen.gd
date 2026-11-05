@@ -39,7 +39,7 @@ var _focus_target: Control
 ## "12일차 · 11월 5일 21:30" for a slot_info() Dictionary.
 static func saved_text(info: Dictionary) -> String:
 	var t := saved_time(info)
-	return "%d일차" % int(info.get("day", 0)) + (" · " + t if t != "" else "")
+	return "%d일차" % int(info.get("day", 0)) + (" / " + t if t != "" else "")
 
 
 ## "11월 5일 21:30" (local time), "" when unknown.
@@ -89,16 +89,19 @@ func _ready() -> void:
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
-	var sky := Skyline.new()
-	sky.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(sky)
+	if TitleBackdrop.will_show():
+		add_child(TitleBackdrop.new())  # live map behind the menu, fades in once loaded
+	else:
+		var sky := Skyline.new()
+		sky.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		add_child(sky)
 
 	var left := VBoxContainer.new()
 	left.position = Vector2(140, 150)
 	left.custom_minimum_size = Vector2(640, 0)
 	left.add_theme_constant_override(&"separation", 14)
 	add_child(left)
-	var kicker := MenuScreen.label("해솔시 · 남겨진 사람들의 생존기", &"LabelHud", 20)
+	var kicker := MenuScreen.label("해솔시 / 남겨진 사람들의 생존기", &"LabelHud", 20)
 	kicker.add_theme_color_override(&"font_color", UiTokens.TEXT_DIM)
 	left.add_child(kicker)
 	var name_l := Label.new()
@@ -140,7 +143,7 @@ func _build_list() -> void:
 	var note := "저장 없음"
 	match ct.kind:
 		&"suspend": note = "중단한 출격"
-		&"slot": note = "슬롯 %d · %s" % [ct.slot + 1, saved_text(SaveSystem.slot_info(ct.slot))]
+		&"slot": note = "슬롯 %d / %s" % [ct.slot + 1, saved_text(SaveSystem.slot_info(ct.slot))]
 	list.add_row(&"continue", "이어하기", _continue, note, ct.kind != &"")
 	list.add_row(&"new", "새 게임", _enter_detail)
 	var any_slot := false
@@ -303,7 +306,7 @@ func _detail_continue() -> void:
 			v.add_child(_cream_note("출격을 다시 시작하면 중단 저장은 지워져요."))
 		&"slot":
 			var info := SaveSystem.slot_info(int(ct.slot))
-			v.add_child(_cream_line("슬롯 %d · %d일차 · %s" % [ct.slot + 1, int(info.day), season_name(int(info.season))]))
+			v.add_child(_cream_line("슬롯 %d / %d일차 / %s" % [ct.slot + 1, int(info.day), season_name(int(info.season))]))
 			v.add_child(_cream_note("저장 " + saved_text(info)))
 		_:
 			v.add_child(_cream_line("이어서 할 저장이 없어요."))
@@ -324,9 +327,9 @@ func _detail_load() -> void:
 		var sub := "비어 있음"
 		var ok := false
 		if info["exists"] and not info["compatible"]:
-			sub = "다른 버전의 저장 · 불러올 수 없어요"
+			sub = "다른 버전의 저장 / 불러올 수 없어요"
 		elif info["exists"]:
-			sub = "%d일차 · %s · 저장 %s" % [int(info.day), season_name(int(info.season)), saved_time(info)]
+			sub = "%d일차 / %s / 저장 %s" % [int(info.day), season_name(int(info.season)), saved_time(info)]
 			ok = true
 		var b := _slot_button("슬롯 %d" % (s + 1), sub, ok)
 		b.pressed.connect(func() -> void: SceneRouter.load_game(s))
@@ -366,7 +369,7 @@ func _detail_new() -> void:
 	v.add_child(diffs)
 	for id in DIFFICULTY_ORDER:
 		var pr: Dictionary = Settings.PRESETS[id]
-		var sub := "마물 ×%s · 습격 ×%s" % [_mult(pr.monster_mult), _mult(pr.raid_mult)]
+		var sub := "마물 ×%s / 습격 ×%s" % [_mult(pr.monster_mult), _mult(pr.raid_mult)]
 		var b := _choice_button(DIFFICULTY_NAMES[id], sub, id == new_preset, Vector2(186, 78))
 		b.name = "diff_%s" % id
 		b.pressed.connect(func() -> void:
@@ -383,7 +386,7 @@ func _detail_new() -> void:
 	row.add_theme_constant_override(&"separation", 18)
 	v.add_child(row)
 	var pv := VBoxContainer.new()
-	pv.add_theme_constant_override(&"separation", 6)
+	pv.add_theme_constant_override(&"separation", 10)
 	pv.custom_minimum_size = Vector2(380, 0)
 	row.add_child(pv)
 	pv.add_child(MenuScreen.label("보호 모드", &"LabelSection", 18))
@@ -391,7 +394,7 @@ func _detail_new() -> void:
 		pv.add_child(_protect_toggle(item))
 	row.add_child(_summary_card())
 	# Start
-	var start := MenuScreen.button("시작하기  ·  %s" % new_difficulty_name(), &"ButtonPrimary")
+	var start := MenuScreen.button("시작하기 / %s" % new_difficulty_name(), &"ButtonPrimary")
 	start.name = "start"
 	start.custom_minimum_size = Vector2(0, 56)
 	start.pressed.connect(start_new_game)
@@ -426,7 +429,7 @@ func _protect_toggle(item: Dictionary) -> Control:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override(&"separation", 0)
 	v.add_child(cb)
-	var n := MenuScreen.label("     " + String(item.note) + ("  · 켜짐" if cb.button_pressed else "  · 꺼짐"),
+	var n := MenuScreen.label("     " + String(item.note) + (" / 켜짐" if cb.button_pressed else " / 꺼짐"),
 		&"LabelDim", 13)
 	v.add_child(n)
 	return v
@@ -435,12 +438,12 @@ func _protect_toggle(item: Dictionary) -> Control:
 func _summary_card() -> Control:
 	var card := MenuScreen.cream_card(400)
 	var v: VBoxContainer = card[1]
-	v.add_theme_constant_override(&"separation", 6)
+	v.add_theme_constant_override(&"separation", 10)
 	v.add_child(_cream_title(new_difficulty_name(), 20))
 	var pr: Dictionary = (Settings.PRESETS[new_preset] as Dictionary).duplicate()
 	pr.merge(protect_overrides(), true)
 	var rows := [
-		["마물 체력·공격", "×" + _mult(pr.monster_mult)],
+		["마물 체력, 공격", "×" + _mult(pr.monster_mult)],
 		["습격 강도", "×" + _mult(pr.raid_mult)],
 		["주민 영구 사망", "켬" if pr.permadeath else "끔 (중상)"],
 		["고립 기한", "%d일" % int(pr.strand_days) if int(pr.strand_days) > 0 else "없음"],

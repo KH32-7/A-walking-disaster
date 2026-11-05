@@ -11,6 +11,7 @@ extends CharacterBody3D
 ##   player hit (or that hit this companion: it fights back, never starts), quieter footsteps, 엄호 = stays by the nearest rescued
 ##   person and fights what comes close to them (no rescued person: guards the player).
 ## - Q skill only with 적성 상, cooldown x1.5. The effect is B-13's CompanionSkill.
+##   A person with a signature skill (고유 스킬, B-29) uses it instead, with any weapon.
 ## - 겁이 많음 (flee_hp_ratio) stops fighting and keeps to the player at low health, 용감함 never does.
 ## - Downed at 0 health: 30 s to help up (Player.interact() -> begin_open, 3 s hold), else stranded.
 ##
@@ -30,6 +31,9 @@ signal stranded()
 ## Q skill used (CompanionSkill runs the effect: 정조준 / 돌진 베기 / 내려찍기).
 signal skill_used(combat_class: int)
 signal attacked(target: Node3D)
+## A line in a speech bubble (same shape as RescueTarget.called_out; WorldMarkers shows it).
+## Now only the signature skill's line.
+signal called_out(text: String, near: bool)
 
 enum Mode { AGGRESSIVE, CAUTIOUS, COVER }
 enum State { ACTIVE, DOWNED, STRANDED }
@@ -78,6 +82,10 @@ var target: Node3D
 var field_rules := true
 ## Base defense guard (B-23): stays near this node (post, gate, shelter) instead of the player.
 var guard_post: Node3D
+## 고유 스킬 from the person's ResidentTemplate (setup), replacing the class Q. null = class Q.
+var signature_skill: SkillDef
+## Bubble line after the signature skill.
+var signature_line := ""
 var rng := RandomNumberGenerator.new()
 
 var _player: Node3D
@@ -111,6 +119,10 @@ func setup(resident_id: StringName, data: Dictionary) -> void:
 	party_id = resident_id
 	resident = data.duplicate(true)
 	display_name = str(resident.get("name", resident_id))
+	var template: ResidentTemplate = ResidentPool.templates.get(resident_id)
+	if template != null and template.signature_skill != null:
+		signature_skill = template.signature_skill
+		signature_line = template.signature_line
 
 
 func _ready() -> void:
@@ -295,15 +307,20 @@ func spread_deg(stats: Dictionary) -> float:
 	return maxf(spread * (1.0 - tuning.spread_per_sense * _stat(&"sense")), 0.0)
 
 
-## The class Q cooldown (ClassDef data, sniper rifle -50%) x skill_cooldown_mult. 0 = no Q skill.
+## The skill's cooldown (signature skill, else class Q: ClassDef data, sniper rifle -50%)
+## x skill_cooldown_mult. 0 = no skill.
 func skill_cooldown(combat_class: int, stats: Dictionary = {}) -> float:
-	var skill := ClassDef.skill_q_for(combat_class)
+	var skill := CompanionSkill.skill_for(self, combat_class)
 	return skill.cooldown_for(stats) * tuning.skill_cooldown_mult if skill != null else 0.0
 
 
+## Class Q needs 적성 상; a signature skill works with any weapon.
 func can_use_skill(combat_class: int) -> bool:
-	return ClassDef.skill_q_for(combat_class) != null \
-			and aptitude(combat_class) >= tuning.skill_min_aptitude and _skill_left <= 0.0
+	if _skill_left > 0.0:
+		return false
+	if signature_skill != null:
+		return true
+	return ClassDef.skill_q_for(combat_class) != null and aptitude(combat_class) >= tuning.skill_min_aptitude
 
 
 ## Q skill if 적성 상 and off cooldown, run by CompanionSkill (B-13). Returns true when used.

@@ -1,7 +1,9 @@
 class_name ResidentPortrait
 extends PanelContainer
-## Resident portrait (D-13): the same CharacterLook body the base shows (D-09), rendered alone in a
-## SubViewport with its own world. Owner: Lane D. Used by the dialog, gift, night event and
+## Resident portrait (D-13): the resident's own model — the same ResidentModel (City People assets) the
+## base and the field show — rendered alone in a SubViewport with its own world (사용자 요청
+## 2026-11-06: 화면마다 주민 모델이 아니라 다른 모델이 나옴). Without the assets/ submodule, or for
+## set_look() previews (외형 꾸미기), the CharacterLook body is drawn instead. Owner: Lane D. Used by the dialog, gift, night event and
 ## welcome screens. BUST frames head and shoulders, FULL the whole body (외형 꾸미기).
 ##
 ##   var p := ResidentPortrait.new(Vector2(180, 210))
@@ -15,6 +17,9 @@ var _vp: SubViewport
 var _look: CharacterLook
 var _cam: Camera3D
 var _age := 3
+var _model: ResidentModel
+## Height of the shown ResidentModel (m), 0 = the CharacterLook is shown.
+var _model_h := 0.0
 
 
 func _init(px := Vector2(180, 210), frame := Framing.BUST) -> void:
@@ -64,10 +69,36 @@ func _init(px := Vector2(180, 210), frame := Framing.BUST) -> void:
 
 func set_resident(resident_id: StringName) -> void:
 	var r := Colony.get_resident(resident_id)
+	if _show_model(r):
+		return
 	set_look(Colony.appearance_for_look(resident_id), int(r.get("age_stage", 3)))
 
 
+## The resident's ResidentModel. False when there is no model for them (no assets): the look stays.
+func _show_model(r: Dictionary) -> bool:
+	if r.is_empty():
+		return false
+	if _model == null:
+		_model = ResidentModel.new()
+		_model.fallback = NodePath("")
+		# ResidentModel bodies face -Z; turn to the camera (+Z) and a little to the side.
+		_model.rotation_degrees.y = 180.0 + 18.0
+		_vp.add_child(_model)
+	if not _model.show_resident(r):
+		_model.visible = false
+		return false
+	_model.visible = true
+	_look.visible = false
+	_model_h = 1.75 * ResidentModel.scale_for(r)
+	_frame()
+	return true
+
+
 func set_look(appearance: Dictionary, age_stage := 3) -> void:
+	if _model != null:
+		_model.visible = false
+	_model_h = 0.0
+	_look.visible = true
 	_age = age_stage
 	_look.age_stage = age_stage
 	_look.apply(appearance)
@@ -75,6 +106,16 @@ func set_look(appearance: Dictionary, age_stage := 3) -> void:
 
 
 func _frame() -> void:
+	if _model_h > 0.0:
+		var h := _model_h
+		if framing == Framing.BUST:
+			_cam.size = h * 0.6
+			_cam.position = Vector3(0, h * 0.8, 3)
+		else:
+			_cam.size = h * 1.12
+			_cam.position = Vector3(0, h * 0.5, 3)
+		_cam.rotation = Vector3.ZERO
+		return
 	var k: float = CharacterLook.AGE_SCALE[clampi(_age, 0, 4)]
 	if framing == Framing.BUST:
 		_cam.size = 1.0 * k

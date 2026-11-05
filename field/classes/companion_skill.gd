@@ -8,15 +8,26 @@ extends RefCounted
 ## - dash_slash: dashes toward the target up to `distance`, hits everything on the path.
 ## - slam: hits everything within `radius` around the companion, with the skill's statuses.
 ## Damage base = FieldCompanion.hit_damage() (weapon x 적성 x 능력치, no crit, no class mastery).
+## Signature skill (고유 스킬, ResidentTemplate.signature_skill): replaces the class Q for that person,
+## runs by the same ids with its own numbers and Fx, plus hit-stop, shake and the person's line.
 
+## Skill ids this runs. A signature SkillDef must use one of them.
+const RUNNERS: Array[StringName] = [&"precision_shot", &"dash_slash", &"slam"]
 ## Half width of the precision shot's piercing line (m).
 const PIERCE_HALF_WIDTH := 0.4
 const DASH_SEC := 0.15
 
 
-## Runs the Q skill of the weapon's family. `deal` = the companion's (victim, amount, info) damage call.
+## The companion's own signature skill, else the Q of the weapon's class (null = none).
+static func skill_for(companion: FieldCompanion, combat_class: int) -> SkillDef:
+	if companion.signature_skill != null:
+		return companion.signature_skill
+	return ClassDef.skill_q_for(combat_class)
+
+
+## Runs the companion's skill (skill_for). `deal` = the companion's (victim, amount, info) damage call.
 static func run(companion: FieldCompanion, stats: Dictionary, target: Node3D, deal: Callable) -> void:
-	var skill := ClassDef.skill_q_for(int(stats.get("combat_class", -1)))
+	var skill := skill_for(companion, int(stats.get("combat_class", -1)))
 	if skill == null or target == null or not companion.is_inside_tree():
 		return
 	match skill.id:
@@ -39,7 +50,13 @@ static func run(companion: FieldCompanion, stats: Dictionary, target: Node3D, de
 	if noise != null and skill.noise != &"":
 		noise.emit(skill.noise)
 	Audio.play(skill.id, companion.global_position)
-	Fx.spawn(skill.id, companion.global_position, {"radius": skill.radius})
+	Fx.spawn(skill.fx if skill.fx != &"" else skill.id, companion.global_position,
+			{"radius": skill.radius, "element": skill.fx_element})
+	if skill == companion.signature_skill:
+		CombatFeel.hit_stop(companion, CombatFeel.STOP_SIGNATURE)
+		CombatFeel.shake(companion, CombatFeel.SHAKE_SIGNATURE, companion.global_position)
+		if companion.signature_line != "":
+			companion.called_out.emit(companion.signature_line, false)
 
 
 static func _pierce(companion: FieldCompanion, stats: Dictionary, target: Node3D, skill: SkillDef,

@@ -1,4 +1,4 @@
-extends "res://ui/screens/welcome_screen.gd"
+extends "res://ui/screens/arrival_steps_screen.gd"
 ## 이름 짓기 (#125 part 2, C-15). Owner: Lane D. Design 08 "아이 맞이 — 이름 짓기 (입주 의식의 아이 판)".
 ## The 입주 의식 layout (D-13 welcome screen: full-body portrait left, step track + cream card
 ## right) with two steps: 이름 짓기 → 맞이하기. Opens when a child came to a family
@@ -97,7 +97,7 @@ func _step_child_name(r: Dictionary) -> void:
 		var bg := String(r.get("story", {}).get("background", ""))
 		if bg != "":
 			_card.add_child(_dim(bg))
-	_card.add_child(_dim("가족과 함께 이름을 지어 주세요 — %d자까지" % ChildRules.NAME_MAX))
+	_card.add_child(_dim("가족과 함께 이름을 지어 주세요. %d자까지" % ChildRules.NAME_MAX))
 	_nick_edit = LineEdit.new()
 	var cur := String(r.get("name", ""))
 	_nick_edit.text = "" if cur == ChildRules.CHILD_NAME else cur
@@ -149,7 +149,7 @@ func _step_meet(r: Dictionary) -> void:
 		_card.add_child(q)
 	var bed := StringName(r.get("bed_id", &""))
 	_card.add_child(_dim("지낼 곳"))
-	_card.add_child(_text("가족 숙소에서 가족과 함께 지내요." if bed != &"" else "임시 거처 — 가족 숙소에 빈 침상이 없어요."))
+	_card.add_child(_text("가족 숙소에서 가족과 함께 지내요." if bed != &"" else "임시 거처: 가족 숙소에 빈 침상이 없어요."))
 	if int(r.get("age_stage", 0)) == Enums.AgeStage.BABY:
 		_card.add_child(_dim("아기는 돌봄이 필요해요. 돌봄방이 있으면 보호자가 일을 덜 쉬어요."))
 	var more := ResidentEventFlow.naming_queue()

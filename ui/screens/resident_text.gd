@@ -94,9 +94,9 @@ static func line(r: Dictionary, kind: StringName, story: Array = []) -> String:
 				return String(story[0])
 			if not likes.is_empty():
 				return "%s 생각이 나더라. 그런 게 있으면 좀 나아." % tag_name(likes[0])
-			return "그냥… 이렇게 얘기하는 게 좋아." if morale >= 40 else "요즘 좀 지쳤어. 들어줘서 고마워."
+			return "그냥... 이렇게 얘기하는 게 좋아." if morale >= 40 else "요즘 좀 지쳤어. 들어줘서 고마워."
 	if morale < 20:
-		return "…응."
+		return "...응."
 	var first := String(r.get("story", {}).get("first_line", ""))
 	if first != "" and int(r.get("trust", 0)) < 20:
 		return first

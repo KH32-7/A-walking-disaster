@@ -147,10 +147,10 @@ func _test_child_wish() -> bool:
 		"why the family cannot welcome a child is written in the card: %s" % [miss]) and ok
 	var lack := ResidentEventFlow.detail_lack_box(g[0])
 	ok = _expect(lack != null and _texts(lack).any(func(t: String) -> bool: return t.contains(String(miss[0])))
-		and _texts(lack).any(func(t: String) -> bool: return t.begins_with("아이 맞이 · ")),
+		and _texts(lack).any(func(t: String) -> bool: return t.begins_with("아이 맞이 / ")),
 		"and in the resident detail, in the teal 'still lacks' box") and ok
 	var food_gap: Control = ResidentEventFlow.lack_box("아이 맞이", ["의무실 필요"])
-	ok = _expect(_texts(food_gap).has("아이 맞이 · 기지가 아직 못 갖춘 것")
+	ok = _expect(_texts(food_gap).has("아이 맞이 / 기지가 아직 못 갖춘 것")
 		and _buttons(food_gap).any(func(bt: Button) -> bool: return bt.text.ends_with("짓기 ›")),
 		"a missing building reads as what the base lacks, with a build link") and ok
 	food_gap.free()

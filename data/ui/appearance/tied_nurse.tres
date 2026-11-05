@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 id = &"tied_nurse"
-display_name = "묶은 머리 · 간호복"
+display_name = "묶은 머리 / 간호복"
 hair = "tied"
 hair_color = Color(0.1647, 0.1647, 0.1647, 1)
 skin = Color(0.9412, 0.8431, 0.7490, 1)

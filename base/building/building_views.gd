@@ -116,7 +116,7 @@ func _label(def: BuildingDef, b: Dictionary, done: bool, y: float) -> Label3D:
 	if not done:
 		# D-06 재설계 ③짓기: 현장은 진행과 일손을 함께 보여 준다 (일손 0이면 아무도 짓지 않음).
 		var workers := (b["workers"] as Array).size()
-		state = "\n건설 현장 %d/%d · %s" % [int(b["progress"]), def.build_work_needed(),
+		state = "\n건설 현장 %d/%d / %s" % [int(b["progress"]), def.build_work_needed(),
 			"일손 %d명" % workers if workers > 0 else "일손을 보내야 지어져요"]
 	elif b.get("damaged", false):
 		state = "\n(파손)"

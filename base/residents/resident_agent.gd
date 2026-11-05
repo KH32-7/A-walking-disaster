@@ -143,7 +143,7 @@ func refresh_from_colony() -> void:
 	var states := needs_state()
 	var text := String(r["nickname"]) if r["nickname"] != "" else String(r["name"])
 	if not states.is_empty():
-		text += "\n" + " · ".join(PackedStringArray(states.map(func(s): return NEED_TEXT.get(s, String(s)))))
+		text += "\n" + " / ".join(PackedStringArray(states.map(func(s): return NEED_TEXT.get(s, String(s)))))
 	_label.text = text
 	if states != _last_states:
 		_last_states = states

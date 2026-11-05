@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_skill")
 id = &"dash_slash"
+name = "돌진 베기"
 cooldown_sec = 8.0
 damage_mult = 1.5
 radius = 0.8

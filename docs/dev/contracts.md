@@ -28,6 +28,7 @@
 | `ResidentPool` | `systems/resident_pool.gd` | A | 손으로 쓴 생존자 풀(`data/resident_pool/`), 검수된 프로필만 꺼냄 |
 | `Quests` | `systems/quests/quests.gd` | A | 퀘스트·개인 요청·무전 소문 진행과 보상 (스토리 플래그는 `GameState`) |
 | `Journal` | `ai/journal.gd` | A | 생존 일지·엔딩 에필로그 (템플릿) |
+| `Look` | `core/look/look.gd` | A | 화면 전체 스타일 후처리(붓터치·외곽선·색 보정) 시안과 주인공 밝은 외곽선. 값은 `data/look/look_tuning.tres`, 화면 스타일은 기본 꺼짐, 주인공 외곽선은 기본 켜짐. 전역 셰이더 값 `toon_amount`(툰 셰이딩 0~1)도 여기서 넣는다. 디버그: `\` 패널(스타일·툰·맵 조명 슬라이더, 맵 조명은 그 맵 dressing.tscn에 저장), `]` 켜기/끄기, 콘솔 `look` |
 
 `_mcp_game_helper`는 Godot AI 플러그인 것이라 건드리지 않는다.
 
@@ -136,6 +137,9 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
 - **FieldState**: `in_sortie()`, `lost_gear`, `boss_ready(boss_id)`, `boss_kill_count(boss_id)`.
   보스 부활 날짜 `boss_respawn_day`는 **보스 id별**이다(한 지역에 보스가 여럿일 수 있다). 지역 id로 저장된 옛 세이브는 불러올 때 그 지역의 `boss_id`로 옮긴다.
 - **보스 (B-19)**: `BossSpawner`가 `BossArena`마다 그 보스의 부활 날짜를 따로 본다. 보스마다의 공략 규칙은 `BossDef.mechanic`(`BossMechanic` 스크립트)에 둔다.
+- **동행 주민 고유 스킬 (B-29)**: `ResidentTemplate.signature_skill`(SkillDef, 실행 id는 `CompanionSkill.RUNNERS` 중 하나)과 `signature_line`.
+  `FieldCompanion.setup()`이 `ResidentPool.templates`에서 읽는다(Colony 주민 Dictionary에는 없음). 신호 `FieldCompanion.called_out(text, near)`는
+  `RescueTarget.called_out`과 같은 모양이고 `WorldMarkers`가 말풍선으로 띄운다. `SkillDef.fx`, `fx_element`로 실행 id와 다른 이펙트를 쓴다.
   훅: `on_added`, `on_tick`, `can_use(pattern)`, `on_pattern_started(pattern, area)`, `land_pattern(pattern, area)`(true면 공통 범위 타격·소환 생략),
   `filter_damage(amount, info)`(0이면 무시), `on_phase_changed`, `on_reset`, `on_died`. `BossPattern.action`이 있는 패턴은 mechanic이 직접 처리하고
   숫자는 `BossPattern.params`에 둔다. mechanic이 쓰는 BossMonster 공개 함수: `hold(sec)`(AI와 패턴 정지, mechanic이 몸을 움직임), `is_held()`, `cancel_cast()`,
@@ -202,6 +206,7 @@ B의 결과가 없으면(디버그 진행) 라우터가 기본값으로 채운�
   "region_id": StringName, "point_id": StringName,     # 탈출 못 하면 &""
   "loot": {"resources": {id: n}, "discarded": {id: n}, "items": [uid]},
   "kills": int, "kills_by_monster": {StringName: int},
+  "blueprints": Array[StringName],                     # 이번 출격에 익힌 설계도의 결과물 id (상자, 2026-11-06)
   "rescued": Array[StringName],                        # 데리고 나온 구조자 id
   "rescued_profiles": Array[Dictionary],               # rescue_completed로 받은 프로필 (라우터)
   "companions": Array[StringName], "stranded": Array[StringName],

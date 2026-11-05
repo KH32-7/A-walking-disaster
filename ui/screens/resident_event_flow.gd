@@ -192,39 +192,39 @@ static func detail_lines(id: StringName) -> Array:
 	if not chain.is_empty():
 		var i := chain_step_index(chain)
 		var choice := StringName(chain.get("choice", &""))
-		var text := "◆ 소문 — "
+		var text := "소문: "
 		match i:
 			0:
 				text += "어떻게 할지 고를 차례예요"
 			1:
-				text += "%s · 며칠 안에 무슨 일이 생길 것 같아요" % CHOICE_DONE.get(choice, "골랐어요")
+				text += "%s / 며칠 안에 무슨 일이 생길 것 같아요" % CHOICE_DONE.get(choice, "골랐어요")
 			2:
-				text += "사건이 있었어요 · 편견을 가진 주민과 이야기할 밤을 기다려요"
+				text += "사건이 있었어요 / 편견을 가진 주민과 이야기할 밤을 기다려요"
 			_:
-				text = "✓ 소문이 풀렸어요 — 마물이 된다는 말은 근거가 없었어요"
+				text = "✓ 소문이 풀렸어요. 마물이 된다는 말은 근거가 없었어요"
 		out.append([text, UiTokens.INFO])
 	var chains := Colony.prejudice_chains()
 	for target: StringName in chains:
 		if id in chains[target].get("holders", []) and chain_step_index(chains[target]) < 3:
-			out.append(["▲ 편견 — %s에 대한 소문을 믿어요" % ResidentText.call_name(Colony.get_resident(target)), UiTokens.WARN])
+			out.append(["▲ 편견: %s에 대한 소문을 믿어요" % ResidentText.call_name(Colony.get_resident(target)), UiTokens.WARN])
 	var partner := Colony.partner_of(id)
 	if partner != &"":
 		var pname := ResidentText.call_name(Colony.get_resident(partner))
 		if Colony.relation_stage(id, partner) == &"married":
 			var st := Colony.child_arrival_status(id, partner)
 			if Colony.is_pregnant(id) or Colony.is_pregnant(partner):
-				out.append(["◆ 아이 맞이 — 아기를 기다리는 중이에요", UiTokens.TEXT])
+				out.append(["아이 맞이: 아기를 기다리는 중이에요", UiTokens.TEXT])
 			elif st.get("ok", false):
-				out.append(["● 아이 맞이 — 조건이 맞아요. 가족이 먼저 이야기를 꺼내요", UiTokens.GOOD])
+				out.append(["● 아이 맞이: 조건이 맞아요. 가족이 먼저 이야기를 꺼내요", UiTokens.GOOD])
 			# not ok: detail_lack_box() says what the base still lacks
 		else:
 			var ws := Colony.wedding_status(id, partner)
 			match wedding_state(ws):
 				&"ready":
-					out.append(["◆ 결혼 약속 — %s와(과) 다음 밤 결혼식" % pname, UiTokens.TEXT])
+					out.append(["결혼 약속: %s와(과) 다음 밤 결혼식" % pname, UiTokens.TEXT])
 				&"open":
 					var miss := wedding_missing(ws)
-					out.append(["◆ 결혼 약속 — %s · %s" % [pname, "준비할 수 있어요" if miss.is_empty() else "모자란 것 %d개" % miss.size()],
+					out.append(["결혼 약속: %s / %s" % [pname, "준비할 수 있어요" if miss.is_empty() else "모자란 것 %d개" % miss.size()],
 						UiTokens.TEXT])
 	return out
 
@@ -270,7 +270,7 @@ static func lack_box(title: String, missing: Array, on_cream := true) -> Control
 	var ink := UiTokens.TEXT_ON_CREAM if on_cream else UiTokens.TEXT
 	var link_ink := Color("1f6f74") if on_cream else UiTokens.INFO
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override(&"separation", 6)
+	v.add_theme_constant_override(&"separation", 10)
 	p.add_child(v)
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override(&"separation", 10)
@@ -279,7 +279,7 @@ static func lack_box(title: String, missing: Array, on_cream := true) -> Control
 	var base_gap := false
 	for m in missing:
 		base_gap = base_gap or build_link(String(m)) != &"" or String(m).begins_with(MenuScreen.resource_name(&"food")) 			or String(m).begins_with(MenuScreen.resource_name(&"cloth"))
-	var t := MenuScreen.label("%s · %s" % [title, "기지가 아직 못 갖춘 것" if base_gap else "아직 모자란 것"], &"Label", 16)
+	var t := MenuScreen.label("%s / %s" % [title, "기지가 아직 못 갖춘 것" if base_gap else "아직 모자란 것"], &"Label", 16)
 	t.add_theme_font_override(&"font", UiThemeBuilder.font_kr(700))
 	t.add_theme_color_override(&"font_color", ink)
 	head.add_child(t)
