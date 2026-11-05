@@ -58,6 +58,7 @@ var _wait_time := 0.0
 var _arrived := false
 var _attack_cooldown := 0.0
 var _sight_timer := 0.0
+var _stun_left := 0.0
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)
 
 
@@ -107,6 +108,11 @@ func tick(delta: float) -> void:
 	_clock += delta
 	_state_time += delta
 	_sight_timer -= delta
+	if _stun_left > 0.0:
+		# Stunned (B-06 perfect block): no moving, turning or attacking.
+		_stun_left -= delta
+		_stop()
+		return
 	if _is_leash_state() and _flat_distance(home) > MonsterRules.RETURN_DISTANCE:
 		_set_state(Enums.AIState.RETURN)
 	match state:
@@ -231,6 +237,15 @@ func target_from_source(source: Node) -> Node3D:
 			return node
 		node = node.get_parent()
 	return null
+
+
+## No action for `sec` seconds (perfect block). B-14 will own status effects.
+func stun(sec: float) -> void:
+	_stun_left = maxf(_stun_left, sec)
+
+
+func is_stunned() -> bool:
+	return _stun_left > 0.0
 
 
 func can_move() -> bool:

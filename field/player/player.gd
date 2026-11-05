@@ -33,6 +33,8 @@ var stamina: float
 var is_aiming := false
 var move_state := MoveState.IDLE
 var is_downed := false
+## Set by WeaponHolder (B-06): (amount, info) -> damage left after blocking.
+var incoming_damage_filter: Callable
 
 var _aim_toggled := false
 var _sprint_toggled := false
@@ -94,6 +96,16 @@ func is_bound() -> bool:
 	return _bound_left > 0.0
 
 
+## Stagger (B-06 guard break): same movement lock as a bind until B-14 owns status effects.
+func stun(sec: float) -> void:
+	_bound_left = maxf(_bound_left, sec)
+
+
+## Weapons (B-06) pay melee and block stamina through this, so regen delay restarts.
+func spend_stamina(amount: float) -> void:
+	_spend_stamina(amount)
+
+
 ## World point to face while aiming (B-04 camera sets it from the cursor or stick).
 func set_aim_point(point: Vector3) -> void:
 	_aim_point = point
@@ -113,6 +125,10 @@ func is_invulnerable() -> bool:
 func take_damage(amount: float, info: Dictionary = {}) -> void:
 	if is_downed or is_invulnerable() or amount <= 0.0 or DebugConsole.godmode:
 		return
+	if incoming_damage_filter.is_valid():
+		amount = incoming_damage_filter.call(amount, info)
+		if amount <= 0.0:
+			return
 	_bound_left = maxf(_bound_left, info.get("bind_sec", 0.0))
 	health = maxf(health - amount, 0.0)
 	health_changed.emit(health, stats.max_health)

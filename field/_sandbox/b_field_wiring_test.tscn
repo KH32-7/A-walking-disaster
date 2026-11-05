@@ -14,6 +14,7 @@
 [ext_resource type="Script" path="res://field/loot/loot_spawner.gd" id="12_loot_spawner"]
 [ext_resource type="PackedScene" path="res://field/camera/field_camera.tscn" id="13_camera"]
 [ext_resource type="Script" path="res://field/camera/indoor_zone.gd" id="14_indoor"]
+[ext_resource type="Script" path="res://field/_sandbox/weapon_debug.gd" id="13_weapon_debug"]
 
 [sub_resource type="BoxShape3D" id="Shape_house"]
 size = Vector3(8, 3, 8)
@@ -100,3 +101,6 @@ offset_left = 16.0
 offset_top = 140.0
 offset_right = 700.0
 offset_bottom = 340.0
+
+[node name="WeaponDebug" type="Node" parent="."]
+script = ExtResource("13_weapon_debug")
