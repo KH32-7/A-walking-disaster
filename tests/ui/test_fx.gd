@@ -10,7 +10,8 @@ const GAMEPLAY_IDS := [&"hit_spark", &"muzzle_flash", &"bullet_tracer", &"bullet
 	&"consumable_grenade", &"consumable_flashbang", &"consumable_noise_lure",
 	&"brace", &"dash_slash", &"precision_shot", &"shadow_step", &"slam", &"suppressive_fire", &"boss_telegraph",
 	&"melee_swing", &"monster_claw", &"monster_slam", &"monster_bite", &"monster_splash", &"monster_scream", &"monster_cast",
-	&"monster_death", &"boss_slam", &"boss_root_burst", &"boss_summon_pods"]
+	&"monster_death", &"boss_slam", &"boss_root_burst", &"boss_summon_pods",
+	&"boss_dive", &"boss_splash", &"boss_tail_swing"]
 const COMBO_IDS := [&"thorn_bush", &"swamp", &"mud", &"photosynthesis", &"shard_burst", &"shock_puddle"]
 const PROBE_TEXTURE := "res://assets/vfx/magic_arsenal/textures/modular/glow01.png"
 

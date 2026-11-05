@@ -1,0 +1,75 @@
+[gd_resource type="Resource" script_class="BossDef" format=3]
+
+[ext_resource type="Script" path="res://field/defs/boss_def.gd" id="1_boss"]
+[ext_resource type="Script" path="res://field/defs/boss_pattern.gd" id="2_pattern"]
+[ext_resource type="Script" path="res://field/monsters/boss/mechanics/serpent_mechanic.gd" id="3_mech"]
+
+[sub_resource type="Resource" id="Pattern_tail_swing"]
+script = ExtResource("2_pattern")
+id = &"tail_swing"
+range_min = 0.0
+range_max = 5.5
+cooldown_sec = 4.0
+windup_sec = 1.0
+shape = &"cone"
+anchor = 0
+radius = 7.0
+angle_deg = 140.0
+kind = &"danger"
+damage_mult = 1.2
+status = Array[Dictionary]([{"id": &"knockback"}])
+params = {
+"surface_sec": 3.0
+}
+
+[sub_resource type="Resource" id="Pattern_splash"]
+script = ExtResource("2_pattern")
+id = &"splash"
+action = &"splash"
+range_min = 0.0
+range_max = 6.5
+cooldown_sec = 8.0
+windup_sec = 1.0
+shape = &"circle"
+anchor = 0
+radius = 7.0
+kind = &"warn"
+damage_mult = 0.0
+params = {
+"slow_sec": 2.0,
+"surface_sec": 3.0
+}
+
+[sub_resource type="Resource" id="Pattern_dive"]
+script = ExtResource("2_pattern")
+id = &"dive"
+action = &"dive"
+range_min = 6.0
+range_max = 18.0
+cooldown_sec = 9.0
+windup_sec = 0.6
+shape = &""
+length = 12.0
+width = 2.4
+kind = &"danger"
+damage_mult = 1.6
+status = Array[Dictionary]([{"id": &"knockback"}])
+params = {
+"aim_sec": 1.0,
+"charge_sec": 0.35,
+"surface_sec": 4.0,
+"swim_sec": 1.6,
+"swim_speed": 11.0
+}
+
+[resource]
+script = ExtResource("1_boss")
+monster_id = &"sunken_sign_serpent"
+phases = Array[float]([0.5])
+phase_speed = Array[float]([1.0, 1.5])
+patterns = Array[ExtResource("2_pattern")]([SubResource("Pattern_tail_swing"), SubResource("Pattern_splash"), SubResource("Pattern_dive")])
+pattern_gap_sec = 1.0
+mechanic = ExtResource("3_mech")
+respawn_days = 3
+first_kill_text = "가라앉은 간판뱀을 쓰러뜨렸다. 전설 칼을 얻었다"
+first_kill_drop_table_id = &"boss_serpent_first"

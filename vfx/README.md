@@ -48,6 +48,7 @@
 | `monster_death` | `element`, `radius`(기본 0.9) | D MonsterVisual (처치 때 시체와 함께, 모델 크기로 radius) |
 | `boss_slam` / `boss_summon_pods` | `radius`(3 / 1.2), `element` | B boss_monster `boss_<pattern.id>`. 패턴이 맞을 때 / 소환한 자리마다 |
 | `boss_root_burst` | `to`, `direction`, `element` | B boss_monster. 직선 예고를 따라 금이 달리고 흙이 솟는다 (`to` 없으면 금 줄기 없이 흙만) |
+| `boss_dive` / `boss_splash` / `boss_tail_swing` | `to`, `direction` / `radius`(7) / `direction` | B serpent_mechanic (가라앉은 간판뱀). 잠수 돌진 줄기 / 둔화 물보라(주황 예고) / 간판 꼬리 휘두르기 |
 
 속성 4종(초록, 돌, 물, 빛)은 따로 id가 없다. `params.element`를 받는 레이어가 `element_textures`로 텍스처를 바꾸고
 `tint_element`로 `UiTokens.ELEMENT_COLORS` 색을 곱한다.
