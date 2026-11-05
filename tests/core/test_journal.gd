@@ -4,9 +4,9 @@ extends RefCounted
 ## No LLM anywhere. Colony, GameState, Progression, FieldState and the router's sortie lists are
 ## restored afterwards; autosave is off so nothing touches the real save slots.
 
-## Words the review rules (15 "검수 규칙") keep out of every line: pity, heroizing, belittling,
-## graphic violence.
-const BANNED := ["불쌍", "가엾", "가여", "딱한", "극복", "장애를", "장애인", "병신", "늙은이", "노인네",
+## Extra words the journal also keeps out, on top of the shared review dictionary
+## tools/resident_banned_words.txt (ResidentTemplate.load_banned_words, A-16).
+const EXTRA_BANNED := ["불쌍", "가엾", "가여", "딱한", "극복", "장애를", "장애인", "병신", "늙은이", "노인네",
 	"벙어리", "귀머거리", "절름발이", "앉은뱅이", "외국인 노동자", "피투성이", "처참", "끔찍", "참혹", "시체",
 	"내장", "잔인"]
 
@@ -85,12 +85,15 @@ func _check_data() -> bool:
 	var placeholder := RegEx.create_from_string("\\{(\\w+)(?:\\|([^}]+))?\\}")
 	# "{region}은" would print "침수 상가은"; particles that change with the word go inside the braces.
 	var raw_particle := RegEx.create_from_string("\\}(이랑|랑|으로|로|이|가|을|를|은|는|과|와|아|야)(\\s|[.,!?]|$)")
+	var banned := ResidentTemplate.load_banned_words()
+	ok = _expect(not banned.is_empty(), "shared banned word list did not load") and ok
+	banned.append_array(EXTRA_BANNED)
 	for id: StringName in Journal.templates:
 		var template: JournalTemplate = Journal.templates[id]
 		var minimum := 2 if String(id).begins_with("epilogue_") else 3
 		ok = _expect(template.lines.size() >= minimum, "%s has %d lines" % [id, template.lines.size()]) and ok
 		for line in template.lines:
-			for word in BANNED:
+			for word in banned:
 				ok = _expect(not line.contains(word), "%s line uses banned word '%s': %s" % [id, word, line]) and ok
 			ok = _expect(not line.contains("일차. "), "%s line has its own day prefix: %s" % [id, line]) and ok
 			ok = _expect(raw_particle.search(line) == null, "%s particle outside the braces: %s" % [id, line]) and ok

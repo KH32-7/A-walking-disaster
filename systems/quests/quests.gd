@@ -53,6 +53,14 @@ func get_status(quest_id: StringName) -> int:
 	return int(_states[quest_id]["status"]) if _states.has(quest_id) else -1
 
 
+## Who gave the quest: the giver passed to start() (templated personal requests), else the def's.
+func giver_of(quest_id: StringName) -> StringName:
+	if _states.has(quest_id):
+		return StringName(_states[quest_id].get("giver_id", &""))
+	var def := get_def(quest_id)
+	return def.giver_id if def != null else &""
+
+
 func is_active(quest_id: StringName) -> bool:
 	return get_status(quest_id) == Status.ACTIVE
 

@@ -11,8 +11,8 @@ extends Node
 ## spouse/married, separated), raid_resolved, sortie_ended, building_completed,
 ## night_event_started (only event ids that have a "night_<id>" template) and day_started
 ## (a quiet line for a day with no entries).
+## quest_completed of a PERSONAL quest (A-13) is recorded as request_completed for its giver.
 ## Events without a signal call record() directly, for example:
-##   Journal.record(&"request_completed", {"resident_id": id})                      # A-13 quests
 ##   Journal.record(&"prejudice_resolved", {"resident_id": who, "other_id": toward})  # C-16
 ##
 ## Lane D (일지 화면): days(), entries_for_day(day), entries_for_resident(id), people(), epilogue().
@@ -102,7 +102,18 @@ func _ready() -> void:
 	EventBus.sortie_ended.connect(_on_sortie_ended)
 	EventBus.building_completed.connect(_on_building_completed)
 	EventBus.night_event_started.connect(_on_night_event_started)
+	EventBus.quest_completed.connect(_on_quest_completed)
 	_register_debug()
+
+
+## A-13: a finished personal request is a moment in the giver's story.
+func _on_quest_completed(quest_id: StringName) -> void:
+	var def: QuestDef = Quests.get_def(quest_id)
+	if def == null or def.type != Enums.QuestType.PERSONAL:
+		return
+	var giver := Quests.giver_of(quest_id)
+	if giver != &"":
+		record(&"request_completed", {"resident_id": giver})
 
 
 # --- Write API -----------------------------------------------------------------

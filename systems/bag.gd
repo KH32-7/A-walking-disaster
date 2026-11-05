@@ -35,11 +35,12 @@ func _ready() -> void:
 
 # --- Grid ---
 
-## Sortie prep: size the grid from what the player wears. Fails (returns false) if current contents
-## would no longer fit; take things out first.
+## Sortie prep: size the grid from what the player wears plus the "bag_cells" perk (A-11). Fails
+## (returns false) if current contents would no longer fit; take things out first.
 func resize_for_player() -> bool:
 	var summary := Armory.get_owner_summary(Armory.PLAYER_ID)
-	return resize(summary["bag_grid"], int(summary.get("bag_bonus_cells", 0)))
+	var bonus := int(summary.get("bag_bonus_cells", 0)) + Progression.perk_bonus(&"bag_cells")
+	return resize(summary["bag_grid"], bonus)
 
 
 func resize(size: Vector2i, extra_cells: int = 0) -> bool:

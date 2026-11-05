@@ -359,6 +359,11 @@ func _settle_evening() -> bool:
 		# Colony asked for more than storage holds; spend what exists instead of nothing.
 		push_warning("SceneRouter: settle_day changes could not be applied as a whole: %s" % report["changes"])
 	report["discarded"] = applied["discarded"]
+	# A-09 auto repair (spends scrap itself; only runs when the player turned it on).
+	report["repairs"] = {
+		UpgradeRules.WEAPON_FACILITY: Armory.run_auto_repair(UpgradeRules.WEAPON_FACILITY),
+		UpgradeRules.GEAR_FACILITY: Armory.run_auto_repair(UpgradeRules.GEAR_FACILITY),
+	}
 	last_evening_report = report
 	EventBus.evening_settled.emit(report)
 	return true
