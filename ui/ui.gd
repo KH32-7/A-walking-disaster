@@ -6,6 +6,7 @@ extends Node
 ##
 ## Layers (CanvasLayer):  hud (10)  <  screens (20)  <  overlay (30: subtitles, toasts)
 ## Screen scenes may implement:  open_with(args: Dictionary)  and  on_closing()
+## open_with runs before _ready on the first open, and again (in the tree) on a re-open.
 
 signal screen_opened(screen_id: StringName)
 signal screen_closed(screen_id: StringName)
@@ -88,9 +89,24 @@ func show_base_hud(on: bool) -> void:
 			base_hud.refresh()
 
 
+## Flow screens (D-07): opened when the router enters the state, closed when it leaves.
+const FLOW_SCREENS := {
+	Enums.FlowState.SORTIE_PREP: &"sortie_prep",
+	Enums.FlowState.RESULT: &"result",
+	Enums.FlowState.EVENING: &"evening",
+}
+
+
 func _on_flow_state_changed(state: Enums.FlowState) -> void:
 	show_field_hud(state == Enums.FlowState.FIELD)
 	show_base_hud(state in BASE_STATES)
+	for st: Enums.FlowState in FLOW_SCREENS:
+		var id: StringName = FLOW_SCREENS[st]
+		if st == state:
+			if has_screen(id) and not is_open(id):
+				open(id)
+		elif is_open(id):
+			close(id)
 
 
 # --- public API (contracts.md) ---
@@ -119,9 +135,10 @@ func open(screen_id: StringName, args: Dictionary = {}) -> void:
 	node.name = String(screen_id)
 	(node as Control).set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	node.process_mode = Node.PROCESS_MODE_ALWAYS if def.pauses_game else Node.PROCESS_MODE_INHERIT
+	# First open: hand the args over before _ready so the screen builds with them.
+	_call_open(node, args)
 	screens.add_child(node)
 	_stack.append({"id": screen_id, "node": node, "def": def})
-	_call_open(node, args)
 	_refresh_visibility()
 	screen_opened.emit(screen_id)
 
@@ -200,7 +217,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"ui_cancel") or event.is_action_pressed(&"pause"):
 		var def: ScreenDef = _stack.back().def
 		if def.closes_on_cancel:
-			close_top()
+			# MenuScreens may route "back" through the game flow (sortie prep → cancel_sortie_prep).
+			var node: Node = _stack.back().node
+			if node.has_method(&"close"):
+				node.call(&"close")
+			else:
+				close_top()
 			get_viewport().set_input_as_handled()
 
 

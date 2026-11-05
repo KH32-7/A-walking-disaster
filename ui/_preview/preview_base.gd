@@ -45,6 +45,22 @@ func _ready() -> void:
 		UI.open(&"build")
 	elif _view == "residents":
 		UI.open(&"residents")
+	elif _view == "sortie":
+		UI.show_base_hud(false)
+		UI.open(&"sortie_prep")
+	elif _view == "result":
+		UI.show_base_hud(false)
+		UI.open(&"result", {"result": {"extracted": true, "region_id": &"flooded_mall", "duration_sec": 612.0,
+			"kills": 4, "xp": 245, "rescued_profiles": [{"name": "서하은"}], "stranded": [],
+			"loot": {"resources": {&"scrap": 14, &"cloth": 4, &"food": 3, &"parts": 2, &"medicine": 1, &"paint": 2},
+				"discarded": {&"wood": 3}, "items": []}}})
+	elif _view == "evening":
+		UI.show_base_hud(false)
+		var ids := Colony.active_resident_ids()
+		UI.open(&"evening", {"report": {"produced": {&"wood": 12, &"food": 6, &"scrap": 4},
+			"consumed": {&"food": 6, &"fuel": 2}, "discarded": {},
+			"morale": {ids[0]: 3, ids[1]: -2} if ids.size() > 1 else {},
+			"events": [{"text": "윤기철이 벌목장에서 일하며 목공 숙련이 올랐어요."}, {"text": "서하은이 정비소 문턱이 낮아져 기뻐해요."}]}})
 
 
 func _fake_state() -> void:

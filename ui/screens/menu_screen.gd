@@ -7,6 +7,8 @@ extends Control
 
 const BLUR := preload("res://ui/theme/backdrop_blur.gdshader")
 
+## false for flow screens that only continue (result, evening).
+var show_back := true
 var title_text := ""
 var subtitle_text := ""
 ## [[key, label], ...] shown in the footer.
@@ -63,6 +65,7 @@ func _build_header() -> void:
 	back.custom_minimum_size = Vector2(46, 46)
 	back.focus_mode = Control.FOCUS_NONE
 	back.pressed.connect(close)
+	back.visible = show_back
 	h.add_child(back)
 	var t := label(title_text, &"LabelTitle")
 	h.add_child(t)
