@@ -15,12 +15,16 @@ func run() -> bool:
 	var emitter := NoiseEmitter.new()
 	host.add_child(emitter)
 	(Engine.get_main_loop() as SceneTree).root.add_child(host)
+	# Start from a clear day whatever earlier tests left behind; restore it at the end.
+	var original_weather := GameState.weather
+	GameState.set_weather(Enums.Weather.CLEAR)
 
 	_test_base_radii(emitter)
 	_test_emit_signal(emitter, host)
 	_test_rain(emitter)
 	_test_armor(emitter)
 
+	GameState.set_weather(original_weather)
 	host.free()
 	return _ok
 
@@ -50,10 +54,10 @@ func _test_emit_signal(emitter: NoiseEmitter, host: Node3D) -> void:
 
 
 func _test_rain(emitter: NoiseEmitter) -> void:
-	emitter.raining = true
+	GameState.set_weather(Enums.Weather.RAIN)
 	_expect_eq(emitter.radius_for(&"pistol"), 11.25, "pistol in rain")
 	_expect_eq(emitter.radius_for(&"aim_walk"), 0.0, "aim_walk in rain")
-	emitter.raining = false
+	GameState.set_weather(Enums.Weather.CLEAR)
 
 
 ## Real A-07 armor (data/items), rarity 0 so no affix changes noise_mod.

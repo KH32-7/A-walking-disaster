@@ -45,7 +45,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			_emitter.start_continuous(&"generator")
 	elif key.keycode == KEY_R:
-		_emitter.raining = not _emitter.raining
+		GameState.set_weather(Enums.Weather.CLEAR if GameState.is_raining() else Enums.Weather.RAIN)
 	elif key.keycode == KEY_A:
 		_emitter.armory_owner_id = &"" if _emitter.armory_owner_id != &"" else Armory.PLAYER_ID
 	else:
@@ -64,7 +64,7 @@ func _refresh() -> void:
 		"1 조준 걷기 / 2 걷기 / 3 달리기 / 4 구르기 / 5 칼 / 6 둔기",
 		"7 권총 / 8 소총 / 9 산탄총 / 0 소음기 총",
 		"G 발전기 켜기, 끄기: %s" % ("켜짐" if _emitter.is_continuous() else "꺼짐"),
-		"R 비: %s" % ("옴" if _emitter.raining else "안 옴"),
+		"R 비: %s" % ("옴" if GameState.is_raining() else "안 옴"),
 		"A 방어구(진압 헬멧 + 고철 갑옷): %s" % ("입음" if _emitter.armory_owner_id != &"" else "벗음"),
 		"마지막 소음: %s" % _last,
 	])

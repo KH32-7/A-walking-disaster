@@ -13,9 +13,6 @@ const DEFAULT_TABLE := preload("res://field/noise/noise_table.tres")
 ## Armory owner whose armor adds footstep noise (Armory.PLAYER_ID for the player).
 ## Empty = no armor bonus (doors, generators, monsters).
 @export var armory_owner_id: StringName = &""
-## Rainy day: every radius x table.rain_multiplier.
-## TODO(A request): read the day's weather from GameState once A adds it; this export stands in.
-@export var raining := false
 
 var _continuous_action: StringName = &""
 var _continuous_timer: Timer
@@ -30,8 +27,8 @@ func radius_for(action: StringName) -> float:
 	if table.is_footstep(action):
 		radius += _armor_bonus()
 		# TODO(B-13 or later): add table.quiet_step_bonus when the actor has the "조용한 발걸음" trait.
-	if raining:
-		radius *= table.rain_multiplier
+	if GameState.is_raining():
+		radius *= GameState.RAIN_NOISE_MULT
 	return maxf(radius, 0.0)
 
 
