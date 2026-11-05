@@ -185,6 +185,9 @@ func take_damage(amount: float, info: Dictionary = {}) -> void:
 	status.apply_hit(info)
 	health = maxf(health - amount, 0.0)
 	health_changed.emit(health, stats.max_health)
+	var ratio := amount / maxf(stats.max_health, 1.0)
+	if not tick and ratio >= CombatFeel.SHAKE_HURT_MIN_RATIO:
+		CombatFeel.shake(self, CombatFeel.SHAKE_PLAYER_HURT * ratio)
 	if health == 0.0:
 		is_downed = true
 		status.clear()

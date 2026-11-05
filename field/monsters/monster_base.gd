@@ -190,6 +190,7 @@ func take_damage(amount: float, info: Dictionary = {}) -> void:
 		return
 	status.apply_hit(info)
 	_react_to_hit(info)
+	CombatFeel.flinch(self, info)
 
 
 ## Heard noise or a scream. Called by the EventBus listener after the range check.
