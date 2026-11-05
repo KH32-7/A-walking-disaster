@@ -18,6 +18,11 @@ signal resident_profile_changed(resident_id: StringName)
 ## then calls answer_child_wish), and a child joined a family (methods: Enums.ArrivalMethod).
 signal child_wish(a: StringName, b: StringName, methods: Array)
 signal child_arrived(child_id: StringName, method: int, parents: Array)
+## 편견 이벤트 체인 (C-16): the rumor (D asks the player: PrejudiceRules.CHOICES), the incident
+## (kind PrejudiceRules.INCIDENT_*), and one holder letting go of the prejudice.
+signal prejudice_rumor(target_id: StringName, holder_ids: Array)
+signal prejudice_incident(target_id: StringName, kind: StringName)
+signal prejudice_resolved(holder_id: StringName, target_id: StringName)
 ## Autoload `Colony`. Owner: Lane C.
 ## Residents, buildings, relationships, raids threat - everything that lives in the base.
 ## Other lanes read through the getters below; they never edit resident data directly.
@@ -68,6 +73,8 @@ var current_night_event: Dictionary = {}
 var last_night_results: Array = []
 var last_night_raid_day := 0
 var _night_rolled_day := 0
+## 편견 이벤트 체인 (C-16): target_id -> chain (see prejudice_chains()).
+var prejudice_chains_data: Dictionary = {}
 
 var _next_resident_num := 1
 var _next_building_num := 1
@@ -887,6 +894,7 @@ func settle_day() -> Dictionary:
 	_settle_health(consumed, events)
 	_settle_relations(worked)
 	_settle_children(events)
+	_settle_prejudice(events)
 	var morale := _settle_morale(ids, ate_cooked, events)
 
 	# 4. Generator fuel (2/일, 겨울 3). No fuel → no power tomorrow.
@@ -1830,6 +1838,13 @@ func _night_candidates(event_id: StringName) -> Array:
 	var ids := _adults_and_teens()
 	var out: Array = []
 	match event_id:
+		&"prejudice_talk":
+			for target: StringName in prejudice_chains_data:
+				var c: Dictionary = prejudice_chains_data[target]
+				if c["step"] == PrejudiceRules.STEP_INCIDENT and target in ids:
+					for h in c["holders"]:
+						if h in ids:
+							out.append([h, target])
 		&"bonfire":
 			if ids.size() >= RelationRules.BONFIRE_PARTICIPANTS.x:
 				var pool := ids.duplicate()
@@ -1892,6 +1907,9 @@ func _apply_night_event(ev: Dictionary, choice: StringName) -> Dictionary:
 	var names := ", ".join(who.map(func(id): return String(residents[id]["name"])))
 	var result := {"event_id": ev["event_id"], "participants": who, "choice": choice, "text": ""}
 	match ev["event_id"]:
+		&"prejudice_talk":
+			result["fragments"] = _resolve_prejudice(a, b)
+			result["text"] = "%s이(가) 이야기를 나눴다. 소문은 근거가 없었다" % names
 		&"bonfire":
 			for pair in _pairs(who):
 				var ra: Dictionary = residents[pair[0]]
@@ -2425,6 +2443,136 @@ func _pregnancy_mult(resident_id: StringName, job: JobDef) -> float:
 	return ChildRules.PREGNANT_STR_MULT if job.main_stat_key() == &"str" and is_pregnant(resident_id) else 1.0
 
 
+# --- 편견 이벤트 체인 (C-16, 08 "편견과 갈등") ---------------------------------------------
+## One chain per resident with 마물 흔적: prejudice_chains[target_id] = {target, holders: Array,
+## step (PrejudiceRules.STEP_*), choice, started_day, incident_day, incident}. Lane D shows the
+## rumor choice (prejudice_rumor → choose_prejudice_response) and the incident; the resolution is
+## the night event "prejudice_talk" (C-14 pool), one per holder.
+
+## All chains (copies), for screens and the journal.
+func prejudice_chains() -> Dictionary:
+	return prejudice_chains_data.duplicate(true)
+
+
+## The chain about `target_id` ({} = none).
+func prejudice_chain(target_id: StringName) -> Dictionary:
+	return prejudice_chains_data.get(target_id, {}).duplicate(true)
+
+
+## The player's answer to the rumor: PrejudiceRules.CHOICE_DEFEND / WATCH / SEPARATE.
+## Returns {"ok", "reason", "incident_day"}.
+func choose_prejudice_response(target_id: StringName, choice: StringName) -> Dictionary:
+	var c: Dictionary = prejudice_chains_data.get(target_id, {})
+	if c.is_empty() or c["step"] != PrejudiceRules.STEP_RUMOR:
+		return {"ok": false, "reason": "선택을 기다리는 소문이 없음", "incident_day": 0}
+	if not choice in PrejudiceRules.CHOICES:
+		return {"ok": false, "reason": "없는 선택: %s" % choice, "incident_day": 0}
+	var r: Dictionary = residents[target_id]
+	var delay := _rng.randi_range(PrejudiceRules.INCIDENT_DAYS.x, PrejudiceRules.INCIDENT_DAYS.y)
+	match choice:
+		PrejudiceRules.CHOICE_DEFEND:
+			add_trust(target_id, PrejudiceRules.DEFEND_TRUST, &"defended")
+			r["morale"] = NeedsRules.apply_morale(r, PrejudiceRules.DEFEND_MORALE)
+		PrejudiceRules.CHOICE_SEPARATE:
+			r["morale"] = NeedsRules.apply_morale(r, PrejudiceRules.SEPARATE_MORALE)
+			release_bed(target_id)  # 따로 지낸다: 임시 거처
+			delay += PrejudiceRules.SEPARATE_EXTRA_DAYS
+	c["choice"] = choice
+	c["step"] = PrejudiceRules.STEP_WAITING
+	c["incident_day"] = GameState.day + delay
+	return {"ok": true, "reason": "", "incident_day": c["incident_day"]}
+
+
+## Daily part of the settlement: start a rumor, or bring a waiting chain to its incident.
+func _settle_prejudice(events: Array) -> void:
+	var today := GameState.day
+	var holders := _prejudice_holders()
+	for id in active_resident_ids():
+		var r: Dictionary = residents[id]
+		if not _has_trait(r, PrejudiceRules.TARGET_TRAIT):
+			continue
+		var c: Dictionary = prejudice_chains_data.get(id, {})
+		if c.is_empty():
+			if not holders.is_empty() and today - int(r["joined_day"]) >= PrejudiceRules.RUMOR_AFTER_DAYS \
+					and _rng.randf() < PrejudiceRules.RUMOR_CHANCE:
+				_start_rumor(id, holders, events)
+		elif c["step"] == PrejudiceRules.STEP_WAITING and today >= int(c["incident_day"]):
+			_prejudice_incident(c, events)
+
+
+func _start_rumor(target_id: StringName, holders: Array[StringName], events: Array) -> void:
+	prejudice_chains_data[target_id] = {"target": target_id, "holders": holders.duplicate(), "step": PrejudiceRules.STEP_RUMOR,
+		"choice": &"", "started_day": GameState.day, "incident_day": 0, "incident": &""}
+	for id in active_resident_ids():
+		residents[id]["morale"] = NeedsRules.apply_morale(residents[id], PrejudiceRules.RUMOR_MORALE)
+	var text := "\"%s이(가) 언젠가 마물이 된다\"는 말이 돈다" % _display_name(residents[target_id])
+	events.append(_event(&"prejudice_rumor", target_id, text))
+	EventBus.notification_posted.emit(text, &"warning")
+	prejudice_rumor.emit(target_id, holders.duplicate())
+
+
+## 사건: the marked resident saves someone, or solves a crisis at the essence workshop.
+func _prejudice_incident(c: Dictionary, events: Array) -> void:
+	var target: StringName = c["target"]
+	var who := _display_name(residents[target])
+	c["step"] = PrejudiceRules.STEP_INCIDENT
+	if target in facility_workers(PrejudiceRules.WORKSHOP):
+		c["incident"] = PrejudiceRules.INCIDENT_WORKSHOP
+		for id in active_resident_ids():
+			residents[id]["morale"] = NeedsRules.apply_morale(residents[id], PrejudiceRules.WORKSHOP_MORALE)
+		events.append(_event(&"prejudice_incident", target, "%s이(가) 정수 공방에서 기지의 위기를 막았다" % who))
+	else:
+		c["incident"] = PrejudiceRules.INCIDENT_RESCUE
+		var saved: StringName = &""
+		for h in c["holders"]:
+			if residents.has(h):
+				saved = h
+				break
+		if saved != &"":
+			add_relation(target, saved, PrejudiceRules.RESCUE_RELATION, &"saved")
+		events.append(_event(&"prejudice_incident", target, "%s이(가) %s을(를) 구했다" % [who,
+			_display_name(residents[saved]) if saved != &"" else "동료"]))
+	prejudice_incident.emit(target, c["incident"])
+
+
+## 해소 대화 (night event prejudice_talk): the holder's prejudice goes away, relation +20, the
+## target's story is shown. Returns the target's fragments now revealed.
+func _resolve_prejudice(holder: StringName, target: StringName) -> Array[String]:
+	var c: Dictionary = prejudice_chains_data.get(target, {})
+	var revealed: Array[String] = []
+	if c.is_empty() or not residents.has(holder) or not residents.has(target):
+		return revealed
+	var h: Dictionary = residents[holder]
+	var def := BaseDB.get_trait(PrejudiceRules.HOLDER_TRAIT)
+	if def != null and def.removable:
+		h["traits"].erase(PrejudiceRules.HOLDER_TRAIT)
+	add_relation(holder, target, PrejudiceRules.RESOLVE_RELATION, &"reconciled")
+	c["holders"].erase(holder)
+	residents[target]["story_revealed"] = true
+	for f in residents[target]["story"]["fragments"]:
+		revealed.append(String(f))
+	if c["holders"].filter(func(x): return residents.has(x)).is_empty():
+		c["step"] = PrejudiceRules.STEP_RESOLVED
+	Journal.record(&"prejudice_resolved", {"resident_id": holder, "other_id": target})
+	prejudice_resolved.emit(holder, target)
+	return revealed
+
+
+func _prejudice_holders() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for id in active_resident_ids():
+		if _has_trait(residents[id], PrejudiceRules.HOLDER_TRAIT):
+			out.append(id)
+	return out
+
+
+func _has_trait(r: Dictionary, trait_id: StringName) -> bool:
+	for t in r["traits"]:
+		if StringName(t) == trait_id:
+			return true
+	return false
+
+
 # --- 입주 의식 (C-13, 07 "입주 의식") ---------------------------------------------------
 ## A rescued survivor joins with arrival_pending = true. Lane D's ceremony screen (D-13) walks the
 ## steps (ArrivalRules.STEPS) with these calls and ends with complete_arrival(). Residents gather at
@@ -2582,6 +2730,10 @@ func unlocked_story(resident_id: StringName) -> Array[String]:
 	var out: Array[String] = []
 	var r: Dictionary = residents.get(resident_id, {})
 	if r.is_empty():
+		return out
+	if r.get("story_revealed", false):  # 편견 해소 (C-16): 사연 공개
+		for f in r["story"]["fragments"]:
+			out.append(String(f))
 		return out
 	var stage := trust_stage(resident_id)
 	var fragments: Array = r["story"]["fragments"]
@@ -2827,6 +2979,7 @@ func _reset() -> void:
 	last_night_results = []
 	last_night_raid_day = 0
 	_night_rolled_day = 0
+	prejudice_chains_data = {}
 	active_raid = {}
 	_rng.randomize()
 	_refresh_effects()
@@ -2847,6 +3000,7 @@ func save_data() -> Dictionary:
 		"deep_talk_day": deep_talk_day,
 		"relation_meta": relation_meta,
 		"festival_day": festival_day,
+		"prejudice_chains": prejudice_chains_data,
 		"cleared_zones": cleared_zones,
 		"clear_progress": clear_progress,
 		"clear_started": clear_started,
@@ -2886,6 +3040,14 @@ func load_data(data: Dictionary) -> void:
 	last_raid_day = int(data.get("last_raid_day", 0))
 	deep_talk_day = int(data.get("deep_talk_day", 0))
 	festival_day = int(data.get("festival_day", 0))
+	prejudice_chains_data = {}
+	var saved_chains: Dictionary = data.get("prejudice_chains", {})
+	for key in saved_chains:
+		var c: Dictionary = saved_chains[key]
+		prejudice_chains_data[StringName(key)] = {"target": StringName(c.get("target", key)),
+			"holders": Array(c.get("holders", [])).map(func(h): return StringName(h)), "step": StringName(c.get("step", "")),
+			"choice": StringName(c.get("choice", "")), "started_day": int(c.get("started_day", 0)),
+			"incident_day": int(c.get("incident_day", 0)), "incident": StringName(c.get("incident", ""))}
 	relation_meta = {}
 	var saved_meta: Dictionary = data.get("relation_meta", {})
 	for key in saved_meta:
@@ -2929,6 +3091,8 @@ func _register_debug_commands() -> void:
 		"settle - 하루 정산을 돌리고 Economy에 반영 (A-05 전 테스트용)")
 	DebugConsole.register(&"trust", _cmd_trust,
 		"trust <id> | trust talk|deep|add <id> [n] | trust gift <id> <resource_id> - 신뢰도·대화·선물")
+	DebugConsole.register(&"prejudice", _cmd_prejudice,
+		"prejudice | prejudice rumor <id> | choose <id> defend|watch|separate | incident <id> - 편견 이벤트 체인")
 	DebugConsole.register(&"child", _cmd_child,
 		"child | child wish <a> <b> | child now <a> <b> birth|adopt | child later <a> <b> - 아이 맞이 (조건·대화·답)")
 	DebugConsole.register(&"arrival", _cmd_arrival,
@@ -2964,6 +3128,32 @@ func _register_debug_commands() -> void:
 		"raid now [day|night] | raid threat <0~100> | raid info - 습격 강제·위협도 설정·방어력/예상")
 	DebugConsole.register(&"build", _cmd_build,
 		"build <building_id> | build list - 비용 없이 건물을 바로 완성 / 건물·전력·소음 목록")
+
+
+func _cmd_prejudice(args: PackedStringArray) -> String:
+	var usage := "사용법: prejudice | prejudice rumor <흔적 주민> | prejudice choose <흔적 주민> defend|watch|separate | prejudice incident <흔적 주민>"
+	if args.is_empty():
+		return "편견 체인: %s · 편견 가진 주민 %s" % [prejudice_chains_data if not prejudice_chains_data.is_empty() else "없음", _prejudice_holders()]
+	if args.size() < 2 or not residents.has(StringName(args[1])):
+		return usage
+	var target := StringName(args[1])
+	var events: Array = []
+	match args[0]:
+		"rumor":
+			if prejudice_chains_data.has(target) or _prejudice_holders().is_empty():
+				return "이미 체인이 있거나 편견을 가진 주민이 없음"
+			_start_rumor(target, _prejudice_holders(), events)
+			return events[0]["text"]
+		"choose":
+			var res := choose_prejudice_response(target, StringName(args[2]) if args.size() > 2 else &"")
+			return "사건 예정일 %d일" % res["incident_day"] if res["ok"] else "실패: " + String(res["reason"])
+		"incident":
+			var c: Dictionary = prejudice_chains_data.get(target, {})
+			if c.is_empty() or c["step"] != PrejudiceRules.STEP_WAITING:
+				return "사건을 기다리는 체인이 아님"
+			_prejudice_incident(c, events)
+			return "%s (오늘 밤 해소 대화)" % events[0]["text"]
+	return usage
 
 
 func _cmd_child(args: PackedStringArray) -> String:
