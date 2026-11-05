@@ -14,6 +14,7 @@ func run() -> bool:
 	Colony.child_wish.connect(_on_wish)
 	Colony.child_arrived.connect(_on_arrived)
 	var ok := true
+	ok = _test_gender() and ok
 	ok = _test_conditions() and ok
 	ok = _test_wish_roll() and ok
 	ok = _test_birth() and ok
@@ -47,9 +48,10 @@ func _fresh() -> void:
 
 
 ## A married couple in their own family house, with an infirmary. Returns [a, b, house_uid].
+## `birth` = a is a woman (출산 가능); otherwise both are men (입양만).
 func _family(birth: bool = false) -> Array:
-	var a := Colony.add_resident({"name": "가", "traits": [&"brave"], "can_give_birth": birth})
-	var b := Colony.add_resident({"name": "나", "traits": [&"optimist"]})
+	var a := Colony.add_resident({"name": "가", "traits": [&"brave"], "gender": "female" if birth else "male"})
+	var b := Colony.add_resident({"name": "나", "traits": [&"optimist"], "gender": "male"})
 	var house := _build(&"family_house")
 	_build(&"infirmary")
 	Colony.add_relation(a, b, 85)
@@ -68,15 +70,39 @@ func _build(def_id: StringName) -> StringName:
 	return uid
 
 
+func _test_gender() -> bool:
+	_fresh()
+	var ok := _check(Colony.get_resident(Colony.add_resident({"traits": [], "gender": "여성"}))["gender"] == ResidentData.GENDER_FEMALE
+		and Colony.get_resident(Colony.add_resident({"traits": [], "gender": &"male"}))["gender"] == ResidentData.GENDER_MALE,
+		"프로필의 성별을 그대로 (여성·male)")
+	var seen := {}
+	for i in 40:
+		var g: StringName = Colony.get_resident(Colony.add_resident({"traits": []}))["gender"]
+		seen[g] = true
+	ok = _check(seen.size() == 2 and seen.has(ResidentData.GENDER_FEMALE), "프로필에 없으면 반반으로 정함: %s" % [seen.keys()]) and ok
+	var old := ResidentData.normalize({"id": &"old_save"})
+	ok = _check(old["gender"] in ResidentData.GENDERS and ResidentData.normalize({"id": &"old_save"})["gender"] == old["gender"],
+		"성별 없는 옛 저장은 id로 늘 같은 값") and ok
+	var id := Colony.add_resident({"traits": [], "gender": "female"})
+	Colony.load_data(JSON.parse_string(JSON.stringify(Colony.save_data())))
+	ok = _check(Colony.get_resident(id)["gender"] == ResidentData.GENDER_FEMALE and Colony.get_resident(id)["gender"] is StringName, "저장 후 유지") and ok
+	return ok
+
+
 func _test_conditions() -> bool:
 	_fresh()
 	var f := _family()
 	var a: StringName = f[0]
 	var b: StringName = f[1]
 	var ok := _check(Colony.child_arrival_status(a, b)["ok"], "조건 충족: %s" % [Colony.child_arrival_status(a, b)["missing"]])
-	ok = _check(Colony.child_methods(a, b) == [Enums.ArrivalMethod.ADOPTION], "출산할 수 있는 사람이 없으면 입양만") and ok
-	Colony.residents[b]["can_give_birth"] = true
-	ok = _check(Colony.child_methods(a, b) == [Enums.ArrivalMethod.BIRTH, Enums.ArrivalMethod.ADOPTION], "가족 구성에 따라 출산도") and ok
+	ok = _check(Colony.child_methods(a, b) == [Enums.ArrivalMethod.ADOPTION], "남성 둘이면 입양만") and ok
+	Colony.residents[b]["gender"] = ResidentData.GENDER_FEMALE
+	ok = _check(Colony.child_methods(a, b) == [Enums.ArrivalMethod.BIRTH, Enums.ArrivalMethod.ADOPTION], "여성이 있으면 출산도") and ok
+	Colony.residents[a]["gender"] = ResidentData.GENDER_FEMALE
+	ok = _check(Colony.child_methods(a, b)[0] == Enums.ArrivalMethod.BIRTH, "여성 둘도 출산 가능") and ok
+	ok = _check(not ChildRules.can_give_birth({"gender": ResidentData.GENDER_FEMALE, "age_stage": Enums.AgeStage.TEEN}), "미성년은 출산 대상 아님") and ok
+	Colony.residents[a]["gender"] = ResidentData.GENDER_MALE
+	Colony.residents[b]["gender"] = ResidentData.GENDER_MALE
 	Colony.residents[a]["morale"] = 50
 	Economy.load_data({})
 	var missing: Array = Colony.child_arrival_status(a, b)["missing"]
@@ -122,6 +148,7 @@ func _test_birth() -> bool:
 	ok = _check(r["age_stage"] == Enums.AgeStage.BABY and r["arrival_pending"] and not Colony.is_pregnant(a), "아기, 이름 짓기 대기") and ok
 	ok = _check(r["traits"].size() == 1 and r["traits"][0] in [&"brave", &"optimist"], "특성 1개를 부모에게서: %s" % [r["traits"]]) and ok
 	ok = _check(r["stats"].values().all(func(v): return v >= 1 and v <= 3), "초기 능력치 1~3") and ok
+	ok = _check(r["gender"] in ResidentData.GENDERS, "태어난 아이도 성별이 있음") and ok
 	var guardians := Colony.guardians_of(child)
 	ok = _check(guardians.size() == 2 and a in guardians and b in guardians and Colony.children_of(a, b) == [child], "부모가 보호자") and ok
 	ok = _check(String(r["bed_id"]).begins_with(String(f[2])), "가족 숙소 침상") and ok

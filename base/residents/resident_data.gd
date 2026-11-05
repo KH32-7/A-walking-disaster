@@ -21,7 +21,8 @@ class_name ResidentData
 ##   talked_day, gift_day: int — the day of the last talk / gift (하루 1번, C-12)
 ##   arrival_pending: bool — 입주 의식 not done yet (rescued survivors, C-13)
 ##   known_likes: Array[StringName] — likes the player has learned (첫 대화, 좋아한 선물)
-##   can_give_birth: bool — from the profile; 출산 is offered only when a partner has it (C-15)
+##   gender: StringName (&"female" / &"male", GENDERS) — from the profile, rolled when missing.
+##          연애·결혼은 성별과 상관없고, 출산은 여성 주민만 (C-15)
 ##   study_days: {job_id: days} — 교실에서 배운 날 (세대 간 전수, C-15)
 ##   health: Enums.HealthState, recover_days: int
 ##   relations: {resident_id: -100..100} (C-14)
@@ -43,6 +44,10 @@ const OTHER_STAT_RANGE := Vector2i(2, 5)
 const APTITUDE_HIGH_CHANCE := 0.25
 const APTITUDE_LOW_CHANCE := 0.25
 const TRAIT_COUNT := 2
+## 성별 (C-15). Profiles may set "gender"; otherwise it is rolled 50/50 (가안).
+const GENDER_FEMALE := &"female"
+const GENDER_MALE := &"male"
+const GENDERS: Array[StringName] = [GENDER_FEMALE, GENDER_MALE]
 
 ## Starting needs when a resident joins (가안).
 const START_HUNGER := 70
@@ -96,7 +101,7 @@ static func create(profile: Dictionary, rng: RandomNumberGenerator) -> Dictionar
 		"gift_day": 0,
 		"arrival_pending": false,
 		"known_likes": [],
-		"can_give_birth": false,
+		"gender": roll_gender(profile, rng),
 		"study_days": {},
 		"class_aptitude": roll_aptitude(rng),
 		"hunger": START_HUNGER,
@@ -160,7 +165,7 @@ static func normalize(src: Dictionary) -> Dictionary:
 	r["gift_day"] = int(r.get("gift_day", 0))
 	r["arrival_pending"] = bool(r.get("arrival_pending", false))
 	r["known_likes"] = _names(r.get("known_likes", []))
-	r["can_give_birth"] = bool(r.get("can_give_birth", false))
+	r["gender"] = parse_gender(r.get("gender", ""), r["id"])
 	r["study_days"] = _int_map(r.get("study_days", {}), 0, 1 << 30)
 	var apt := {}
 	for key in CLASS_KEYS:
@@ -187,6 +192,32 @@ static func normalize(src: Dictionary) -> Dictionary:
 	r["status"] = int(r.get("status", Enums.ResidentStatus.ACTIVE))
 	r["joined_day"] = int(r.get("joined_day", 0))
 	return r
+
+
+## The profile's gender, or a 50/50 roll when it has none.
+static func roll_gender(profile: Dictionary, rng: RandomNumberGenerator) -> StringName:
+	var given := _gender_from(profile.get("gender", ""))
+	if given != &"":
+		return given
+	return GENDERS[rng.randi_range(0, GENDERS.size() - 1)]
+
+
+## Accepts "female"/"male" (also "f", "m", "여성", "남성"). Older saves without one get a fixed
+## value from the id so loading twice gives the same answer.
+static func parse_gender(value: Variant, id: StringName) -> StringName:
+	var g := _gender_from(value)
+	if g != &"":
+		return g
+	return GENDERS[absi(hash(String(id))) % GENDERS.size()]
+
+
+static func _gender_from(value: Variant) -> StringName:
+	var s := str(value).strip_edges().to_lower()
+	if s in ["female", "f", "여성", "여"]:
+		return GENDER_FEMALE
+	if s in ["male", "m", "남성", "남"]:
+		return GENDER_MALE
+	return &""
 
 
 static func roll_stats(former_job: StringName, rng: RandomNumberGenerator) -> Dictionary:
