@@ -50,6 +50,25 @@ func view_count() -> int:
 	return n
 
 
+## The circle of light a lamp, fire or light tower gives at night (BuildingModels.NIGHT_LIGHTS).
+## On only while it is night at the base; ForestDressing switches the whole group.
+func _night_light(def_id: StringName) -> OmniLight3D:
+	var spec: Dictionary = Models.NIGHT_LIGHTS[def_id]
+	var light := OmniLight3D.new()
+	light.name = "NightLight"
+	light.light_color = spec["color"]
+	light.light_energy = spec["energy"]
+	light.omni_range = spec["range"]
+	light.omni_attenuation = 1.2
+	light.shadow_enabled = false
+	light.position.y = spec["height"]
+	light.set_meta(&"energy", spec["energy"])
+	light.set_meta(&"flicker", spec.get("flicker", false))
+	light.add_to_group(Models.NIGHT_LIGHT_GROUP)
+	light.visible = GameState.phase == Enums.Phase.NIGHT
+	return light
+
+
 func _make_view(uid: StringName, b: Dictionary, def: BuildingDef) -> Node3D:
 	var size := BaseGrid.footprint(def, int(b["rotation"]))
 	var origin := Vector2i(b["cell"][0], b["cell"][1])
@@ -63,6 +82,8 @@ func _make_view(uid: StringName, b: Dictionary, def: BuildingDef) -> Node3D:
 	root.set_meta(&"building_uid", uid)
 	root.set_meta(&"def_id", def.id)
 	root.position = center - global_position
+	if done and Models.NIGHT_LIGHTS.has(def.id):
+		root.add_child(_night_light(def.id))
 	if done and Models.has_assets() and Models.MODELS.has(def.id):
 		var model := Models.build(def.id, size)
 		model.name = "Model"

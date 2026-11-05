@@ -62,6 +62,18 @@ const ZONE_REFRESH_SEC := 1.0
 ## so the pack's cut (0.5) makes far trees look bare; a lower cut keeps the needles.
 @export_range(0.1, 1.0) var foliage_alpha_cut_scale := 0.45
 @export var fog_density := 0.0008
+@export_group("Night")
+## GameState.phase NIGHT at the base: the map fades to this (darker, but not black; user feedback
+## 2026-11-06) and the lights of lamps, fires and light towers come on (BuildingModels.NIGHT_LIGHTS).
+## By day it stays as it is.
+@export var night_sun_color := Color("9fb0d8")
+@export var night_sun_energy := 0.55
+@export var night_ambient := Color("6f80a0")
+@export var night_ambient_energy := 0.45
+@export var night_sky_top := Color("1e2f50")
+@export var night_sky_horizon := Color("3f5276")
+@export var night_fog_color := Color("34445e")
+@export var night_fade_sec := 3.0
 
 var _rng := RandomNumberGenerator.new()
 var _layout: Node3D
@@ -74,12 +86,20 @@ var _counts := {}
 var _refresh := 0.0
 var _fixed_meshes := {}     # pack mesh -> copy with lower leaf alpha_cut
 var _fixed_materials := {}
+var _sun: DirectionalLight3D
+var _env: Environment
+var _sky: ProceduralSkyMaterial
+var _day := {}  # the day look, restored in the morning
+var _night := false
+var _t := 0.0
 
 
 func _ready() -> void:
 	_rng.seed = seed_value
 	if with_environment:
 		_environment()
+		EventBus.phase_changed.connect(func(_p: Enums.Phase) -> void: _apply_phase(false))
+		_apply_phase(true)
 	_layout = _find_layout()
 	if _layout == null:
 		push_warning("forest_dressing: no sibling Layout; only the environment is added")
@@ -98,6 +118,13 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_t += delta
+	if _night:
+		var i := 0
+		for l in get_tree().get_nodes_in_group(Models.NIGHT_LIGHT_GROUP):
+			i += 1
+			if (l as Node).get_meta(&"flicker", false):
+				(l as OmniLight3D).light_energy = float(l.get_meta(&"energy", 1.0)) * (1.0 + sin(_t * 9.0 + i) * 0.06 + sin(_t * 23.0 + i * 2.0) * 0.04)
 	_refresh -= delta
 	if _refresh <= 0.0:
 		_refresh = ZONE_REFRESH_SEC
@@ -217,6 +244,8 @@ func _environment() -> void:
 	we.name = "WorldEnvironment"
 	we.environment = env
 	add_child(we)
+	_env = env
+	_sky = sky_mat
 	var sun := DirectionalLight3D.new()
 	sun.name = "Sun"
 	sun.rotation_degrees = Vector3(-50.0, 40.0, 0.0)
@@ -225,6 +254,40 @@ func _environment() -> void:
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 160.0
 	add_child(sun)
+	_sun = sun
+	_day = {"sun_color": sun.light_color, "sun_energy": sun.light_energy, "ambient": env.ambient_light_color,
+		"ambient_energy": env.ambient_light_energy, "fog": env.fog_light_color, "sky_top": sky_mat.sky_top_color,
+		"sky_horizon": sky_mat.sky_horizon_color}
+
+
+# ---------------- night ----------------
+
+## Fades to the night look at GameState NIGHT and back by day; the building lights follow.
+func _apply_phase(instant: bool) -> void:
+	var night := GameState.phase == Enums.Phase.NIGHT
+	if night == _night and not instant:
+		return
+	_night = night
+	get_tree().call_group(Models.NIGHT_LIGHT_GROUP, &"set_visible", night)
+	if _sun == null:
+		return
+	var to := {"sun_color": night_sun_color, "sun_energy": night_sun_energy, "ambient": night_ambient,
+		"ambient_energy": night_ambient_energy, "fog": night_fog_color, "sky_top": night_sky_top,
+		"sky_horizon": night_sky_horizon} if night else _day
+	var sec := 0.0 if instant else night_fade_sec
+	var tw := create_tween().set_parallel().set_trans(Tween.TRANS_SINE)
+	tw.tween_property(_sun, ^"light_color", to["sun_color"], sec)
+	tw.tween_property(_sun, ^"light_energy", to["sun_energy"], sec)
+	tw.tween_property(_env, ^"ambient_light_color", to["ambient"], sec)
+	tw.tween_property(_env, ^"ambient_light_energy", to["ambient_energy"], sec)
+	tw.tween_property(_env, ^"fog_light_color", to["fog"], sec)
+	tw.tween_property(_sky, ^"sky_top_color", to["sky_top"], sec)
+	tw.tween_property(_sky, ^"sky_horizon_color", to["sky_horizon"], sec)
+	tw.tween_property(_sky, ^"ground_horizon_color", to["sky_horizon"], sec)
+
+
+func is_night_look() -> bool:
+	return _night
 
 
 func _terrain_material(file: String, fallback: Color, uv_metres: float) -> StandardMaterial3D:
