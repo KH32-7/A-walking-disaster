@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="Affix" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/affix.gd" id="1_mq4hb"]
+
+[resource]
+script = ExtResource("1_mq4hb")
+id = &"rescuer_guard"
+label = "구조자 보호 %d%%"
+stat = &"rescuer_guard_pct"
+min_value = 15
+max_value = 15
+allowed_slots = Array[int]([3, 5])

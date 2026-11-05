@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/item_def.gd" id="1_d3xii"]
+
+[resource]
+script = ExtResource("1_d3xii")
+id = &"smg"
+name = "기관단총"
+base_stats = {
+"attack_interval": 0.1,
+"damage": 10,
+"full_auto": true,
+"magazine": 30,
+"noise": 18,
+"pellets": 1,
+"range": 14
+}
+attachment_slot = true
+size = Vector2i(2, 2)

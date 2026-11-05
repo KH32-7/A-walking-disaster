@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/item_def.gd" id="1_ejp7v"]
+
+[resource]
+script = ExtResource("1_ejp7v")
+id = &"dagger"
+name = "단검"
+combat_class = 1
+light = true
+base_stats = {
+"attack_interval": 0.3,
+"backstab_mult": 2.5,
+"damage": 14,
+"magazine": 0,
+"noise": 3,
+"pellets": 1,
+"range": 1.2
+}

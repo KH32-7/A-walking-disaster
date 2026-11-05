@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/item_def.gd" id="1_8mi2y"]
+
+[resource]
+script = ExtResource("1_8mi2y")
+id = &"pipe_wrench"
+name = "파이프·렌치"
+combat_class = 2
+base_stats = {
+"attack_interval": 0.6,
+"damage": 24,
+"magazine": 0,
+"noise": 6,
+"pellets": 1,
+"range": 1.5
+}
+size = Vector2i(1, 2)

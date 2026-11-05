@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/item_def.gd" id="1_ltx4y"]
+
+[resource]
+script = ExtResource("1_ltx4y")
+id = &"scrap_armor"
+name = "고철 갑옷"
+slot = 3
+base_stats = {
+"defense": 32,
+"move_speed_mult": 0.9,
+"noise_mod": 3.0,
+"weight": &"heavy"
+}
+size = Vector2i(2, 3)

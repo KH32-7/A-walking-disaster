@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/item_def.gd" id="1_iifmp"]
+
+[resource]
+script = ExtResource("1_iifmp")
+id = &"school_bag"
+name = "책가방"
+slot = 6
+base_stats = {
+"grid_h": 5,
+"grid_w": 4
+}
+size = Vector2i(2, 2)

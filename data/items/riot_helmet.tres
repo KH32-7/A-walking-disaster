@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/item_def.gd" id="1_tsxoa"]
+
+[resource]
+script = ExtResource("1_tsxoa")
+id = &"riot_helmet"
+name = "진압 헬멧"
+slot = 2
+base_stats = {
+"defense": 14,
+"flash_blind_mult": 0.5,
+"noise_mod": 1.0,
+"weight": &"medium"
+}
+size = Vector2i(2, 2)

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/item_def.gd" id="1_g6awu"]
+
+[resource]
+script = ExtResource("1_g6awu")
+id = &"pistol"
+name = "권총"
+light = true
+base_stats = {
+"attack_interval": 0.35,
+"damage": 18,
+"magazine": 12,
+"noise": 15,
+"pellets": 1,
+"range": 18
+}
+attachment_slot = true
+size = Vector2i(2, 1)

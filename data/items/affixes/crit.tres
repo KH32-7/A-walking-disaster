@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="Affix" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/affix.gd" id="1_08yui"]
+
+[resource]
+script = ExtResource("1_08yui")
+id = &"crit"
+label = "치명 +%d%%p"
+stat = &"crit_pctp"
+min_value = 3
+max_value = 8
+allowed_slots = Array[int]([0, 1, 5])

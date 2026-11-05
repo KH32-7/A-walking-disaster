@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/item_def.gd" id="1_8udwi"]
+
+[resource]
+script = ExtResource("1_8udwi")
+id = &"work_helmet"
+name = "작업 헬멧"
+slot = 2
+base_stats = {
+"defense": 8,
+"noise_mod": 0.5,
+"weight": &"medium"
+}
+size = Vector2i(2, 2)

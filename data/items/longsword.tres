@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/item_def.gd" id="1_rjorm"]
+
+[resource]
+script = ExtResource("1_rjorm")
+id = &"longsword"
+name = "장검"
+combat_class = 1
+base_stats = {
+"attack_interval": 0.5,
+"damage": 30,
+"magazine": 0,
+"noise": 4,
+"pellets": 1,
+"range": 2.0
+}
+size = Vector2i(1, 3)

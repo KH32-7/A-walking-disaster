@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/item_def.gd" id="1_plf23"]
+
+[resource]
+script = ExtResource("1_plf23")
+id = &"necklace"
+name = "목걸이"
+slot = 5
+base_stats = {
+"defense": 0,
+"noise_mod": 0.0
+}

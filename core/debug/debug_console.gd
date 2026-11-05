@@ -156,7 +156,7 @@ func _register_builtins() -> void:
 	register(&"phase", _cmd_phase, "phase <%s>" % "|".join(Enums.Phase.keys()).to_lower())
 	register(&"flow", _cmd_flow, "flow <%s>" % "|".join(Enums.FlowState.keys()).to_lower())
 	register(&"godmode", _cmd_godmode, "godmode [on|off] - 플레이어 무적")
-	register(&"give", _placeholder.bind("A-07 Armory"), "give <item_id> - 장비 지급 (A-07 이후)")
+	register(&"give", _cmd_give, "give <item_id> [rarity 0-4] - 장비를 무기고에 지급")
 	register(&"raid", _placeholder.bind("레인 C"), "raid now - 즉시 습격 (레인 C가 등록)")
 	register(&"resident", _placeholder.bind("레인 C"), "resident add - 주민 추가 (레인 C가 등록)")
 
@@ -214,6 +214,17 @@ func _cmd_flow(args: PackedStringArray) -> String:
 		return "사용법: " + _commands[&"flow"]["help"]
 	GameState.set_flow_state(Enums.FlowState[key])
 	return "flow = %s (phase %s)" % [key, Enums.Phase.keys()[GameState.phase]]
+
+
+func _cmd_give(args: PackedStringArray) -> String:
+	if args.is_empty() or args.size() > 2 or (args.size() == 2 and not args[1].is_valid_int()):
+		return "사용법: give <item_id> [rarity 0-4]"
+	if Armory.get_def(StringName(args[0])) == null:
+		return "없는 아이템: %s" % args[0]
+	var rarity := args[1].to_int() if args.size() == 2 else -1
+	var uid := Armory.create_item(StringName(args[0]), rarity)
+	var item := Armory.get_item(uid)
+	return "%s 지급 (%s, 부가 옵션 %d개)" % [uid, Enums.Rarity.keys()[item.rarity], item.affixes.size()]
 
 
 func _cmd_godmode(args: PackedStringArray) -> String:
