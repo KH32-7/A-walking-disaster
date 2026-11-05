@@ -45,7 +45,10 @@ func tick(delta: float) -> void:
 		_collect_indoor()
 		if spawn_start_groups:
 			for i in MonsterRules.ROAM_START_GROUPS:
-				_spawn_pack(MonsterRules.ROAM_START_MIN_PLAYER_DIST, false)
+				# Leave room under ROAM_MAX_ALIVE for the packs still to come (1 monster each).
+				var packs_left := MonsterRules.ROAM_START_GROUPS - i - 1
+				_spawn_pack(MonsterRules.ROAM_START_MIN_PLAYER_DIST, false,
+						packs_left * MonsterRules.ROAM_GROUP_MIN)
 	_timer -= delta * (FieldState.night.spawn_mult if FieldState.is_night() else 1.0)
 	while _timer <= 0.0:
 		_timer += MonsterRules.ROAM_INTERVAL_SEC
@@ -92,16 +95,25 @@ func spawn_group(at: Vector3, count: int, def: MonsterDef = null) -> Array[Monst
 	return out
 
 
-func _spawn_pack(min_player_dist: float, hide_from_camera: bool) -> void:
-	if alive_count() >= MonsterRules.ROAM_MAX_ALIVE:
+## reserve = roaming slots to keep free for packs that still have to spawn (start packs).
+func _spawn_pack(min_player_dist: float, hide_from_camera: bool, reserve: int = 0) -> void:
+	var room := MonsterRules.ROAM_MAX_ALIVE - alive_count() - reserve
+	if room <= 0:
 		return
 	var at := _pick_point(min_player_dist, hide_from_camera)
 	if at != Vector3.INF:
-		spawn_group(at, randi_range(MonsterRules.ROAM_GROUP_MIN, MonsterRules.ROAM_GROUP_MAX))
+		var size := randi_range(MonsterRules.ROAM_GROUP_MIN, MonsterRules.ROAM_GROUP_MAX)
+		spawn_group(at, mini(size, room))
 
 
 ## Random outdoor navmesh point that keeps the ROAM_* distances, or Vector3.INF.
+## If no point keeps ROAM_SPREAD from the other packs, tries once more without that one rule.
 func _pick_point(min_player_dist: float, hide_from_camera: bool) -> Vector3:
+	var p := _try_points(min_player_dist, hide_from_camera, true)
+	return p if p != Vector3.INF else _try_points(min_player_dist, hide_from_camera, false)
+
+
+func _try_points(min_player_dist: float, hide_from_camera: bool, keep_spread: bool) -> Vector3:
 	var map := get_world_3d().navigation_map
 	var players := get_tree().get_nodes_in_group(Player.GROUP)
 	var nests := get_tree().get_nodes_in_group(MonsterNest.GROUP)
@@ -112,7 +124,7 @@ func _pick_point(min_player_dist: float, hide_from_camera: bool) -> Vector3:
 			continue
 		if _near_any(p, players, min_player_dist) or _near_any(p, nests, MonsterRules.ROAM_CLEAR_NEST):
 			continue
-		if _near_home(p, MonsterRules.ROAM_SPREAD):
+		if keep_spread and _near_home(p, MonsterRules.ROAM_SPREAD):
 			continue
 		if camera and camera.is_position_in_frustum(p + Vector3.UP):
 			continue
