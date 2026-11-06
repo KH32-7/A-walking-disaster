@@ -770,6 +770,7 @@ func _build_something() -> void:
 		return int(Colony.get_resident(id).get("health", 0)) == Enums.HealthState.OK)
 	if Colony.active_resident_ids().is_empty():
 		_check(put == null and _label_with(site._detail, "주민이 없") != null, "주민이 없으면 현장 카드가 그렇게 알려 줌")
+		_unstaffed_site = true
 	elif able.is_empty():
 		# Only injured residents: the card says why nobody can go.
 		_check(put == null and _label_with(site._detail, "부상") != null, "다친 주민뿐이면 현장 카드가 '부상'이라고 알려 줌")

@@ -17,7 +17,6 @@ const DEFAULTS := {
 	&"subtitle_bg_alpha": 0.6,
 	&"subtitle_speaker": true,
 	# accessibility: sound visualisation
-	&"noise_rings": false,
 	&"sound_arrows": true,
 	&"sound_icons": true,
 	# accessibility: colour / screen

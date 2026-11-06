@@ -1,11 +1,9 @@
 extends Node
-## D-05: noise ring styles, monster marks, ring lifetime and the noise_rings setting.
+## D-05: monster marks, speech bubbles and edge arrows. Noise rings were removed (2026-11-06).
 
 
 func run() -> bool:
 	var ok := true
-	ok = _expect(WorldMarkers.ring_style(4.0)[1] == 2.0 and WorldMarkers.ring_style(8.0)[1] == 4.0
-		and WorldMarkers.ring_style(22.0)[1] == 6.0, "ring width by radius 2/4/6") and ok
 	ok = _expect(WorldMarkers.mark_for(Enums.AIState.SUSPICIOUS) == &"suspicious"
 		and WorldMarkers.mark_for(Enums.AIState.INVESTIGATE) == &"suspicious", "? for suspicious/investigate") and ok
 	ok = _expect(WorldMarkers.mark_for(Enums.AIState.CHASE) == &"alert"
@@ -13,17 +11,10 @@ func run() -> bool:
 	ok = _expect(WorldMarkers.mark_for(Enums.AIState.WANDER) == &"", "no mark while wandering") and ok
 	var wm := WorldMarkers.new()
 	add_child(wm)
-	var was: bool = Settings.get_value(&"noise_rings")
-	Settings.values[&"noise_rings"] = true
+	# No ground rings any more (user 2026-11-06); a noise must not leave anything drawn on the ground.
+	ok = _expect(not wm.has_method(&"ring_count"), "no noise ring API left") and ok
 	EventBus.noise_emitted.emit(Vector3.ZERO, 8.0, null)
-	ok = _expect(wm.ring_count() == 1, "noise_emitted adds a ring") and ok
-	for i in 50:
-		wm._process(0.02)
-	ok = _expect(wm.ring_count() == 0, "ring gone after 0.7 s") and ok
-	Settings.values[&"noise_rings"] = false
-	EventBus.noise_emitted.emit(Vector3.ZERO, 8.0, null)
-	ok = _expect(wm.ring_count() == 0, "noise_rings off hides rings") and ok
-	Settings.values[&"noise_rings"] = was
+	wm._process(0.02)
 
 	# Speech bubbles from rescue targets (B-10 called_out).
 	var person := Node3D.new()

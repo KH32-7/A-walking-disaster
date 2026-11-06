@@ -92,8 +92,6 @@ const ROWS := {
 		{"key": &"subtitle_speaker", "kind": "toggle", "label": "화자 이름",
 			"desc": "누가 말하는지 이름을 노란색 굵은 글자로 붙입니다."},
 		{"heading": "소리 시각화"},
-		{"key": &"noise_rings", "kind": "toggle", "label": "소음 링",
-			"desc": "내가 낸 소리를 크기에 따라 흰색, 주황, 빨강, 두께가 다른 링으로 보여 줍니다."},
 		{"key": &"sound_arrows", "kind": "toggle", "label": "소리 방향 화살표",
 			"desc": "화면 밖에서 난 소리와 마물의 방향을 화면 가장자리 화살표로 알려 줍니다."},
 		{"key": &"sound_icons", "kind": "toggle", "label": "중요 효과음 아이콘",
@@ -165,7 +163,7 @@ const ACTIONS := [
 ## The quick accessibility screen (title). Design 14: subtitles, sound visualisation, colour,
 ## toggles, protect mode — plus text size / contrast / shake that change how the menus read.
 const QUICK_KEYS: Array[StringName] = [&"text_size", &"high_contrast", &"subtitles", &"subtitle_size",
-	&"noise_rings", &"sound_arrows", &"color_filter", &"reduce_shake", &"reduce_flash", &"toggle_aim",
+	&"sound_arrows", &"color_filter", &"reduce_shake", &"reduce_flash", &"toggle_aim",
 	&"toggle_sprint", &"tts_menu", &"protect_mode"]
 const PROTECT_ROW := {"key": &"protect_mode", "kind": "protect", "label": "보호 모드",
 	"desc": "이야기 난이도입니다. 마물과 습격이 약하고, 주민이 죽지 않고, 쓰러져도 가방을 지킵니다. 항목은 나중에 설정 → 난이도에서 따로 바꿀 수 있어요.",
