@@ -250,6 +250,12 @@ func _test_drop_pile_pickup() -> void:
 	pile.resources = {&"essence_green_low": 2, &"vine_fiber": 1}
 	pile.gear.assign([{"def_id": &"club", "rarity": Enums.Rarity.UNCOMMON}])
 	_root.add_child(pile)
+	_check(pile.chip_count() == 3, "one chip per piece on the ground (%d)" % pile.chip_count())
+	var big := (MonsterDrops.PILE_SCENE.instantiate() as MonsterDropPile)
+	big.resources = {&"essence_green_low": 9, &"vine_fiber": 9, &"stone_shard": 9}
+	_root.add_child(big)
+	_check(big.chip_count() == MonsterDropPile.MAX_CHIPS, "chips capped at MAX_CHIPS (%d)" % big.chip_count())
+	big.free()
 	var got: Array = []
 	pile.picked_up.connect(func(res: Dictionary, uids: Array[StringName]) -> void: got.append_array([res, uids]))
 	_check(pile.begin_open(null), "picking up a pile")
