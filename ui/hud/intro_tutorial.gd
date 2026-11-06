@@ -166,7 +166,7 @@ func _show(step: StringName) -> void:
 			if r.size == Vector2.ZERO:
 				sp.clear()
 			elif sp.current_text() != _EQUIP_TEXT:
-				sp.focus_rect(r, _EQUIP_TEXT, [["우클릭", "메뉴"], ["장착", "손에 들기"]])
+				sp.focus_rect(r, _EQUIP_TEXT, [["우클릭", "메뉴"], ["장착", "손에 들기"]], 10.0, true)
 			else:
 				sp.move_rect(r)
 		&"close_bag":

@@ -48,6 +48,7 @@ var _world_radius := 90.0
 var _world_lift := 0.6
 var _pad := 10.0
 var _card_bottom := false  # card-only placement: bottom centre instead of top centre
+var _card_above := false  # card above the hole (left of it when there is no room), not below
 var _iris := 1.0  # 1 = hole wide open (just started), 0 = at its size
 var _alpha := 0.0
 var _alpha_to := 0.0
@@ -116,11 +117,13 @@ func focus_control(control: Control, text: String, keys: Array = [], pad := 10.0
 	_pad = pad
 
 
-## Rounded box hole over a fixed screen rect (a bag grid entry).
-func focus_rect(rect: Rect2, text: String, keys: Array = [], pad := 10.0) -> void:
+## Rounded box hole over a fixed screen rect (a bag grid entry). above: the card goes above the
+## hole (or to its left) instead of below, clear of a right-click menu that opens below the entry.
+func focus_rect(rect: Rect2, text: String, keys: Array = [], pad := 10.0, above := false) -> void:
 	_begin(text, keys)
 	_target_rect = rect
 	_pad = pad
+	_card_above = above
 
 
 ## Card only, nothing to point at. at_bottom: bottom centre (monsters come from the top of the
@@ -156,6 +159,7 @@ func _begin(text: String, keys: Array) -> void:
 	_target_control = null
 	_target_rect = Rect2()
 	_card_bottom = false
+	_card_above = false
 	if _text.text != text or _alpha_to <= 0.0:
 		_iris = 1.0
 	_text.text = text
@@ -256,6 +260,14 @@ func _place_card(on: bool) -> void:
 		return
 	var half := _hole.size * 0.5 + Vector2(_corner, _corner)
 	var pos := Vector2(_hole.position.x - sz.x * 0.5, _hole.position.y + half.y + CARD_GAP)
+	if _card_above:  # above, else left of the hole (the bag's right-click menu opens below / right)
+		pos.y = _hole.position.y - half.y - CARD_GAP - sz.y
+		if pos.y < 24.0:
+			pos = Vector2(_hole.position.x - half.x - CARD_GAP - sz.x, _hole.position.y - sz.y * 0.5)
+		pos.x = clampf(pos.x, 24.0, vp.x - sz.x - 24.0)
+		pos.y = clampf(pos.y, 24.0, vp.y - sz.y - 24.0)
+		_card.position = pos
+		return
 	if pos.y + sz.y > vp.y - 24.0:
 		pos.y = _hole.position.y - half.y - CARD_GAP - sz.y
 	if pos.y < 24.0:  # tall hole (a whole panel): put it to the side

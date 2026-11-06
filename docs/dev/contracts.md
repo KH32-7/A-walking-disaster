@@ -358,7 +358,7 @@ levels/base/base_school/
 - `IntroCutscene`(levels/base/intro/): 새 게임(`intro_pending`)이면 base_school이 붙인다. 플래그 `intro_talked`(방송실 지기 대화. 지기는 주민이 아니다), `intro_house_done`(집에서 나옴). `phase()` = `&"cinematic"`/`&"house"`/`&"done"`.
 - `UI.tutorial: IntroTutorial` — 매 프레임 상태로 단계를 정한다. `current_step()`, `skip()`. 끝나면 `tutorial_done`.
   단계가 가리키는 화면(`SHOWS_OVER`: 가방, 출격 준비) 말고 다른 화면, 컷신 대화, 건물 놓기 중에는 안내를 숨긴다(`current_step()`은 그대로).
-- `UI.spotlight: Spotlight` — `focus_world(node, text, keys, radius, lift)`, `focus_control(c, text, keys)`, `focus_rect(rect, text, keys)`, `focus_card(text, keys, at_bottom)`(가리킬 것 없이 카드만: 위 가운데, at_bottom이면 아래 가운데), `clear()`.
+- `UI.spotlight: Spotlight` — `focus_world(node, text, keys, radius, lift)`, `focus_control(c, text, keys)`, `focus_rect(rect, text, keys, pad, above)`(above: 카드를 구멍 위, 자리 없으면 왼쪽에), `focus_card(text, keys, at_bottom)`(가리킬 것 없이 카드만: 위 가운데, at_bottom이면 아래 가운데), `clear()`.
 - `UI.cinematic: CinematicOverlay` — `bars(on)`, `fade_to(a)`, `cut(black)`, `title(text, sub)`, `caption(text)`, `talk(lines)`(await), `is_playing()`(film이거나 바가 들어옴: 무전 자막 대기, 주인공 외곽선 끔), `film`, `skippable` + `skip_requested`.
 - `Player.script_input`: 비어 있지 않으면 컷신이 그 입력으로 step()을 돌린다(`"world_move": Vector3` 가능).
 - `Player.interact_held`: 이번 프레임 F를 누르고 있음(꾹 누르기 행동이 읽음, 테스트가 넣음). `RescueDoor.hold_state()`: 문 따는 중이면 `{label, progress}`(머리 위 게이지), 아니면 `{}`. 문 따기는 F를 누르는 동안 `RescueTuning.lockpick_sec`, 떼거나 `lockpick_leave_m`보다 멀어지면 처음부터.
