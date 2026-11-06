@@ -3188,13 +3188,13 @@
       "node_name": "ExtractPoint_park_south_gate",
       "floor": 0,
       "position": [
-        -15.0,
+        -55.0,
         0.0,
-        61.0
+        69.0
       ],
       "plan_position": [
-        60,
-        136
+        20,
+        144
       ],
       "props": {
         "id": "park_south_gate",
@@ -3203,7 +3203,7 @@
         "wait_sec": 5,
         "zone_radius": 3
       },
-      "note": "남쪽 정문. 진입 지점 바로 앞. 활성 후보."
+      "note": "남쪽 정문. 진입 지점 바로 앞. 활성 후보. 들어오는 길목에서 실수로 나가지 않게 남쪽 길 서쪽 끝으로 옮김(사용자 요청 2026-11-06)."
     },
     {
       "id": "hidden",

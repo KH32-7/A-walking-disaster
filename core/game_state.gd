@@ -12,6 +12,9 @@ const RAIN_CHANCE := 0.2
 const RAIN_CHANCE_SUMMER := 0.5
 ## Every noise radius is multiplied by this on rainy days (design 02 "소음").
 const RAIN_NOISE_MULT := 0.75
+## No rain on the first days (사용자 요청 2026-11-06: 1·2일은 비 안 오게) — the intro and the first
+## sortie are learned in clear weather.
+const CLEAR_DAYS := 2
 
 ## Coarse day phase for each fine-grained flow state. TITLE is absent: it keeps the current phase.
 const PHASE_OF_FLOW := {
@@ -71,6 +74,8 @@ func set_weather(next: Enums.Weather) -> void:
 ## Rolls today's weather from the season's rain chance. Pass an rng for repeatable rolls.
 func roll_weather(rng: RandomNumberGenerator = null) -> void:
 	var chance := RAIN_CHANCE_SUMMER if season() == Enums.Season.SUMMER else RAIN_CHANCE
+	if day <= CLEAR_DAYS:
+		chance = 0.0
 	var roll := rng.randf() if rng != null else randf()
 	set_weather(Enums.Weather.RAIN if roll < chance else Enums.Weather.CLEAR)
 

@@ -80,6 +80,10 @@ func _run() -> void:
 		await _quick_screens()
 		_finish()
 		return
+	if "--quick=rain" in OS.get_cmdline_user_args():
+		await _quick_rain()
+		_finish()
+		return
 	if "--quick=cinema" in OS.get_cmdline_user_args():
 		# Only the cutscene, for --write-movie (look at it as a video, then delete it).
 		await _until(func() -> bool: return UI.is_open(&"title"), "타이틀", 60.0)
@@ -665,6 +669,39 @@ func _quick_screens() -> void:
 	await _until(func() -> bool: return UI.is_open(&"evening"), "저녁 정산")
 	await _frames(20)
 	await _shot("s_evening")
+
+
+## A rainy day at the base and in the park, a few seconds each (for --write-movie / shots).
+func _quick_rain() -> void:
+	_step("quick_rain")
+	await _until(func() -> bool: return UI.is_open(&"title"), "타이틀")
+	UI.get_screen(&"title").list.focus_row(&"new")
+	await _frames(3)
+	(UI.get_screen(&"title").find_child("start", true, false) as Button).pressed.emit()
+	await _until(func() -> bool: return GameState.flow_state == Enums.FlowState.BASE_MORNING, "기지")
+	await _loading_done()
+	await _intro(false)
+	UI.tutorial.skip()
+	GameState.set_weather(Enums.Weather.RAIN)
+	await get_tree().create_timer(4.0).timeout
+	_check(Fx.rain.amount() > 0.9, "비가 오면 기지에 비가 보임 (%.2f)" % Fx.rain.amount())
+	await _shot("rain_base")
+	await get_tree().create_timer(3.0).timeout
+	if not await _sortie(&"city_park"):
+		return
+	GameState.set_weather(Enums.Weather.RAIN)
+	await get_tree().create_timer(4.0).timeout
+	await _shot("rain_park")
+	var p := get_tree().get_first_node_in_group(&"player") as Node3D
+	for a: StringName in [&"move_up", &"move_right"]:
+		Input.action_press(a)
+	await get_tree().create_timer(3.0).timeout
+	for a: StringName in [&"move_up", &"move_right"]:
+		Input.action_release(a)
+	await _shot("rain_park_walk")
+	GameState.set_weather(Enums.Weather.CLEAR)
+	await get_tree().create_timer(3.0).timeout
+	_check(Fx.rain.amount() < 0.05, "비가 그치면 사라짐 (%.2f)" % Fx.rain.amount())
 
 
 ## Short look at the base: 45° camera, no player, grid while placing, [클릭] chip on hover.

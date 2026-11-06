@@ -12802,7 +12802,7 @@ id = &"park_north_gate"
 type = 2
 
 [node name="ExtractPoint_park_south_gate" type="Marker3D" parent="Markers" unique_id=2059302157 instance=ExtResource("4_n00ua")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.5, 0, 91.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -82.5, 0, 103.5)
 gizmo_extents = 0.5
 script = ExtResource("5_qx4rd")
 id = &"park_south_gate"

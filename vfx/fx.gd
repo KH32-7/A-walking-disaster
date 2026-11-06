@@ -22,11 +22,18 @@ var _alive: Dictionary = {}  # StringName -> Array[FxNode], oldest first
 var _warned: Dictionary = {}
 
 
+var rain: RainFx
+
+
 func _ready() -> void:
 	_load_effects()
 	feedback = FxFeedback.new()
 	feedback.name = &"FxFeedback"
 	add_child(feedback)
+	# 비 오는 날 (RainFx): drops, splashes, mist and the rain grade, on whatever camera is current.
+	rain = RainFx.new()
+	rain.name = &"Rain"
+	add_child(rain)
 	# A finished sortie must not leave a swamp lying on the next map.
 	EventBus.flow_state_changed.connect(func(_s: Enums.FlowState) -> void: clear())
 
