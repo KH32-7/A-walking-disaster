@@ -35,6 +35,8 @@ const WALL_H := {"mart_in": 4.0}
 const UPPER_WALL_H := 3.5
 const BLOCKED_H := {"rubble": 3.5}
 const RAMP_WIDTH := 3.5
+## Visible step height of the mall stairs (the walkable wedge under them stays smooth).
+const STAIR_RISE := 0.25
 
 ## Doors: zone id -> [[x, z, width], ...] in map file coordinates (scaled on use, width is not).
 ## Placed from the demo routes and the roads/bridges each building faces.
@@ -189,6 +191,8 @@ func _build_structures() -> void:
 	var stair := _ramp("Stairs", stair_top, stair_foot, stair_rect.size.x, 0.0, y2, "stairs")
 	_nav(stair)
 	mall.add_child(stair)
+	# What the player sees: steps over the smooth wedge (not in the navmesh, no collision).
+	mall.add_child(_steps("StairSteps", stair_top, stair_foot, stair_rect.size.x, 0.0, y2, STAIR_RISE, "stairs"))
 	# Cut the stairs out of the navmesh; the layer-1 link below is the only way across.
 	var cut := NavigationObstacle3D.new()
 	cut.name = "StairsNavCut"
@@ -253,6 +257,7 @@ func _build_structures() -> void:
 	_kit_slab(deck, y2 + 0.01, KIT_TERRAIN.road, 6.0, up)
 	_kit_roof(shop2_in, y2 + UPPER_WALL_H + ROOF_T, up + "/roof:shop2_in")
 	_kit_skins["Mall/Stairs"] = [KIT_TERRAIN.road, 3.0]
+	_kit_skins["Mall/StairSteps"] = [KIT_TERRAIN.road, 3.0]
 
 	# Hidden loading ramp: from the deck edge down toward the dock (map hidden_routes[0].to).
 	# Its length (so its slope) is the unscaled one; the scaled rest of the route is ground.

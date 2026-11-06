@@ -265,6 +265,7 @@ const COLORS := {
 	"cover": Color(0.85, 0.55, 0.25),
 	"slab": Color(0.66, 0.66, 0.64),
 	"stairs": Color(0.35, 0.35, 0.38),
+	"nosing": Color(0.86, 0.80, 0.55),
 	"trunk": Color(0.42, 0.32, 0.22),
 	"crown": Color(0.30, 0.50, 0.28),
 	"rock": Color(0.55, 0.55, 0.52),
@@ -2570,6 +2571,39 @@ func _ramp(node_name: String, top: Vector2, foot: Vector2, width: float, y: floa
 	shape.collision_layer = LAYER_WORLD_BIT
 	shape.collision_mask = 0
 	shape.material = _mats[mat]
+	return shape
+
+
+## Visible steps over a _ramp wedge with the same arguments (the wedge keeps the collision, so
+## walking stays smooth). Every inner step corner lies on the slope, so the steps hide the wedge
+## and feet sink at most one rise. A pale strip marks each step's front edge (nosing), so stairs
+## read as stairs from above and not as a ramp (user report 2026-11-06).
+func _steps(node_name: String, top: Vector2, foot: Vector2, width: float, y: float, h: float,
+		rise: float, mat: String) -> CSGPolygon3D:
+	var shape := _ramp(node_name, top, foot, width, y, h, mat)
+	shape.use_collision = false
+	var length := top.distance_to(foot)
+	var n := maxi(1, roundi(h / rise))
+	var pad := 0.01
+	# Side profile, x along the slope from the top (0) to the foot (length), y up.
+	var poly := PackedVector2Array([Vector2(-pad, 0.0), Vector2(length, 0.0)])
+	for k in range(1, n + 1):
+		var x_front := length * (1.0 - float(k - 1) / n)
+		var x_back := length * (1.0 - float(k) / n)
+		poly.append(Vector2(x_front, h * k / n))
+		poly.append(Vector2(x_back if k < n else -pad, h * k / n))
+	shape.polygon = poly
+	shape.depth = width + pad * 2.0
+	shape.transform.origin += shape.transform.basis.z * pad
+	var nose_d := 0.12
+	for k in range(1, n + 1):
+		var nose := CSGBox3D.new()
+		nose.name = "Nosing%d" % k
+		nose.size = Vector3(nose_d, 0.03, width - 0.1)
+		nose.position = Vector3(length * (1.0 - float(k - 1) / n) - nose_d * 0.5 + 0.005, h * k / n + 0.005,
+			-shape.depth * 0.5)
+		nose.material = _mats.nosing
+		shape.add_child(nose, true)
 	return shape
 
 
