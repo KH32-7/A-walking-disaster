@@ -11,6 +11,7 @@ signal broken()
 const SIZE := Vector3(1.4, 2.2, 0.15)
 ## In front of the person (their local -Z).
 const OFFSET := Vector3(0.0, 1.1, -0.8)
+const HOLD_LABEL := "문 따는 중"
 
 var target: RescueTarget
 var health := 1.0
@@ -44,8 +45,15 @@ func take_damage(amount: float, _info: Dictionary = {}) -> void:
 		broken.emit()
 
 
-## [F] prompt words: pick the lock while standing still (B-10 갇힘).
+## [F] prompt words: hold F to pick the lock (B-10 갇힘, hold since 2026-11-06).
 func interact_label() -> String:
 	if target == null or target.state != RescueTarget.State.WAITING:
 		return ""
-	return "문 따기"
+	return "문 따기 (꾹 누르기)"
+
+
+## HUD hold bar while the lock is being picked (Player.hud_state "hold"), {} otherwise.
+func hold_state() -> Dictionary:
+	if target == null or target.state != RescueTarget.State.LOCKPICKING:
+		return {}
+	return {"label": HOLD_LABEL, "progress": target.lockpick_progress()}

@@ -4,8 +4,10 @@ extends Resource
 ## Design reference: docs/design/02-field.md "구조 이벤트", "함께 나오기 (호위)".
 
 @export_group("Rescue")
-## 갇힘: lock picking time (02: 10초).
-@export var lockpick_sec := 10.0
+## 갇힘: lock picking time while F is held (02: 10초 → 4초, user playtest 2026-11-06).
+@export var lockpick_sec := 4.0
+## 갇힘: letting go of F, or walking farther than this (m) from where it started, resets the gauge.
+@export var lockpick_leave_m := 2.5
 ## 갇힘: door health. Monsters hitting it (layer 3) break it. Not in the design (가안).
 @export var door_health := 60.0
 ## 갇힘 실패 → 방어 이벤트: hold out this long (02 포위 "60초 동안 지키기").
