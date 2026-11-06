@@ -75,28 +75,40 @@ func _test_data_files() -> void:
 # --- Rescue types --------------------------------------------------------------
 
 func _test_trapped() -> void:
-	# Lock picking: 10 s standing still.
+	# Lock picking: hold F (Player.interact_held) for lockpick_sec (4 s since 2026-11-06).
+	_player.interact_held = true
 	var t := _target(_spawn(Type.TRAPPED, Move.WHEELCHAIR))
 	var door := t.get_node("Door") as RescueDoor
 	_check(door.get_collision_layer_value(Enums.LAYER_ALLY) and door.get_collision_layer_value(Enums.LAYER_INTERACTABLE),
 			"door is on layers 3 and 7")
 	_check(not t.get_collision_layer_value(Enums.LAYER_INTERACTABLE), "trapped person is reached through the door")
+	_check(door.interact_label() == "문 따기 (꾹 누르기)", "door prompt says hold")
 	_check(door.begin_open(_player), "door starts lock picking")
 	_ticks(t, TUNING.lockpick_sec - 0.2)
-	_check(t.state == State.LOCKPICKING and t.lockpick_progress() > 0.9, "still picking before 10 s")
+	_check(t.state == State.LOCKPICKING and t.lockpick_progress() > 0.9, "still picking before the time")
+	_check(door.hold_state().get("progress", 0.0) > 0.9, "door shows the hold gauge")
 	_ticks(t, 0.3)
 	_check(t.state == State.FOLLOW and t.is_in_group(RescueTarget.PARTY_GROUP), "lock picked: follows, joins the party")
 	_check(t.get_collision_layer_value(Enums.LAYER_ALLY), "follower is on layer 3")
 	t.free()
 
-	# Moving cancels.
+	# Letting go of F empties the gauge; small steps while holding do not.
 	t = _target(_spawn(Type.TRAPPED, Move.WHEELCHAIR))
 	(t.get_node("Door") as RescueDoor).begin_open(_player)
-	_ticks(t, 2.0)
+	_ticks(t, 1.0)
 	_player.position.x += 1.0
 	_ticks(t, DT)
-	_check(t.state == State.WAITING, "moving cancels lock picking")
+	_check(t.state == State.LOCKPICKING, "moving a little while holding keeps picking")
 	_player.position.x -= 1.0
+	_player.interact_held = false
+	_ticks(t, DT)
+	_check(t.state == State.WAITING and t.lockpick_progress() == 0.0, "letting go resets lock picking")
+	_player.interact_held = true
+	(t.get_node("Door") as RescueDoor).begin_open(_player)
+	_player.position.x += TUNING.lockpick_leave_m + 0.5
+	_ticks(t, DT)
+	_check(t.state == State.WAITING, "walking away resets lock picking")
+	_player.position.x -= TUNING.lockpick_leave_m + 0.5
 	t.free()
 
 	# Power restored: out at once (through the switch).

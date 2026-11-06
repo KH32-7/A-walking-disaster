@@ -47,6 +47,10 @@ const FALLBACK_WALK_SPEED := 4.5
 const REVIVE_HOLD_LABEL := "일으키는 중"
 const WAYPOINT_REACHED := 0.3
 const MOVING_SPEED := 0.1
+## _face_open_side(): rays, their length (m), and how much more open a side must be to turn.
+const OPEN_PROBE_DIRS := 8
+const OPEN_PROBE_M := 6.0
+const OPEN_PROBE_MARGIN := 0.5
 ## A supported person turns to the player's walking direction only above this speed (m/s).
 const SUPPORT_TURN_SPEED := 0.5
 const EXPOSED: Array[State] = [State.FOLLOW, State.HIDE, State.DEFEND]
@@ -117,6 +121,7 @@ func _ready() -> void:
 	EventBus.noise_emitted.connect(_on_noise)
 	if spawn.rescue_type == RescueSpawn.Type.TRAPPED:
 		_make_door()
+		_face_open_side.call_deferred()
 	_apply_layers()
 	# Pack character model (Lane D, ResidentModel). Missing assets: the greybox stays.
 	($Model as ResidentModel).show_resident(profile, spawn.move_type)
@@ -377,8 +382,12 @@ func _present_round() -> void:
 	card_round_started.emit(_round, r.prompt_id, r.options)
 
 
+## Hold F to fill the gauge; letting go (or walking off) empties it (user playtest 2026-11-06).
+## Interactors without `interact_held` (not the player) count as holding.
 func _tick_lockpick(delta: float) -> void:
-	if _player == null or _player.global_position.distance_to(_channel_from) > tuning.channel_cancel_distance:
+	var held: Variant = _player.get(&"interact_held") if _player != null else false
+	if _player == null or held == false \
+			or _player.global_position.distance_to(_channel_from) > tuning.lockpick_leave_m:
 		_set_state(State.WAITING)
 		return
 	_channel_left -= delta
@@ -402,6 +411,39 @@ func _rescue(player: Node3D) -> void:
 		_rescued = true
 		add_to_group(PARTY_GROUP)
 	_set_state(State.FOLLOW)
+
+
+## Turns toward the most open side (8 rays on the world layer), so the door (TRAPPED) sits in the
+## opening, not against a wall. Keeps the spot's facing
+## unless another side is clearly more open (the elevator car: the doorway, user playtest 2026-11-06).
+func _face_open_side() -> void:
+	if not is_inside_tree():
+		return
+	await get_tree().physics_frame
+	if not is_inside_tree():
+		return
+	var space := get_world_3d().direct_space_state
+	var from := global_position + Vector3.UP
+	var front := -global_basis.z
+	front.y = 0.0
+	front = front.normalized() if front.length() > 0.01 else Vector3.FORWARD
+	var best_dir := front
+	var best := _free_distance(space, from, front)
+	for i in OPEN_PROBE_DIRS:
+		var dir := front.rotated(Vector3.UP, TAU * i / OPEN_PROBE_DIRS)
+		var free := _free_distance(space, from, dir)
+		if free > best + OPEN_PROBE_MARGIN:
+			best = free
+			best_dir = dir
+	if best_dir != front:
+		look_at(global_position + best_dir, Vector3.UP)
+
+
+func _free_distance(space: PhysicsDirectSpaceState3D, from: Vector3, dir: Vector3) -> float:
+	var query := PhysicsRayQueryParameters3D.create(from, from + dir * OPEN_PROBE_M,
+		1 << (Enums.LAYER_WORLD - 1), [get_rid()])
+	var hit := space.intersect_ray(query)
+	return OPEN_PROBE_M if hit.is_empty() else from.distance_to(hit["position"])
 
 
 func _make_door() -> void:
@@ -602,7 +644,8 @@ func _go_down() -> void:
 
 
 func _tick_revive(delta: float) -> void:
-	if not is_instance_valid(_reviver) or _reviver.get(&"is_downed") == true 			or _reviver.global_position.distance_to(_revive_from) > tuning.channel_cancel_distance:
+	if not is_instance_valid(_reviver) or _reviver.get(&"is_downed") == true \
+			or _reviver.global_position.distance_to(_revive_from) > tuning.channel_cancel_distance:
 		_reviver = null
 		return
 	_revive_left -= delta

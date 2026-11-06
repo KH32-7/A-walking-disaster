@@ -29,6 +29,7 @@ func run() -> bool:
 	_test_stick_aim()
 	_test_mouse_aim()
 	await _test_mouse_on_monster()
+	await _test_mouse_under_roof()
 	_test_aim_assist()
 	_test_indoor_zone()
 
@@ -114,6 +115,27 @@ func _test_mouse_aim() -> void:
 	_expect_near((point as Vector3).distance_to(ground), 0.0, "cursor point is under the cursor", 0.05)
 	_aim_at(point)
 	_expect_near(_player.facing().angle_to(_flat(ground - _player.global_position)), 0.0, "player faces cursor")
+
+
+## User playtest 2026-11-06: on the mall's 2F the cursor ray hit the roof above (faded out, still
+## solid) and the player aimed somewhere else. Hits above the head are skipped.
+func _test_mouse_under_roof() -> void:
+	var roof := StaticBody3D.new()
+	roof.collision_layer = 1 << (Enums.LAYER_WORLD - 1)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(40.0, 0.3, 40.0)
+	shape.shape = box
+	roof.add_child(shape)
+	add_child(roof)
+	roof.global_position = _player.global_position + Vector3.UP * 4.0
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var ground := _player.global_position + Vector3(3.0, 0.0, -2.0)
+	var point: Variant = _camera.aim_point_from_screen(_camera.unproject_position(ground))
+	_expect(point is Vector3 and (point as Vector3).distance_to(ground) < 0.05,
+			"a roof above the player does not catch the cursor ray (%s)" % [point])
+	roof.free()
 
 
 ## User feedback 2026-11-06: the cursor on a tall monster's head aimed at the ground behind it.

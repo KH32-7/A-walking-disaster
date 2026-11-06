@@ -36,6 +36,10 @@ const DOF_AMOUNT := 0.08 ## Godot default 0.1, keep it soft
 const STICK_DEADZONE := 0.25
 const STICK_AIM_DISTANCE := 8.0 ## stick aim point this far in front of the player
 const AIM_RAY_LENGTH := 200.0
+## Aim ray hits higher than this above the target's feet (m) are skipped: roofs, the floor above.
+const AIM_OVERHEAD_M := 2.4
+## At most this many such hits are skipped before falling back to the plane at the feet.
+const AIM_MAX_SKIPS := 4
 const ASSIST_RANGE := 16.0
 const ASSIST_CONE_DEG := [0.0, 6.0, 12.0, 20.0] ## index = Settings `aim_assist` (0 off, 1..3)
 
@@ -169,6 +173,8 @@ func screen_to_ground(input: Vector2) -> Vector3:
 
 
 ## World point under a screen position: first world-layer hit, else the plane at the target's feet.
+## Hits above the target's head are skipped (roofs and the upper floor, hidden by the roof fader but
+## still solid): aiming on the mall's 2F hit the roof first (user playtest 2026-11-06).
 ## With Settings `aim_assist` on, a monster under the cursor is aimed at directly (its position), so
 ## pointing at a tall monster's head does not aim at the ground behind it.
 ## Returns null when the ray misses both (pointing at the sky).
@@ -178,14 +184,21 @@ func aim_point_from_screen(screen_pos: Vector2) -> Variant:
 	var mask := 1 << (Enums.LAYER_WORLD - 1)
 	if int(Settings.get_value(&"aim_assist")) > 0:
 		mask |= 1 << (Enums.LAYER_MONSTER - 1)
-	var query := PhysicsRayQueryParameters3D.create(origin, origin + dir * AIM_RAY_LENGTH, mask)
-	var hit := get_world_3d().direct_space_state.intersect_ray(query)
-	if not hit.is_empty():
+	var ground_y := target.global_position.y if target != null else 0.0
+	var space := get_world_3d().direct_space_state
+	var skip: Array[RID] = []
+	for i in AIM_MAX_SKIPS + 1:
+		var query := PhysicsRayQueryParameters3D.create(origin, origin + dir * AIM_RAY_LENGTH, mask, skip)
+		var hit := space.intersect_ray(query)
+		if hit.is_empty():
+			break
 		var monster := hit.collider as Monster
 		if monster != null and not monster.is_dead():
 			return monster.global_position
+		if target != null and (hit.position as Vector3).y > ground_y + AIM_OVERHEAD_M:
+			skip.append(hit.rid)
+			continue
 		return hit.position
-	var ground_y := target.global_position.y if target != null else 0.0
 	return Plane(Vector3.UP, ground_y).intersects_ray(origin, dir)
 
 
