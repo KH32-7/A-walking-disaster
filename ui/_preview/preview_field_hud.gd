@@ -27,7 +27,7 @@ func _ready() -> void:
 	EventBus.sortie_started.emit({"region_id": &"flooded_mall", "region_name": "침수 상가 광장"})
 	_hud.push_reward("약품장 뒤짐", 25)
 	_hud.push_reward("마물 처치", 40)
-	_hud.show_hint("소리가 곧 위치입니다", "달리거나 쏘면 소음 링이 퍼집니다. 링 안의 마물은 소리 난 곳으로 옵니다.",
+	_hud.show_hint("소리가 곧 위치입니다", "달리거나 쏘면 소리가 납니다. 들은 마물은 소리 난 곳으로 옵니다.",
 		"Shift", "떼고 걷기")
 	EventBus.radio_message.emit(&"broadcaster", "들리나? 상가 3층 승강기 쪽에서 누가 문을 두드린다더군.", 1)
 

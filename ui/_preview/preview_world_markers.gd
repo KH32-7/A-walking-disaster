@@ -1,5 +1,5 @@
 extends Node3D
-## D-05 preview: quarter-view field with fake monsters, noise rings and edge arrows, plus the HUD.
+## D-05 preview: quarter-view field with fake monsters, noise (edge arrows only, no rings), plus the HUD.
 ## Keys: 1 walk noise (4 m), 2 sprint (8 m), 3 gunshot (22 m), 4 noise behind the camera, S/A/W monster states.
 ## Optional: -- --shot=user://markers.png
 
