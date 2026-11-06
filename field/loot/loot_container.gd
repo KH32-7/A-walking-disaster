@@ -76,6 +76,8 @@ var _outlines := {}
 
 
 func _ready() -> void:
+	# On an upper floor it hides with the roofs of the zone below (IndoorZone.ABOVE_GROUP).
+	add_to_group(IndoorZone.ABOVE_GROUP)
 	collision_layer = 1 << (Enums.LAYER_INTERACTABLE - 1)
 	collision_mask = 0
 	if def:
