@@ -3,12 +3,15 @@ extends VBoxContainer
 ## EventBus.notification_posted while no HUD shows it (D-16). Owner: Lane D.
 ## The field HUD (reward feed / hint card, D-04) and the base HUD (note list, D-06) show
 ## notifications themselves; when a screen hides the HUD (map, bag, journal ...) or no HUD is up
-## (sortie prep, result), this small stack (bottom right, above the footer row) shows them instead, so nothing that
-## asks for action is lost. Severity is a word + shape tag, never colour only.
+## (sortie prep, result), this small stack shows them instead, so nothing that asks for action is lost:
+## bottom right over the world, in a menu's key-footer row left of the subtitle (one card).
+## Severity is a word + shape tag, never colour only.
 
 const MAX := 3
 const SEC := 4.0
 const TAGS := {&"info": ["알림", "●"], &"warn": ["주의", "▲"], &"danger": ["위험", "■"]}
+
+var _max_cards := MAX
 
 
 func _ready() -> void:
@@ -54,10 +57,7 @@ func push(text: String, severity: StringName = &"info") -> void:
 	h.add_child(chip)
 	h.add_child(MenuScreen.label(text, &"LabelOnCream"))
 	add_child(card)
-	while get_child_count() > MAX:
-		var old := get_child(0)
-		remove_child(old)
-		old.queue_free()
+	_trim()
 	card.modulate.a = 0.0
 	var tw := card.create_tween()
 	tw.tween_property(card, ^"modulate:a", 1.0, 0.25)
@@ -68,3 +68,16 @@ func push(text: String, severity: StringName = &"info") -> void:
 
 func count() -> int:
 	return get_child_count()
+
+
+## How many cards show at once: MAX over the world, 1 in a menu's footer row (UI._place_subtitle).
+func set_max_cards(n: int) -> void:
+	_max_cards = maxi(1, n)
+	_trim()
+
+
+func _trim() -> void:
+	while get_child_count() > _max_cards:
+		var old := get_child(0)
+		remove_child(old)
+		old.queue_free()

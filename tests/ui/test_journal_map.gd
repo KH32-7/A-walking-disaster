@@ -177,6 +177,16 @@ func _test_notice_toast() -> bool:
 	for l: Label in UI.notice_toast.find_children("*", "Label", true, false):
 		text += l.text
 	ok = _expect(text.contains("주의") and text.contains("테스트 알림"), "severity is a word on the toast") and ok
+	# In a menu the toast sits in the key-footer row, left of the subtitle, one card at a time: under the
+	# header it hid the resource bar (QA 2026-11-06).
+	EventBus.notification_posted.emit("두 번째 알림", &"info")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	ok = _expect(UI.notice_toast.count() == 1, "a menu shows one toast at a time (%d)" % UI.notice_toast.count()) and ok
+	var vp := UI.notice_toast.get_viewport().get_visible_rect().size
+	var r := UI.notice_toast.get_global_rect()
+	ok = _expect(r.position.y > vp.y - 120.0 and r.end.y <= vp.y, "menu toast is in the footer row, not the header (%s in %s)" % [r, vp]) and ok
+	ok = _expect(r.end.x <= vp.x - UI.MENU_SUBTITLE_W - 52.0, "menu toast stays left of the subtitle (%s)" % r) and ok
 	UI.close(&"journal")
 	MenuScreen.clear(UI.notice_toast)
 	return ok

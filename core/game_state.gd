@@ -4,6 +4,10 @@ extends Node
 ## Domain state lives in the domain autoloads (Economy, Armory, FieldState, Colony).
 ## Design reference: docs/design/01-flow-time.md
 
+## The game's name (user decision 2026-11-06). Shown on the title screen, the intro's title card and
+## the window title. project.godot's config/name stays "Walking disaster's project" on purpose:
+## changing it would move the user:// folder and lose saves and settings.
+const GAME_TITLE := "Off the List"
 const DAYS_PER_SEASON := 15
 const SORTIE_DUSK_SEC := 12.0 * 60.0
 const SORTIE_NIGHT_SEC := 15.0 * 60.0
@@ -36,6 +40,11 @@ var flow_state: Enums.FlowState = Enums.FlowState.TITLE
 var weather: Enums.Weather = Enums.Weather.CLEAR
 ## Story / unlock flags. Keys are StringName, values are bool or int.
 var flags: Dictionary = {}
+
+
+func _ready() -> void:
+	# The window title bar shows config/name by default; show the game's name instead.
+	DisplayServer.window_set_title(GAME_TITLE)
 
 
 @warning_ignore("integer_division")

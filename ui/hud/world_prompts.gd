@@ -155,6 +155,8 @@ func _draw() -> void:
 	if em == null or not em.has_method(&"active_points"):
 		return
 	var vp := get_viewport_rect().size
+	# Labels drawn so far: two exits clamped to one edge read "탈출 / 11m탈출 / 220m" (QA 2026-11-06).
+	var taken: Array[Rect2] = []
 	for point: ExtractPoint in em.call(&"active_points"):
 		var need := String(NEEDS.get(point.type, ""))
 		if need != "" and Bag.count_of(ExtractionManager.REQUIRED_ITEM[point.type]) > 0:
@@ -176,8 +178,19 @@ func _draw() -> void:
 		var fs := 16
 		var w := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		var tp := Vector2(p.x - w * 0.5, p.y + 40.0)
+		# On top of another label: one line further from the nearer screen edge each try.
+		var step := (fs + 8.0) * (1.0 if p.y < vp.y * 0.5 else -1.0)
+		for i in 4:
+			if not taken.any(func(o: Rect2) -> bool: return o.intersects(_label_rect(tp, w, fs))):
+				break
+			tp.y += step if step > 0.0 or i > 0 else -80.0  # bottom half: first jump above the diamond
+		taken.append(_label_rect(tp, w, fs))
 		draw_string_outline(_font, tp, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 5, Color(0, 0, 0, 0.85))
 		draw_string(_font, tp, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, UiTokens.WARN if need != "" else UiTokens.TEXT)
+
+
+static func _label_rect(baseline_left: Vector2, w: float, fs: int) -> Rect2:
+	return Rect2(baseline_left + Vector2(-4.0, -fs - 2.0), Vector2(w + 8.0, fs + 8.0))
 
 
 ## Green diamond (UI_RULES §4 탈출 마름모: GOOD). A locked one gets a WARN rim: colour plus the words.

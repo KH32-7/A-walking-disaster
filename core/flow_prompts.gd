@@ -93,7 +93,7 @@ func _unhandled_input(event: InputEvent) -> void:
 # --- Title ---
 
 func _show_title() -> void:
-	var box := _center_box("A walking disaster", "포스트 아포칼립스 생존기")
+	var box := _center_box(GameState.GAME_TITLE, "포스트 아포칼립스 생존기")
 	box.add_child(_button("새 게임", func() -> void: SceneRouter.start_new_game(0)))
 	var info := SaveSystem.slot_info(0)
 	if info["exists"] and info["compatible"]:
