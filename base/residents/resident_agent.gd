@@ -94,7 +94,7 @@ func _ready() -> void:
 	_label.font_size = 36
 	_label.outline_size = 10
 	_label.pixel_size = 0.01
-	_label.position.y = BODY_HEIGHT + 0.5
+	_label.position.y = BODY_HEIGHT * ResidentModel.WORLD_SCALE + 0.5  # above the 1.3x model
 	add_child(_label)
 	_agent = NavigationAgent3D.new()
 	# The baked navmesh sits ~0.5 m above the floor (voxel rounding); a smaller value never
