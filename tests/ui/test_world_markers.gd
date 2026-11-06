@@ -33,6 +33,13 @@ func run() -> bool:
 	person.free()
 	wm._process(0.02)
 	ok = _expect(wm.bubble_texts().is_empty(), "bubble of a removed person goes too") and ok
+	# Two edge labels at one spot step apart along the edge instead of printing on top of each other
+	# ("11m" under "?", QA 2026-11-06).
+	wm._label_rects.clear()
+	var a: Vector2 = wm._free_label_spot(Vector2(400, 140), "11m", 17, Vector2(1, 0))
+	var b: Vector2 = wm._free_label_spot(Vector2(400, 140), "?", 17, Vector2(1, 0))
+	ok = _expect(a == Vector2(400, 140) and b.y == a.y and absf(b.x - a.x) > 10.0, "second label moves along the edge (%s, %s)" % [a, b]) and ok
+	ok = _expect(not wm._label_rects[0].intersects(wm._label_rects[1]), "the two label boxes do not overlap") and ok
 	wm.queue_free()
 	return ok
 
