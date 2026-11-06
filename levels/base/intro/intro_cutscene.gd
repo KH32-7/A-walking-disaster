@@ -244,7 +244,7 @@ func _cinematic() -> void:
 	_free_slimes()
 	ci.bars(false, 0.01)
 	UI.hud.visible = false
-	await ci.title("Off the List", "1일차 / 봄, 새벽", 1.8).finished
+	await ci.title(GameState.GAME_TITLE, "1일차 / 봄, 새벽", 1.8).finished
 	ci.skippable = false
 
 
