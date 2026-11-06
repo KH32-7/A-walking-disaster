@@ -28,7 +28,7 @@
 | `ResidentPool` | `systems/resident_pool.gd` | A | 손으로 쓴 생존자 풀(`data/resident_pool/`), 검수된 프로필만 꺼냄 |
 | `Quests` | `systems/quests/quests.gd` | A | 퀘스트·개인 요청·무전 소문 진행과 보상 (스토리 플래그는 `GameState`) |
 | `Journal` | `ai/journal.gd` | A | 생존 일지·엔딩 에필로그 (템플릿) |
-| `Look` | `core/look/look.gd` | A | 화면 전체 스타일 후처리(붓터치·외곽선·색 보정) 시안과 주인공 밝은 외곽선. 값은 `data/look/look_tuning.tres`, 화면 스타일은 기본 꺼짐, 주인공 외곽선은 기본 켜짐. 전역 셰이더 값 `toon_amount`(툰 셰이딩 0~1)도 여기서 넣는다. 디버그: `\` 패널(스타일·툰·맵 조명 슬라이더, 맵 조명은 그 맵 dressing.tscn에 저장), `]` 켜기/끄기, 콘솔 `look` |
+| `Look` | `core/look/look.gd` | A | 화면 전체 스타일 후처리(붓터치·외곽선·색 보정) 시안과 주인공 밝은 외곽선. 값은 `data/look/look_tuning.tres`, 화면 스타일은 기본 꺼짐, 주인공 외곽선은 기본 켜짐(시네마틱 중 `UI.cinematic.is_playing()`에는 끔). 전역 셰이더 값 `toon_amount`(툰 셰이딩 0~1)도 여기서 넣는다. 디버그: `\` 패널(스타일·툰·맵 조명 슬라이더, 맵 조명은 그 맵 dressing.tscn에 저장), `]` 켜기/끄기, 콘솔 `look` |
 
 `_mcp_game_helper`는 Godot AI 플러그인 것이라 건드리지 않는다.
 
@@ -357,8 +357,8 @@ levels/base/base_school/
 - `IntroCutscene`(levels/base/intro/): 새 게임(`intro_pending`)이면 base_school이 붙인다. 플래그 `intro_talked`(방송실 지기 대화. 지기는 주민이 아니다), `intro_house_done`(집에서 나옴). `phase()` = `&"cinematic"`/`&"house"`/`&"done"`.
 - `UI.tutorial: IntroTutorial` — 매 프레임 상태로 단계를 정한다. `current_step()`, `skip()`. 끝나면 `tutorial_done`.
   단계가 가리키는 화면(`SHOWS_OVER`: 가방, 출격 준비) 말고 다른 화면, 컷신 대화, 건물 놓기 중에는 안내를 숨긴다(`current_step()`은 그대로).
-- `UI.spotlight: Spotlight` — `focus_world(node, text, keys, radius, lift)`, `focus_control(c, text, keys)`, `focus_rect(rect, text, keys)`, `clear()`.
-- `UI.cinematic: CinematicOverlay` — `bars(on)`, `fade_to(a)`, `cut(black)`, `title(text, sub)`, `caption(text)`, `talk(lines)`(await), `film`, `skippable` + `skip_requested`.
+- `UI.spotlight: Spotlight` — `focus_world(node, text, keys, radius, lift)`, `focus_control(c, text, keys)`, `focus_rect(rect, text, keys)`, `focus_card(text, keys, at_bottom)`(가리킬 것 없이 카드만: 위 가운데, at_bottom이면 아래 가운데), `clear()`.
+- `UI.cinematic: CinematicOverlay` — `bars(on)`, `fade_to(a)`, `cut(black)`, `title(text, sub)`, `caption(text)`, `talk(lines)`(await), `is_playing()`(film이거나 바가 들어옴: 무전 자막 대기, 주인공 외곽선 끔), `film`, `skippable` + `skip_requested`.
 - `Player.script_input`: 비어 있지 않으면 컷신이 그 입력으로 step()을 돌린다(`"world_move": Vector3` 가능).
 - `LootContainer.add_gear(def_id, rarity)`: 장비 칸. 꺼내면 Armory.create_item + Bag.add_item.
 - `Bag.equip_entry(entry_id, owner_id)`: 가방 장비를 장착(원래 장비는 가방으로, 자리 없으면 창고). 가방 화면 우클릭 "장착".

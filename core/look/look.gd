@@ -8,7 +8,8 @@ extends Node
 ## The player (group "player") gets extra readability (user feedback 2026-11-06: grey hero on a
 ## grey road): a bright outline (hero_outline_px). Its materials move to the transparent pass, drawn
 ## after the outline and after the screen quad, so the outline stays behind the body and the
-## painterly filter skips the player.
+## painterly filter skips the player. No outline while a cutscene plays (UI.cinematic.is_playing(),
+## user request 2026-11-06).
 
 const SHADER := preload("res://core/look/stylized_post.gdshader")
 const HERO_OUTLINE := preload("res://core/look/hero_outline.gdshader")
@@ -21,6 +22,7 @@ var tuning: LookTuning = preload("res://data/look/look_tuning.tres")
 var _quad: MeshInstance3D
 var _material: ShaderMaterial
 var _hero_scan := 0.0
+var _hide_outline := false
 var _toon_amount := -1.0  # last value sent to the global shader uniform, -1 = not sent yet
 
 
@@ -45,6 +47,10 @@ func _process(delta: float) -> void:
 	if tuning.toon_amount != _toon_amount:
 		_toon_amount = tuning.toon_amount
 		RenderingServer.global_shader_parameter_set(&"toon_amount", _toon_amount)
+	var no_outline := UI.cinematic != null and UI.cinematic.is_playing()
+	if no_outline != _hide_outline:
+		_hide_outline = no_outline
+		_hero_scan = 0.0
 	_hero_scan -= delta
 	if _hero_scan <= 0.0:
 		_hero_scan = HERO_SCAN_SEC
@@ -69,8 +75,9 @@ func _style_hero() -> void:
 	var player := get_tree().get_first_node_in_group(&"player")
 	if player == null:
 		return
-	var styled := tuning.enabled or tuning.hero_outline_px > 0.0
-	var key := [styled, tuning.hero_outline_px, tuning.hero_outline_color]
+	var outline_px := 0.0 if _hide_outline else tuning.hero_outline_px
+	var styled := tuning.enabled or outline_px > 0.0
+	var key := [styled, outline_px, tuning.hero_outline_color]
 	for mi: MeshInstance3D in player.find_children("*", "MeshInstance3D", true, false):
 		if mi.mesh == null or mi.material_override != null or (mi.has_meta(&"look_key") and mi.get_meta(&"look_key") == key):
 			continue
@@ -83,22 +90,22 @@ func _style_hero() -> void:
 		for i in mi.get_surface_override_material_count():
 			mi.set_surface_override_material(i, orig[i])
 			if styled:
-				mi.set_surface_override_material(i, _hero_material(mi.get_active_material(i)))
+				mi.set_surface_override_material(i, _hero_material(mi.get_active_material(i), outline_px))
 		mi.set_meta(&"look_key", key)
 
 
-func _hero_material(base: Material) -> Material:
+func _hero_material(base: Material, outline_px: float) -> Material:
 	if base == null:
 		return null
 	var m := base.duplicate() as Material
 	if m is BaseMaterial3D:
 		(m as BaseMaterial3D).transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
 		m.render_priority = HERO_PRIORITY
-	if tuning.hero_outline_px > 0.0:
+	if outline_px > 0.0:
 		var outline := ShaderMaterial.new()
 		outline.shader = HERO_OUTLINE
 		outline.render_priority = HERO_PRIORITY - 1
-		outline.set_shader_parameter(&"outline_px", tuning.hero_outline_px)
+		outline.set_shader_parameter(&"outline_px", outline_px)
 		outline.set_shader_parameter(&"outline_color", tuning.hero_outline_color)
 		var last := m
 		while last.next_pass != null:

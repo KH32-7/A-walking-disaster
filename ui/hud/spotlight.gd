@@ -15,6 +15,9 @@ const FADE_SEC := 0.25
 const RING_COLOR := Color("f6c744")  # UiTokens.ACCENT
 const CARD_GAP := 22.0
 const CARD_W := 360.0
+## Card-only at the bottom (focus_card(..., true)): its bottom edge this far above the screen bottom,
+## clear of the field HUD's bottom-centre vitals.
+const CARD_BOTTOM_Y := 140.0
 
 const SHADER := """
 shader_type canvas_item;
@@ -44,6 +47,7 @@ var _target_rect := Rect2()
 var _world_radius := 90.0
 var _world_lift := 0.6
 var _pad := 10.0
+var _card_bottom := false  # card-only placement: bottom centre instead of top centre
 var _iris := 1.0  # 1 = hole wide open (just started), 0 = at its size
 var _alpha := 0.0
 var _alpha_to := 0.0
@@ -119,6 +123,13 @@ func focus_rect(rect: Rect2, text: String, keys: Array = [], pad := 10.0) -> voi
 	_pad = pad
 
 
+## Card only, nothing to point at. at_bottom: bottom centre (monsters come from the top of the
+## screen, user request 2026-11-06) instead of top centre under the top bar.
+func focus_card(text: String, keys: Array = [], at_bottom := false) -> void:
+	_begin(text, keys)
+	_card_bottom = at_bottom
+
+
 ## Updates the rect of focus_rect() without restarting the iris (the menu moved).
 func move_rect(rect: Rect2) -> void:
 	_target_rect = rect
@@ -144,6 +155,7 @@ func _begin(text: String, keys: Array) -> void:
 	_target_node = null
 	_target_control = null
 	_target_rect = Rect2()
+	_card_bottom = false
 	if _text.text != text or _alpha_to <= 0.0:
 		_iris = 1.0
 	_text.text = text
@@ -239,8 +251,8 @@ func _place_card(on: bool) -> void:
 	var sz := _card.get_combined_minimum_size()
 	_card.size = sz
 	var vp := size
-	if not on:  # card only (a goal, no thing to point at): top centre, under the top bar
-		_card.position = Vector2((vp.x - sz.x) * 0.5, 96.0)
+	if not on:  # card only (a goal, no thing to point at): top centre under the top bar, or bottom
+		_card.position = Vector2((vp.x - sz.x) * 0.5, vp.y - CARD_BOTTOM_Y - sz.y if _card_bottom else 96.0)
 		return
 	var half := _hole.size * 0.5 + Vector2(_corner, _corner)
 	var pos := Vector2(_hole.position.x - sz.x * 0.5, _hole.position.y + half.y + CARD_GAP)
