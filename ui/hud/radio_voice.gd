@@ -59,7 +59,7 @@ func voice_id() -> String:
 
 
 func _on_radio_message(speaker_id: StringName, text: String, priority: int) -> void:
-	say(speaker_id, text, priority > 0)
+	say(speaker_id, Radio.voice_text if Radio.voice_text != "" else text, priority > 0)
 
 
 ## Voice only, no subtitle. Cutscenes that draw their own captions call this.
