@@ -105,7 +105,7 @@ func _ready() -> void:
 	kicker.add_theme_color_override(&"font_color", UiTokens.TEXT_DIM)
 	left.add_child(kicker)
 	var name_l := Label.new()
-	name_l.text = "A WALKING\nDISASTER"
+	name_l.text = "OFF THE\nLIST"
 	name_l.add_theme_font_override(&"font", UiThemeBuilder.font_num())
 	name_l.add_theme_font_size_override(&"font_size", 92)
 	name_l.add_theme_constant_override(&"line_spacing", -18)
