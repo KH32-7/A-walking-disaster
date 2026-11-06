@@ -199,7 +199,7 @@ func _show(step: StringName) -> void:
 			sp.clear()
 		&"fight":
 			_card("관리사무소를 마물이 지키고 있어요! 조준하고 쏴요.",
-				[["우클릭", "조준"], ["클릭", "사격"], ["R", "재장전"], ["Space", "구르기"]])
+				[["우클릭", "조준"], ["클릭", "사격"], ["R", "재장전"], ["Space", "구르기"]], true)
 		&"rescue":
 			_world(_doctor(), "의사 선생님이에요. 일으켜 세워요.", [["F", "일으켜 세우기"]], 110.0, 0.9)
 		&"extract":
@@ -237,9 +237,10 @@ func _control(c: Control, text: String, keys: Array, pad := 10.0) -> void:
 		UI.spotlight.focus_control(c, text, keys, pad)
 
 
-func _card(text: String, keys: Array) -> void:
+## at_bottom: the card sits at the bottom centre (the fight card: guards come from the top).
+func _card(text: String, keys: Array, at_bottom := false) -> void:
 	if UI.spotlight.current_text() != text:
-		UI.spotlight.focus_rect(Rect2(), text, keys)
+		UI.spotlight.focus_card(text, keys, at_bottom)
 
 
 # ---------------- field ----------------

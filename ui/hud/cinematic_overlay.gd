@@ -250,6 +250,12 @@ func is_talking() -> bool:
 	return _talking
 
 
+## A cutscene is playing (film) or the letterbox bars are in: radio subtitles wait, the player's
+## outline is off (Look).
+func is_playing() -> bool:
+	return film or _bars > 0.0
+
+
 ## Back to normal: no bars, no black, nothing on screen.
 func reset() -> void:
 	_esc_down = false
@@ -295,7 +301,7 @@ func _next_line() -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	if UI.subtitle != null:
-		UI.subtitle.held = film or _bars > 0.0
+		UI.subtitle.held = is_playing()
 	if _talking and _line >= 0 and _line < _lines.size():
 		var total := _talk_text.get_total_character_count()
 		if _talk_text.visible_characters >= 0 and _talk_text.visible_characters < total:
