@@ -122,7 +122,7 @@ func _next() -> void:
 	var def := BaseDB.get_night_event(StringName(_ev.event_id))
 	_day_label.text = "%d일차 밤 / %d / %d" % [GameState.day, _index, _total]
 	_title.text = def.display_name if def != null else String(_ev.event_id)
-	_desc.text = def.description if def != null else ""
+	_desc.text = def.tagline if def != null else ""
 	_before = {}
 	var who: Array = _ev.get("participants", [])
 	for i in who.size():

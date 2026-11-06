@@ -221,7 +221,7 @@ static func detail_lines(id: StringName) -> Array:
 			var ws := Colony.wedding_status(id, partner)
 			match wedding_state(ws):
 				&"ready":
-					out.append(["결혼 약속: %s와(과) 다음 밤 결혼식" % pname, UiTokens.TEXT])
+					out.append([KoreanText.fix("결혼 약속: %s와(과) 다음 밤 결혼식" % pname), UiTokens.TEXT])
 				&"open":
 					var miss := wedding_missing(ws)
 					out.append(["결혼 약속: %s / %s" % [pname, "준비할 수 있어요" if miss.is_empty() else "모자란 것 %d개" % miss.size()],

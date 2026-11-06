@@ -472,7 +472,7 @@ func _tier_card() -> Control:
 	p.add_child(h)
 	if next < 0:
 		h.add_child(CheckMark.new(true))
-		h.add_child(MenuScreen.label("기지가 %s(이)에요. 더 오를 단계가 없어요." % TIER_NAMES[Colony.tier], &"LabelHud", 16))
+		h.add_child(MenuScreen.label(KoreanText.fix("기지가 %s(이)에요. 더 오를 단계가 없어요." % TIER_NAMES[Colony.tier]), &"LabelHud", 16))
 		return p
 	var missing: Array = status.get("missing", [])
 	var total := _tier_need_count(next)

@@ -958,7 +958,7 @@ func _card_reason(reason: StringName, level_needed := 0) -> void:
 
 
 func _card_line(text: String, color: Color) -> void:
-	var l := _on_cream(text, &"LabelOnCream", 14, true)
+	var l := _on_cream(KoreanText.fix(text), &"LabelOnCream", 14, true)
 	l.add_theme_color_override(&"font_color", color)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_card.add_child(l)
@@ -1020,6 +1020,7 @@ func _card_divider() -> void:
 
 
 func _done(text: String) -> void:
+	text = KoreanText.fix(text)
 	_last = text
 	Audio.play(&"ui_confirm")
 	EventBus.notification_posted.emit(text, &"info")
@@ -1093,7 +1094,7 @@ func _info_line(label: String, value: String, warn := false) -> Control:
 
 
 func _dim(text: String) -> Label:
-	var l := MenuScreen.label(text, &"LabelDim", 14)
+	var l := MenuScreen.label(KoreanText.fix(text), &"LabelDim", 14)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	return l
 

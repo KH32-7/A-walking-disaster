@@ -7,6 +7,7 @@ script = ExtResource("1_night")
 id = &"proposal"
 display_name = "청혼"
 description = "연인 10일 이상, 관계 80 이상, 둘 다 사기 50 이상. 결혼식 준비(식량 20, 천 5, 빈 가족 숙소)"
+tagline = "앞으로도 함께 살아가자는 약속을 건넨다"
 weight = 10
 priority = false
 choices = Array[StringName]([&"watch"])

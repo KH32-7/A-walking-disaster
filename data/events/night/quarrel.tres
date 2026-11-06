@@ -7,6 +7,7 @@ script = ExtResource("1_night")
 id = &"quarrel"
 display_name = "다툼"
 description = "사이가 나쁜 둘이 다툰다. 중재하면 두 사람 신뢰도 평균 확률로 화해"
+tagline = "쌓인 불만이 터져 말다툼이 벌어진다"
 weight = 20
 priority = false
 choices = Array[StringName]([&"watch", &"mediate"])

@@ -367,7 +367,7 @@ func _on_funeral_ready(resident_ids: Array) -> void:
 
 func _on_resident_missing(resident_id: StringName) -> void:
 	LossText.note_missing(resident_id)
-	EventBus.notification_posted.emit("@residents %s을(를) 끝내 찾지 못했어요 / 실종" % LossText.display_name(resident_id), &"danger")
+	EventBus.notification_posted.emit(KoreanText.fix("@residents %s을(를) 끝내 찾지 못했어요 / 실종" % LossText.display_name(resident_id)), &"danger")
 
 
 func _on_loss_flow(state: Enums.FlowState) -> void:

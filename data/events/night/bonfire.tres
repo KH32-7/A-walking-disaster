@@ -7,6 +7,7 @@ script = ExtResource("1_night")
 id = &"bonfire"
 display_name = "모닥불 이야기"
 description = "무작위 2~3명이 모닥불가에서 이야기한다. 관계 +, 사연 조각"
+tagline = "모닥불가에 둘러앉아 이런저런 이야기를 나눈다"
 weight = 40
 priority = false
 choices = Array[StringName]([&"watch"])
