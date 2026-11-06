@@ -58,6 +58,9 @@ var _marker_cache: Dictionary = {}  # marker name -> Node3D
 var _banner_seen: Dictionary = {}  # "quest_id/objective_id" -> sortie_seed it was shown in
 var _banners: Array[Dictionary] = []  # {text, t}; the first one is on screen
 var _banner_ci: Control
+## Edge-arrow labels drawn this frame, so two arrows at one spot do not print on top of each other
+## ("11m" under a "?", QA 2026-11-06).
+var _label_rects: Array[Rect2] = []
 
 
 func _ready() -> void:
@@ -146,6 +149,7 @@ func _draw() -> void:
 	if cam == null:
 		return
 	var view := Rect2(Vector2.ZERO, size)
+	_label_rects.clear()
 	_draw_ping(cam, view)
 	_draw_objectives(cam, view)
 	for m in get_tree().get_nodes_in_group(&"field_monsters"):
@@ -360,9 +364,25 @@ func _draw_edge_arrow(cam: Camera3D, wp: Vector3, kind: StringName, label: Strin
 		# The diamond inside the arrow, the distance under it.
 		var d := at - dir * 36.0
 		MapView.draw_symbol(self, d, &"objective")
-		_center_text(d + Vector2(0, 30), label, 15, Color(1, 1, 1, alpha), true)
+		_center_text(_free_label_spot(d + Vector2(0, 30), label, 15, side), label, 15, Color(1, 1, 1, alpha), true)
 		return
-	_center_text(at - dir * 34.0, label, 17, Color(1, 1, 1, alpha), true)
+	_center_text(_free_label_spot(at - dir * 34.0, label, 17, side), label, 17, Color(1, 1, 1, alpha), true)
+
+
+## Where to centre an edge label: at `at`, or stepped along the screen edge (`along`) until it clears
+## the labels already drawn this frame. Remembers the spot it returns.
+func _free_label_spot(at: Vector2, text: String, fs: int, along: Vector2) -> Vector2:
+	var sz := Vector2(_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + 8.0, fs + 6.0)
+	var step := absf(along.x) * sz.x + absf(along.y) * sz.y
+	var spot := at
+	for i in 7:
+		var k := ((i + 1) >> 1) * (1 if i % 2 == 1 else -1)  # 0, +1, -1, +2, -2 ...
+		spot = at + along * step * k
+		var r := Rect2(spot - sz * 0.5, sz)
+		if not _label_rects.any(func(o: Rect2) -> bool: return o.intersects(r)):
+			break
+	_label_rects.append(Rect2(spot - sz * 0.5, sz))
+	return spot
 
 
 func _center_text(at: Vector2, text: String, fs: int, col: Color, shadow := false) -> void:

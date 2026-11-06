@@ -227,12 +227,15 @@ func _place_subtitle() -> void:
 	# Menu: body ends 90 px above the bottom (MenuScreen), a 2-line subtitle is 82 px tall.
 	subtitle.offset_bottom = -6 if menu else -200  # world: above the bottom-centre vitals
 	subtitle.offset_top = subtitle.offset_bottom
-	# Toasts sit bottom right over the world; with a menu open that corner holds its buttons
-	# (출격, 맞이하기 …), so they move up under the header.
+	# Toasts sit bottom right over the world. With a menu open that corner holds its buttons (출격,
+	# 맞이하기 …) and the header holds the resource bar (under the header they hid 나무·돌, QA
+	# 2026-11-06), so they go in the key-footer row too, just left of the subtitle, one at a time.
 	if notice_toast != null:
-		var h := get_viewport().get_visible_rect().size.y
-		# Menu: right under the header line, above the panels (at 330 it sat on panel content).
-		notice_toast.offset_bottom = -(h - 108.0) if menu else -22.0
+		notice_toast.offset_right = -(52.0 + MENU_SUBTITLE_W + 24.0) if menu else -52.0
+		notice_toast.offset_left = notice_toast.offset_right
+		notice_toast.offset_bottom = -14.0 if menu else -22.0
+		notice_toast.offset_top = notice_toast.offset_bottom
+		notice_toast.set_max_cards(1 if menu else NoticeToast.MAX)
 
 
 
