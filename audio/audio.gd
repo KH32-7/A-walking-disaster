@@ -133,6 +133,8 @@ func _ready() -> void:
 		_start_prewarm()
 		_check_festival()
 		set_music_state(FLOW_MUSIC.get(s, &"")))
+	# GameState boots in TITLE without emitting flow_state_changed: pick the music for the current state.
+	set_music_state.call_deferred(FLOW_MUSIC.get(GameState.flow_state, &""))
 	EventBus.day_started.connect(func(_d: int) -> void: _check_festival())
 	EventBus.weather_changed.connect(func(_w: Enums.Weather) -> void: refresh_ambience())
 	EventBus.game_loaded.connect(func(_slot: int) -> void: refresh_ambience.call_deferred())
@@ -215,7 +217,8 @@ func set_music_state(state: StringName) -> void:
 	if state == music_state:
 		return
 	music_state = state
-	_start_prewarm()
+	if state != &"title":  # the title song is a file; synth stems are built once play starts
+		_start_prewarm()
 	refresh_music()
 	refresh_ambience()
 
