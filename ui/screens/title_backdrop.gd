@@ -1,8 +1,8 @@
 class_name TitleBackdrop
 extends Control
-## Live in-game backdrop behind the title screen: the flooded-mall shore (water about a third of the
-## view) seen through the field camera, which drifts slowly down the screen, fades to black and
-## starts over. No player, monsters, loot or managers: only the map.
+## Live in-game backdrop behind the title screen: three busy spots of the flooded mall seen through
+## the field camera, one per loop. The camera drifts slowly down the screen, fades to black and moves
+## on to the next spot. No player, monsters, loot or managers: only the map.
 ## The level loads on a thread; until it is ready (and in headless runs, where it is skipped) the
 ## title's own flat background shows. Its own World3D, so nothing leaks into the game world.
 
@@ -10,9 +10,15 @@ const LEVEL_PATH := "res://levels/field/flooded_mall/flooded_mall.tscn"
 ## Level children that run gameplay; removed before the level enters the tree.
 const STRIP := [^"MonsterSpawner", ^"RoamingSpawner", ^"BossSpawner", ^"LootSpawner", ^"ExtractionManager",
 	^"LostGearSpawner", ^"RescueManager", ^"CompanionManager", ^"HiddenRouteManager"]
-## Camera focus path (world, metres). Screen-down for the field camera's start yaw is +x +z.
-const PAN_FROM := Vector3(66.0, 0.0, 6.0)
-const PAN_TO := Vector3(74.0, 0.0, 14.0)
+## Camera focus paths (world, metres), one per loop, in turn: [from, to]. Screen-down for the field
+## camera's start yaw is +x +z, so each pan drifts its scene up the screen. Picked so the busy part
+## sits right of the menu: the bus depot (school buses, police car, barricade), the bus sunk by the
+## mall, the flooded houses.
+const SPOTS: Array[Array] = [
+	[Vector3(8.0, 0.0, -88.0), Vector3(16.0, 0.0, -80.0)],
+	[Vector3(81.2, 0.0, 56.8), Vector3(89.2, 0.0, 64.8)],
+	[Vector3(-36.8, 0.0, 73.8), Vector3(-28.8, 0.0, 81.8)],
+]
 const PAN_SEC := 24.0
 const FADE_SEC := 1.6
 const ZOOM_STEPS := 1  ## from the field camera's start zoom: +1 = farthest
@@ -24,6 +30,7 @@ var _view: SubViewportContainer
 var _pivot: Node3D
 var _camera: FieldCamera
 var _loading := false
+var _spot := -1
 
 
 func _ready() -> void:
@@ -84,7 +91,7 @@ func _build(packed: PackedScene) -> void:
 	_view.add_child(vp)
 
 	_pivot = Node3D.new()
-	_pivot.position = PAN_FROM
+	_pivot.position = SPOTS[0][0]
 	level.add_child(_pivot)
 	_camera = level.get_node_or_null(^"FieldCamera") as FieldCamera
 	vp.add_child(level)
@@ -113,16 +120,12 @@ func _build(packed: PackedScene) -> void:
 
 
 func _loop() -> void:
-	var tw := create_tween().set_loops()
-	tw.tween_callback(_restart)
-	tw.set_parallel(true)
-	tw.tween_property(_view, ^"modulate:a", 1.0, FADE_SEC)
-	tw.tween_property(_pivot, ^"position", PAN_TO, PAN_SEC).set_trans(Tween.TRANS_SINE)
-	tw.tween_property(_view, ^"modulate:a", 0.0, FADE_SEC).set_delay(PAN_SEC - FADE_SEC)
-	tw.set_parallel(false)
-
-
-func _restart() -> void:
-	_pivot.position = PAN_FROM
+	_spot = (_spot + 1) % SPOTS.size()
+	_pivot.position = SPOTS[_spot][0]
 	if _camera != null:
 		_camera.snap()
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(_view, ^"modulate:a", 1.0, FADE_SEC)
+	tw.tween_property(_pivot, ^"position", SPOTS[_spot][1], PAN_SEC).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(_view, ^"modulate:a", 0.0, FADE_SEC).set_delay(PAN_SEC - FADE_SEC)
+	tw.chain().tween_callback(_loop)
