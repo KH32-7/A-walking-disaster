@@ -2,6 +2,8 @@ extends Node
 ## Emitted (by Colony itself) whenever buildings are placed, moved, completed, damaged or removed,
 ## and after loading. Building views (base/building) and Lane D screens redraw on it.
 signal buildings_changed
+## Live construction moved a site's progress (no full redraw; buildings_changed fires on completion).
+signal build_progress_changed(uid: StringName)
 ## Emitted when a resident's trust changes (C-12). stage = TrustRules stage 0..4,
 ## reason = &"talk", &"gift", &"deep_talk", &"sortie_return", &"rescued" or the caller's tag.
 signal trust_changed(resident_id: StringName, trust: int, stage: int, reason: StringName)
@@ -79,6 +81,12 @@ var deep_talk_day := 0
 var relation_meta: Dictionary = {}
 ## Day of the festival after a wedding (0 = none).
 var festival_day := 0
+## Build work each construction worker did live in the base today (resident_id -> float).
+## settle_day() adds only the rest of the day's amount, then clears it.
+var live_build := {}
+## Flow states where construction runs live (the player is in the base).
+const LIVE_BUILD_FLOWS: Array[int] = [Enums.FlowState.BASE_MORNING, Enums.FlowState.SORTIE_PREP,
+	Enums.FlowState.BASE_STAY]
 ## Night events: picked tonight, the one playing, and what happened (for the morning screen).
 var night_queue: Array = []
 var current_night_event: Dictionary = {}
@@ -123,6 +131,59 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if GameState.flow_state == Enums.FlowState.FIELD:
 		_advance_field_raid(delta)
+	elif GameState.flow_state in LIVE_BUILD_FLOWS:
+		advance_live_build(delta)
+
+
+## One day of build work for a construction worker (same factors as settle_day, without stay/festival).
+func build_per_day(resident_id: StringName) -> float:
+	var r: Dictionary = residents.get(resident_id, {})
+	var job := BaseDB.get_job(WorkRules.CONSTRUCTION_JOB)
+	if r.is_empty() or job == null or not WorkRules.can_work(r):
+		return 0.0
+	var f := WorkRules.efficiency(r, job, _works_alone(resident_id)) * access_multiplier(resident_id) \
+		* _best_friend_mult(resident_id) * _pregnancy_mult(resident_id, job) * _grief_mult(resident_id)
+	return WorkRules.build_progress() * f
+
+
+## Construction workers raise their site's progress while the player is in the base: one day's
+## amount over WorkRules.LIVE_BUILD_SEC. Called from _process; tests call it directly.
+func advance_live_build(delta: float) -> void:
+	if delta <= 0.0 or is_festival_today():
+		return
+	for id in active_resident_ids():
+		if job_of(id) != WorkRules.CONSTRUCTION_JOB:
+			continue
+		var uid: StringName = residents[id]["assignment"]["building_id"]
+		var b: Dictionary = buildings.get(uid, {})
+		if b.is_empty() or b["completed"] or access_block_reason(id, _work_zone(id)) != "":
+			continue  # zones (개간) and repairs stay evening work
+		var daily := build_per_day(id)
+		var done := float(live_build.get(id, 0.0))
+		if done >= daily:
+			continue
+		var step := minf(daily * delta / WorkRules.LIVE_BUILD_SEC, daily - done)
+		live_build[id] = done + step
+		var gain := floori(done + step) - floori(done)
+		if gain <= 0:
+			continue
+		if add_build_progress(uid, gain):
+			for w: StringName in (b["workers"] as Array).duplicate():
+				unassign_job(w)
+			buildings_changed.emit()
+		else:
+			build_progress_changed.emit(uid)
+
+
+## Puts every resident with no job on the new site (사용자 요청 2026-11-06: 배정 안 된 주민 자동 배정).
+func auto_staff_site(uid: StringName) -> Array[StringName]:
+	var staffed: Array[StringName] = []
+	for id in active_resident_ids():
+		if job_of(id) != &"":
+			continue
+		if job_block_reason(id, WorkRules.CONSTRUCTION_JOB, uid) == "" and assign_job(id, WorkRules.CONSTRUCTION_JOB, uid):
+			staffed.append(id)
+	return staffed
 
 
 # --- Read API (any lane) -------------------------------------------------------
@@ -337,6 +398,8 @@ func place_building(def_id: StringName, cell: Vector2i = Vector2i.ZERO, rotation
 			return &""
 	var uid := _new_building_uid(def_id)
 	buildings[uid] = _new_building(uid, def, cell, rotation, zone_id, def.cost_for_level(1) if pay else {})
+	if pay:
+		auto_staff_site(uid)
 	buildings_changed.emit()
 	return uid
 
@@ -874,7 +937,9 @@ func settle_day() -> Dictionary:
 		elif job.id == WorkRules.CONSTRUCTION_JOB and buildings.has(uid) and buildings[uid]["completed"]:
 			_maintenance_work(id, uid, f, events)
 		elif job.id == WorkRules.CONSTRUCTION_JOB:
-			if add_build_progress(uid, roundi(WorkRules.build_progress() * f)) and buildings.has(uid):
+			# Live work in the base today already counts (advance_live_build): add only the rest.
+			var rest := maxi(roundi(WorkRules.build_progress() * f) - floori(float(live_build.get(id, 0.0))), 0)
+			if add_build_progress(uid, rest) and buildings.has(uid):
 				events.append(_event(&"building_completed", id, "%s 완성" % _def_name(buildings[uid]["def_id"])))
 			if buildings.has(uid) and buildings[uid]["completed"]:
 				unassign_job(id)
@@ -887,6 +952,8 @@ func settle_day() -> Dictionary:
 		work[id] = {"job": job.id, "output": _rounded(out)}
 		worked[id] = true
 		_grow(id, job, events)
+
+	live_build.clear()
 
 	# Stay day: the player builds too (09 "건설 규칙": 기지에 머무르면 +20) on the oldest site.
 	if stayed and not festival:
@@ -3684,6 +3751,7 @@ func _new_resident_id() -> StringName:
 
 func _reset() -> void:
 	residents = {}
+	live_build = {}
 	cleared_zones = {}
 	clear_progress = {}
 	clear_started = {}
@@ -3739,6 +3807,7 @@ func save_data() -> Dictionary:
 		"deep_talk_day": deep_talk_day,
 		"relation_meta": relation_meta,
 		"festival_day": festival_day,
+		"live_build": live_build,
 		"prejudice_chains": prejudice_chains_data,
 		"memorials": memorials,
 		"funerals": funerals,
@@ -3782,6 +3851,7 @@ func load_data(data: Dictionary) -> void:
 	last_raid_day = int(data.get("last_raid_day", 0))
 	deep_talk_day = int(data.get("deep_talk_day", 0))
 	festival_day = int(data.get("festival_day", 0))
+	live_build = (data.get("live_build", {}) as Dictionary).duplicate()
 	prejudice_chains_data = {}
 	memorials = Array(data.get("memorials", [])).map(func(m): return {"resident_id": StringName(m.get("resident_id", "")),
 		"name": str(m.get("name", "")), "day": int(m.get("day", 0)), "cause": StringName(m.get("cause", ""))})

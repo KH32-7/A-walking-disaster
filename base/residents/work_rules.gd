@@ -72,6 +72,11 @@ static func days_per_stat() -> int:
 ## Base build progress per construction worker per day (09 "건설 규칙": 하루 10 + 힘 보정).
 const BUILD_PROGRESS_BASE := 10.0
 
+## Live construction (사용자 요청 2026-11-06: 지으면 실시간으로 건설도가 오르게): seconds of base time
+## (morning / sortie prep / stay) for one day of a construction worker's progress. The evening adds
+## only what is left of that day's amount, so the daily total stays the design number.
+const LIVE_BUILD_SEC := 45.0
+
 ## Stay day (기획 01 "기지에 머무르기"): 그날 생산 +20%; 09 "건설 규칙": 머무르면 진행도 +20.
 const STAY_OUTPUT_MULT := 1.2
 const STAY_BUILD_PROGRESS := 20

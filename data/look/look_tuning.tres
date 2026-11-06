@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_look")
 enabled = false
-toon_amount = 0.0
+toon_amount = 0.2
 paint_radius = 3
 paint_step = 2.5
 outline_px = 1.5

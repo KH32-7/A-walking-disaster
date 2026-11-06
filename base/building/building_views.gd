@@ -24,7 +24,19 @@ var _materials := {}
 
 func _ready() -> void:
 	Colony.buildings_changed.connect(refresh)
+	Colony.build_progress_changed.connect(_on_build_progress)
 	refresh.call_deferred()
+
+
+## Live construction: only the site's label changes.
+func _on_build_progress(uid: StringName) -> void:
+	var root := get_node_or_null(NodePath(String(uid)))
+	var b: Dictionary = Colony.buildings.get(uid, {})
+	if root == null or b.is_empty():
+		return
+	var label := root.get_node_or_null(^"Label") as Label3D
+	if label != null:
+		label.text = _label_text(BaseDB.get_building(b["def_id"]), b, b["completed"])
 
 
 func refresh() -> void:
@@ -112,6 +124,12 @@ func _label(def: BuildingDef, b: Dictionary, done: bool, y: float) -> Label3D:
 	label.outline_size = 10
 	label.pixel_size = 0.01
 	label.position.y = y
+	label.name = "Label"
+	label.text = _label_text(def, b, done)
+	return label
+
+
+func _label_text(def: BuildingDef, b: Dictionary, done: bool) -> String:
 	var state := ""
 	if not done:
 		# D-06 재설계 ③짓기: 현장은 진행과 일손을 함께 보여 준다 (일손 0이면 아무도 짓지 않음).
@@ -120,8 +138,7 @@ func _label(def: BuildingDef, b: Dictionary, done: bool, y: float) -> Label3D:
 			"일손 %d명" % workers if workers > 0 else "일손을 보내야 지어져요"]
 	elif b.get("damaged", false):
 		state = "\n(파손)"
-	label.text = def.display_name + state
-	return label
+	return def.display_name + state
 
 
 func _material(category: int, done: bool) -> StandardMaterial3D:

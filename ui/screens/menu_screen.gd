@@ -191,16 +191,14 @@ static func bar(value: float, color: Color, w := 120.0, h := 6.0) -> SegBar:
 static func resource_chip(id: StringName) -> Control:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override(&"separation", 10)
-	var def: Variant = Economy.get_def(id)
-	var nm := label(String(def.name) if def != null else String(id), &"LabelDim", 15)
+	var nm := label(resource_name(id), &"LabelDim", 15)
 	h.add_child(nm)
 	h.add_child(label(str(Economy.get_amount(id)), &"LabelNumber", 20))
 	return h
 
 
 static func resource_name(id: StringName) -> String:
-	var def: Variant = Economy.get_def(id)
-	return String(def.name) if def != null else String(id)
+	return String(ItemInfo.for_resource(id).name)
 
 
 static func cost_text(cost: Dictionary) -> String:
