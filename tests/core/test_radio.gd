@@ -54,6 +54,10 @@ func _check_data() -> bool:
 	for id: StringName in Radio.triggers:
 		var trigger: RadioTrigger = Radio.triggers[id]
 		ok = _expect(trigger.lines.size() >= 5, "%s has %d lines (design: 5)" % [id, trigger.lines.size()]) and ok
+		if not trigger.voice_lines.is_empty():
+			ok = _expect(trigger.voice_lines.size() == trigger.lines.size(), "%s voice_lines and lines differ in count" % id) and ok
+			for v in trigger.voice_lines:
+				ok = _expect(not v.contains("{"), "%s voice line has a placeholder: %s" % [id, v]) and ok
 	for id in [&"low_ammo", &"low_health", &"noise_high", &"rescuee_low_health", &"no_progress", &"dusk",
 			&"day_raid_hold", &"day_raid_return", &"morning_greeting", &"repeated_downs"]:
 		ok = _expect(Radio.triggers.has(id), "missing trigger %s" % id) and ok

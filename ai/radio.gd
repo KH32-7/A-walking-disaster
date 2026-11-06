@@ -32,6 +32,8 @@ const OUTCOME_NAMES := ["완승", "승리", "아슬아슬한 승리", "패배"]
 
 ## id -> RadioTrigger
 var triggers: Dictionary = {}
+## Recorded wording of the line being emitted right now ("" = speak it as shown). RadioVoice reads it.
+var voice_text := ""
 
 ## Seconds of unpaused game time; cooldowns use this so pausing does not burn them.
 var _clock := 0.0
@@ -74,6 +76,8 @@ func say(template_id: StringName, context: Dictionary = {}, priority: int = -1) 
 	if not _allowed(trigger):
 		return false
 	var line := _next_line(trigger).format(context)
+	var index: int = _bags[String(trigger.id) + ":last"]
+	voice_text = trigger.voice_lines[index] if index < trigger.voice_lines.size() else ""
 	_last_spoke[trigger.id] = _clock
 	if trigger.once_per == &"sortie":
 		_used_sortie[trigger.id] = true
@@ -82,6 +86,7 @@ func say(template_id: StringName, context: Dictionary = {}, priority: int = -1) 
 	if _in_combat:
 		_spoke_this_combat = true
 	EventBus.radio_message.emit(BROADCASTER, line, trigger.priority if priority < 0 else priority)
+	voice_text = ""
 	return true
 
 
