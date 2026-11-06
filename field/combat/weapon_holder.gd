@@ -181,7 +181,7 @@ func ammo_reserve() -> int:
 	var stats := current_stats()
 	if not is_gun(stats):
 		return 0
-	if StringName(stats["def_id"]) in tuning.infinite_ammo_defs:
+	if StringName(stats["def_id"]) in tuning.infinite_ammo_defs or GameState.has_flag(StartKit.FLAG_INFINITE_AMMO):
 		return -1
 	return Bag.count(StringName(stats.get("ammo_id", &"")))
 

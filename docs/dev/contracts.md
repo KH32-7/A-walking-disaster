@@ -75,7 +75,7 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   A-10: `preview_engrave(uid, essence_id, slot, ctx)`(D-12 각인 화면), `engrave(uid, essence_id, slot, ctx)`(덮어쓰기 포함, 기존 정수 소멸),
   `preview_remove_engraving(uid, slot, ctx)`, `remove_engraving(uid, slot, ctx)`, `preview_open_slot(uid, ctx)`, `open_slot(uid, ctx)`,
   `preview_refine(essence_id, times, ctx)`, `refine(essence_id, times, ctx)`, `preview_disassemble(uid, ctx)`, `disassemble(uid, ctx, rng)`,
-  `essence_slot_count(uid)`, `get_engravings(uid)`, `is_engravable(uid)`, `essence_context(ctx)`. 수치·효과 계산은 `EssenceRules`(`systems/essence_rules.gd`).
+  `essence_slot_count(uid)`, `get_engravings(uid)`, `is_engravable(uid)`, `essence_context(ctx)`, `grant_engraving(uid, essence_id, slot)`(공방·비용 없는 무료 각인, StartKit 시작 장비용). 수치·효과 계산은 `EssenceRules`(`systems/essence_rules.gd`).
   `get_item_stats()`의 `element`(무기 공격 속성 = 첫 번째로 채워진 슬롯), `essence_effects`([{element, essence_ids, grade, mult, params}]),
   `combo`({id, name, elements, proc_rate, trigger(hit|kill), params} 또는 null), 장신구 `element_resist`. `get_owner_summary().element_resist`.
   B(B-15)는 같은 속성 2개가 이미 합쳐진 효과(`mult` 1.5)로 오므로 다시 곱하지 않고, `combo.proc_rate`도 정해진 값을 그대로 쓴다.
@@ -105,6 +105,8 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   - D(화면): `start_new_game(slot, difficulty)`, `load_game(slot)`, `load_suspended()`, `quit_to_title()`, `open_sortie_prep()`,
     `cancel_sortie_prep()`, `go_to_field(loadout)`, `stay_at_base()`, `end_stay()`, `finish_result()`, `confirm_evening()`, `finish_night()`.
   - `start_new_game(slot, difficulty, with_intro := true)`: 기본은 인트로(`IntroCutscene`, 플래그 `intro_pending`)로 시작하고 권총은 집 안 상자에서 얻는다. `with_intro = false`(테스트)면 `STARTER_LOADOUT`(기본: MAIN에 `pistol`)을 만들어 `Armory.PLAYER_ID`에 장착한다. 무한 탄 처리는 B.
+    그다음 `data/start_kits/`에서 `slot`이 같은 `StartKit`(`systems/defs/start_kit.gd`, 시연용)을 찾아 `apply()`한다: 장비(main/sub/storage/bag, 무료 각인), 자원,
+    `infinite_ammo`(GameState 플래그 `start_kit_infinite_ammo`, `WeaponHolder.ammo_reserve()`가 -1). `start_kit_for(slot)`.
   - 임시 진행 프롬프트(`main.tscn`의 `FlowPrompts`, `core/flow_prompts.gd`, A): D 화면이 아직 없는 단계를 대신한다.
     TITLE(새 게임·이어하기·중단한 출격), BASE_STAY(하루 마치기), NIGHT(잠자기), Esc 일시정지(필드·기지, 열린 화면 없을 때).
     D가 `data/ui/screens/`에 화면 id `title` / `stay` / `night` / `pause_menu`를 등록하면 그 단계의 프롬프트는 자동으로 빠지고
