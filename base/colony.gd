@@ -557,7 +557,7 @@ func _check_tier(events: Array) -> void:
 	tier = int(status["tier"]) as Enums.BaseTier
 	var names := ["캐프", "정착지", "요새"]
 	events.append(_event(&"tier_up", &"", "기지가 %s(으)로 성장했다" % names[tier]))
-	EventBus.notification_posted.emit("기지가 %s(으)로 성장했다" % names[tier], &"info")
+	EventBus.notification_posted.emit(KoreanText.fix("기지가 %s(으)로 성장했다" % names[tier]), &"info")
 	_refresh_effects()
 	buildings_changed.emit()
 
@@ -1104,7 +1104,7 @@ func _def_name(def_id: StringName) -> String:
 
 
 static func _event(type: StringName, resident_id: StringName, text: String) -> Dictionary:
-	return {"type": type, "resident_id": resident_id, "text": text}
+	return {"type": type, "resident_id": resident_id, "text": KoreanText.fix(text)}
 
 
 static func _rounded(values: Dictionary) -> Dictionary:
@@ -2332,6 +2332,7 @@ func _apply_night_event(ev: Dictionary, choice: StringName) -> Dictionary:
 			# Journal (A-17) reads &"separated" for 이별; the pair's value stage is unchanged.
 			EventBus.relationship_changed.emit(a, b, RelationRules.SEPARATED)
 			result["text"] = "%s이(가) 헤어졌다" % names
+	result["text"] = KoreanText.fix(result["text"])
 	last_night_results.append(result)
 	if ev["event_id"] in [&"confession", &"proposal", &"wedding", &"breakup"]:
 		EventBus.notification_posted.emit(result["text"], &"info")
@@ -2720,7 +2721,7 @@ func _adopt(m: Dictionary, child_id: StringName) -> void:
 	if bed != &"":
 		release_bed(child_id)
 		assign_bed(child_id, bed)
-	EventBus.notification_posted.emit("%s 가족이 %s을(를) 맞이했다" % [_display_name(residents[m["a"]]), _display_name(residents[child_id])], &"info")
+	EventBus.notification_posted.emit(KoreanText.fix("%s 가족이 %s을(를) 맞이했다" % [_display_name(residents[m["a"]]), _display_name(residents[child_id])]), &"info")
 
 
 ## A free bed in the couple's family house (&"" = none).
@@ -2941,7 +2942,7 @@ func _resolve_outpost_raid(raid: Dictionary, mode: Enums.RaidMode) -> Dictionary
 		ratio *= RaidRules.PLAYED_BONUS
 	var outcome := RaidRules.outcome_for(ratio)
 	var casualties: Array = []
-	var summary: Array[String] = ["마물이 %s을(를) 덮쳤다 (강도 %.0f, 방어 %.1f)." % [_outpost_label(node_id), strength, defense]]
+	var summary: Array[String] = [KoreanText.fix("마물이 %s을(를) 덮쳤다 (강도 %.0f, 방어 %.1f)." % [_outpost_label(node_id), strength, defense])]
 	var damage := {"damaged": [], "durability_loss": {}, "resources_lost": {}}
 	if outcome == Enums.RaidOutcome.LOSS or outcome == Enums.RaidOutcome.NARROW:
 		outposts[node_id]["damaged"] = true
@@ -3231,7 +3232,7 @@ func _start_rumor(target_id: StringName, holders: Array[StringName], events: Arr
 		"choice": &"", "started_day": GameState.day, "incident_day": 0, "incident": &""}
 	for id in active_resident_ids():
 		residents[id]["morale"] = NeedsRules.apply_morale(residents[id], PrejudiceRules.RUMOR_MORALE)
-	var text := "\"%s이(가) 언젠가 마물이 된다\"는 말이 돈다" % _display_name(residents[target_id])
+	var text := KoreanText.fix("\"%s이(가) 언젠가 마물이 된다\"는 말이 돈다" % _display_name(residents[target_id]))
 	events.append(_event(&"prejudice_rumor", target_id, text))
 	EventBus.notification_posted.emit(text, &"warning")
 	prejudice_rumor.emit(target_id, holders.duplicate())
@@ -3394,7 +3395,7 @@ func complete_arrival(resident_id: StringName) -> Dictionary:
 		talk(resident_id)
 	var result := {"ok": true, "first_line": r["story"]["first_line"], "background": r["story"]["background"], "like": like}
 	arrival_completed.emit(resident_id, result)
-	EventBus.notification_posted.emit("%s이(가) 기지 식구가 되었다" % _display_name(r), &"info")
+	EventBus.notification_posted.emit(KoreanText.fix("%s이(가) 기지 식구가 되었다" % _display_name(r)), &"info")
 	return result
 
 
@@ -3441,8 +3442,8 @@ func add_trust(resident_id: StringName, amount: int, reason: StringName = &"") -
 	if after != before:
 		trust_changed.emit(resident_id, after, stage, reason)
 	if stage > TrustRules.stage_of(before):
-		EventBus.notification_posted.emit("%s와(과) %s 사이가 되었다 (%s)" % [r["name"], TrustRules.STAGE_NAMES[stage],
-			TrustRules.STAGE_UNLOCKS[stage]], &"info")
+		EventBus.notification_posted.emit(KoreanText.fix("%s와(과) %s 사이가 되었다 (%s)" % [r["name"], TrustRules.STAGE_NAMES[stage],
+			TrustRules.STAGE_UNLOCKS[stage]]), &"info")
 	return after
 
 
@@ -3511,7 +3512,7 @@ func give_gift(resident_id: StringName, resource_id: StringName) -> Dictionary:
 	if not trust_actions(resident_id).get("gift", false):
 		return {"ok": false, "reason": "오늘은 이미 선물했다" if residents.has(resident_id) else "없는 주민", "reaction": &"", "trust": -1}
 	if Economy.get_amount(resource_id) < 1:
-		return {"ok": false, "reason": "%s이(가) 없다" % resource_id, "reaction": &"", "trust": -1}
+		return {"ok": false, "reason": KoreanText.fix("%s이(가) 없다" % resource_id), "reaction": &"", "trust": -1}
 	Economy.apply({resource_id: -1})
 	residents[resident_id]["gift_day"] = GameState.day
 	var reaction := gift_reaction(resident_id, resource_id)

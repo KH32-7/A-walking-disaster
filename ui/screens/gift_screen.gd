@@ -148,7 +148,7 @@ func _card() -> Control:
 	var can: bool = Colony.trust_actions(resident_id).get("gift", false)
 	if _given.get("ok", false):
 		var rc: Array = ResidentText.REACTIONS.get(StringName(_given.reaction), ["●", ""])
-		v.add_child(MenuScreen.label("%s에게 %s을(를) 줬어요" % [ResidentText.call_name(r), MenuScreen.resource_name(_given.res)],
+		v.add_child(MenuScreen.label(KoreanText.fix("%s에게 %s을(를) 줬어요" % [ResidentText.call_name(r), MenuScreen.resource_name(_given.res)]),
 			&"LabelOnCream", 20))
 		v.add_child(MenuScreen.label("%s %s" % [rc[0], rc[1]], &"LabelOnCream", 18))
 	elif _sel == &"":

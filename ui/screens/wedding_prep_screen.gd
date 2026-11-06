@@ -49,7 +49,7 @@ func _start() -> void:
 	draw_people([a, b], {a: [chip], b: [chip]})
 	match state:
 		&"none":
-			dialog.say("", "%s와(과) %s은(는) 아직 결혼을 약속하지 않았어요. 청혼은 밤 이벤트로 와요." % [na, nb])
+			dialog.say("", KoreanText.fix("%s와(과) %s은(는) 아직 결혼을 약속하지 않았어요. 청혼은 밤 이벤트로 와요." % [na, nb]))
 			dialog.set_choices([[&"close", "돌아간다"]])
 		&"ready":
 			dialog.say(na, "다음 밤이면 우리 결혼식이야. 다들 와 줄 거지?", a)

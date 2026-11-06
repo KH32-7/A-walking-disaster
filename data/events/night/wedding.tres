@@ -7,6 +7,7 @@ script = ExtResource("1_night")
 id = &"wedding"
 display_name = "결혼식"
 description = "준비를 마친 두 사람이 결혼한다. 다음 날 축제"
+tagline = "모두 모여 두 사람의 결혼을 축하한다"
 weight = 100
 priority = true
 choices = Array[StringName]([&"watch"])

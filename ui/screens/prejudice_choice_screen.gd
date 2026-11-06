@@ -49,7 +49,7 @@ func _start() -> void:
 	var target := ResidentText.call_name(resident())
 	dialog.set_notes([["▼ 기지 전체 사기 %d" % PrejudiceRules.RUMOR_MORALE, UiTokens.WARN]])
 	if ResidentEventFlow.chain_step_index(_chain) == 0:
-		dialog.say("", "“%s이(가) 언젠가 마물이 된다”는 말이 기지에 돈다. 어떻게 할까?" % target)
+		dialog.say("", KoreanText.fix("“%s이(가) 언젠가 마물이 된다”는 말이 기지에 돈다. 어떻게 할까?" % target))
 		var choices: Array = []
 		for c: StringName in PrejudiceRules.CHOICES:
 			choices.append([c, ResidentEventFlow.CHOICE_NAMES[c], false, HINTS[c]])

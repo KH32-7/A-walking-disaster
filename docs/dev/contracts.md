@@ -196,6 +196,10 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   진행은 신호로만 한다: 지역 방문·데려가기(`sortie_ended` 탈출), 아이템 회수(`sortie_ended`의 loot), 사람 데려오기(`rescue_completed`의 profile `id`),
   기지 제작(`building_completed`), 특정 날 방어(`raid_resolved`). 유품은 `data/resources/`의 자원(예: `keepsake_plane`)이라 B는 `marker` 자리에 줍는 물건을 두고
   `Bag.try_add`로 넣기만 하면 된다. 보상의 신뢰도는 `Colony.add_trust(resident_id, amount)`(C에 요청)를 부른다. 무전 소문은 Radio 트리거 `quest_rumor`로 말한다.
+- **KoreanText** (`core/korean_text.gd`, 오토로드 아님, static): `particle(word, which)`(앞 글자에 맞는 조사, `Journal.particle`도 이걸 씀),
+  `fix(text)`(문장 속 `이(가)`·`을(를)`·`은(는)`·`과(와)`·`와(과)`·`(으)로`·`(이)에요`를 앞 글자에 맞게 바꿈). 이름을 끼워 넣는 문장은 화면에 내기 전에
+  `fix()`를 거친다. `Colony._event()`, 밤 이벤트 결과, `ConfirmDialog.ask`, `ResidentText.night_intro`는 이미 거친다.
+- **NightEventDef**: `description`은 기획 메모(조건·수치, 화면에 안 나옴), `tagline`은 밤 이벤트 화면 제목 아래 한 줄(수치·규칙 없이).
 
 새 공개 함수가 필요하면 그 오토로드에 바로 추가하고 여기에 한 줄 적는다.
 

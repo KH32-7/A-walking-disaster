@@ -12,7 +12,7 @@ static func ask(parent: Node, title: String, body: String, action: String, on_ok
 	var d := ConfirmDialog.new()
 	d._on_ok = on_ok
 	parent.add_child(d)
-	d._build(title, body, action)
+	d._build(KoreanText.fix(title), KoreanText.fix(body), action)
 	return d
 
 

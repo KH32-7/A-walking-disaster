@@ -6,7 +6,11 @@ extends Resource
 
 @export var id: StringName = &""
 @export var display_name: String = ""
+## Design note (conditions, numbers). Not shown to the player.
 @export_multiline var description: String = ""
+## One mood line under the title on the night event screen. No numbers or rules (QA 2026-11-06:
+## the screen showed `description`, which gave away conditions like "관계 30 미만으로 7일").
+@export var tagline: String = ""
 ## Pick weight among the events whose conditions hold tonight.
 @export var weight := 10
 ## Always happens when its condition holds (결혼식, 이별), before the weighted picks.
