@@ -52,19 +52,8 @@ const HIGHLIGHTS := {
 	&"lover": &"epilogue_bond",
 	&"friend": &"epilogue_bond",
 }
-## Korean particles: either spelling -> [after a final consonant, after a vowel].
-const PARTICLES := {
-	"이": ["이", "가"], "가": ["이", "가"],
-	"을": ["을", "를"], "를": ["을", "를"],
-	"은": ["은", "는"], "는": ["은", "는"],
-	"과": ["과", "와"], "와": ["과", "와"],
-	"아": ["아", "야"], "야": ["아", "야"],
-	"이랑": ["이랑", "랑"], "랑": ["이랑", "랑"],
-	"으로": ["으로", "로"], "로": ["으로", "로"],
-}
-## Final consonant (jongseong index, 0 = none) of digits read in Korean: 영 일 이 삼 사 오 육 칠 팔 구.
-const DIGIT_FINALS := [21, 8, 0, 16, 0, 0, 1, 8, 8, 0]
-const FINAL_RIEUL := 8
+## Korean particles: either spelling -> [after a final consonant, after a vowel] (core/korean_text.gd).
+const PARTICLES := KoreanText.PARTICLES
 
 ## id -> JournalTemplate
 var templates: Dictionary = {}
@@ -239,13 +228,7 @@ static func fill(template: String, context: Dictionary) -> String:
 
 ## The form of a Korean particle that fits after `word` ("이" after 지은 -> "이", after 민수 -> "가").
 static func particle(word: String, which: String) -> String:
-	if which == "" or not PARTICLES.has(which):
-		return which
-	var forms: Array = PARTICLES[which]
-	var final := _final_consonant(word)
-	if forms[0] == "으로":
-		return forms[1] if final == 0 or final == FINAL_RIEUL else forms[0]
-	return forms[1] if final == 0 else forms[0]
+	return KoreanText.particle(word, which)
 
 
 # --- Signal reactions ----------------------------------------------------------
@@ -491,18 +474,6 @@ func _building_name(uid: StringName) -> String:
 	if not building.is_empty():
 		def = BaseDB.get_building(StringName(building.get("def_id", &"")))
 	return def.display_name if def != null and def.display_name != "" else FALLBACK_TEXT["building"]
-
-
-static func _final_consonant(word: String) -> int:
-	var text := word.strip_edges()
-	if text.is_empty():
-		return 0
-	var code := text.unicode_at(text.length() - 1)
-	if code >= 0xAC00 and code <= 0xD7A3:
-		return (code - 0xAC00) % 28
-	if code >= 0x30 and code <= 0x39:
-		return DIGIT_FINALS[code - 0x30]
-	return 0
 
 
 func _load_templates() -> void:

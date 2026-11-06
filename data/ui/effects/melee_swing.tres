@@ -7,9 +7,9 @@
 script = ExtResource("2_layer")
 kind = 2
 texture = "res://assets/vfx/magic_arsenal/textures/cleave_light.png"
-grow = Vector2(1.6, 2.4)
-lifetime = 0.18
-color = Color(1.0, 1.0, 1.0, 0.85)
+grow = Vector2(1.8, 2.7)
+lifetime = 0.24
+color = Color(1.0, 1.0, 1.0, 1.0)
 fade_out = 0.6
 element_textures = PackedStringArray("", "res://assets/vfx/magic_arsenal/textures/cleave_life.png", "", "res://assets/vfx/magic_arsenal/textures/cleave_water.png", "res://assets/vfx/magic_arsenal/textures/cleave_light.png")
 tint_element = true

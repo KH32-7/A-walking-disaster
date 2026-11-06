@@ -1,6 +1,7 @@
 extends Node
-## D-20: music layers follow population, chase / festival overlays, state switches, every stem shares one
-## loop length, and the monster family sound events load with captions and visual cues.
+## D-20: music layers per state, field regions with full-track songs (chase crossfades), chase / festival
+## overlays, state switches, every synth stem shares one loop length, and the monster family sound events load
+## with captions and visual cues.
 
 const FAMILIES := [&"green", &"stone", &"water", &"light"]
 const ACTIONS := [&"suspicious", &"chase", &"attack", &"hurt", &"death"]
@@ -10,14 +11,21 @@ func run() -> bool:
 	var ok := true
 	ok = _expect(Audio.layers.size() >= 12, "at least 12 music layers (%d)" % Audio.layers.size()) and ok
 
-	# Population -> one more base instrument per step.
-	var counts: Array[int] = []
-	for pop in [0, 3, 6, 10, 30]:
-		counts.append(Audio.layers_for(&"base", pop).size())
-	ok = _expect(counts[0] >= 1, "base has a layer at population 0") and ok
-	ok = _expect(counts[0] < counts[1] and counts[1] < counts[2] and counts[2] < counts[3],
-		"base layers grow with population %s" % [counts]) and ok
-	ok = _expect(counts[4] == counts[3], "no more base layers past the last step") and ok
+	# Title and base: one full song each, the same at every population.
+	ok = _expect(Audio.layers_for(&"title", 0) == [&"title_theme"], "title song") and ok
+	var base0 := Audio.layers_for(&"base", 0)
+	ok = _expect(base0 == [&"base_theme"] and Audio.layers_for(&"base", 30) == base0, "base song %s" % [base0]) and ok
+	var counts: Array[int] = [base0.size()]
+
+	# Field regions: own song, chase song crossfades (replaces the field song); other regions fall back.
+	for region in [&"city_park", &"flooded_mall"]:
+		var f := Audio.layers_for(&"field", 0, false, false, region)
+		var c := Audio.layers_for(&"field", 0, true, false, region)
+		ok = _expect(f == [StringName("field_%s" % region)], "%s field song %s" % [region, f]) and ok
+		ok = _expect(c == [StringName("chase_%s" % region)], "%s chase song replaces the field song %s" % [region, c]) and ok
+		ok = _expect(Audio.layers_for(&"chase", 0, false, false, region) == c, "%s state chase" % region) and ok
+	ok = _expect(Audio.layers_for(&"field", 0, false, false, &"debug_region") == Audio.layers_for(&"field", 0),
+		"region without songs uses the fallback layers") and ok
 
 	# Overlays and states.
 	var field := Audio.layers_for(&"field", 0)
@@ -46,13 +54,14 @@ func run() -> bool:
 	var on_change := func(ids: Array[StringName]) -> void: heard.append(ids)
 	Audio.music_layers_changed.connect(on_change)
 	Audio.population_override = 0
+	Audio.set_music_state(&"title")
+	ok = _expect(Audio.audible_layers() == [&"title_theme"], "title song plays") and ok
 	Audio.set_music_state(&"base")
 	ok = _expect(Audio.audible_layers().size() == counts[0], "base at population 0") and ok
 	Audio.population_override = 6
 	EventBus.resident_joined.emit(&"test_resident")
 	await get_tree().process_frame
-	ok = _expect(Audio.audible_layers().size() == counts[2], "resident_joined refreshes the base layers") and ok
-	ok = _expect(Audio.timeline_layers().size() >= counts[3], "all base stems run together") and ok
+	ok = _expect(Audio.audible_layers() == Audio.layers_for(&"base", 6), "resident_joined refreshes the base layers") and ok
 	Audio.set_music_state(&"field")
 	var field_players := Audio.timeline_layers()
 	ok = _expect(Audio.audible_layers() == field, "field layers audible") and ok
@@ -63,6 +72,18 @@ func run() -> bool:
 	ok = _expect(Audio.audible_layers() == chase, "chase overlay audible") and ok
 	ok = _expect(Audio.timeline_layers() == field_players, "chase does not restart the timeline") and ok
 	Audio.chase_active = false
+	Audio.region_override = &"city_park"
+	Audio.refresh_music()
+	var park_players := Audio.timeline_layers()
+	ok = _expect(Audio.audible_layers() == [&"field_city_park"], "park song in the park") and ok
+	ok = _expect(&"chase_city_park" in park_players and not &"field_flooded_mall" in park_players
+		and not &"field_ambient" in park_players, "park timeline runs only the park songs %s" % [park_players]) and ok
+	Audio.chase_active = true
+	Audio.refresh_music()
+	ok = _expect(Audio.audible_layers() == [&"chase_city_park"], "park chase crossfades to the battle song") and ok
+	ok = _expect(Audio.timeline_layers() == park_players, "park chase does not restart the timeline") and ok
+	Audio.chase_active = false
+	Audio.region_override = &""
 	Audio.refresh_music()
 	EventBus.night_event_started.emit(&"wedding", [])
 	ok = _expect(Audio.music_state == &"festival", "wedding night event -> festival music") and ok

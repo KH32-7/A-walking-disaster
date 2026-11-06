@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="MusicLayerDef" format=3]
+
+[ext_resource type="Script" path="res://audio/defs/music_layer_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+state = &"title"
+id = &"title_theme"
+unlock_population = 0
+full_track = true
+stream = "res://art/music/title_theme.mp3"
+synth = &"mus_night_strings"
+volume_db = -7.0
+caption = "♪ 어둡고 느린 피아노와 현악"
+visual_cue_id = &"music_title"

@@ -75,7 +75,7 @@ static func names_of(ids: Array) -> String:
 
 static func night_intro(event_id: StringName, participants: Array) -> String:
 	var fmt: String = NIGHT_INTRO.get(event_id, "%s")
-	return fmt % names_of(participants)
+	return KoreanText.fix(fmt % names_of(participants))
 
 
 ## Placeholder line (see TODO above). kind: &"greet" | &"talk" | &"deep" | &"busy" | &"crisis".

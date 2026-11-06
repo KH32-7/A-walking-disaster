@@ -42,6 +42,9 @@
 | `noise_emitted`, `monster_killed`, `player_downed`, `rescue_completed`, `companion_stranded`, `extraction_completed`, `emergency_return_requested` | B | A·C·D |
 
 `player_downed`는 필드 출격에서만 나간다. 기지 맵(방어전)의 플레이어는 `field_rules = false`라 `Player.downed`만 보낸다(B-23, 이슈 #110).
+필드에서 처음 쓰러지면 `Player.downed`는 바로 나가지만 `player_downed`는 살려주는 주민(`RescueCall`)이 실패했을 때만 나간다(02 "살려주는 주민").
+`Player.down_interceptor`(Callable, true면 대기), `Player.revive(health_ratio)` + 신호 `Player.revived`, `Player.give_up()`(대기 실패 → `player_downed`).
+`RescueCall`은 `CompanionManager`가 `spawn_on_ready`일 때 자식으로 붙인다. `CompanionManager.spawn_ids(ids, at = Vector3.INF)`, `FieldCompanion.rush_to`.
 C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지·방어전)는 EventBus가 아니라 `Colony` 오토로드에 있다. 아래 "공개 함수"의 Colony 항목.
 | `resident_joined/left/died`, `building_completed/damaged`, `relationship_changed`, `night_event_started`, `raid_warning/started/resolved` | C | A·B·D |
 | `resources_changed`, `item_added/removed`, `equipment_changed`, `bag_changed` | A | D |
@@ -90,6 +93,9 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   목소리는 `RadioVoice`(`UI.radio_voice`)가 낸다. 완성된 문장마다 녹음 클립 `RadioVoice.clip_path(speaker_id, text)`
   (`res://assets/audio/voice/<speaker_id>/<문장 MD5 앞 12자>.mp3`)이 있으면 그것을, 없으면 OS TTS를 쓴다.
   **무전 문장을 고치면 그 문장의 클립이 안 맞게 되니 다시 녹음한다.** 방송실 지기 목소리: Higgsfield ElevenLabs v4, 프리셋 Gideon.
+  자막을 직접 그리는 컷신은 `UI.radio_voice.say(speaker_id, text, interrupt := false)`로 목소리만 낸다(인트로 방송).
+  `{day}`처럼 녹음이 따라갈 수 없는 빈칸이 있는 트리거는 `RadioTrigger.voice_lines`(같은 순서)에 목소리용 문장을 둔다.
+  자막은 `lines`를 채운 문장, 목소리는 그 문장의 클립이다(`Radio.voice_text`가 내보내는 동안만 들고 있다).
 - **Settings**: `get_value(key)`, `set_value(key, value) -> bool`(모르는 키·틀린 타입 거부), `apply_preset(id, new_game)`, `matching_preset()`,
   `reset_to_defaults(include_difficulty)`. 키 목록은 `Settings.DEFAULTS`. 난이도 프리셋은 `story`·`normal`·`hard`·`hardcore`
   (`Settings.PRESETS`), 항목을 따로 바꾸면 `difficulty`가 `custom`이 된다. 하드코어는 새 게임에서만 고른다.
@@ -103,11 +109,13 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
     TITLE(새 게임·이어하기·중단한 출격), BASE_STAY(하루 마치기), NIGHT(잠자기), Esc 일시정지(필드·기지, 열린 화면 없을 때).
     D가 `data/ui/screens/`에 화면 id `title` / `stay` / `night` / `pause_menu`를 등록하면 그 단계의 프롬프트는 자동으로 빠지고
     `UI.open(id)`가 대신 불린다. 화면은 위 라우터 함수를 부르면 된다.
+    UI 화면이 하나라도 열려 있으면(밤 이벤트, 새 식구, 습격 결과 등) 프롬프트는 숨었다가 다 닫히면 다시 뜬다.
   - C(기지): `start_day_raid(raid)`, `end_day_raid()`, `start_night_event(event_id, participants)`, `end_night_event()`.
   - B(필드)는 라우터 함수를 부르지 않는다. 탈출·쓰러짐 결과를 `FieldState.last_sortie_result()`에 채우고(이슈 #27)
     `extraction_completed`를 보낸다. `player_downed`는 라우터가 그 프레임 끝에 처리하므로 B의 쓰러짐 처리(가방·유실물·결과)가 먼저 끝난다.
     `rescue_completed`, `companion_stranded`, `emergency_return_requested`도 듣는다. 결과 형식은 아래 "출격 결과".
   - 허용되지 않은 전환은 거부(false + 오류). 디버그·테스트용 `advance(region_id = &"")`가 기본 경로로 한 단계 진행. 출격 준비에서는 `region_id`, 비어 있으면 `default_region()`(맵이 있는 첫 지역)으로 출격. 콘솔 `next [region_id]`.
+  - `current_region()`: 지금 출격한 지역 id(FIELD가 아니면 `&""`). Audio가 필드 음악을 고를 때 쓴다.
   - main.tscn의 `World` 아래에 기지/필드 씬을 바꿔 넣는다. 씬 파일이 아직 없으면 비워 둔다.
 - **Colony**: `get_resident(id)`, `active_resident_ids()`, `base_noise()`, `threat`, `tier`,
   `population()`, `bed_count()`, `free_beds()`, `add_resident(profile) -> id`(구조자 입주도 이것), `assign_bed(resident_id, bed_id)`,
@@ -137,6 +145,8 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
 - **FieldState**: `in_sortie()`, `lost_gear`, `boss_ready(boss_id)`, `boss_kill_count(boss_id)`.
   보스 부활 날짜 `boss_respawn_day`는 **보스 id별**이다(한 지역에 보스가 여럿일 수 있다). 지역 id로 저장된 옛 세이브는 불러올 때 그 지역의 `boss_id`로 옮긴다.
 - **보스 (B-19)**: `BossSpawner`가 `BossArena`마다 그 보스의 부활 날짜를 따로 본다. 보스마다의 공략 규칙은 `BossDef.mechanic`(`BossMechanic` 스크립트)에 둔다.
+  `BossDef.first_day` 전에는 안 나온다. `RegionDef.bosses_per_day`(0이면 전부)가 있으면 `BossSpawner.todays(arenas, day)`가 지역과 날짜로 그만큼만 뽑는다.
+  잠든 채 소환된 보스(`BossDef.buried_intro`)는 땅에 묻혀 있다가 처음 깰 때 솟아오른다: `is_buried()`, `is_in_intro()`(피격 무시), 끝나면 신호 `woke`.
 - **동행 주민 고유 스킬 (B-29)**: `ResidentTemplate.signature_skill`(SkillDef, 실행 id는 `CompanionSkill.RUNNERS` 중 하나)과 `signature_line`.
   `FieldCompanion.setup()`이 `ResidentPool.templates`에서 읽는다(Colony 주민 Dictionary에는 없음). 신호 `FieldCompanion.called_out(text, near)`는
   `RescueTarget.called_out`과 같은 모양이고 `WorldMarkers`가 말풍선으로 띄운다. `SkillDef.fx`, `fx_element`로 실행 id와 다른 이펙트를 쓴다.
@@ -145,8 +155,13 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   숫자는 `BossPattern.params`에 둔다. mechanic이 쓰는 BossMonster 공개 함수: `hold(sec)`(AI와 패턴 정지, mechanic이 몸을 움직임), `is_held()`, `cancel_cast()`,
   `area_for(pattern, target_pos)`, `area_targets(area)`, `hit_area(pattern, area)`, `summon(pattern)`.
   보스 모델(`MonsterVisual`)은 `play_once(clip)`, `sink(on, sec, rise)`를 mechanic에 내준다.
-- **Audio**: `play(event_id, position)`, `set_music_state(state)`
+- **Audio**: `play(event_id, position)`, `set_music_state(state)`(`title`/`base`/`festival`/`field`/`chase`/`night`/`raid`, 흐름 상태가 자동으로 정함).
+  필드 음악은 지역마다 다르다: `data/ui/music_layers/*.tres`의 `region`이 `SceneRouter.current_region()`과 같은 층만 나고, 그 지역 층이 없으면 `region`이 빈 층을 쓴다.
+  `full_track` 곡(완성곡)인 추격 층은 필드 곡 위에 겹치지 않고 크로스페이드한다.
 - **Fx**: `spawn(effect_id, position, params)`. 이펙트 id 표는 [vfx/README.md](../../vfx/README.md)(D).
+  피격 흰 번쩍임과 피해 숫자는 `FxFeedback`이 신호를 듣고 띄운다(게임플레이가 부르지 않음): `Monster.damaged`, `Player.health_changed`,
+  `FieldCompanion.damaged(amount, info)`, `RescueTarget.damaged(amount, info)`(`Monster.damaged`와 같은 모양, 상태 틱은 번쩍임 없음), `ResidentAgent.hurt`.
+  몸이 하얗게 번쩍이면 "맞았다" 한 가지 뜻이다. 번쩍임은 기존 `material_overlay`(적 외곽선 등)를 `next_pass`로 걸었다가 되돌린다.
 - **마물 모델과 이펙트 (D-17, 이슈 #148)**:
   - 신호 `Monster.attack_started(info)`(B): 공격이 맞기 `MonsterRules.ATTACK_WINDUP_SEC`(0.4초) 전마다 한 번. info 키 `monster_id`, `target`.
     D의 `MonsterVisual`이 여기서 공격 클립을 시작한다.
@@ -184,6 +199,10 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   진행은 신호로만 한다: 지역 방문·데려가기(`sortie_ended` 탈출), 아이템 회수(`sortie_ended`의 loot), 사람 데려오기(`rescue_completed`의 profile `id`),
   기지 제작(`building_completed`), 특정 날 방어(`raid_resolved`). 유품은 `data/resources/`의 자원(예: `keepsake_plane`)이라 B는 `marker` 자리에 줍는 물건을 두고
   `Bag.try_add`로 넣기만 하면 된다. 보상의 신뢰도는 `Colony.add_trust(resident_id, amount)`(C에 요청)를 부른다. 무전 소문은 Radio 트리거 `quest_rumor`로 말한다.
+- **KoreanText** (`core/korean_text.gd`, 오토로드 아님, static): `particle(word, which)`(앞 글자에 맞는 조사, `Journal.particle`도 이걸 씀),
+  `fix(text)`(문장 속 `이(가)`·`을(를)`·`은(는)`·`과(와)`·`와(과)`·`(으)로`·`(이)에요`를 앞 글자에 맞게 바꿈). 이름을 끼워 넣는 문장은 화면에 내기 전에
+  `fix()`를 거친다. `Colony._event()`, 밤 이벤트 결과, `ConfirmDialog.ask`, `ResidentText.night_intro`는 이미 거친다.
+- **NightEventDef**: `description`은 기획 메모(조건·수치, 화면에 안 나옴), `tagline`은 밤 이벤트 화면 제목 아래 한 줄(수치·규칙 없이).
 
 새 공개 함수가 필요하면 그 오토로드에 바로 추가하고 여기에 한 줄 적는다.
 
@@ -199,6 +218,7 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
 B가 `FieldState.last_sortie_result()`로 내놓는 Dictionary가 바탕이고, 라우터가 `xp`, `rescued_profiles`, `down`을 더하고
 `loot`를 합쳐(B가 탈출 순간 `Bag.unload_to_base()`를 부르고, 라우터가 남은 것—쓰러진 뒤 안전 주머니—을 한 번 더 비움) 보낸다.
 B의 결과가 없으면(디버그 진행) 라우터가 기본값으로 채운다. B는 출격 시작 때 이전 결과를 지워야 한다.
+라우터는 `last_sortie_result`를 세이브에 넣는다(결과 화면에서 저장한 게임을 이어도 같은 결과가 보인다).
 
 ```
 {
@@ -335,6 +355,7 @@ levels/base/base_school/
 
 - `IntroCutscene`(levels/base/intro/): 새 게임(`intro_pending`)이면 base_school이 붙인다. 플래그 `intro_talked`(방송실 지기 대화. 지기는 주민이 아니다), `intro_house_done`(집에서 나옴). `phase()` = `&"cinematic"`/`&"house"`/`&"done"`.
 - `UI.tutorial: IntroTutorial` — 매 프레임 상태로 단계를 정한다. `current_step()`, `skip()`. 끝나면 `tutorial_done`.
+  단계가 가리키는 화면(`SHOWS_OVER`: 가방, 출격 준비) 말고 다른 화면, 컷신 대화, 건물 놓기 중에는 안내를 숨긴다(`current_step()`은 그대로).
 - `UI.spotlight: Spotlight` — `focus_world(node, text, keys, radius, lift)`, `focus_control(c, text, keys)`, `focus_rect(rect, text, keys)`, `clear()`.
 - `UI.cinematic: CinematicOverlay` — `bars(on)`, `fade_to(a)`, `cut(black)`, `title(text, sub)`, `caption(text)`, `talk(lines)`(await), `film`, `skippable` + `skip_requested`.
 - `Player.script_input`: 비어 있지 않으면 컷신이 그 입력으로 step()을 돌린다(`"world_move": Vector3` 가능).

@@ -135,7 +135,7 @@ func _answer(choice: StringName, method: int) -> void:
 	elif StringName(res.get("child_id", &"")) != &"":
 		var child := Colony.get_resident(StringName(res.child_id))
 		dialog.say(ResidentText.call_name(ra), "오늘부터 우리 가족이야, %s." % ResidentText.call_name(child), a)
-		notes.append(["● %s을(를) 맞이했어요" % ResidentText.call_name(child), UiTokens.GOOD])
+		notes.append([KoreanText.fix("● %s을(를) 맞이했어요" % ResidentText.call_name(child)), UiTokens.GOOD])
 	elif res.get("waiting", false):
 		dialog.say(ResidentText.call_name(rb), "기다려 보자. 어딘가에 우리를 기다리는 아이가 있을 거야.", b)
 		notes.append(["방송실이 보호자를 잊은 아이 소문을 기다려요", UiTokens.INFO])

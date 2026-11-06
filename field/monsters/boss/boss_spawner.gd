@@ -3,6 +3,7 @@ extends Node3D
 ## Spawns each BossArena's boss (B-19). Put one in a region scene next to the layout.
 ## A killed boss stays away until FieldState.boss_respawn_day[boss_id] (design 04: 3 days). Each arena
 ## is checked on its own, so one region can hold several bosses (flooded mall).
+## No boss before its BossDef.first_day. With RegionDef.bosses_per_day only that many arenas a day.
 ## Bosses start asleep at the arena center. Debug console: `boss` spawns them again at once.
 ## Design: docs/design/04-monsters.md "보스"
 
@@ -30,15 +31,43 @@ func _process(_delta: float) -> void:
 		spawn_all()
 
 
-## Spawns every arena's boss unless that boss is still waiting to respawn.
+## Spawns today's bosses: past BossDef.first_day, picked for the day (RegionDef.bosses_per_day)
+## and not waiting to respawn. A boss killed today leaves its arena empty for the rest of the day.
 func spawn_all() -> void:
 	_spawned = true
+	var due: Array[BossArena] = []
 	for node in get_tree().get_nodes_in_group(BossArena.GROUP):
 		var arena := node as BossArena
-		if arena == null or arena.boss_id == &"" or not FieldState.boss_ready(arena.boss_id):
-			continue
-		if not is_instance_valid(_bosses.get(arena)):
+		if arena != null and arena.boss_id != &"" and boss_started(arena.boss_id, GameState.day):
+			due.append(arena)
+	for arena in todays(due, GameState.day):
+		if FieldState.boss_ready(arena.boss_id) and not is_instance_valid(_bosses.get(arena)):
 			spawn_at(arena, start_asleep)
+
+
+## The boss's first day (BossDef.first_day) has come.
+static func boss_started(boss_id: StringName, day: int) -> bool:
+	var boss := BossDef.for_monster(boss_id)
+	return day >= (boss.first_day if boss else 1)
+
+
+## The arenas out on `day`: all of them, or RegionDef.bosses_per_day picked by region and day.
+## Picked before the respawn check, so killing today's boss does not bring out another one.
+func todays(arenas: Array[BossArena], day: int) -> Array[BossArena]:
+	var region := RegionDef.load_def(region_id) if region_id != &"" else null
+	var count := region.bosses_per_day if region else 0
+	if count <= 0 or arenas.size() <= count:
+		return arenas
+	var out := arenas.duplicate()
+	out.sort_custom(func(a: BossArena, b: BossArena) -> bool: return String(a.boss_id) < String(b.boss_id))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("%s:%d" % [region_id, day])
+	for i in range(out.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var swap: BossArena = out[i]
+		out[i] = out[j]
+		out[j] = swap
+	return out.slice(0, count)
 
 
 ## The boss for `arena`. Returns null when its MonsterDef or scene is missing.

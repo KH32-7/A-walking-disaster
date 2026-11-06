@@ -177,11 +177,11 @@ func _cinematic() -> void:
 	# 1 — the broadcast over black
 	await _wait(0.8)
 	Audio.play(&"radio_static_open")
-	ci.caption("치익... 여기는... 공원 숲 방송실...", 2.4)
+	_broadcast(ci, "치익... 여기는... 공원 숲 방송실...", 2.4)
 	await _wait(2.9)
 	if _skipped: return
 	Audio.play(&"radio_blip")
-	ci.caption("살아 있는 사람, 들리면... 숲 속 공터로 와요. 여기는 아직... 치익...", 3.2)
+	_broadcast(ci, "살아 있는 사람, 들리면... 숲 속 공터로 와요. 여기는 아직... 치익...", 3.2)
 	await _wait(3.6)
 	if _skipped: return
 	# 2a — dawn wide: high over the clearing, drifting down toward the house
@@ -493,3 +493,9 @@ func _dolly(a: Vector3, b: Vector3, look_a: Vector3, look_b: Vector3, sec: float
 
 func _wait(sec: float) -> void:
 	await get_tree().create_timer(sec).timeout
+
+
+## Caption plus the broadcaster's recorded voice (RadioVoice clip for this exact text).
+func _broadcast(ci: CinematicOverlay, text: String, sec: float) -> void:
+	ci.caption(text, sec)
+	UI.radio_voice.say(&"broadcaster", text)

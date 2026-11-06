@@ -27,6 +27,10 @@ func _ready() -> void:
 	material_override = _mat
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	extra_cull_margin = 16384.0
+	# Hidden until _process finds a field player. The base map keeps its FieldCamera (with this shade)
+	# switched off between direct defences, so _process never ran there and the shade stayed on: a
+	# light circle over the base where the hidden player stood (user report 2026-11-06).
+	visible = false
 	DebugConsole.register(&"vision", _cmd_vision,
 		"vision <out|boost|circle|cone|feather|range> <값...> - 시야 라이트 값 바꾸기")
 

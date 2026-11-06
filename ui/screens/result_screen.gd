@@ -65,7 +65,8 @@ func _build_body(b: Control) -> void:
 	for r: Dictionary in preload("res://ui/screens/sortie_prep_screen.gd").REGIONS:
 		if r.id == reg:
 			rname = r.name
-	left.add_child(MenuScreen.label("%s / %s" % [rname, _dur(float(result.get("duration_sec", 0.0)))], &"LabelDim", 16))
+	var took := _dur(float(result.get("duration_sec", 0.0)))
+	left.add_child(MenuScreen.label("%s / %s" % [rname, took] if rname != "" else took, &"LabelDim", 16))
 	var xp := MenuScreen.panel("경험치", "Lv %d" % Progression.level)
 	var xv: VBoxContainer = xp[1]
 	_xp_label = MenuScreen.label("+0", &"LabelNumber", 48)

@@ -7,7 +7,7 @@ extends RefCounted
 const BLOCKED := ["fbx", "glb", "gltf", "obj", "dae", "blend", "vrm", "png", "jpg", "jpeg", "tga", "psd",
 	"exr", "hdr", "webp", "wav", "ogg", "mp3", "flac", "unitypackage", "zip"]
 const ALLOWED_PREFIX := ["res://assets/", "res://addons/", "res://art/", "res://ui/theme/fonts/",
-	"res://.godot/"]
+	"res://.godot/", "res://.claude/"]  # .claude/worktrees: other branches' checkouts, not this repo
 
 
 func run() -> bool:

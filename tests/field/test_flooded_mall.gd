@@ -3,7 +3,8 @@ extends RefCounted
 ## marker from the north spawn, every extract point from both spawns, and the wheelchair layer
 ## leaves the mall's 2F only by the hidden ramp. The assembly spawns the player, monsters and loot,
 ## roaming packs, activates 2 extract points and has a B-04 IndoorZone per building. The four boss arenas
-## (2026-11-06: every boss lives here) are reachable and the BossSpawner wakes one boss in each.
+## (2026-11-06: every boss lives here) are reachable and the BossSpawner puts RegionDef.bosses_per_day
+## of them out, asleep, from their first day.
 
 const LAYOUT := "res://levels/field/flooded_mall/layout.tscn"
 const ASSEMBLY := "res://levels/field/flooded_mall/flooded_mall.tscn"
@@ -104,7 +105,9 @@ func _check_paths(map: RID, stair_foot: Vector3) -> void:
 
 func _check_assembly() -> void:
 	var saved_respawn := FieldState.boss_respawn_day.duplicate()
+	var saved_day := GameState.day
 	FieldState.boss_respawn_day = {}
+	GameState.day = BossDef.for_monster(BOSS_IDS[0]).first_day
 	var mall := (load(ASSEMBLY) as PackedScene).instantiate() as Node3D
 	_tree.root.add_child(mall)
 	for i in 5:
@@ -114,11 +117,10 @@ func _check_assembly() -> void:
 	for node in _tree.get_nodes_in_group(BossMonster.BOSS_GROUP):
 		bosses.append((node as BossMonster).def.id)
 		_expect((node as BossMonster).state == Enums.AIState.SLEEP, "%s starts asleep" % node.name)
-	bosses.sort()
-	var want: Array[StringName] = []
-	want.assign(BOSS_IDS)
-	want.sort()
-	_expect(bosses == want, "the mall's BossSpawner puts all four bosses out %s" % [bosses])
+	var per_day := RegionDef.load_def(&"flooded_mall").bosses_per_day
+	_expect(per_day >= 1 and bosses.size() == per_day and bosses.all(func(id: StringName) -> bool: return id in BOSS_IDS),
+			"the mall's BossSpawner puts %d of its four bosses out %s" % [per_day, bosses])
+	GameState.day = saved_day
 	FieldState.boss_respawn_day = saved_respawn
 	var players := _tree.get_nodes_in_group(Player.GROUP)
 	_expect(players.size() == 1, "assembly spawns one player")

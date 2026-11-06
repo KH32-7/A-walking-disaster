@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="MusicLayerDef" format=3]
+
+[ext_resource type="Script" path="res://audio/defs/music_layer_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+state = &"chase"
+id = &"chase_flooded_mall"
+unlock_population = 0
+region = &"flooded_mall"
+full_track = true
+stream = "res://art/music/flooded_mall_battle.mp3"
+synth = &"mus_chase_pulse"
+volume_db = -7.5
+caption = "♪ 차가운 전자음 박동"
+visual_cue_id = &"music_chase"

@@ -135,7 +135,7 @@ func _refresh() -> void:
 
 
 func _step_welcome(r: Dictionary) -> void:
-	_card.add_child(_title("%s이(가) 기지에 왔어요" % String(r.get("name", ""))))
+	_card.add_child(_title(KoreanText.fix("%s이(가) 기지에 왔어요" % String(r.get("name", "")))))
 	var others: Array = []
 	for id in Colony.active_resident_ids():
 		if id != resident_id and not Colony.get_resident(id).get("arrival_pending", false):

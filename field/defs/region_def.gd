@@ -24,6 +24,9 @@ const FMT := "res://data/regions/%s.tres"
 @export var loot_table_id: StringName = &""
 ## data/monsters/<boss_id>.tres once B-19 / B-25 add it (가안 ids).
 @export var boss_id: StringName = &""
+## Bosses out per day when the map has several BossArenas (the flooded mall has four). BossSpawner
+## picks them by day, so every sortie of one day meets the same ones. 0 = every arena.
+@export var bosses_per_day: int = 0
 ## ExtractPoint ids on the map. ExtractionManager activates ExtractionManager.ACTIVE_COUNT of them.
 @export var extract_candidates: Array[StringName] = []
 ## HiddenRoute ids on the map.

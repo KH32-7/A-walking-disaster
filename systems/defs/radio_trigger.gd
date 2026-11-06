@@ -8,6 +8,9 @@ extends Resource
 @export var id: StringName
 ## Five or so lines in the broadcaster's voice. {name} placeholders are filled from the context.
 @export var lines: Array[String] = []
+## Spoken instead of lines[i] (same index) when set. For placeholders a recording can't
+## follow, e.g. {day}: the subtitle keeps the number, the voice leaves it out.
+@export var voice_lines: Array[String] = []
 ## The same trigger stays quiet this long after it spoke (halved on "often").
 @export var cooldown_sec := 60.0
 ## Higher wins when lines compete during combat; passed on to EventBus.radio_message.

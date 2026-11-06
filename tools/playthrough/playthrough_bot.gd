@@ -251,6 +251,7 @@ func _day4() -> bool:
 	await _frames(20)
 	_step("downed")
 	var player := get_tree().get_first_node_in_group(&"player")
+	player.down_interceptor = Callable()  # no 살려주는 주민 (RescueCall): this day checks the down result
 	player.take_damage(float(player.health) + 999.0, {})
 	if not await _until(func() -> bool: return GameState.flow_state == Enums.FlowState.RESULT, "쓰러짐 → 결과 화면"):
 		return false

@@ -224,7 +224,8 @@ func _place_subtitle() -> void:
 	subtitle.grow_horizontal = Control.GROW_DIRECTION_BEGIN if menu else Control.GROW_DIRECTION_BOTH
 	subtitle.offset_left = -52.0 if menu else 0.0
 	subtitle.offset_right = -52.0 if menu else 0.0
-	subtitle.offset_bottom = -20 if menu else -200  # world: above the bottom-centre vitals
+	# Menu: body ends 90 px above the bottom (MenuScreen), a 2-line subtitle is 82 px tall.
+	subtitle.offset_bottom = -6 if menu else -200  # world: above the bottom-centre vitals
 	subtitle.offset_top = subtitle.offset_bottom
 	# Toasts sit bottom right over the world; with a menu open that corner holds its buttons
 	# (출격, 맞이하기 …), so they move up under the header.
@@ -366,7 +367,7 @@ func _on_funeral_ready(resident_ids: Array) -> void:
 
 func _on_resident_missing(resident_id: StringName) -> void:
 	LossText.note_missing(resident_id)
-	EventBus.notification_posted.emit("@residents %s을(를) 끝내 찾지 못했어요 / 실종" % LossText.display_name(resident_id), &"danger")
+	EventBus.notification_posted.emit(KoreanText.fix("@residents %s을(를) 끝내 찾지 못했어요 / 실종" % LossText.display_name(resident_id)), &"danger")
 
 
 func _on_loss_flow(state: Enums.FlowState) -> void:
@@ -448,11 +449,30 @@ func is_open(screen_id: StringName) -> bool:
 	return _index_of(screen_id) >= 0
 
 
-## True while a screen that would pause the game is open (pause menu, settings, journal, dialog,
-## emergency return ...). In the field the game keeps running, so field input readers ignore
-## player input while this is true.
+## True while the player's input belongs to the UI: a screen that would pause the game (pause menu,
+## settings, journal, dialog, emergency return ...), any other menu except the field map, a confirm
+## dialog, a cinematic talk, or the mouse over a HUD button. In the field the game keeps running, so
+## field input readers (move, shoot, dodge, skills ...) ignore player input while this is true.
 func blocks_play() -> bool:
-	return _blocks_play
+	if _blocks_play:
+		return true
+	# Clicks / Space meant for a menu fired the gun or dodged (user report 2026-11-06). The field map
+	# stays playable: it is real time and its right click pings.
+	for e: Dictionary in _stack:
+		if e.id != &"map" and not (e.def as ScreenDef).is_overlay:
+			return true
+	if cinematic != null and cinematic.is_talking():
+		return true
+	if overlay != null:
+		for child in overlay.get_children():
+			if child is ConfirmDialog and not child.is_queued_for_deletion():
+				return true
+	var hovered: Control = get_viewport().gui_get_hovered_control() if is_inside_tree() else null
+	while hovered != null:
+		if hovered is BaseButton:
+			return true
+		hovered = hovered.get_parent() as Control
+	return false
 
 
 func top() -> StringName:

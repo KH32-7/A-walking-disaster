@@ -7,6 +7,7 @@ script = ExtResource("1_night")
 id = &"prejudice_talk"
 display_name = "오해가 풀린 밤"
 description = "편견을 가진 주민이 마물 흔적이 있는 주민과 이야기한다. 편견이 사라지고 관계 +20, 사연이 공개된다"
+tagline = "마음속 의심을 털어놓고 서로를 다시 본다"
 weight = 100
 priority = true
 choices = Array[StringName]([&"watch"])

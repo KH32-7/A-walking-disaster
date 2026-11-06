@@ -14,6 +14,8 @@ extends Monster
 ##   itself, not on extraction. Respawn: FieldState.boss_respawn_day[boss id] = day + respawn_days.
 ## - A boss's own rules live in BossDef.mechanic (BossMechanic hooks). hold(sec) hands it the body for a
 ##   while (dive, stance): no AI, no patterns, only the mechanic's on_tick and statuses.
+## - Intro (BossDef.buried_intro): spawned asleep it lies buried with only its top showing. The first
+##   wake holds it for MonsterRules.BOSS_INTRO_SEC (hits ignored) while it climbs out and roars.
 ## Design: docs/design/04-monsters.md "보스", "드롭"; 06-magic-essence.md (정수 공방 설계도)
 
 signal phase_changed(phase: int)
@@ -24,8 +26,15 @@ signal telegraph_started(area: Dictionary)
 ## A pattern began its windup (Lane D: roar, animation). Summons have no ground area.
 signal pattern_started(pattern_id: StringName)
 signal defeated(first_kill: bool)
+## Climbed out of the ground after its first wake (the intro is over, the fight starts).
+signal woke
 
 const BOSS_GROUP := &"field_bosses"
+const INTRO_FX_BREAK := &"monster_slam"
+const INTRO_FX_ROAR := &"monster_scream"
+const INTRO_SOUND := &"monster_growl"
+## First clip the model has is played while it climbs out.
+const INTRO_CLIPS: Array[StringName] = [&"Rise", &"Scream", &"Attack"]
 const FX_TELEGRAPH := &"boss_telegraph"
 const MONSTER_DIR := "res://data/monsters/"
 const FIGHT_STATES: Array[Enums.AIState] = [Enums.AIState.SUSPICIOUS, Enums.AIState.INVESTIGATE,
@@ -50,6 +59,13 @@ var _cast_area: Dictionary = {}
 var _summons: Array[Monster] = []
 var _first_kill := false
 var _hold_left := 0.0
+## Spawned asleep: lies in the ground until the first wake (intro).
+var _buried := false
+var _bury_depth := 0.0
+var _rise_from_y := 0.0
+var _intro_left := 0.0
+## The intro roar played (true for a boss that never had an intro).
+var _landed := true
 
 
 func _ready() -> void:
@@ -68,11 +84,15 @@ func _ready() -> void:
 		else:
 			mechanic.boss = self
 			mechanic.on_added()
+	if start_state == Enums.AIState.SLEEP and boss and boss.buried_intro:
+		_bury()
 
 
 func tick(delta: float) -> void:
 	if is_dead():
 		return
+	_intro_left = maxf(_intro_left - delta, 0.0)
+	_step_intro()
 	if mechanic:
 		mechanic.on_tick(delta)
 		if is_dead():
@@ -97,6 +117,8 @@ func tick(delta: float) -> void:
 
 
 func take_damage(amount: float, info: Dictionary = {}) -> void:
+	if is_in_intro():
+		return
 	if mechanic and not is_dead():
 		amount = mechanic.filter_damage(amount, info)
 		if amount <= 0.0:
@@ -122,6 +144,105 @@ func hold(sec: float) -> void:
 
 func is_held() -> bool:
 	return _hold_left > 0.0
+
+
+## Lying in the ground, asleep (spawned asleep and never woken).
+func is_buried() -> bool:
+	return _buried
+
+
+## Climbing out after the first wake: hits are ignored.
+func is_in_intro() -> bool:
+	return _intro_left > 0.0
+
+
+func _set_state(new_state: Enums.AIState) -> void:
+	var waking := _buried and state == Enums.AIState.SLEEP and new_state != Enums.AIState.SLEEP
+	super._set_state(new_state)
+	if waking and not is_dead():
+		_rise()
+
+
+# --- Intro ----------------------------------------------------------------
+
+## Sinks the model so only its top shows (a mound in the arena), hides the core and outline.
+## The model moves, not the Visual node: CombatFeel.flinch springs the Visual node back to its rest.
+func _bury() -> void:
+	_buried = true
+	var model := _intro_model()
+	if model:
+		_bury_depth = _mesh_top(model) * (1.0 - MonsterRules.BOSS_BURY_SHOW)
+		model.position.y -= _bury_depth
+	else:
+		var body := get_node_or_null(^"Body") as Node3D
+		if body:
+			body.visible = false  # grey box without the model (no assets)
+	_set_intro_look(false)
+
+
+## First wake: ground breaks, it climbs out, then roars (shake + hit-stop) and the fight starts.
+func _rise() -> void:
+	_buried = false
+	_landed = false
+	_intro_left = MonsterRules.BOSS_INTRO_SEC
+	hold(MonsterRules.BOSS_INTRO_SEC)
+	Fx.spawn(INTRO_FX_BREAK, global_position, {"radius": MonsterRules.BOSS_INTRO_FX_RADIUS, "element": def.family})
+	Audio.play(INTRO_SOUND, global_position)
+	CombatFeel.shake(self, MonsterRules.BOSS_INTRO_SHAKE_START, global_position)
+	var visual := get_node_or_null(^"Visual") as MonsterVisual
+	if visual:
+		for clip in INTRO_CLIPS:
+			if visual.has_clip(clip):
+				visual.play_once(clip)
+				break
+	var model := _intro_model()
+	if model:
+		_rise_from_y = model.position.y
+	else:
+		var body := get_node_or_null(^"Body") as Node3D
+		if body:
+			body.visible = true
+
+
+## Driven by tick(): climbs out over BOSS_RISE_SEC (overshoots a little), then lands once.
+func _step_intro() -> void:
+	if _landed:
+		return
+	var t := minf((MonsterRules.BOSS_INTRO_SEC - _intro_left) / MonsterRules.BOSS_RISE_SEC, 1.0)
+	var model := _intro_model()
+	if model:
+		model.position.y = Tween.interpolate_value(_rise_from_y, _bury_depth, t, 1.0, Tween.TRANS_BACK, Tween.EASE_OUT)
+	if t >= 1.0:
+		_land_intro()
+
+
+func _land_intro() -> void:
+	_landed = true
+	_set_intro_look(true)
+	Fx.spawn(INTRO_FX_ROAR, global_position, {"element": def.family})
+	CombatFeel.shake(self, MonsterRules.BOSS_INTRO_SHAKE_LAND, global_position)
+	CombatFeel.hit_stop(self, MonsterRules.BOSS_INTRO_STOP_SEC)
+	woke.emit()
+
+
+func _set_intro_look(on: bool) -> void:
+	_set_outline(on)
+	var core := get_node_or_null(^"WeakPoint/Core") as Node3D
+	if core:
+		core.visible = on
+
+
+func _intro_model() -> Node3D:
+	return get_node_or_null(^"Visual/Model") as Node3D
+
+
+## Top of the meshes under `root` above the boss's feet (metres).
+func _mesh_top(root: Node3D) -> float:
+	var top := 0.0
+	var to_boss := global_transform.affine_inverse()
+	for mi: MeshInstance3D in root.find_children("*", "MeshInstance3D", true, false):
+		top = maxf(top, (to_boss * mi.global_transform * mi.get_aabb()).end.y)
+	return top
 
 
 ## Drops the pattern in its windup without landing it (a stun from the mechanic).
