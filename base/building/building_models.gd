@@ -122,14 +122,15 @@ static func missing_models() -> PackedStringArray:
 	return out
 
 
+## ResourceLoader.list_directory, not DirAccess: an exported build has no .fbx files, only
+## ".fbx.import" (exe 빌드에서 건물·식물이 그레이박스로 뜨던 원인, 2026-11-06).
 static func _scan(dir: String) -> void:
-	var d := DirAccess.open(dir)
-	if d == null:
+	if not DirAccess.dir_exists_absolute(dir):
 		return
-	for sub in d.get_directories():
-		_scan(dir + sub + "/")
-	for f in d.get_files():
-		if f.get_extension().to_lower() == "fbx":
+	for f in ResourceLoader.list_directory(dir):
+		if f.ends_with("/"):
+			_scan(dir + f)
+		elif f.get_extension().to_lower() == "fbx":
 			_index[f.get_basename()] = dir + f
 
 
