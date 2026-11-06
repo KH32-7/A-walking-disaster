@@ -10,6 +10,8 @@ signal health_changed(current: float, maximum: float)
 signal stamina_changed(current: float, maximum: float)
 signal move_state_changed(state: MoveState)
 signal downed()
+## Helped back up by a resident (RescueCall, 살려주는 주민).
+signal revived()
 
 ## B-05 maps these to noise radii (aim-walk 0m, walk 4m, sprint 8m, dodge 5m).
 enum MoveState { IDLE, WALK, SPRINT, AIM_WALK, DODGE }
@@ -45,6 +47,9 @@ var incoming_damage_filter: Callable
 var move_speed_mult := 1.0
 ## B-10 부축: only one-hand weapons (pistol, dagger) while true. TODO(B-06): WeaponHolder reads it.
 var one_hand_only := false
+## Set by RescueCall (field maps). Called when health reaches 0; returning true means someone is
+## coming, so EventBus.player_downed waits for give_up(). revive() stands the player back up.
+var down_interceptor: Callable
 
 var _aim_toggled := false
 var _sprint_toggled := false
@@ -206,8 +211,24 @@ func take_damage(amount: float, info: Dictionary = {}) -> void:
 		status.clear()
 		velocity = Vector3.ZERO
 		downed.emit()
-		if field_rules:
+		if field_rules and not (down_interceptor.is_valid() and down_interceptor.call()):
 			EventBus.player_downed.emit()
+
+
+## Helped up by a resident (RescueCall). Health = max x health_ratio.
+func revive(health_ratio: float) -> void:
+	if not is_downed:
+		return
+	is_downed = false
+	health = stats.max_health * health_ratio
+	health_changed.emit(health, stats.max_health)
+	revived.emit()
+
+
+## Nobody came in time: the normal field down (bag loss, stranded companions, sortie end).
+func give_up() -> void:
+	if is_downed and field_rules:
+		EventBus.player_downed.emit()
 
 
 ## One simulation step. Split from input reading so tests can drive it.

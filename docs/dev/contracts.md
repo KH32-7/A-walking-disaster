@@ -42,6 +42,9 @@
 | `noise_emitted`, `monster_killed`, `player_downed`, `rescue_completed`, `companion_stranded`, `extraction_completed`, `emergency_return_requested` | B | A·C·D |
 
 `player_downed`는 필드 출격에서만 나간다. 기지 맵(방어전)의 플레이어는 `field_rules = false`라 `Player.downed`만 보낸다(B-23, 이슈 #110).
+필드에서 처음 쓰러지면 `Player.downed`는 바로 나가지만 `player_downed`는 살려주는 주민(`RescueCall`)이 실패했을 때만 나간다(02 "살려주는 주민").
+`Player.down_interceptor`(Callable, true면 대기), `Player.revive(health_ratio)` + 신호 `Player.revived`, `Player.give_up()`(대기 실패 → `player_downed`).
+`RescueCall`은 `CompanionManager`가 `spawn_on_ready`일 때 자식으로 붙인다. `CompanionManager.spawn_ids(ids, at = Vector3.INF)`, `FieldCompanion.rush_to`.
 C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지·방어전)는 EventBus가 아니라 `Colony` 오토로드에 있다. 아래 "공개 함수"의 Colony 항목.
 | `resident_joined/left/died`, `building_completed/damaged`, `relationship_changed`, `night_event_started`, `raid_warning/started/resolved` | C | A·B·D |
 | `resources_changed`, `item_added/removed`, `equipment_changed`, `bag_changed` | A | D |
