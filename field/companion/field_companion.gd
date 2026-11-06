@@ -88,6 +88,8 @@ var guard_post: Node3D
 var signature_skill: SkillDef
 ## Bubble line after the signature skill.
 var signature_line := ""
+## RescueCall (살려주는 주민): runs straight to this node at sprint speed, no fighting, until cleared.
+var rush_to: Node3D
 var rng := RandomNumberGenerator.new()
 
 var _player: Node3D
@@ -459,7 +461,8 @@ func move_speed() -> float:
 	if _player != null and _player.get(&"stats") != null:
 		walk = _player.stats.walk_speed
 		sprint = _player.stats.sprint_speed
-	var far := _player != null and _flat_distance(_player.global_position) > tuning.catchup_distance
+	var far := is_instance_valid(rush_to) \
+			or (_player != null and _flat_distance(_player.global_position) > tuning.catchup_distance)
 	return (sprint if far else walk) * _armor_speed_mult
 
 
@@ -490,6 +493,10 @@ func _tick_active(delta: float) -> void:
 		_reload_left -= delta
 		if _reload_left <= 0.0:
 			_magazine = -1
+	if is_instance_valid(rush_to):
+		target = null
+		_walk_toward(rush_to.global_position, tuning.follow_distance, delta)
+		return
 	_retarget_left -= delta
 	if _retarget_left <= 0.0:
 		_retarget_left = tuning.retarget_sec

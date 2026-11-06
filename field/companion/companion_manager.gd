@@ -32,6 +32,7 @@ func _ready() -> void:
 	if spawn_on_ready:
 		# Deferred: the player is placed on its PlayerSpawn first.
 		spawn.call_deferred()
+		add_child(RescueCall.new())
 
 
 func _process(delta: float) -> void:
@@ -45,8 +46,9 @@ func spawn() -> Array[FieldCompanion]:
 	return spawn_ids(FieldState.companions)
 
 
-## Places these residents beside the player. Returns them (also kept in `companions`).
-func spawn_ids(ids: Array[StringName]) -> Array[FieldCompanion]:
+## Places these residents beside the player, or all at `at` when given (RescueCall).
+## Returns them (also kept in `companions`).
+func spawn_ids(ids: Array[StringName], at := Vector3.INF) -> Array[FieldCompanion]:
 	var placed: Array[FieldCompanion] = []
 	var player := get_tree().get_first_node_in_group(Player.GROUP) as Node3D
 	for id in ids:
@@ -60,7 +62,7 @@ func spawn_ids(ids: Array[StringName]) -> Array[FieldCompanion]:
 		c.setup(id, data)
 		c.mode = mode
 		add_child(c)
-		c.global_position = _slot_position(player, companions.size())
+		c.global_position = _slot_position(player, companions.size()) if at == Vector3.INF else at
 		companions.append(c)
 		placed.append(c)
 		companion_spawned.emit(c)

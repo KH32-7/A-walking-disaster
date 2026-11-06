@@ -57,3 +57,17 @@ extends Resource
 @export var max_companions := 2
 ## NoiseTable footstep action per Mode (03 신중: 소음 최소).
 @export var mode_footstep: Dictionary[int, StringName] = {0: &"escort_walk", 1: &"companion_quiet", 2: &"escort_walk"}
+
+@export_group("Rescue Call")
+## 살려주는 주민 (02): base residents who set out when the player goes down with no companion up.
+@export var rescue_call_count := 2
+## Start distance from the player, toward the entry (m).
+@export var rescue_call_spawn_distance := 25.0
+## Time for a rescuer to reach the player (s). Paused while helping up (revive_sec).
+@export var rescue_call_wait_sec := 25.0
+## A rescuer this close starts helping up (m).
+@export var rescue_call_reach := 2.5
+## Player health after being helped up, x max health.
+@export var rescue_call_health_ratio := 0.5
+## Bubble line of the one who helped the player up.
+@export var rescue_call_lines: Array[String] = ["일어나요. 같이 가요.", "늦어서 미안해요. 이제 괜찮아요.", "혼자 두고 갈 리가 없잖아요."]

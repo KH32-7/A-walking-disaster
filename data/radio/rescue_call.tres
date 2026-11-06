@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="RadioTrigger" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/radio_trigger.gd" id="1_rcall"]
+
+[resource]
+script = ExtResource("1_rcall")
+id = &"rescue_call"
+lines = Array[String](["버텨요. {name} 씨가 가요.", "거기 있어요. {name} 씨가 지금 뛰어가요.", "조금만요. {name} 씨가 거의 다 왔어요.", "혼자가 아니에요. {name} 씨가 그쪽으로 가요.", "숨 고르세요. {name} 씨가 곧 도착해요."])
+cooldown_sec = 0.0
+priority = 3
+guidance = false
+once_per = &"sortie"
