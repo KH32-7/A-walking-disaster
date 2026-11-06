@@ -12,6 +12,8 @@ const SPREAD := 1.5  # spread people around a shared point so they don't stack (
 ## Builders stand this far (m) outside the edge of the site they build.
 const SITE_GAP := 0.7
 
+var _retarget_queued := false
+
 var grid: BaseGrid
 var layout: Node3D
 
@@ -28,6 +30,7 @@ func _ready() -> void:
 	Colony.buildings_changed.connect(_on_buildings_changed)
 	Colony.arrival_ready.connect(_on_resident_changed)
 	Colony.resident_profile_changed.connect(_on_resident_changed)
+	Colony.assignment_changed.connect(_on_assignment_changed)
 	Colony.arrival_completed.connect(_on_arrival_completed)
 	sync.call_deferred()
 
@@ -175,6 +178,18 @@ func _on_evening_settled(_report: Dictionary) -> void:
 
 func _on_buildings_changed() -> void:
 	retarget.call_deferred()
+
+
+## A job or workplace changed: walk there now (one deferred retarget per frame, however many changed).
+func _on_assignment_changed(_id: StringName) -> void:
+	if not _retarget_queued:
+		_retarget_queued = true
+		_retarget_later.call_deferred()
+
+
+func _retarget_later() -> void:
+	_retarget_queued = false
+	retarget()
 
 
 func _on_arrival_completed(_id: StringName, _result: Dictionary) -> void:

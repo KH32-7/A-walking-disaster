@@ -16,6 +16,9 @@ signal arrival_ready(resident_id: StringName)
 signal arrival_completed(resident_id: StringName, result: Dictionary)
 ## Nickname or appearance changed (ResidentAgent redraws).
 signal resident_profile_changed(resident_id: StringName)
+## A resident's job or workplace changed (assign_job / unassign_job). ResidentCrowd sends them to the
+## new place at once; before this a builder only left once the site moved (user report 2026-11-06).
+signal assignment_changed(resident_id: StringName)
 ## 아이 맞이 (C-15): a married couple wants a child (D asks "지금 / 나중에" and the method,
 ## then calls answer_child_wish), and a child joined a family (methods: Enums.ArrivalMethod).
 signal child_wish(a: StringName, b: StringName, methods: Array)
@@ -858,6 +861,7 @@ func assign_job(resident_id: StringName, job_id: StringName, building_uid: Strin
 	residents[resident_id]["assignment"] = {"job": job_id, "building_id": building_uid}
 	if buildings.has(building_uid):
 		buildings[building_uid]["workers"].append(resident_id)
+	assignment_changed.emit(resident_id)
 	return true
 
 
@@ -868,7 +872,10 @@ func unassign_job(resident_id: StringName) -> void:
 	var uid: StringName = old.get("building_id", &"")
 	if buildings.has(uid):
 		buildings[uid]["workers"].erase(resident_id)
+	var had_job: bool = old.get("job", &"") != &""
 	residents[resident_id]["assignment"] = {"job": &"", "building_id": &""}
+	if had_job:
+		assignment_changed.emit(resident_id)
 
 
 func job_of(resident_id: StringName) -> StringName:

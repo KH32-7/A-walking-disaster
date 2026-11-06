@@ -122,6 +122,7 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   `settle_day()`, `roll_raid(time)`, `resolve_raid(raid, mode)`, `predict_raid(raid)` (형식은 아래 "하루 정산과 습격").
   레인 C M2 (이슈 #121). 신호는 모두 `Colony`에 있다.
   - 실시간 건설(2026-11-06): `place_building`(pay=true)이 일 없는 주민을 `auto_staff_site(uid)`로 현장에 배정한다. 기지에 있는 동안(BASE_MORNING·SORTIE_PREP·BASE_STAY) `advance_live_build(delta)`가 하루치 건설량을 `WorkRules.LIVE_BUILD_SEC`초에 걸쳐 올리고, `settle_day()`는 남은 양만 더한다. `build_per_day(id)`, `live_build`. 신호 `build_progress_changed(uid)`(완성 때는 `buildings_changed`).
+  - 일 배정: `assign_job(id, job, building_uid)`, `unassign_job(id)`, `job_of(id)`. 바뀔 때마다 신호 `assignment_changed(id)` (ResidentCrowd가 바로 새 일터로 보낸다).
   - C-12 신뢰도: `add_trust`, `trust_stage`, `unlocked_story`, `trust_actions`, `talk`, `deep_talk`, `give_gift`, `gift_reaction`. 신호 `trust_changed(id, trust, stage, reason)`.
   - C-13 입주 의식: `pending_arrivals`, `arrival_info`, `set_nickname`, `set_appearance`, `appearance_for_look`, `choose_bed`, `complete_arrival`, `known_likes`.
     신호 `arrival_ready`, `arrival_completed`, `resident_profile_changed`.
