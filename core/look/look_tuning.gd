@@ -8,8 +8,8 @@ extends Resource
 @export var enabled := false
 
 ## Toon shading on every toon surface (global shader uniform `toon_amount`): 1 = toon, 0 = plain.
-## 0 by default: toon off (user decision 2026-11-06).
-@export_range(0.0, 1.0, 0.05) var toon_amount := 0.0
+## 0.2 by default: a light touch of toon (user request 2026-11-06: "강도 20 정도로").
+@export_range(0.0, 1.0, 0.05) var toon_amount := 0.2
 
 @export_group("Painterly")
 ## Kuwahara filter radius in pixels, 0 = off. Flattens photo-like texture noise into painted patches.

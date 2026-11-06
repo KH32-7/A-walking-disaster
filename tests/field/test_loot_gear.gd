@@ -11,6 +11,13 @@ func run() -> bool:
 		ok = _expect(table.gear_chance > 0.0, "%s: weapon chance (%.2f)" % [path, table.gear_chance]) and ok
 		for id: StringName in table.gear_pool:
 			ok = _expect(Armory.get_def(id) != null, "%s: weapon %s exists" % [path, id]) and ok
+	# 나무·돌도 상자에서 나옴 (사용자 요청 2026-11-06: 기지 자원이 부족함).
+	for path in ["res://data/loot/tables/city_park_supply_crate.tres", "res://data/loot/tables/city_park_toolbox.tres",
+			"res://data/loot/tables/flooded_mall_supply_crate.tres", "res://data/loot/tables/flooded_mall_toolbox.tres"]:
+		var ids := []
+		for e: LootEntry in (load(path) as LootTable).entries:
+			ids.append(e.item_id)
+		ok = _expect(&"wood" in ids and &"stone" in ids, "%s: wood and stone (%s)" % [path, ids]) and ok
 	# Taking the gear slot: a new item in the bag.
 	var c := (load("res://field/loot/loot_container.tscn") as PackedScene).instantiate() as LootContainer
 	c.def = load("res://data/loot/containers/supply_crate.tres")

@@ -35,6 +35,11 @@ static func for_resource(id: StringName) -> Dictionary:
 	var name := String(def.name) if def != null else String(id)
 	var cat := ["기본 자원", "가공 자원", "필드 자원", "마물 자원", "특수 자원"]
 	var tag: String = cat[clampi(int(def.category), 0, 4)] if def != null else "소모품"
+	# Essences (essence_<element>_<grade>) are not ResourceDefs: name them from their EssenceDef.
+	var ess: EssenceDef = EssenceRules.get_essence(id) if def == null and String(id).begins_with("essence_") else null
+	if ess != null:
+		name = ess.name
+		tag = "마물 정수"
 	return {"name": name, "rarity": 0, "kind": &"resource", "icon": id, "tooltip": {"title": name, "rarity": -1,
 		"tags": [tag], "desc": "", "stats": [["창고 보유", str(Economy.get_amount(id))]]}}
 
