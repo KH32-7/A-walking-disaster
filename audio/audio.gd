@@ -114,6 +114,11 @@ func _ready() -> void:
 			var i := AudioServer.bus_count - 1
 			AudioServer.set_bus_name(i, b)
 			AudioServer.set_bus_send(i, &"Master")
+	# Gunshots heard up close stack past 0 dB; a limiter on Master keeps them from clipping (2026-11-06).
+	if AudioServer.get_bus_effect_count(0) == 0:
+		var limiter := AudioEffectHardLimiter.new()
+		limiter.ceiling_db = -0.5
+		AudioServer.add_bus_effect(0, limiter)
 	for i in POOL_2D:
 		var p := AudioStreamPlayer.new()
 		add_child(p)

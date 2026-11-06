@@ -47,6 +47,11 @@ func _test_start_view() -> void:
 	_expect_near(rad_to_deg(asin(offset.y / offset.length())), FieldCamera.PITCH_DEG, "looks down 55 deg", 0.1)
 	_expect_near(offset.length(), FieldCamera.ZOOM_DISTANCES[FieldCamera.START_ZOOM], "start distance")
 	_expect(get_viewport().get_camera_3d() == _camera, "becomes the current camera")
+	var ear := _camera.listener()
+	_expect(ear != null and ear.is_current(), "player-side listener is current")
+	_expect(ear != null and ear.global_position.distance_to(_player.global_position + Vector3.UP * FieldCamera.FOCUS_HEIGHT) < EPS,
+		"listener sits at the player's chest, not at the camera")
+	_expect(ear != null and ear.global_basis.z.distance_to(_camera.global_basis.z) < EPS, "listener faces like the camera")
 
 
 func _test_turns_and_wasd() -> void:
