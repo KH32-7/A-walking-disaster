@@ -33,6 +33,8 @@ const INTERACT_MAX_HITS := 8
 ## `downed`, not EventBus.player_downed: no bag loss, lost gear, stranded companions or sortie end.
 @export var field_rules := true
 
+## F (interact) is held down this frame. Hold actions (lock picking) read it; tests set it.
+var interact_held := false
 var health: float
 var stamina: float
 var is_aiming := false
@@ -88,11 +90,13 @@ func _physics_process(delta: float) -> void:
 	if is_downed:
 		return
 	if not script_input.is_empty():
+		interact_held = false
 		step(delta, script_input)  # a cutscene drives the player (IntroCutscene); no interact
 		move_and_slide()
 		return
 	step(delta, {} if input_blocked() else _read_input())
 	move_and_slide()
+	interact_held = Input.is_action_pressed(&"interact") and not input_blocked()
 	if Input.is_action_just_pressed(&"interact") and not input_blocked():
 		interact()
 

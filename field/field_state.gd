@@ -39,6 +39,11 @@ const PING_REACH_M := 3.0
 var has_ping := false
 var ping := Vector3.ZERO
 
+## Back at base with no weapon in hand and none in storage (everything lost on going down):
+## the player gets this one (user playtest 2026-11-06: "기본 무기 칼 같은 거").
+const STARTER_WEAPON := &"dagger"
+const STARTER_WEAPON_TEXT := "맨손으로 돌아왔다. 기지에 남아 있던 단검을 챙겼다."
+
 var _down_result: Dictionary = {}
 var _sortie_result: Dictionary = {}
 ## Seconds since sortie_started. Runs from sortie_started until extraction, downing or sortie_ended.
@@ -230,6 +235,23 @@ func _on_sortie_ended(_result: Dictionary) -> void:
 	clear_ping()
 	# Not recovered during its one sortie: gone.
 	_drop_lost_gear(func(e: Dictionary) -> bool: return e.get("offered", false))
+	ensure_starter_weapon()
+
+
+## Gives the player STARTER_WEAPON (equipped) when they hold no weapon and storage has none.
+## Returns the new item uid, or &"" when nothing was needed.
+func ensure_starter_weapon() -> StringName:
+	if Armory.get_equipped(Armory.PLAYER_ID, Enums.EquipSlot.MAIN) != &"" \
+			or Armory.get_equipped(Armory.PLAYER_ID, Enums.EquipSlot.SUB) != &"":
+		return &""
+	for uid in Armory.list_storage(Enums.EquipSlot.MAIN):
+		if Armory.get_def(Armory.get_item(uid).def_id).is_weapon():
+			return &""
+	var uid := Armory.create_item(STARTER_WEAPON, 0)
+	if uid == &"" or not Armory.equip(Armory.PLAYER_ID, Enums.EquipSlot.MAIN, uid):
+		return &""
+	EventBus.notification_posted.emit(STARTER_WEAPON_TEXT, &"info")
+	return uid
 
 
 func _on_player_downed() -> void:

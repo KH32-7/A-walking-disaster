@@ -144,7 +144,7 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   `field_rules`, `guard_post`, `Monster.raid_goal`, `is_raider()`, `drop_mult`, `died`, `attack_landed`. 구조물 그룹 `raid_structures`, `raid_gates`
   (`RaidMarch` 상수), 구조물과 주민의 `take_damage(amount, info)`, 구조물 info 키 `structure_damage_mult`, `charges_gates`, `monster_id`, `source`, `element`.
   자세한 사용법은 [field/README.md](../../field/README.md).
-- **FieldState**: `in_sortie()`, `lost_gear`, `boss_ready(boss_id)`, `boss_kill_count(boss_id)`.
+- **FieldState**: `in_sortie()`, `lost_gear`, `boss_ready(boss_id)`, `boss_kill_count(boss_id)`, `ensure_starter_weapon()`(출격이 끝날 때 손·창고에 무기가 없으면 `STARTER_WEAPON`(단검)을 만들어 장착, 알림).
   보스 부활 날짜 `boss_respawn_day`는 **보스 id별**이다(한 지역에 보스가 여럿일 수 있다). 지역 id로 저장된 옛 세이브는 불러올 때 그 지역의 `boss_id`로 옮긴다.
 - **보스 (B-19)**: `BossSpawner`가 `BossArena`마다 그 보스의 부활 날짜를 따로 본다. 보스마다의 공략 규칙은 `BossDef.mechanic`(`BossMechanic` 스크립트)에 둔다.
   `BossDef.first_day` 전에는 안 나온다. `RegionDef.bosses_per_day`(0이면 전부)가 있으면 `BossSpawner.todays(arenas, day)`가 지역과 날짜로 그만큼만 뽑는다.
@@ -361,6 +361,7 @@ levels/base/base_school/
 - `UI.spotlight: Spotlight` — `focus_world(node, text, keys, radius, lift)`, `focus_control(c, text, keys)`, `focus_rect(rect, text, keys)`, `focus_card(text, keys, at_bottom)`(가리킬 것 없이 카드만: 위 가운데, at_bottom이면 아래 가운데), `clear()`.
 - `UI.cinematic: CinematicOverlay` — `bars(on)`, `fade_to(a)`, `cut(black)`, `title(text, sub)`, `caption(text)`, `talk(lines)`(await), `is_playing()`(film이거나 바가 들어옴: 무전 자막 대기, 주인공 외곽선 끔), `film`, `skippable` + `skip_requested`.
 - `Player.script_input`: 비어 있지 않으면 컷신이 그 입력으로 step()을 돌린다(`"world_move": Vector3` 가능).
+- `Player.interact_held`: 이번 프레임 F를 누르고 있음(꾹 누르기 행동이 읽음, 테스트가 넣음). `RescueDoor.hold_state()`: 문 따는 중이면 `{label, progress}`(머리 위 게이지), 아니면 `{}`. 문 따기는 F를 누르는 동안 `RescueTuning.lockpick_sec`, 떼거나 `lockpick_leave_m`보다 멀어지면 처음부터.
 - `LootContainer.add_gear(def_id, rarity)`: 장비 칸. 꺼내면 Armory.create_item + Bag.add_item.
 - `Bag.equip_entry(entry_id, owner_id)`: 가방 장비를 장착(원래 장비는 가방으로, 자리 없으면 창고). 가방 화면 우클릭 "장착".
 - `RescueSpawn.required_flag`: 그 플래그가 있을 때만 나온다(공원 의사 `intro_talked`).

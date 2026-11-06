@@ -3,7 +3,7 @@ extends Control
 ## Title screen (D-19). Owner: Lane D. Screen id `title`, opened by UI on FlowState.TITLE
 ## (ui.gd FLOW_SCREENS; A's core/flow_prompts.gd steps aside once this id is registered).
 ## Design 14 "화면 목록": 이어하기, 새 게임(난이도·보호 모드), 설정, 접근성 빠른 설정. Plus 불러오기, 종료.
-## Left: game name, Haesol stripe, MenuList. Right: the focused row's detail (slate panel / cream card).
+## Left: game name (GlitchTitle), MenuList. Right: the focused row's detail (slate panel / cream card).
 ##
 ## Everything it starts goes through the router: SceneRouter.load_suspended() / load_game(slot) /
 ## start_new_game(slot, preset). Difficulty values come from Settings.PRESETS; "보호 모드" items are
@@ -101,22 +101,12 @@ func _ready() -> void:
 	left.custom_minimum_size = Vector2(640, 0)
 	left.add_theme_constant_override(&"separation", 14)
 	add_child(left)
-	var kicker := MenuScreen.label("해솔시 / 남겨진 사람들의 생존기", &"LabelHud", 20)
+	var kicker := MenuScreen.label("남겨진 사람들의 생존기",&"LabelHud", 20)
 	kicker.add_theme_color_override(&"font_color", UiTokens.TEXT_DIM)
 	left.add_child(kicker)
-	var name_l := Label.new()
-	name_l.text = GameState.GAME_TITLE.to_upper()  # one line (user request 2026-11-06)
-	name_l.add_theme_font_override(&"font", UiThemeBuilder.font_num())
-	name_l.add_theme_font_size_override(&"font_size", 92)
-	name_l.add_theme_constant_override(&"line_spacing", -18)
-	name_l.add_theme_color_override(&"font_color", UiTokens.TEXT)
-	left.add_child(name_l)
-	var bands := HaesolBands.new()
-	bands.custom_minimum_size = Vector2(560, 18)
-	bands.teal_width = 7.0
-	bands.yellow_width = 3.0
-	left.add_child(bands)
-	bands.play(HaesolBands.IN_TIME)
+	# One line (user request 2026-11-06). Comes in like a broken broadcast; the Haesol teal / yellow
+	# live in its split instead of two bands under it.
+	left.add_child(GlitchTitle.new(GameState.GAME_TITLE.to_upper(), UiThemeBuilder.font_num(), 92))
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0, 28)
 	left.add_child(gap)

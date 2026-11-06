@@ -357,12 +357,14 @@ func _on_attacked(kind: StringName, combo_step: int) -> void:
 	_shot_left = SHOT_HOLD_SEC
 
 
-## Blunt weapons alternate the outward (odd combo steps) and inward (even) slash. The new swing
-## fades in while the other one fades out. Blades and bare hands have no swing clip yet.
+## Melee weapons alternate the outward (odd combo steps) and inward (even) slash. The new swing
+## fades in while the other one fades out. Blades use the same sword slashes as blunt weapons
+## (user playtest 2026-11-06: the dagger swung with no animation). Bare hands have no clip yet.
 func _swing(combo_step: int) -> void:
 	if _tree == null or _weapons == null:
 		return
-	if int(_weapons.current_stats().get("combat_class", -1)) != Enums.CombatClass.BLUNT:
+	var combat_class := int(_weapons.current_stats().get("combat_class", -1))
+	if combat_class != Enums.CombatClass.BLUNT and combat_class != Enums.CombatClass.BLADE:
 		return
 	var play := &"swing_in" if combo_step % 2 == 0 else &"swing_out"
 	var other := &"swing_out" if play == &"swing_in" else &"swing_in"
