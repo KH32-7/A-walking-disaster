@@ -46,6 +46,7 @@ func run() -> bool:
 	_test_noise()
 	_test_child_startle()
 	_test_follow_and_hide()
+	_test_escort_goal()
 	_test_downed()
 	_test_wheelchair_stairs()
 	await _bake_test_navmesh(true)
@@ -250,6 +251,34 @@ func _test_follow_and_hide() -> void:
 	_player.global_position = Vector3(2, 0, 1)
 	_check(s.begin_open(_player) and s.state == State.FOLLOW and _player.one_hand_only, "picked up again")
 	s.free()
+
+
+## The rescue objective's marker moves to the nearest open extraction point once the person follows.
+func _test_escort_goal() -> void:
+	var o := {"kind": &"rescue", "target_id": &""}
+	var em := ExtractionManager.new()
+	em.auto_activate = false
+	add_child(em)
+	var near := ExtractPoint.new()
+	var far := ExtractPoint.new()
+	add_child(near)
+	add_child(far)
+	near.global_position = Vector3(10, 0, 0)
+	far.global_position = Vector3(40, 0, 0)
+	em._active = [far, near]
+	var t := _target(_spawn(Type.INJURED, Move.WALK))
+	_check(RescueTarget.escort_goal(get_tree(), o) == null, "escort goal: none before the rescue")
+	t.begin_open(_player)
+	t.tick(DT)
+	_check(t.is_rescued(), "escort goal: rescued")
+	_check(RescueTarget.escort_goal(get_tree(), o) == near, "escort goal: nearest open extraction point")
+	_check(RescueTarget.escort_goal(get_tree(), {"kind": &"visit"}) == null, "escort goal: rescue objectives only")
+	_check(RescueTarget.escort_goal(get_tree(), {"kind": &"rescue", "target_id": &"someone_else"}) == null,
+			"escort goal: only for its own person")
+	t.free()
+	near.free()
+	far.free()
+	em.free()
 
 
 func _test_downed() -> void:

@@ -197,7 +197,7 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   `friend`·`lover`·`spouse`(또는 `married`)·`separated`를 읽는다(다르면 `Journal.STAGE_KINDS`에 별칭).
 - **Quests** (A-13): `start(quest_id, giver_id)`, `advance(quest_id, objective_id, amount)`(C: 공동체 퀘스트), `complete(quest_id)`, `fail(quest_id, reason)`,
   `get_status(quest_id)`(-1 = 시작 전, `Quests.Status`), `is_active()`, `is_completed()`, `days_left()`, `get_def()`, `active_quests()`(D: 퀘스트 기록),
-  `active_field_objectives(region_id)`(B: 필드 목표 `{"quest_id", "objective_id", "kind": &"visit"|&"recover"|&"rescue", "region_id", "marker", "target_id", "count", "remaining", "text", "marker_label"}`). 지도·미니맵은 marker 위치에 노란 이중 마름모와 marker_label(없으면 text)을 그린다.
+  `active_field_objectives(region_id)`(B: 필드 목표 `{"quest_id", "objective_id", "kind": &"visit"|&"recover"|&"rescue", "region_id", "marker", "target_id", "count", "remaining", "text", "marker_label"}`). 지도·미니맵은 marker 위치에 노란 이중 마름모와 marker_label(없으면 text)을 그린다. 구출 목표는 그 사람이 따라오기 시작하면 `RescueTarget.escort_goal(tree, objective)`(가장 가까운 열린 탈출 지점)로 마름모를 옮긴다.
   진행은 신호로만 한다: 지역 방문·데려가기(`sortie_ended` 탈출), 아이템 회수(`sortie_ended`의 loot), 사람 데려오기(`rescue_completed`의 profile `id`),
   기지 제작(`building_completed`), 특정 날 방어(`raid_resolved`). 유품은 `data/resources/`의 자원(예: `keepsake_plane`)이라 B는 `marker` 자리에 줍는 물건을 두고
   `Bag.try_add`로 넣기만 하면 된다. 보상의 신뢰도는 `Colony.add_trust(resident_id, amount)`(C에 요청)를 부른다. 무전 소문은 Radio 트리거 `quest_rumor`로 말한다.

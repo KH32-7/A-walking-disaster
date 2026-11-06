@@ -19,6 +19,8 @@ extends Control
 ##   yellow edge arrow with the diamond. Hidden within OBJ_HIDE_M, where the place takes over.
 ##   The words (marker_label) come once per sortie only: a banner at the top centre, diamond +
 ##   words, for BANNER_SEC (사용자 요청 2026-11-06: explain briefly, then just the symbol).
+##   A rescue objective whose person is following points at the nearest open extraction point
+##   instead (RescueTarget.escort_goal; minimap and M map do the same), with its own one-time banner.
 ## Computes no game rules: radius and states come from Lane B.
 
 const ARROW_SEC := 1.6
@@ -40,6 +42,7 @@ const VOICE_LABEL := "목소리"
 ## Quest objective diamond: metres above the marker, hidden this close (flat metres).
 const OBJ_HEIGHT := 4.5
 const OBJ_HIDE_M := 9.0
+const ESCORT_BANNER := "탈출 지점으로 데려가요"
 ## The one-time objective banner: seconds on screen, fade in / out, size, top of the banner (px,
 ## below the edge arrows' top inset so it never sits on an objective arrow).
 const BANNER_SEC := 4.5
@@ -238,13 +241,15 @@ func _draw_objectives(cam: Camera3D, view: Rect2) -> void:
 		return
 	var p := get_tree().get_first_node_in_group(&"player") as Node3D
 	for o: Dictionary in Quests.active_field_objectives(FieldState.region_id):
-		var node := _find_marker(StringName(o.get("marker", &"")))
+		# Rescued and following: the diamond moves to the nearest open extraction point.
+		var escort := RescueTarget.escort_goal(get_tree(), o)
+		var node := escort if escort != null else _find_marker(StringName(o.get("marker", &"")))
 		if node == null:
 			continue
-		var key := "%s/%s" % [o.get("quest_id", &""), o.get("objective_id", &"")]
+		var key := "%s/%s%s" % [o.get("quest_id", &""), o.get("objective_id", &""), "/escort" if escort != null else ""]
 		if int(_banner_seen.get(key, -1)) != FieldState.sortie_seed:
 			_banner_seen[key] = FieldState.sortie_seed
-			var words := String(o.get("marker_label", ""))
+			var words := ESCORT_BANNER if escort != null else String(o.get("marker_label", ""))
 			show_banner(words if words != "" else String(o.get("text", "")))
 		var wp := node.global_position + Vector3.UP * OBJ_HEIGHT
 		var dist := ""
