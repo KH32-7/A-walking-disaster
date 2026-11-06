@@ -62,6 +62,10 @@ var _distance: float = ZOOM_DISTANCES[START_ZOOM]
 ## 0 = not aiming, 1 = fully aim-zoomed (eased).
 var _aim_zoom := 0.0
 var _focus := Vector3.ZERO
+## Sounds are heard from the player, not from the camera 10-18 m away (2026-11-06): with the camera
+## as listener every positional sound lost 7-10 dB and the distance low-pass dulled gunshots.
+## Sits at the focus point with the camera's facing, so left/right still match the screen.
+var _ear: AudioListener3D
 var _use_stick := false
 var _tween: Tween
 ## B-27: shot kick (decays to zero) and shake trauma (CombatFeel).
@@ -81,6 +85,11 @@ func _ready() -> void:
 	# Walls between the camera and the player / nearby boxes turn semi-transparent (2026-11-06).
 	add_child(preload("res://field/camera/wall_see_through.gd").new())
 	make_current()
+	_ear = AudioListener3D.new()
+	_ear.name = "Ear"
+	_ear.top_level = true
+	add_child(_ear)
+	_ear.make_current()
 	add_child(VisionShade.new())
 	if target != null:
 		snap()
@@ -133,6 +142,11 @@ func rotate_step(steps: int) -> void:
 		_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		_tween.tween_property(self, "_yaw_deg", _yaw_target_deg, ROTATE_SEC)
 	rotated.emit(yaw_index())
+
+
+## Where positional sounds are heard from (the player's chest, facing like the camera).
+func listener() -> AudioListener3D:
+	return _ear
 
 
 ## Negative = closer. Clamped to the 3 distances.
@@ -255,6 +269,8 @@ func _place() -> void:
 		jolt += right * sin(t * 1.0 + 0.3) * CombatFeel.SHAKE_MAX_OFFSET * shake
 		jolt += Vector3.UP * sin(t * 1.37 + 1.7) * CombatFeel.SHAKE_MAX_OFFSET * shake
 	look_at_from_position(_focus + offset + jolt, _focus + jolt, Vector3.UP)
+	if _ear != null:
+		_ear.global_transform = Transform3D(global_basis, _focus)
 	if shake > 0.0:
 		rotate_object_local(Vector3.FORWARD,
 				deg_to_rad(CombatFeel.SHAKE_MAX_ROLL_DEG) * shake * sin(_shake_time * CombatFeel.SHAKE_FREQ * 0.83))

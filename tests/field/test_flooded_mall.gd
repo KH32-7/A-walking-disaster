@@ -150,6 +150,7 @@ func _check_assembly() -> void:
 	var zones := mall.find_children("IndoorZone_*", "Area3D", true, false)
 	_expect(zones.size() == 12 and zones.all(func(z: Node) -> bool: return z is IndoorZone and z.building_id != &""),
 		"12 indoor zones with building ids (%d)" % zones.size())
+	_check_hide_above(mall.find_child("IndoorZone_shop_in", true, false) as IndoorZone)
 	mall.queue_free()
 	await _tree.process_frame
 
@@ -181,3 +182,33 @@ func _expect(cond: bool, what: String) -> void:
 	if not cond:
 		push_error("test_flooded_mall: " + what)
 		_ok = false
+
+
+## Things on the 2F (loot containers) hide with the 1F zone's roofs; things on the 1F stay
+## (user report 2026-11-06: 2F cabinets floated over the 1F).
+func _check_hide_above(zone: IndoorZone) -> void:
+	_expect(zone != null, "mall 1F indoor zone")
+	if zone == null:
+		return
+	var cs := zone.find_child("*", true, false) as CollisionShape3D
+	var pts := (cs.shape as ConvexPolygonShape3D).points
+	var c := Vector3.ZERO
+	var top := -INF
+	for v in pts:
+		var g := cs.global_transform * v
+		c += g
+		top = maxf(top, g.y)
+	c /= pts.size()
+	var upper := Node3D.new()
+	var lower := Node3D.new()
+	for n in [upper, lower]:
+		n.add_to_group(IndoorZone.ABOVE_GROUP)
+		zone.get_tree().root.add_child(n)
+	upper.global_position = Vector3(c.x, top + 0.3, c.z)
+	lower.global_position = Vector3(c.x, 0.1, c.z)
+	zone.set_roofs_hidden(true)
+	_expect(not upper.visible and lower.visible, "2F things hide with the 1F roofs, 1F things stay")
+	zone.set_roofs_hidden(false)
+	_expect(upper.visible, "2F things come back with the roofs")
+	upper.free()
+	lower.free()

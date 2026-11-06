@@ -14,6 +14,8 @@ var dialog: DialogBox
 var dialog_layout: DialogBox.Layout = DialogBox.Layout.STRIP
 ## Right column (above the strip). Subclasses fill it.
 var column: VBoxContainer
+## false: no right column (the welcome screen); the base stays clear across the whole screen.
+var use_column := true
 
 
 func open_with(args: Dictionary) -> void:
@@ -27,6 +29,7 @@ func open_with(args: Dictionary) -> void:
 
 func _build_body(_b: Control) -> void:
 	backdrop.anchor_left = RIGHT
+	backdrop.visible = use_column
 	var shade := TextureRect.new()
 	var grad := Gradient.new()
 	grad.offsets = PackedFloat32Array([0.0, 0.25, 1.0])
@@ -38,7 +41,7 @@ func _build_body(_b: Control) -> void:
 	shade.stretch_mode = TextureRect.STRETCH_SCALE
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	shade.anchor_right = RIGHT
+	shade.anchor_right = RIGHT if use_column else 1.0
 	add_child(shade)
 	move_child(shade, backdrop.get_index() + 1)
 	column = VBoxContainer.new()
@@ -49,6 +52,7 @@ func _build_body(_b: Control) -> void:
 	column.offset_top = 110
 	column.offset_bottom = -330
 	column.add_theme_constant_override(&"separation", 14)
+	column.visible = use_column
 	add_child(column)
 	dialog = DialogBox.new(dialog_layout)
 	dialog.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)

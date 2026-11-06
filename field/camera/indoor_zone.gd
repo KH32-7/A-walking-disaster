@@ -6,12 +6,18 @@ extends Area3D
 ## give it metadata `building_id` equal to this zone's building_id.
 ## A roof node may define `set_roof_hidden(hidden: bool)` to fade itself (shader, shadows-only);
 ## without it the node's `visible` is toggled.
+## Things on an upper floor that are not under a roof node (loot containers, spawned at runtime) join
+## group ABOVE_GROUP: they hide with the roofs when they stand over this zone, above its ceiling
+## (user report 2026-11-06: the mall's 2F cabinets floated over the 1F).
 
 signal player_entered(building_id: StringName)
 signal player_exited(building_id: StringName)
 
 const ROOF_GROUP := &"field_roof"
 const ROOF_META := &"building_id"
+const ABOVE_GROUP := &"field_hide_above_roof"
+## A node counts as above the ceiling from this far below the zone's top (m).
+const ABOVE_MARGIN := 0.5
 
 @export var building_id: StringName
 
@@ -33,6 +39,27 @@ func set_roofs_hidden(hidden: bool) -> void:
 			node.set_roof_hidden(hidden)
 		elif node is Node3D:
 			node.visible = not hidden
+	for node in get_tree().get_nodes_in_group(ABOVE_GROUP):
+		if node is Node3D and _is_above(node.global_position):
+			node.visible = not hidden
+
+
+## p stands over this zone's floor plan, at or above its ceiling.
+func _is_above(p: Vector3) -> bool:
+	for cs in find_children("*", "CollisionShape3D", true, false):
+		var shape := (cs as CollisionShape3D).shape as ConvexPolygonShape3D
+		if shape == null:
+			continue
+		var xform := (cs as Node3D).global_transform
+		var flat := PackedVector2Array()
+		var top := -INF
+		for v in shape.points:
+			var g := xform * v
+			flat.append(Vector2(g.x, g.z))
+			top = maxf(top, g.y)
+		if p.y >= top - ABOVE_MARGIN and Geometry2D.is_point_in_polygon(Vector2(p.x, p.z), Geometry2D.convex_hull(flat)):
+			return true
+	return false
 
 
 func _on_body_entered(body: Node3D) -> void:

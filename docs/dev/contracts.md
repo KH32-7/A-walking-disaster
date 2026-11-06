@@ -197,7 +197,7 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   `friend`·`lover`·`spouse`(또는 `married`)·`separated`를 읽는다(다르면 `Journal.STAGE_KINDS`에 별칭).
 - **Quests** (A-13): `start(quest_id, giver_id)`, `advance(quest_id, objective_id, amount)`(C: 공동체 퀘스트), `complete(quest_id)`, `fail(quest_id, reason)`,
   `get_status(quest_id)`(-1 = 시작 전, `Quests.Status`), `is_active()`, `is_completed()`, `days_left()`, `get_def()`, `active_quests()`(D: 퀘스트 기록),
-  `active_field_objectives(region_id)`(B: 필드 목표 `{"quest_id", "objective_id", "kind": &"visit"|&"recover"|&"rescue", "region_id", "marker", "target_id", "count", "remaining", "text", "marker_label"}`). 지도·미니맵은 marker 위치에 노란 이중 마름모와 marker_label(없으면 text)을 그린다.
+  `active_field_objectives(region_id)`(B: 필드 목표 `{"quest_id", "objective_id", "kind": &"visit"|&"recover"|&"rescue", "region_id", "marker", "target_id", "count", "remaining", "text", "marker_label"}`). 지도·미니맵은 marker 위치에 노란 이중 마름모와 marker_label(없으면 text)을 그린다. 구출 목표는 그 사람이 따라오기 시작하면 `RescueTarget.escort_goal(tree, objective)`(가장 가까운 열린 탈출 지점)로 마름모를 옮긴다.
   진행은 신호로만 한다: 지역 방문·데려가기(`sortie_ended` 탈출), 아이템 회수(`sortie_ended`의 loot), 사람 데려오기(`rescue_completed`의 profile `id`),
   기지 제작(`building_completed`), 특정 날 방어(`raid_resolved`). 유품은 `data/resources/`의 자원(예: `keepsake_plane`)이라 B는 `marker` 자리에 줍는 물건을 두고
   `Bag.try_add`로 넣기만 하면 된다. 보상의 신뢰도는 `Colony.add_trust(resident_id, amount)`(C에 요청)를 부른다. 무전 소문은 Radio 트리거 `quest_rumor`로 말한다.
@@ -358,7 +358,7 @@ levels/base/base_school/
 - `IntroCutscene`(levels/base/intro/): 새 게임(`intro_pending`)이면 base_school이 붙인다. 플래그 `intro_talked`(방송실 지기 대화. 지기는 주민이 아니다), `intro_house_done`(집에서 나옴). `phase()` = `&"cinematic"`/`&"house"`/`&"done"`.
 - `UI.tutorial: IntroTutorial` — 매 프레임 상태로 단계를 정한다. `current_step()`, `skip()`. 끝나면 `tutorial_done`.
   단계가 가리키는 화면(`SHOWS_OVER`: 가방, 출격 준비) 말고 다른 화면, 컷신 대화, 건물 놓기 중에는 안내를 숨긴다(`current_step()`은 그대로).
-- `UI.spotlight: Spotlight` — `focus_world(node, text, keys, radius, lift)`, `focus_control(c, text, keys)`, `focus_rect(rect, text, keys)`, `focus_card(text, keys, at_bottom)`(가리킬 것 없이 카드만: 위 가운데, at_bottom이면 아래 가운데), `clear()`.
+- `UI.spotlight: Spotlight` — `focus_world(node, text, keys, radius, lift)`, `focus_control(c, text, keys)`, `focus_rect(rect, text, keys, pad, above)`(above: 카드를 구멍 위, 자리 없으면 왼쪽에), `focus_card(text, keys, at_bottom)`(가리킬 것 없이 카드만: 위 가운데, at_bottom이면 아래 가운데), `clear()`.
 - `UI.cinematic: CinematicOverlay` — `bars(on)`, `fade_to(a)`, `cut(black)`, `title(text, sub)`, `caption(text)`, `talk(lines)`(await), `is_playing()`(film이거나 바가 들어옴: 무전 자막 대기, 주인공 외곽선 끔), `film`, `skippable` + `skip_requested`.
 - `Player.script_input`: 비어 있지 않으면 컷신이 그 입력으로 step()을 돌린다(`"world_move": Vector3` 가능).
 - `Player.interact_held`: 이번 프레임 F를 누르고 있음(꾹 누르기 행동이 읽음, 테스트가 넣음). `RescueDoor.hold_state()`: 문 따는 중이면 `{label, progress}`(머리 위 게이지), 아니면 `{}`. 문 따기는 F를 누르는 동안 `RescueTuning.lockpick_sec`, 떼거나 `lockpick_leave_m`보다 멀어지면 처음부터.
