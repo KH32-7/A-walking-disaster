@@ -80,6 +80,7 @@ func _show_model(r: Dictionary) -> bool:
 		return false
 	if _model == null:
 		_model = ResidentModel.new()
+		_model.body_scale = 1.0  # the portrait camera frames the real size (ResidentModel.WORLD_SCALE is for the world)
 		_model.fallback = NodePath("")
 		# ResidentModel bodies face -Z; turn to the camera (+Z) and a little to the side.
 		_model.rotation_degrees.y = 180.0 + 18.0

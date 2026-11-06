@@ -48,6 +48,9 @@ const LIBRARY := &"resident"
 ## Teens wear adult models a little smaller; babies the child model smaller.
 const TEEN_SCALE := 0.92
 const BABY_SCALE := 0.6
+## Residents in the world (base, field companions and rescues, the intro) are drawn this much larger,
+## like the 1.3x player (user request 2026-11-06). Collision is the owner's and does not change.
+const WORLD_SCALE := 1.3
 ## Moving faster than this (m/s, flat, smoothed) plays walk; idle again only below WALK_SPEED x
 ## IDLE_RATIO. The speed is smoothed over SPEED_SMOOTH (1/s) because a frame without a physics step
 ## reads as standing still; together they stop walk / idle flickering.
@@ -56,6 +59,8 @@ const IDLE_RATIO := 0.5
 const SPEED_SMOOTH := 10.0
 const BLEND_SEC := 0.2
 
+## Multiplies scale_for(); 1.0 for UI previews (ResidentPortrait) whose camera frames the real size.
+var body_scale := WORLD_SCALE
 ## Node hidden once a model is shown (the caller's greybox). Empty = none.
 @export var fallback: NodePath = ^"../Greybox"
 
@@ -127,7 +132,7 @@ static func scale_for(r: Dictionary) -> float:
 func show_resident(r: Dictionary, move_type := -1) -> bool:
 	var path := pick(r, move_type)
 	if path == _path and _model != null:
-		_model.scale = Vector3.ONE * scale_for(r)
+		_model.scale = Vector3.ONE * scale_for(r) * body_scale
 		return true
 	if not ResourceLoader.exists(path):
 		return false
@@ -139,7 +144,7 @@ func show_resident(r: Dictionary, move_type := -1) -> bool:
 	_model = scene.instantiate() as Node3D
 	# Imported facing +Z; our bodies face -Z.
 	_model.rotation.y = PI
-	_model.scale = Vector3.ONE * scale_for(r)
+	_model.scale = Vector3.ONE * scale_for(r) * body_scale
 	add_child(_model)
 	_setup_animation()
 	var fb := get_node_or_null(fallback) as Node3D
