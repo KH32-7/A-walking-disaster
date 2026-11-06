@@ -97,7 +97,9 @@ func _collect(p: Node3D) -> void:
 		for e: Node3D in em.call(&"active_points"):
 			add.call(e.global_position, &"extract")
 	for o: Dictionary in Quests.active_field_objectives(FieldState.region_id):
-		var node := _find_marker(StringName(o.get("marker", &"")))
+		var node := RescueTarget.escort_goal(get_tree(), o)
+		if node == null:
+			node = _find_marker(StringName(o.get("marker", &"")))
 		if node != null:
 			add.call(node.global_position, &"objective")
 	for g: Dictionary in FieldState.recoverable_gear():

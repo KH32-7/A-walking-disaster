@@ -305,6 +305,33 @@ func is_rescued() -> bool:
 	return _rescued
 
 
+## Where a rescue quest objective (Quests.active_field_objectives entry) points once its person is
+## following: the open extraction point nearest the player. null while nobody is following yet (the
+## objective's own marker is used then) or when no point is open. Used by the HUD, minimap and map.
+static func escort_goal(tree: SceneTree, objective: Dictionary) -> Node3D:
+	if StringName(objective.get("kind", &"")) != &"rescue":
+		return null
+	var target_id := StringName(objective.get("target_id", &""))
+	var following := false
+	for n: Node in tree.get_nodes_in_group(GROUP):
+		var t := n as RescueTarget
+		if t != null and t.is_rescued() and (target_id == &"" or StringName(t.profile.get("id", &"")) == target_id):
+			following = true
+			break
+	var em := tree.get_first_node_in_group(ExtractionManager.GROUP) as ExtractionManager
+	if not following or em == null:
+		return null
+	var player := tree.get_first_node_in_group(&"player") as Node3D
+	var best: Node3D = null
+	var best_d := INF
+	for e: ExtractPoint in em.active_points():
+		var d := e.global_position.distance_squared_to(player.global_position) if player != null else 0.0
+		if d < best_d:
+			best = e
+			best_d = d
+	return best
+
+
 ## Current walking speed (m/s). SUPPORTED moves with the player (player speed x speed_mult).
 func move_speed() -> float:
 	var walk := FALLBACK_WALK_SPEED
