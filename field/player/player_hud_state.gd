@@ -19,6 +19,8 @@ static func build(player: Player) -> Dictionary:
 		"hp": player.health,
 		"hp_max": player.stats.max_health,
 		"stamina": player.stamina / player.stats.max_stamina,
+		"level": Progression.level,
+		"xp": float(Progression.xp) / maxf(1.0, float(Progression.xp_needed())),
 	}
 	_add_weapons(player, state)
 	state["skills"] = ClassSkills.hud_list(player)
