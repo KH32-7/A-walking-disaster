@@ -14,6 +14,7 @@ func _init() -> void:
 	footer_keys = [["Enter", "반가워요"], ["Esc", "나중에"]]
 	header_resources = []
 	dialog_layout = DialogBox.Layout.CENTER
+	use_column = false  # nothing goes in the right column, so no blurred strip there
 
 
 func _start() -> void:
