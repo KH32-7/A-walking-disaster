@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="NightEventDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/night_event_def.gd" id="1_night"]
+
+[resource]
+script = ExtResource("1_night")
+id = &"crush"
+display_name = "짝사랑"
+description = "관계 20~39인 미혼 성인 둘. 등을 떠밀면 70%로 관계 +8, 아니면 -4. 지켜보면 +3"
+tagline = "말을 걸까 말까, 하루 종일 그 생각뿐이다"
+weight = 15
+priority = false
+choices = Array[StringName]([&"watch", &"nudge"])

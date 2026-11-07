@@ -2283,9 +2283,14 @@ func _night_candidates(event_id: StringName) -> Array:
 		&"bonfire":
 			if ids.size() >= RelationRules.BONFIRE_PARTICIPANTS.x:
 				var pool := ids.duplicate()
-				var group: Array = []
-				for i in mini(_rng.randi_range(RelationRules.BONFIRE_PARTICIPANTS.x, RelationRules.BONFIRE_PARTICIPANTS.y), pool.size()):
-					group.append(pool.pop_at(_rng.randi_range(0, pool.size() - 1)))
+				var first: StringName = pool.pop_at(_rng.randi_range(0, pool.size() - 1))
+				var group: Array = [first]
+				var size := mini(_rng.randi_range(RelationRules.BONFIRE_PARTICIPANTS.x, RelationRules.BONFIRE_PARTICIPANTS.y), ids.size())
+				while group.size() < size:
+					var weights := PackedFloat32Array()
+					for id in pool:
+						weights.append(1.0 + maxf(relation(first, id), 0.0) / RelationRules.BONFIRE_CLOSE_PER)
+					group.append(pool.pop_at(_rng.rand_weighted(weights)))
 				out.append(group)
 		&"quarrel":
 			for pair in _pairs(ids):
@@ -2301,6 +2306,53 @@ func _night_candidates(event_id: StringName) -> Array:
 						and partner_of(pair[0]) == &"" and partner_of(pair[1]) == &"" \
 						and relation(pair[0], pair[1]) >= RelationRules.CONFESS_AT:
 					out.append(pair)
+		&"crush":
+			for pair in _pairs(ids):
+				var v := relation(pair[0], pair[1])
+				if v >= RelationRules.CRUSH_RANGE.x and v <= RelationRules.CRUSH_RANGE.y \
+						and RelationRules.romance_ok(residents[pair[0]]) and RelationRules.romance_ok(residents[pair[1]]) \
+						and partner_of(pair[0]) == &"" and partner_of(pair[1]) == &"":
+					out.append(pair)
+		&"jealousy":
+			for key: String in relation_meta:
+				var m: Dictionary = relation_meta[key]
+				if not Enums.RelationFlag.LOVERS in m["flags"] or not (m["a"] in ids and m["b"] in ids):
+					continue
+				for lovers: Array in [[m["a"], m["b"]], [m["b"], m["a"]]]:
+					for third in ids:
+						if third != lovers[0] and third != lovers[1] and RelationRules.romance_ok(residents[third]) \
+								and relation(lovers[1], third) >= RelationRules.JEALOUSY_AT:
+							out.append([lovers[0], lovers[1], third])
+		&"first_steps", &"growth_party", &"copycat":
+			for child in active_resident_ids():
+				var r: Dictionary = residents[child]
+				var guardians := guardians_of(child)
+				if guardians.is_empty():
+					continue
+				var stage := int(r["age_stage"])
+				var done: Array = r["milestones"]
+				var ok := false
+				match event_id:
+					&"first_steps":
+						ok = stage == Enums.AgeStage.BABY and int(r["age_days"]) >= ChildRules.FIRST_STEPS_DAY \
+								and not &"first_steps" in done
+					&"growth_party":
+						ok = StringName("grew_%d" % stage) in done and not StringName("party_%d" % stage) in done
+					&"copycat":
+						ok = stage in [Enums.AgeStage.CHILD, Enums.AgeStage.TEEN] and not &"copycat" in done \
+								and _copycat_job(child) != &""
+				if ok:
+					out.append([child] + guardians)
+		&"family_dinner":
+			for couple in couples():
+				if not (couple[0] in ids and couple[1] in ids):
+					continue
+				var kids: Array = []
+				for c in children_of(couple[0], couple[1]):
+					if int(residents[c]["status"]) == Enums.ResidentStatus.ACTIVE and kids.size() < ChildRules.FAMILY_DINNER_KIDS:
+						kids.append(c)
+				if not kids.is_empty():
+					out.append(couple + kids)
 		_:
 			for key: String in relation_meta:
 				var m: Dictionary = relation_meta[key]
@@ -2325,6 +2377,24 @@ func _night_candidates(event_id: StringName) -> Array:
 							out.append(pair)
 					&"breakup":
 						if (lovers or Enums.RelationFlag.MARRIED in flags) and int(m["low_days"]) >= RelationRules.BREAKUP_DAYS:
+							out.append(pair)
+					&"comrade_oath":
+						if not Enums.RelationFlag.COMRADES in flags and value >= RelationRules.COMRADE_MIN_RELATION \
+								and int(m.get("sorties", 0)) >= RelationRules.COMRADE_SORTIES:
+							out.append(pair)
+					&"anniversary":
+						var since := GameState.day - int(m["since_day"])
+						if (lovers or Enums.RelationFlag.MARRIED in flags) and since > 0 and since % RelationRules.ANNIVERSARY_DAYS == 0:
+							out.append(pair)
+					&"couple_spat":
+						if lovers or Enums.RelationFlag.MARRIED in flags:
+							for id in pair:
+								if int(residents[id]["fatigue"]) >= RelationRules.SPAT_FATIGUE_AT \
+										or int(residents[id]["morale"]) < RelationRules.SPAT_MORALE_BELOW:
+									out.append(pair)
+									break
+					&"reconcile":
+						if value < RelationRules.RECONCILE_BELOW and int(m.get("last_sortie_day", -1)) == GameState.day:
 							out.append(pair)
 	return out
 
@@ -2387,7 +2457,7 @@ func _apply_night_event(ev: Dictionary, choice: StringName) -> Dictionary:
 		&"wedding":
 			var before := relation_stage(a, b)
 			var m := _relation_meta(a, b)
-			m["flags"] = [Enums.RelationFlag.MARRIED]
+			m["flags"] = RelationRules.with_romance(m["flags"], Enums.RelationFlag.MARRIED)
 			m["engaged"] = false
 			m["wedding_ready"] = false
 			_move_into_house(who, m["house_uid"])
@@ -2396,7 +2466,7 @@ func _apply_night_event(ev: Dictionary, choice: StringName) -> Dictionary:
 			result["text"] = "%s이(가) 결혼했다. 내일은 축제" % names
 		&"breakup":
 			var m := _relation_meta(a, b)
-			m["flags"] = []
+			m["flags"] = RelationRules.with_romance(m["flags"], -1)
 			m["engaged"] = false
 			m["wedding_ready"] = false
 			m["house_uid"] = &""
@@ -2406,17 +2476,163 @@ func _apply_night_event(ev: Dictionary, choice: StringName) -> Dictionary:
 			# Journal (A-17) reads &"separated" for 이별; the pair's value stage is unchanged.
 			EventBus.relationship_changed.emit(a, b, RelationRules.SEPARATED)
 			result["text"] = "%s이(가) 헤어졌다" % names
+		_:
+			_apply_bond_event(ev["event_id"], who, choice, result)
 	result["text"] = KoreanText.fix(result["text"])
 	last_night_results.append(result)
-	if ev["event_id"] in [&"confession", &"proposal", &"wedding", &"breakup"]:
+	if ev["event_id"] in [&"confession", &"proposal", &"wedding", &"breakup", &"comrade_oath", &"first_steps"]:
 		EventBus.notification_posted.emit(result["text"], &"info")
 	return result
+
+
+## 2026-11-07 패치 이벤트: 전우애, 짝사랑, 질투, 기념일, 사랑싸움, 화해, 육아 (RelationRules / ChildRules).
+func _apply_bond_event(event_id: StringName, who: Array, choice: StringName, result: Dictionary) -> void:
+	var a: StringName = who[0]
+	var b: StringName = who[1] if who.size() > 1 else &""
+	var na := String(residents[a]["name"])
+	var nb := String(residents[b]["name"]) if b != &"" else ""
+	var names := ", ".join(who.map(func(id): return String(residents[id]["name"])))
+	match event_id:
+		&"comrade_oath":
+			var before := relation_stage(a, b)
+			var m := _relation_meta(a, b)
+			if not Enums.RelationFlag.COMRADES in m["flags"]:
+				m["flags"].append(Enums.RelationFlag.COMRADES)
+			add_relation(a, b, RelationRules.COMRADE_OATH_RELATION, &"comrade")
+			_emit_stage(a, b, before)
+			result["text"] = "%s이(가) 서로 등을 맡기기로 했다. 이제 전우다" % names
+			if choice == &"toast":
+				if _pay(RelationRules.COMRADE_TOAST_COST):
+					_cheer([a, b], RelationRules.COMRADE_TOAST_MORALE)
+					result["text"] += ". 아껴 둔 음식으로 건배했다"
+				else:
+					result["text"] += ". 건배할 음식이 없어 물로 대신했다"
+		&"crush":
+			if choice == &"nudge":
+				if _rng.randf() < RelationRules.CRUSH_NUDGE_CHANCE:
+					add_relation(a, b, RelationRules.CRUSH_NUDGE, &"crush")
+					result["text"] = "%s이(가) 용기를 내 %s에게 말을 걸었다. 이야기가 길어졌다" % [na, nb]
+				else:
+					add_relation(a, b, RelationRules.CRUSH_NUDGE_FAIL, &"crush")
+					result["text"] = "%s이(가) 말을 걸었지만 엉뚱한 소리만 하고 돌아섰다" % na
+			else:
+				add_relation(a, b, RelationRules.CRUSH_WATCH, &"crush")
+				result["text"] = "%s이(가) 자꾸 %s 쪽을 바라본다" % [na, nb]
+		&"jealousy":
+			var c: StringName = who[2]
+			var trust_avg := (int(residents[a]["trust"]) + int(residents[b]["trust"])) / 2.0
+			if choice == &"mediate":
+				result["mediated"] = _rng.randf() * 100.0 < trust_avg
+			if result.get("mediated", false):
+				add_relation(a, b, RelationRules.JEALOUSY_MEDIATED, &"mediated")
+				result["text"] = "%s의 오해를 풀어 줬다. %s은(는) 그냥 친한 사이였다" % [na, String(residents[c]["name"])]
+			else:
+				add_relation(a, b, RelationRules.JEALOUSY_LOVERS, &"jealousy")
+				add_relation(a, c, RelationRules.JEALOUSY_RIVAL, &"jealousy")
+				result["text"] = "%s이(가) %s와(과) %s 사이를 의심한다" % [na, nb, String(residents[c]["name"])]
+		&"anniversary":
+			add_relation(a, b, RelationRules.ANNIVERSARY_RELATION, &"anniversary")
+			_cheer([a, b], RelationRules.ANNIVERSARY_MORALE)
+			result["text"] = "%s이(가) 함께한 날을 세어 봤다" % names
+			if choice == &"gift":
+				if _pay(RelationRules.ANNIVERSARY_GIFT_COST):
+					_cheer([a, b], RelationRules.ANNIVERSARY_GIFT_MORALE)
+					result["text"] += ". 천으로 만든 작은 선물을 건넸다"
+				else:
+					result["text"] += ". 선물할 천이 없었다"
+		&"couple_spat":
+			var trust_avg := (int(residents[a]["trust"]) + int(residents[b]["trust"])) / 2.0
+			if choice == &"mediate":
+				result["mediated"] = _rng.randf() * 100.0 < trust_avg
+			if result.get("mediated", false):
+				add_relation(a, b, RelationRules.SPAT_MEDIATED, &"mediated")
+				_cheer([a, b], RelationRules.SPAT_MEDIATED_MORALE)
+				result["text"] = "%s이(가) 서로 미안하다고 했다" % names
+			else:
+				add_relation(a, b, RelationRules.SPAT_LOSS, &"spat")
+				result["text"] = "지친 %s이(가) 사소한 일로 다퉜다" % names
+		&"reconcile":
+			add_relation(a, b, RelationRules.RECONCILE_RELATION, &"reconcile")
+			_cheer([a, b], RelationRules.RECONCILE_MORALE)
+			result["text"] = "함께 살아 돌아온 %s이(가) 먼저 말을 건넸다. 앙금이 조금 풀렸다" % names
+		&"first_steps":
+			residents[a]["milestones"].append(&"first_steps")
+			var guardians := who.slice(1)
+			_cheer(guardians, ChildRules.FIRST_STEPS_MORALE + (RelationRules.CHEER_MORALE if choice == &"cheer" else 0))
+			for g in guardians:
+				add_relation(a, g, ChildRules.FIRST_STEPS_RELATION, &"family")
+			result["text"] = "%s이(가) 처음으로 걸음을 뗐다" % na
+		&"growth_party":
+			var stage := int(residents[a]["age_stage"])
+			residents[a]["milestones"].append(StringName("party_%d" % stage))
+			_cheer(who, ChildRules.GROWTH_PARTY_MORALE)
+			result["text"] = "%s이(가) %s이(가) 된 날, 작은 잔치를 열었다" % [na, ["아기", "아이", "청소년", "어른"][clampi(stage, 0, 3)]]
+			if choice == &"gift":
+				if _pay(ChildRules.GROWTH_PARTY_GIFT_COST):
+					var stat := _lowest_stat(a)
+					var stats: Dictionary = residents[a]["stats"]
+					stats[stat] = mini(int(stats[stat]) + ChildRules.GROWTH_PARTY_GIFT_STAT, ResidentData.STAT_MAX)
+					result["stat"] = stat
+					result["text"] += ". 선물을 받고 한 뼘 자랐다"
+				else:
+					result["text"] += ". 차릴 음식이 모자랐다"
+		&"copycat":
+			var job := _copycat_job(a)
+			residents[a]["milestones"].append(&"copycat")
+			if job != &"":
+				residents[a]["job_skill"][job] = maxi(int(residents[a]["job_skill"].get(job, 0)), ChildRules.COPYCAT_SKILL)
+				var def := BaseDB.get_job(job)
+				result["job"] = job
+				result["text"] = "%s이(가) 어른 흉내를 내다가 %s 일을 조금 익혔다" % [na, def.display_name if def != null else String(job)]
+			if choice == &"praise":
+				_cheer([a], ChildRules.COPYCAT_PRAISE_MORALE)
+				result["text"] += ". 칭찬을 듣고 어깨가 으쓱했다"
+		&"family_dinner":
+			for pair in _pairs(who):
+				add_relation(pair[0], pair[1], ChildRules.FAMILY_DINNER_RELATION, &"family")
+			_cheer(who, ChildRules.FAMILY_DINNER_MORALE)
+			result["text"] = "%s이(가) 한 상에 둘러앉아 저녁을 먹었다" % names
+
+
+## Morale + `amount` for every id.
+func _cheer(ids: Array, amount: int) -> void:
+	for id in ids:
+		if residents.has(id):
+			residents[id]["morale"] = NeedsRules.apply_morale(residents[id], amount)
+
+
+## Pays `cost` when the stock has all of it. Pays nothing and returns false otherwise.
+func _pay(cost: Dictionary) -> bool:
+	for res: StringName in cost:
+		if Economy.get_amount(res) < int(cost[res]):
+			return false
+	Economy.apply(_negated(cost))
+	return true
+
+
+## 어른 흉내: a work a guardian has skill in that the child does not (&"" = none).
+func _copycat_job(child: StringName) -> StringName:
+	for g in guardians_of(child):
+		var skills: Dictionary = residents[g]["job_skill"]
+		for job in skills:
+			if int(skills[job]) >= 1 and int(residents[child]["job_skill"].get(StringName(job), 0)) < ChildRules.COPYCAT_SKILL:
+				return StringName(job)
+	return &""
+
+
+func _lowest_stat(resident_id: StringName) -> StringName:
+	var stats: Dictionary = residents[resident_id]["stats"]
+	var best: StringName = ResidentData.STAT_KEYS[0]
+	for key in ResidentData.STAT_KEYS:
+		if int(stats.get(key, 0)) < int(stats.get(best, 0)):
+			best = key
+	return best
 
 
 func _set_lovers(a: StringName, b: StringName, day: int) -> void:
 	var before := relation_stage(a, b)
 	var m := _relation_meta(a, b)
-	m["flags"] = [Enums.RelationFlag.LOVERS]
+	m["flags"] = RelationRules.with_romance(m["flags"], Enums.RelationFlag.LOVERS)
 	m["since_day"] = day
 	m["low_days"] = 0
 	_emit_stage(a, b, before)
@@ -2477,7 +2693,8 @@ func _coworker_ids(resident_id: StringName) -> Array[StringName]:
 ## 절친과 같은 작업장 효율 +10%.
 func _best_friend_mult(resident_id: StringName) -> float:
 	for other in _coworker_ids(resident_id):
-		if relation(resident_id, other) >= RelationRules.BEST_FRIEND_AT:
+		if relation(resident_id, other) >= RelationRules.BEST_FRIEND_AT \
+				or Enums.RelationFlag.COMRADES in relation_flags(resident_id, other):
 			return RelationRules.BEST_FRIEND_WORK_MULT
 	return 1.0
 
@@ -2487,7 +2704,8 @@ func _relation_meta(a: StringName, b: StringName) -> Dictionary:
 	if not relation_meta.has(key):
 		var first := a if String(a) < String(b) else b
 		relation_meta[key] = {"a": first, "b": b if first == a else a, "flags": [], "since_day": 0,
-			"last_day": GameState.day, "low_days": 0, "engaged": false, "wedding_ready": false, "house_uid": &""}
+			"last_day": GameState.day, "low_days": 0, "engaged": false, "wedding_ready": false, "house_uid": &"",
+			"sorties": 0, "last_sortie_day": -1}
 	return relation_meta[key]
 
 
@@ -2564,9 +2782,16 @@ func _finish_night() -> void:
 
 
 ## 함께 출격해 살아 돌아옴: relation +5 between the companions who came back.
+## Counts the sortie for 전우애; comrades gain double and both get a little morale.
 func _sortie_relations(back: Array[StringName]) -> void:
 	for pair in _pairs(back):
-		add_relation(pair[0], pair[1], RelationRules.SORTIE_TOGETHER, &"sortie")
+		var m := _relation_meta(pair[0], pair[1])
+		m["sorties"] = int(m.get("sorties", 0)) + 1
+		m["last_sortie_day"] = GameState.day
+		var comrades: bool = Enums.RelationFlag.COMRADES in m["flags"]
+		add_relation(pair[0], pair[1], RelationRules.SORTIE_TOGETHER * (RelationRules.COMRADE_SORTIE_MULT if comrades else 1), &"sortie")
+		if comrades:
+			_cheer(pair, RelationRules.COMRADE_RETURN_MORALE)
 
 
 # --- 아이 맞이 + 성장 (C-15, 08 "아이 맞이", "성장") ----------------------------------------
@@ -2747,6 +2972,7 @@ func _age_one_day(id: StringName, events: Array) -> void:
 	var next := int(ChildRules.stage_for_days(int(r["age_days"])))
 	if next > stage:
 		r["age_stage"] = next
+		r["milestones"].append(StringName("grew_%d" % next))  # 성장 잔치 밤 이벤트가 읽음
 		events.append(_event(&"grew_up", id, "%s이(가) %s" % [_display_name(r),
 			["아기가 되었다", "아이가 되었다", "청소년이 되었다", "어른이 되었다", ""][next]]))
 		resident_profile_changed.emit(id)
@@ -3892,7 +4118,9 @@ func load_data(data: Dictionary) -> void:
 			"children": Array(m.get("children", [])).map(func(c): return StringName(c)),
 			"last_child_day": int(m.get("last_child_day", 0)), "wish_day": int(m.get("wish_day", 0)),
 			"carrier": StringName(m.get("carrier", "")), "due_day": int(m.get("due_day", 0)),
-			"adoption_waiting": bool(m.get("adoption_waiting", false))}
+			"adoption_waiting": bool(m.get("adoption_waiting", false)),
+			# 전우애 (2026-11-07)
+			"sorties": int(m.get("sorties", 0)), "last_sortie_day": int(m.get("last_sortie_day", -1))}
 	cleared_zones = {}
 	for zone_id in data.get("cleared_zones", {}):
 		cleared_zones[StringName(zone_id)] = true

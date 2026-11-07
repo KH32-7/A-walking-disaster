@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="NightEventDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/night_event_def.gd" id="1_night"]
+
+[resource]
+script = ExtResource("1_night")
+id = &"comrade_oath"
+display_name = "전우의 약속"
+description = "함께 출격해 살아 돌아온 게 2번 이상, 관계 20 이상. 전우가 된다 (같이 출격하면 관계 두 배, 같은 작업장 효율 +10%)"
+tagline = "같은 곳에서 살아 돌아온 사람끼리만 아는 게 있다"
+weight = 35
+priority = false
+choices = Array[StringName]([&"watch", &"toast"])

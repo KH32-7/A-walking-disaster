@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="NightEventDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/night_event_def.gd" id="1_night"]
+
+[resource]
+script = ExtResource("1_night")
+id = &"first_steps"
+display_name = "첫걸음"
+description = "보호자가 있는 아기가 4일이 되면 한 번. 보호자 사기 +8, 응원하면 +5 더"
+tagline = "작은 발이 바닥을 짚었다"
+weight = 100
+priority = true
+choices = Array[StringName]([&"watch", &"cheer"])

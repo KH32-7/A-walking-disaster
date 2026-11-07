@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="NightEventDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/night_event_def.gd" id="1_night"]
+
+[resource]
+script = ExtResource("1_night")
+id = &"anniversary"
+display_name = "기념일"
+description = "연인이 된 날부터 10일마다. 관계 +6, 사기 +5. 선물(천 1)이면 사기 +5 더"
+tagline = "처음 손을 잡은 날을 기억하고 있었다"
+weight = 45
+priority = false
+choices = Array[StringName]([&"watch", &"gift"])

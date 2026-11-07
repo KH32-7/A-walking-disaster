@@ -17,7 +17,9 @@ const TAG_NAMES := {
 }
 
 ## Night event choices (NightEventDef.choices) → what the player does.
-const CHOICE_NAMES := {&"watch": "지켜본다", &"mediate": "둘을 말린다", &"cheer": "응원한다"}
+const CHOICE_NAMES := {&"watch": "지켜본다", &"mediate": "둘을 말린다", &"cheer": "응원한다",
+	&"toast": "건배를 준비한다 (식량 2)", &"nudge": "등을 떠밀어 준다", &"gift": "선물을 보탠다",
+	&"praise": "칭찬해 준다"}
 
 ## One scene-setting line per night event (fallback: NightEventDef.display_name).
 const NIGHT_INTRO := {
@@ -29,6 +31,16 @@ const NIGHT_INTRO := {
 	&"wedding": "%s의 결혼식. 모두가 강당에 모였다.",
 	&"breakup": "%s이(가) 서로 눈을 피한다.",
 	&"prejudice_talk": "%s이(가) 늦은 밤 마주 앉았다. 미뤄 둔 이야기를 꺼낼 때다.",
+	&"comrade_oath": "%s이(가) 장비를 손보다 말고 서로를 바라봤다.",
+	&"crush": "%s. 한 사람이 다른 사람을 자꾸 힐끔거린다.",
+	&"jealousy": "%s. 저녁 내내 분위기가 묘하다.",
+	&"anniversary": "%s이(가) 오늘이 무슨 날인지 기억해 냈다.",
+	&"couple_spat": "%s 사이에 날 선 말이 오간다.",
+	&"reconcile": "%s이(가) 출격에서 돌아와 같은 불가에 앉았다.",
+	&"first_steps": "%s. 아기가 무언가를 붙잡고 일어섰다.",
+	&"growth_party": "%s. 오늘은 조금 특별한 저녁이다.",
+	&"copycat": "%s. 아이가 어른들이 하던 일을 흉내 내고 있다.",
+	&"family_dinner": "%s이(가) 한 상에 모였다.",
 }
 
 ## Gift reactions (Colony.give_gift "reaction") → [mark, words]. The mark is a shape glyph so the

@@ -30,6 +30,7 @@ const FALLBACK_TEXT := {"name": "누군가", "other": "누군가", "building": "
 const STAGE_KINDS := {
 	&"friend": &"friend",
 	&"lover": &"lover",
+	&"comrade": &"comrade",
 	&"spouse": &"wedding",
 	&"married": &"wedding",
 	&"separated": &"separated",

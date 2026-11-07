@@ -6,7 +6,7 @@
 script = ExtResource("1_night")
 id = &"confession"
 display_name = "고백"
-description = "관계 50 이상인 미혼 성인 둘. 연인이 된다"
+description = "관계 40 이상인 미혼 성인 둘. 연인이 된다"
 tagline = "오래 품어 온 마음을 꺼내 놓는다"
 weight = 15
 priority = false

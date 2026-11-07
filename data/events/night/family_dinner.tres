@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="NightEventDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/night_event_def.gd" id="1_night"]
+
+[resource]
+script = ExtResource("1_night")
+id = &"family_dinner"
+display_name = "가족 식사"
+description = "결혼한 부부와 아이(최대 2). 서로 관계 +3, 사기 +4"
+tagline = "오늘은 한 상에 둘러앉는다"
+weight = 20
+priority = false
+choices = Array[StringName]([&"watch"])

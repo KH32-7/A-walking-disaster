@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="NightEventDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/night_event_def.gd" id="1_night"]
+
+[resource]
+script = ExtResource("1_night")
+id = &"couple_spat"
+display_name = "사랑싸움"
+description = "연인이나 배우자 중 한 명이 피로 70 이상이거나 사기 35 미만. 말리면 신뢰도 평균 %로 화해"
+tagline = "지치면 가까운 사람에게 날이 선다"
+weight = 10
+priority = false
+choices = Array[StringName]([&"watch", &"mediate"])

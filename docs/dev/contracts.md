@@ -128,7 +128,9 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
     신호 `arrival_ready`, `arrival_completed`, `resident_profile_changed`.
   - C-14 관계·밤 이벤트: `relation`, `relation_stage`, `relation_flags`, `relations_of`, `partner_of`, `couples`, `add_relation`, `pending_night_events`,
     `next_night_event`, `resolve_night_event`, `wedding_status`, `prepare_wedding`, `is_festival_today`. 신호 `night_events_ready`
-    (EventBus `relationship_changed`의 stage는 `friend`·`lover`·`married`·`separated`).
+    (EventBus `relationship_changed`의 stage는 `friend`·`lover`·`married`·`separated`, 2026-11-07부터 `comrade`도).
+    2026-11-07: `RelationFlag.COMRADES`(전우)는 연인·배우자 플래그와 같이 붙을 수 있다(`RelationRules.with_romance`로 바꿈).
+    `relation_meta`에 `sorties`·`last_sortie_day`, 주민 데이터에 `milestones`(육아 사건: `first_steps`, `grew_<단계>`, `party_<단계>`, `copycat`)가 있다.
   - C-15 아이 맞이: `child_arrival_status`, `child_methods`, `child_wishes`, `answer_child_wish`, `orphans`, `guardians_of`, `children_of`, `is_pregnant`,
     `sortie_block_reason`, `name_child`. 신호 `child_wish`, `child_arrived`. 퀘스트 `rumor_lost_child`가 `data/quests/`에 있으면 입양 소문으로 자동 시작한다.
   - C-16 편견: `prejudice_chains`, `prejudice_chain`, `choose_prejudice_response`. 신호 `prejudice_rumor`, `prejudice_incident`, `prejudice_resolved`.
