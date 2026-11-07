@@ -13,7 +13,100 @@ family_shares = Array[float]([0.5, 0.5])
 resources = Array[StringName]([&"medicine"])
 loot_table_id = &"hospital"
 boss_id = &"surgical_lamp_wraith"
-extract_candidates = Array[StringName]([])
-hidden_routes = Array[StringName]([])
+extract_candidates = Array[StringName]([&"hospital_main_gate", &"hospital_generator", &"hospital_north_gate"])
+hidden_routes = Array[StringName]([&"hospital_quarantine_gap"])
+map_labels = Array[Dictionary]([{
+"kind": &"landmark",
+"pos": Vector2(0, 13.9995),
+"text": "본관"
+}, {
+"kind": &"landmark",
+"pos": Vector2(76.9995, 12.999001),
+"text": "응급실 승강장"
+}, {
+"kind": &"landmark",
+"pos": Vector2(0, -38.001),
+"text": "수술동"
+}, {
+"kind": &"landmark",
+"pos": Vector2(-69.999, 69),
+"text": "주차장"
+}, {
+"kind": &"landmark",
+"pos": Vector2(-51.999, -9),
+"text": "병원 정원"
+}, {
+"kind": &"landmark",
+"pos": Vector2(8.25, -51.999),
+"text": "격리 차단벽"
+}, {
+"kind": &"road",
+"pos": Vector2(0, 99),
+"text": "남쪽 대로"
+}, {
+"kind": &"road",
+"pos": Vector2(0, 72),
+"text": "정문 진입로"
+}, {
+"kind": &"road",
+"pos": Vector2(-3.9989998, 42.999),
+"text": "정문 광장"
+}, {
+"kind": &"road",
+"pos": Vector2(33.999, 14.000999),
+"text": "연결 통로"
+}, {
+"kind": &"road",
+"pos": Vector2(76.9995, 45),
+"text": "구급차 통로"
+}, {
+"kind": &"road",
+"pos": Vector2(0, -14.000999),
+"text": "안뜰 길"
+}, {
+"kind": &"road",
+"pos": Vector2(-102, -0.999),
+"text": "서쪽 외곽 도로"
+}, {
+"kind": &"road",
+"pos": Vector2(-8.25, -99.999),
+"text": "북쪽 서비스 도로"
+}, {
+"kind": &"road",
+"pos": Vector2(78, -89.001),
+"text": "지하 통로 북쪽 입구"
+}, {
+"kind": &"spot",
+"pos": Vector2(48.999, 7.9995003),
+"text": "응급실"
+}, {
+"kind": &"spot",
+"pos": Vector2(-51.999, -78),
+"text": "영안실"
+}, {
+"kind": &"spot",
+"pos": Vector2(64.0005, -82.0005),
+"text": "보일러실"
+}, {
+"kind": &"spot",
+"pos": Vector2(-81.999, -26.001),
+"text": "별관 재활 병동"
+}, {
+"kind": &"spot",
+"pos": Vector2(10.9995, 88.9995),
+"text": "정문 경비실"
+}, {
+"kind": &"area",
+"pos": Vector2(-14.25, -14.000999),
+"text": "안뜰"
+}, {
+"kind": &"area",
+"pos": Vector2(96.999, 21),
+"text": "동쪽 숲"
+}, {
+"kind": &"water",
+"pos": Vector2(-51, -21.999),
+"text": "고인 연못"
+}])
 unlock_text = "기지 단계 정착지"
 unlock_tier = 1

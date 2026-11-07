@@ -334,12 +334,14 @@ levels/field/<region_id>/
   dressing.tscn      D  (메시, 조명, 장식, 파티클)
   buildings.tscn     B  (팩 꾸미기: 건물, 땅, 소품, 나무. 에셋이 있을 때만 <region_id>.gd가 붙임)
   ground_splat.res   B  (buildings.tscn 땅 셰이더가 읽는 혼합 지도, 생성기가 구움)
+  build/             B  (<region_id>_map.json 맵 파일, build_layout.gd 생성기, kit_buildings.gd 건물 평면)
 levels/base/base_school/
   base_school.tscn   C
   layout.tscn        C
   dressing.tscn      D
 ```
 
+- 지도가 있는 지역: `city_park`(공원), `flooded_mall`(침수 상가), `hospital`(병원, 2026-11-07. 지하 통로는 맵 파일 floor_links의 kind `tunnel`).
 - `buildings.tscn`, `ground_splat.res`는 `field/build/layout_builder.gd`가 layout.tscn과 같이 생성한다(B-26, 이슈 #144). 손으로 고치지 않는다.
   `buildings.tscn`은 `assets/` 팩 파일을 경로로만 참조하고 메시 데이터는 넣지 않는다. 에셋이 없는 클론(CI)에서는 붙지 않고 회색 맵으로 돈다.
   팩 꾸미기가 켜지면 지역 씬이 layout의 회색 박스(그룹 `kit_greybox`)를 숨긴다. 숨긴 CSG도 충돌은 남고, D의 dressing은 그대로 동작한다.

@@ -707,6 +707,16 @@ func _save_buildings() -> Error:
 			far.position.y = FAR_GROUND_Y
 			far.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			parent.add_child(far, true)
+		elif item.has("light"):
+			# A placed light with no prop (hospital tunnel emergency lights): {light: Vector3, color, energy, range}.
+			var bulb := OmniLight3D.new()
+			bulb.name = "Light"
+			bulb.position = item.light
+			bulb.light_color = item.color
+			bulb.light_energy = item.energy
+			bulb.omni_range = item.range
+			bulb.shadow_enabled = false
+			lights.add_child(bulb, true)
 		else:
 			CityKit.place(parent, item.folder, item.piece, item.xf)
 			if LAMP_LIGHTS.has(item.piece):
@@ -1360,7 +1370,7 @@ func _build_ground_cover(trees: PackedVector2Array) -> void:
 
 
 ## Where plants do not grow: kit buildings (their outline, porches, a lane out of each door), other
-## buildings and blocked zones with a 1 m margin.
+## buildings and blocked zones with a 1 m margin, and the holes in the kit ground.
 func _kit_blocked_polys() -> Array:
 	var out := []
 	for zone: Dictionary in _map.zones:
@@ -1378,6 +1388,9 @@ func _kit_blocked_polys() -> Array:
 			var a: Vector2 = seg.a
 			var b: Vector2 = seg.b
 			out.append(PackedVector2Array([a, b, b + out_dir * reach, a + out_dir * reach]))
+	# Openings in the kit ground (tunnel mouths): no grass or plants floating over them.
+	for hole in _kit_ground_holes:
+		out.append_array(Geometry2D.offset_polygon(hole, 0.5))
 	return out
 
 
