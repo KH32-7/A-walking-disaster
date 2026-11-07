@@ -62,7 +62,7 @@ func _check_base_stats() -> bool:
 func _check_rarity_upgrade() -> bool:
 	var rifle := Armory.get_item_stats(_plain(&"rifle", Enums.Rarity.RARE, 3))
 	var armor := Armory.get_item_stats(_plain(&"scrap_armor", Enums.Rarity.EPIC, 5))
-	return _expect(_near(rifle["damage"], 35 * 1.3 * 1.18), "rare rifle +3 damage %f" % rifle["damage"]) \
+	return _expect(_near(rifle["damage"], 18 * 1.3 * 1.18), "rare rifle +3 damage %f" % rifle["damage"]) \
 		and _expect(_near(armor["defense"], 32 * 1.5 * 1.4), "epic scrap armor +5 defense %f" % armor["defense"]) \
 		and _expect(rifle["essence_slots"] == 1 and armor["essence_slots"] == 2, "essence slots")
 

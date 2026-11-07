@@ -8,9 +8,9 @@ id = &"rifle"
 name = "소총"
 base_stats = {
 "ammo_id": &"ammo_rifle",
-"attack_interval": 0.5,
-"damage": 35,
-"magazine": 20,
+"attack_interval": 0.15,
+"damage": 18,
+"magazine": 30,
 "noise": 20,
 "pellets": 1,
 "range": 28

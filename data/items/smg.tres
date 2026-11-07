@@ -10,7 +10,6 @@ base_stats = {
 "ammo_id": &"ammo_pistol",
 "attack_interval": 0.1,
 "damage": 10,
-"full_auto": true,
 "magazine": 30,
 "noise": 18,
 "pellets": 1,

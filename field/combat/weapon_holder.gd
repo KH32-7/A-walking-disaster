@@ -493,8 +493,15 @@ func _step_gun(delta: float, stats: Dictionary, input: Dictionary) -> void:
 		_bloom = maxf(_bloom - tuning.bloom_recover_deg_per_sec * delta, 0.0)
 	if input.get("reload", false):
 		start_reload()
-	if input.get("attack", false) or (stats.get("full_auto", false) and input.get("attack_held", false)):
+	# Holding the button keeps firing at the gun's attack_interval. An empty magazine reloads on hold;
+	# the dry-fire click needs a fresh press so holding does not spam it.
+	if input.get("attack", false):
 		fire()
+	elif input.get("attack_held", false):
+		if ammo_in_magazine() > 0:
+			fire()
+		else:
+			start_reload()
 
 
 func _step_melee(stats: Dictionary, input: Dictionary) -> void:
