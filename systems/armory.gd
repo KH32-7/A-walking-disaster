@@ -782,6 +782,19 @@ func engrave(item_uid: StringName, essence_id: StringName, slot: int = 0, ctx: D
 	return true
 
 
+## Free engraving with no workshop, worker or cost (StartKit starting gear). False (nothing changes)
+## for an unknown item or essence, a lost item, or a slot the item does not have.
+func grant_engraving(item_uid: StringName, essence_id: StringName, slot: int = 0) -> bool:
+	var item := get_item(item_uid)
+	if item == null or item.owner == LOST_ID or not EssenceRules.is_essence(essence_id):
+		return false
+	if slot < 0 or slot >= essence_slot_count(item_uid):
+		return false
+	_set_engraving(item, slot, essence_id)
+	_emit_changed(item)
+	return true
+
+
 ## Removing an engraving: the essence is lost (design 06 "덮어쓰기·제거"). Returns ok, reason (&"" or
 ## no_item, lost, bad_slot, empty_slot, no_facility, no_worker, cost), uid, slot, slot_count, removed,
 ## facility, facility_level, worker, cost, missing, stats, stats_after.

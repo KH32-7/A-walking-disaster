@@ -33,7 +33,7 @@ func run() -> bool:
 	EventBus.phase_changed.connect(on_phase)
 	EventBus.flow_state_changed.connect(on_flow)
 
-	var ok := _check_starter_loadout() and _check_three_days() and _check_refused() and _check_stay_branch()
+	var ok := _check_starter_loadout() and _check_start_kit() and _check_three_days() and _check_refused() and _check_stay_branch()
 	ok = ok and _check_night_raid()
 	ok = ok and await _check_load_to_prep()
 	ok = ok and _check_merge_loot()
@@ -75,6 +75,35 @@ func _check_starter_loadout() -> bool:
 	var ok := _expect(SceneRouter.start_new_game(0, &"normal", false), "start_new_game refused")
 	var uid := Armory.get_equipped(Armory.PLAYER_ID, Enums.EquipSlot.MAIN)
 	ok = ok and _expect(uid != &"" and Armory.get_item(uid).def_id == &"pistol", "no starter pistol in MAIN")
+	return ok
+
+
+## 시연용 슬롯 2 (data/start_kits/demo_slot2.tres): 소총 MAIN, 단검 SUB, 각인 장검 in the bag,
+## infinite ammo. Slot 1 (index 0) above has none of it.
+func _check_start_kit() -> bool:
+	var ok := _expect(not GameState.has_flag(StartKit.FLAG_INFINITE_AMMO), "slot 1 got the kit's infinite ammo")
+	ok = ok and _expect(SceneRouter.start_kit_for(0) == null, "slot 1 has a start kit")
+	var kit := SceneRouter.start_kit_for(1)
+	ok = ok and _expect(kit != null, "no start kit for slot 2")
+	if kit == null:
+		return false
+	ok = ok and _expect(kit.validate().is_empty(), "start kit errors: %s" % [kit.validate()])
+	_to_title()
+	ok = ok and _expect(SceneRouter.start_new_game(1, &"normal", false), "start_new_game(1) refused")
+	var main := Armory.get_equipped(Armory.PLAYER_ID, Enums.EquipSlot.MAIN)
+	var sub := Armory.get_equipped(Armory.PLAYER_ID, Enums.EquipSlot.SUB)
+	ok = ok and _expect(main != &"" and Armory.get_item(main).def_id == &"rifle", "slot 2: no rifle in MAIN")
+	ok = ok and _expect(sub != &"" and Armory.get_item(sub).def_id == &"dagger", "slot 2: no dagger in SUB")
+	var magic := &""
+	for e: Dictionary in Bag.entries():
+		if StringName(e.kind) == &"item" and Armory.get_item(StringName(e.ref)).def_id == &"longsword":
+			magic = StringName(e.ref)
+	ok = ok and _expect(magic != &"", "slot 2: no longsword in the bag")
+	if magic != &"":
+		var stats := Armory.get_item_stats(magic)
+		ok = ok and _expect(int(stats.element) != Enums.Element.NONE and stats.combo != null,
+				"slot 2: longsword is not a magic weapon with a combo (%s)" % [Armory.get_engravings(magic)])
+	ok = ok and _expect(GameState.has_flag(StartKit.FLAG_INFINITE_AMMO), "slot 2: no infinite ammo flag")
 	return ok
 
 

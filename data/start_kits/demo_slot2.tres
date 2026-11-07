@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="StartKit" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/start_kit.gd" id="1_kit"]
+
+[resource]
+script = ExtResource("1_kit")
+slot = 1
+items = Array[Dictionary]([{
+"def_id": &"rifle",
+"place": &"main",
+"rarity": 2
+}, {
+"def_id": &"dagger",
+"place": &"sub",
+"rarity": 2
+}, {
+"def_id": &"longsword",
+"essences": [&"essence_water_high", &"essence_light_high"],
+"place": &"bag",
+"rarity": 3
+}])
+infinite_ammo = true
