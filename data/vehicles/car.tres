@@ -1,7 +1,6 @@
 [gd_resource type="Resource" script_class="VehicleDef" format=3]
 
 [ext_resource type="Script" path="res://systems/defs/vehicle_def.gd" id="1_vdef"]
-[ext_resource type="PackedScene" path="res://assets/environment/city/american_suburb/models/vehicle/car_sedan_01.fbx" id="2_model"]
 
 [resource]
 script = ExtResource("1_vdef")
@@ -16,5 +15,5 @@ wheelchair_ok = true
 field_broken_chance = 0.7
 ram = true
 body_size = Vector3(1.9, 1.5, 4.3)
-model = ExtResource("2_model")
+model_path = "res://assets/environment/city/american_suburb/models/vehicle/car_sedan_01.fbx"
 model_yaw_deg = -90.0

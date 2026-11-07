@@ -20,8 +20,8 @@ extends Resource
 @export_range(0.0, 1.0, 0.05) var repaired_ratio: float = 0.5
 @export var helicopter_repair_sec: float = 15.0
 @export var helicopter_noise_action: StringName = &"helicopter_repair"
-## Helicopter wreck model (null = grey box).
-@export var helicopter_model: PackedScene
+## Helicopter wreck model path (empty or missing = grey box). A path so CI without assets still loads.
+@export_file("*.glb", "*.fbx", "*.tscn") var helicopter_model_path: String = ""
 ## The mechanic must stand this close to the vehicle (m).
 @export var mechanic_range_m: float = 6.0
 ## Walking further than this from where the hold started cancels it (m).

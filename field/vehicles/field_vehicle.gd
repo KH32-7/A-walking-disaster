@@ -335,14 +335,22 @@ func _exit_spots(force: bool) -> Array[Vector3]:
 
 ## Model fitted to body_size length and turned by model_yaw_deg; a grey box without a model.
 func _make_look() -> Node3D:
-	if def.model == null:
+	var scene := load_model(def.model_path)
+	if scene == null:
 		var mesh := MeshInstance3D.new()
 		var box := BoxMesh.new()
 		box.size = def.body_size
 		mesh.mesh = box
 		mesh.position.y = def.body_size.y * 0.5
 		return mesh
-	return fit_model(def.model.instantiate() as Node3D, def.body_size.z, def.model_yaw_deg)
+	return fit_model(scene.instantiate() as Node3D, def.body_size.z, def.model_yaw_deg)
+
+
+## The model at `path`, or null when the path is empty or the file is missing (no assets submodule).
+static func load_model(path: String) -> PackedScene:
+	if path == "" or not ResourceLoader.exists(path):
+		return null
+	return load(path) as PackedScene
 
 
 func _update_damage_look() -> void:

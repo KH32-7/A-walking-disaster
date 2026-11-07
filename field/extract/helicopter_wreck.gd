@@ -80,8 +80,9 @@ func _stop() -> void:
 
 
 func _make_look() -> Node3D:
-	if TUNING.helicopter_model != null:
-		return FieldVehicle.fit_model(TUNING.helicopter_model.instantiate() as Node3D, SIZE.z, 0.0)
+	var scene := FieldVehicle.load_model(TUNING.helicopter_model_path)
+	if scene != null:
+		return FieldVehicle.fit_model(scene.instantiate() as Node3D, SIZE.z, 0.0)
 	var mesh := MeshInstance3D.new()
 	var box := BoxMesh.new()
 	box.size = SIZE

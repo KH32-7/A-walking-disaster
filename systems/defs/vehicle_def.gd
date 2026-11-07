@@ -33,8 +33,9 @@ enum Surface { LAND, WATER }
 @export var ram := false
 
 @export_group("Look")
-## Model scene; null = graybox box of body_size.
-@export var model: PackedScene
+## Model scene path (res://assets/..., private submodule). Empty or missing (CI) = grey box of body_size.
+## A path, not a PackedScene, so the data still loads on a clone without the assets.
+@export_file("*.glb", "*.fbx", "*.tscn") var model_path: String = ""
 ## Turns the model so its front faces -Z (Godot forward). Kenney models face +Z: 180.
 @export var model_yaw_deg: float = 0.0
 ## Collision box (m), also the graybox size.
