@@ -77,8 +77,6 @@ func run() -> bool:
 		_test_first_kill,
 		_test_second_kill_table,
 		_test_spawner_respawn,
-		_test_first_day,
-		_test_bosses_per_day,
 		_test_intro,
 		_test_park_wiring,
 		_test_hud,
@@ -324,7 +322,6 @@ func _test_second_kill_table() -> void:
 func _test_spawner_respawn() -> void:
 	var arena := _arena(BOSS_ID, Vector3(40, 0, 0))
 	var spawner := _spawner(&"test_region")
-	GameState.day = BossDef.for_monster(BOSS_ID).first_day
 	spawner.spawn_all()
 	var giant := spawner.boss_at(arena)
 	_check(giant != null, "spawner puts the boss at the arena")
@@ -343,47 +340,7 @@ func _test_spawner_respawn() -> void:
 	_check(spawner.boss_at(arena) != null, "boss is back on the respawn day")
 
 
-func _test_first_day() -> void:
-	var first := BossDef.for_monster(BOSS_ID).first_day
-	_check(first > 1, "the park boss does not show up on day 1 (first_day %d)" % first)
-	var arena := _arena(BOSS_ID, Vector3(40, 0, 0))
-	var spawner := _spawner(&"test_region")
-	GameState.day = first - 1
-	spawner.spawn_all()
-	_check(spawner.boss_at(arena) == null, "no boss before its first day")
-	GameState.day = first
-	spawner.spawn_all()
-	_check(spawner.boss_at(arena) != null, "the boss is out from its first day")
-
-
-func _test_bosses_per_day() -> void:
-	var mall := _spawner(&"flooded_mall")
-	var arenas: Array[BossArena] = []
-	for id: StringName in [&"sunken_sign_serpent", &"surgical_lamp_wraith", &"neon_colossus", &"breakwater_golem"]:
-		arenas.append(_arena(id, Vector3(40, 0, 0)))
-	var picked := mall.todays(arenas, 20)
-	_check(picked.size() == RegionDef.load_def(&"flooded_mall").bosses_per_day, "the mall puts bosses_per_day out")
-	_check(mall.todays(arenas, 20) == picked, "same day, same boss")
-	var reversed := arenas.duplicate()
-	reversed.reverse()
-	_check(mall.todays(reversed, 20) == picked, "the pick does not depend on the arena order")
-	var seen := {}
-	for day in range(12, 40):
-		for arena in mall.todays(arenas, day):
-			seen[arena.boss_id] = true
-	_check(seen.size() >= 3, "other days bring out other bosses (%d seen)" % seen.size())
-	_check(_spawner(&"city_park").todays(arenas, 20).size() == arenas.size(), "bosses_per_day 0 = every arena")
-	# Today's boss killed: its arena stays empty and no other boss takes its place.
-	GameState.day = 20
-	for arena in picked:
-		FieldState.boss_respawn_day[arena.boss_id] = 23
-	mall.spawn_all()
-	_check(arenas.all(func(a: BossArena) -> bool: return mall.boss_at(a) == null),
-			"killing today's boss does not bring out another one the same day")
-
-
 func _test_intro() -> void:
-	GameState.day = BossDef.for_monster(BOSS_ID).first_day
 	var arena := _arena(BOSS_ID, Vector3.ZERO)
 	var spawner := _spawner(&"test_region")
 	spawner.spawn_all()

@@ -62,7 +62,6 @@ patterns = Array[ExtResource("2_pattern")]([SubResource("Pattern_laser"), SubRes
 pattern_gap_sec = 1.0
 mechanic = ExtResource("3_mech")
 respawn_days = 3
-first_day = 12
 first_kill_flags = Array[StringName]([&"blueprint_solar"])
 first_kill_text = "네온 거신을 쓰러뜨렸다. 태양광 패널 설계도를 얻었다"
 first_kill_drop_table_id = &"monster_boss_first"
