@@ -9,240 +9,392 @@ extends RefCounted
 ##
 ## Plans have their front on the east edge. mirror turns the front to the west.
 ## Props: [piece, x, z, face], x/z = footprint center in the plan, face = where the front looks.
+##
+## Rooms (parts() rooms): each room has its own floor, wall paint and furniture set, so what a room
+## was for reads at a glance (user feedback 2026-11-07: houses were one big room with furniture
+## scattered in it). The map file's spots in the houses all stand mid living room (x 3..4.25,
+## z 4.75..6), so cross walls run at z = 4 and z = 8 only, and walls along x stay in the north and
+## south bands.
 
-const HOME := {
+## 집 A: bedroom and bathroom-laundry at the back, living room behind the front door, kitchen.
+const HOME_A := {
 	"size": Vector2i(8, 12), "porch": true, "floor": "b",
-	"edges": {"e": "w2 n2 e4 n2 w2", "w": "w2 n2 w4 n2 w2", "n": "w2 n4 w2", "s": "w2 n4 w2"},
-	# Living room east (entrance), bedroom north-west, kitchen south-west.
+	"edges": {"e": "w2 n2 e4 n2 w2", "w": "w2 n2 w4 w4", "n": "w1 n2 w1 w1 n2 w1", "s": "w2 n4 w2"},
 	"inner": [
-		[Vector2(4, 0), Vector2(4, 12), "w1 d2 w2 w2 d2 w2 w1"],
-		[Vector2(0, 6), Vector2(4, 6), "w4"],
+		[Vector2(0, 4), Vector2(8, 4), "d2 w2 w2 d2"],
+		[Vector2(4, 0), Vector2(4, 4), "w4"],
+		[Vector2(0, 8), Vector2(8, 8), "w4 d2 w2"],
 	],
-	"props": [
-		["bed_01", 1.6, 1.7, "e"],
-		["nightstand_01", 0.5, 3.2, "e"],
-		["wardrobe_01", 0.45, 4.7, "e"],
-		["dresser_01", 3.58, 4.3, "w"],
-		["kitchen_b_02", 0.555, 9.0, "e"],
-		["fridge_01", 3.2, 11.37, "n"],
-		["table_02", 2.2, 9.6, "w"],
-		["chair_04", 2.2, 10.7, "n"],
-		["sofa_01", 4.65, 10.4, "e"],
-		["tv_chest", 7.53, 10.4, "w"],
-		["armchair_01", 6.2, 11.2, "n"],
-		["bookcase_01", 6.0, 0.435, "s"],
-		["cardboard_box_01", 7.4, 1.2, "w"],
-		["carpet_big_01", 6.0, 6.0, "s"],
-		["carpet_big_02", 1.9, 3.4, "e"],
-		["tv_01", 7.55, 10.4, "w", 0.67],
-		["picture_01", 7.3, 0.21, "s", 1.5],
-		["picture_02", 0.21, 1.1, "e", 1.6],
-		["picture_03", 1.2, 11.79, "n", 1.5],
-		["picture_04", 3.89, 10.5, "w", 1.5],
+	"rooms": [
+		{"name": "침실", "rect": Rect2i(0, 0, 4, 4), "floor": "carpeting", "paint": "rose", "props": [
+			["bed_01", 2.18, 1.585, "s"],
+			["nightstand_02", 3.595, 0.46, "s"],
+			["wardrobe_01", 0.45, 1.03, "e"],
+			["dresser_01", 3.0, 3.585, "n"],
+			["picture_01", 3.89, 2.2, "w", 1.6],
+		]},
+		{"name": "욕실", "rect": Rect2i(4, 0, 4, 4), "floor": "tile", "paint": "white", "props": [
+			["bath", 5.3, 0.75, "s"],
+			["toilet", 4.535, 2.2, "e"],
+			["sink", 4.415, 3.2, "e"],
+			["washing_machine", 7.445, 0.6, "w"],
+			["drying_machine", 7.43, 1.45, "w"],
+			["basket_dirty_clothes", 7.56, 2.3, "w"],
+		]},
+		{"name": "거실", "rect": Rect2i(0, 4, 8, 4), "floor": "b", "paint": "sand", "props": [
+			["tv_chest", 0.47, 6.0, "e"],
+			["tv_01", 0.5, 6.0, "e", 0.67],
+			["sofa_01", 2.6, 6.0, "w"],
+			["carpet_big_01", 1.5, 6.0, "s"],
+			["bookcase_01", 6.65, 7.665, "n"],
+			["picture_03", 5.0, 4.11, "s", 1.6],
+		]},
+		{"name": "부엌", "rect": Rect2i(0, 8, 8, 4), "floor": "c", "paint": "sage", "props": [
+			["kitchen_a_01", 0.56, 9.95, "e"],
+			["fridge_01", 1.55, 11.37, "n"],
+			["kitchen_island_01", 2.6, 10.0, "e"],
+			["table_02", 5.8, 10.4, "w"],
+			["chair_04", 4.8, 10.4, "e"],
+			["chair_04", 6.8, 10.4, "w"],
+		]},
 	],
 }
 
-## 동네 의원: waiting room and desk at the front, exam room behind a north wall.
+## 집 B: laundry and kitchen at the back, living room, bedroom and a child's room at the front.
+const HOME_B := {
+	"size": Vector2i(8, 12), "porch": true, "floor": "b",
+	"edges": {"e": "w2 n2 e4 n2 w2", "w": "w2 n2 w4 n2 w2", "n": "w2 n4 w2", "s": "w1 n2 w1 w1 n2 w1"},
+	"inner": [
+		[Vector2(0, 4), Vector2(8, 4), "d2 w2 w2 d2"],
+		[Vector2(2, 0), Vector2(2, 4), "w4"],
+		[Vector2(0, 8), Vector2(8, 8), "d2 w2 w2 d2"],
+		[Vector2(4, 8), Vector2(4, 12), "w4"],
+	],
+	"rooms": [
+		{"name": "세탁실", "rect": Rect2i(0, 0, 2, 4), "floor": "c", "paint": "white", "props": [
+			["washing_machine", 0.555, 0.6, "e"],
+			["drying_machine", 0.57, 1.45, "e"],
+			["basket_dirty_clothes", 1.64, 0.5, "w"],
+			["box_dirty_clothes", 0.63, 2.6, "e"],
+		]},
+		{"name": "부엌", "rect": Rect2i(2, 0, 6, 4), "floor": "tile", "paint": "sage", "props": [
+			["kitchen_a_01", 2.46, 2.05, "e"],
+			["fridge_02", 6.8, 0.665, "s"],
+			["table_01", 4.9, 2.2, "s"],
+			["chair_04", 4.2, 3.25, "n"],
+			["chair_04", 5.6, 3.25, "n"],
+			["chair_04", 4.9, 1.15, "s"],
+		]},
+		{"name": "거실", "rect": Rect2i(0, 4, 8, 4), "floor": "b", "paint": "sand", "props": [
+			["bookcase_02", 0.49, 6.0, "e"],
+			["tv_chest", 3.6, 4.37, "s"],
+			["tv_01", 3.6, 4.4, "s", 0.67],
+			["sofa_02", 3.6, 7.3, "n"],
+			["carpet_big_03", 3.6, 5.9, "w"],
+			["picture_02", 7.89, 4.6, "w", 1.6],
+		]},
+		{"name": "침실", "rect": Rect2i(0, 8, 4, 4), "floor": "carpeting", "paint": "rose", "props": [
+			["bed_01", 2.18, 10.415, "n"],
+			["nightstand_02", 3.595, 11.54, "n"],
+			["wardrobe_02", 0.405, 11.0, "e"],
+			["dresser_02", 3.0, 8.36, "s"],
+		]},
+		{"name": "아이방", "rect": Rect2i(4, 8, 4, 4), "floor": "carpeting", "paint": "mint", "props": [
+			["bed_03", 5.23, 11.12, "e"],
+			["desk_01", 7.46, 11.0, "w"],
+			["chair_02", 6.75, 11.0, "e"],
+			["bookcase_03", 4.335, 9.0, "e"],
+			["cardboard_box_01", 5.5, 9.2, "s"],
+		]},
+	],
+}
+
+## 동네 의원: waiting room with the reception desk at the front, exam room and the doctor's office behind.
 const CLINIC := {
 	"size": Vector2i(8, 12), "porch": true, "floor": "tile",
-	"edges": {"e": "w2 n2 e4 n2 w2", "w": "w2 n2 w4 n2 w2", "n": "w2 n4 w2", "s": "w2 n4 w2"},
-	"inner": [[Vector2(0, 4), Vector2(8, 4), "w2 w2 d2 w2"]],
-	"props": [
-		["bed_03", 1.33, 2.0, "e"],
-		["shelf_01", 7.0, 0.51, "s"],
-		["sink", 3.0, 0.515, "s"],
-		["cardboard_box_02", 7.4, 3.3, "w"],
-		["chair_01", 0.55, 6.0, "e"],
-		["chair_01", 0.55, 6.8, "e"],
-		["chair_01", 0.55, 7.6, "e"],
-		["desk_01", 5.5, 9.5, "e"],
-		["chair_04", 4.8, 9.5, "e"],
-		["display_cabinet_01", 2.0, 11.545, "n"],
-		["bookcase_02", 4.0, 11.51, "n"],
-		["computer", 5.5, 9.5, "e", 0.86],
-		["picture_01", 0.21, 6.8, "e", 1.6],
-		["picture_04", 2.5, 4.11, "s", 1.5],
-		["carpet_big_03", 4.0, 7.6, "s"],
+	"edges": {"e": "w2 n2 e4 n2 w2", "w": "w2 n2 w4 n2 w2", "n": "w1 n2 w1 w1 n2 w1", "s": "w2 n4 w2"},
+	"inner": [
+		[Vector2(0, 4), Vector2(8, 4), "w2 d2 d2 w2"],
+		[Vector2(4, 0), Vector2(4, 4), "w4"],
+	],
+	"rooms": [
+		{"name": "진료실", "rect": Rect2i(0, 0, 4, 4), "floor": "tile", "paint": "mint", "props": [
+			["bed_03", 1.33, 2.0, "e"],
+			["sink", 1.0, 0.515, "s"],
+			["display_cabinet_01", 3.645, 1.5, "w"],
+		]},
+		{"name": "원장실", "rect": Rect2i(4, 0, 4, 4), "floor": "carpeting", "paint": "cream", "props": [
+			["desk_01", 7.46, 1.2, "w"],
+			["chair_04", 6.7, 1.2, "e"],
+			["computer", 7.46, 1.2, "w", 0.86],
+			["filing_cabinet_b_01", 4.6, 0.44, "s"],
+			["bookcase_02", 4.39, 2.6, "e"],
+		]},
+		{"name": "접수", "rect": Rect2i(4, 8, 4, 4), "floor": "b", "paint": "white", "props": [
+			["desk_01", 5.5, 9.5, "e"],
+			["chair_04", 4.8, 9.5, "e"],
+			["computer", 5.5, 9.5, "e", 0.86],
+		]},
+		{"name": "대기실", "rect": Rect2i(0, 4, 8, 8), "floor": "tile", "paint": "white", "props": [
+			["chair_01", 0.55, 6.0, "e"],
+			["chair_01", 0.55, 6.8, "e"],
+			["chair_01", 0.55, 7.6, "e"],
+			["display_cabinet_01", 2.0, 11.545, "n"],
+			["bookcase_02", 4.0, 11.51, "n"],
+			["picture_01", 0.21, 6.8, "e", 1.6],
+			["picture_04", 2.5, 4.11, "s", 1.5],
+			["carpet_big_03", 4.0, 7.6, "s"],
+		]},
 	],
 }
 
-## 철물 창고: one open storeroom of shelves.
+## 철물점: sales floor with a counter corner at the front, workshop behind.
 const HARDWARE := {
-	"size": Vector2i(8, 12), "porch": true, "floor": "c",
+	"size": Vector2i(8, 12), "porch": true, "floor": "a",
 	"edges": {"e": "w2 n2 e4 n2 w2", "w": "w4 w4 w4", "n": "w2 n4 w2", "s": "w4 w4"},
-	"props": [
-		["shelf_02", 0.515, 1.5, "e"],
-		["shelf_02", 0.515, 3.2, "e"],
-		["shelf_02", 0.515, 8.0, "e"],
-		["shelf_02", 0.515, 9.7, "e"],
-		["workbench", 4.0, 0.49, "s"],
-		["shelf_01", 3.5, 8.5, "w"],
-		["shelf_01", 4.12, 8.5, "e"],
-		["store_inventory_stack_02", 6.0, 10.5, "w"],
-		["cardboard_box_01", 7.2, 11.2, "w"],
-		["cardboard_box_02", 6.6, 11.4, "n"],
-		["store_inventory_stack_01", 2.0, 11.5, "n"],
+	"inner": [[Vector2(0, 4), Vector2(8, 4), "w4 d2 w2"]],
+	"rooms": [
+		{"name": "계산대", "rect": Rect2i(4, 8, 4, 4), "floor": "b", "paint": "sand", "props": [
+			["sellers_counter", 6.75, 10.5, "w"],
+			["cash_register", 6.75, 11.1, "w", 0.82],
+		]},
+		{"name": "작업장", "rect": Rect2i(0, 0, 8, 4), "floor": "c", "paint": "grey", "props": [
+			["workbench", 4.0, 0.49, "s"],
+			["shelf_02", 0.515, 1.3, "e"],
+			["shelf_02", 0.515, 2.9, "e"],
+			["tool_cabinet", 6.6, 0.465, "s"],
+			["store_inventory_stack_01", 7.56, 1.8, "w"],
+			["cardboard_box_01", 7.4, 3.2, "w"],
+		]},
+		{"name": "매장", "rect": Rect2i(0, 4, 8, 8), "floor": "a", "paint": "sand", "props": [
+			["shelf_02", 0.515, 8.0, "e"],
+			["shelf_02", 0.515, 9.7, "e"],
+			["shelf_01", 3.5, 8.5, "w"],
+			["shelf_01", 4.12, 8.5, "e"],
+			["store_inventory_stack_02", 2.0, 11.2, "w"],
+			["cardboard_box_02", 3.4, 11.4, "n"],
+		]},
 	],
 }
 
-## 세탁소: machines and counter at the front, linen room behind a north wall.
+## 세탁소: machines and the counter at the front, linen room and a staff toilet behind.
 const LAUNDRY := {
 	"size": Vector2i(8, 12), "porch": true, "floor": "tile",
 	"edges": {"e": "w2 n2 e4 n2 w2", "w": "w2 n2 w4 n2 w2", "n": "w2 n4 w2", "s": "w2 n4 w2"},
-	"inner": [[Vector2(0, 4), Vector2(8, 4), "w2 w2 d2 w2"]],
-	"props": [
-		["shelf_02", 0.515, 2.0, "e"],
-		["box_dirty_clothes", 3.0, 0.65, "s"],
-		["cardboard_box_01", 7.0, 3.3, "w"],
-		["ironing_board", 5.0, 1.5, "s"],
-		["washing_machine", 0.555, 7.0, "e"],
-		["washing_machine", 0.555, 7.8, "e"],
-		["washing_machine", 0.555, 8.6, "e"],
-		["washing_machine", 0.555, 9.4, "e"],
-		["drying_machine", 1.6, 11.43, "n"],
-		["drying_machine", 2.5, 11.43, "n"],
-		["drying_machine", 3.4, 11.43, "n"],
-		["sellers_counter", 6.5, 10.0, "w"],
-		["basket_dirty_clothes", 2.0, 6.0, "e"],
-		["cash_register", 6.5, 10.6, "w", 0.82],
-		["picture_03", 7.0, 11.79, "n", 1.6],
-		["box_dirty_clothes", 2.2, 3.2, "w"],
+	"inner": [
+		[Vector2(0, 4), Vector2(8, 4), "w2 w2 d2 d2"],
+		[Vector2(6, 0), Vector2(6, 4), "w4"],
+	],
+	"rooms": [
+		{"name": "계산대", "rect": Rect2i(4, 8, 4, 4), "floor": "b", "paint": "mint", "props": [
+			["sellers_counter", 6.5, 10.0, "w"],
+			["cash_register", 6.5, 10.6, "w", 0.82],
+		]},
+		{"name": "린넨실", "rect": Rect2i(0, 0, 6, 4), "floor": "c", "paint": "white", "props": [
+			["shelf_02", 1.0, 0.515, "s"],
+			["shelf_02", 0.515, 1.6, "e"],
+			["box_dirty_clothes", 3.0, 0.65, "s"],
+			["ironing_board", 5.0, 1.5, "s"],
+			["box_dirty_clothes", 2.2, 3.2, "w"],
+		]},
+		{"name": "화장실", "rect": Rect2i(6, 0, 2, 4), "floor": "tile", "paint": "white", "props": [
+			["toilet", 7.365, 0.6, "w"],
+			["sink", 6.415, 1.6, "e"],
+		]},
+		{"name": "세탁실", "rect": Rect2i(0, 4, 8, 8), "floor": "tile", "paint": "mint", "props": [
+			["washing_machine", 0.555, 7.0, "e"],
+			["washing_machine", 0.555, 7.8, "e"],
+			["washing_machine", 0.555, 8.6, "e"],
+			["washing_machine", 0.555, 9.4, "e"],
+			["drying_machine", 1.6, 11.43, "n"],
+			["drying_machine", 2.5, 11.43, "n"],
+			["drying_machine", 3.4, 11.43, "n"],
+			["basket_dirty_clothes", 2.0, 6.0, "e"],
+			["picture_03", 7.0, 11.79, "n", 1.6],
+		]},
 	],
 }
 
-## 구멍가게: one aisle, fridges, counter, stockroom behind a north wall.
+## 구멍가게: one aisle, fridges and a counter corner at the front, stockroom behind. The aisle stands
+## where it was before the stockroom wall moved, so the way round it stays wide enough for the navmesh.
 const STORE := {
 	"size": Vector2i(8, 12), "porch": true, "floor": "tile",
 	"edges": {"e": "w2 n2 e4 n2 w2", "w": "w2 n2 w4 n2 w2", "n": "w2 n4 w2", "s": "w2 n4 w2"},
-	"inner": [[Vector2(0, 3), Vector2(8, 3), "w4 d2 w2"]],
-	"props": [
-		["retail_shelf_01", 5.275, 5.0, "w"],
-		["retail_shelf_01", 5.275, 6.26, "w"],
-		["retail_shelf_01", 5.725, 5.0, "e"],
-		["retail_shelf_01", 5.725, 6.26, "e"],
-		["sellers_counter", 6.7, 10.5, "w"],
-		["display_refrigerator_cold_drinks", 0.49, 6.0, "e"],
-		["display_refrigerator_cold_drinks", 0.49, 7.4, "e"],
-		["display_refrigerator_milk", 0.49, 8.8, "e"],
-		["ice_cream_cooler", 2.0, 11.34, "n"],
-		["store_inventory_stack_02", 1.5, 1.5, "s"],
-		["cardboard_box_01", 6.5, 0.6, "s"],
-		["store_inventory_stack_01", 7.4, 1.6, "w"],
-		["cash_register", 6.7, 11.0, "w", 0.82],
-		["picture_04", 3.0, 3.11, "s", 1.6],
+	"inner": [[Vector2(0, 4), Vector2(8, 4), "w2 d2 w4"]],
+	"rooms": [
+		{"name": "계산대", "rect": Rect2i(4, 8, 4, 4), "floor": "b", "paint": "white", "props": [
+			["sellers_counter", 6.7, 10.5, "w"],
+			["cash_register", 6.7, 11.0, "w", 0.82],
+		]},
+		{"name": "창고", "rect": Rect2i(0, 0, 8, 4), "floor": "c", "paint": "grey", "props": [
+			["store_inventory_stack_02", 1.5, 1.5, "s"],
+			["cardboard_box_01", 6.5, 0.6, "s"],
+			["store_inventory_stack_01", 7.4, 1.6, "w"],
+			["store_inventory_stack_01", 0.44, 3.0, "e"],
+			["cardboard_box_02", 5.0, 3.4, "n"],
+		]},
+		{"name": "매장", "rect": Rect2i(0, 4, 8, 8), "floor": "tile", "paint": "white", "props": [
+			["retail_shelf_01", 5.275, 5.0, "w"],
+			["retail_shelf_01", 5.275, 6.26, "w"],
+			["retail_shelf_01", 5.725, 5.0, "e"],
+			["retail_shelf_01", 5.725, 6.26, "e"],
+			["display_refrigerator_cold_drinks", 0.49, 6.0, "e"],
+			["display_refrigerator_cold_drinks", 0.49, 7.4, "e"],
+			["display_refrigerator_milk", 0.49, 8.8, "e"],
+			["ice_cream_cooler", 2.0, 11.34, "n"],
+			["picture_04", 2.0, 4.11, "s", 1.6],
+		]},
 	],
 }
 
-## 해솔약국: shelves along the west wall and one double row, counter by the south door,
-## stockroom behind a north wall. Doors: east (main road) and south.
+## 해솔약국: shelves along the west wall and one double row, counter by the south door, stockroom
+## and the pharmacist's office behind a north wall. Doors: east (main road) and south.
 const PHARMACY := {
 	"size": Vector2i(12, 24), "floor": "tile",
-	"edges": {"e": "w4 n4 w2 n2 e4 n4 w4", "w": "w4 w4 w4 w4 w4 w4", "n": "w4 w4 w4", "s": "w2 n4 e4 w2"},
-	"inner": [[Vector2(0, 6), Vector2(12, 6), "w4 d2 w2 w4"]],
-	"props": [
-		["shelf_02", 1.5, 0.515, "s"],
-		["shelf_02", 3.2, 0.515, "s"],
-		["shelf_02", 8.5, 0.515, "s"],
-		["shelf_02", 10.2, 0.515, "s"],
-		["cardboard_box_01", 6.0, 3.0, "w"],
-		["cardboard_box_02", 6.6, 3.5, "n"],
-		["store_inventory_stack_01", 11.56, 4.0, "w"],
-		["shelf_01", 0.51, 8.5, "e"],
-		["shelf_01", 0.51, 10.5, "e"],
-		["shelf_01", 0.51, 12.5, "e"],
-		["shelf_01", 0.51, 14.5, "e"],
-		["shelf_01", 0.51, 16.5, "e"],
-		["shelf_01", 0.51, 18.5, "e"],
-		["shelf_01", 0.51, 20.5, "e"],
-		["retail_shelf_03", 2.71, 11.0, "w"],
-		["retail_shelf_03", 2.71, 12.24, "w"],
-		["retail_shelf_03", 2.71, 13.48, "w"],
-		["retail_shelf_03", 2.71, 14.72, "w"],
-		["retail_shelf_03", 2.71, 15.96, "w"],
-		["retail_shelf_03", 3.29, 11.0, "e"],
-		["retail_shelf_03", 3.29, 12.24, "e"],
-		["retail_shelf_03", 3.29, 13.48, "e"],
-		["retail_shelf_03", 3.29, 14.72, "e"],
-		["retail_shelf_03", 3.29, 15.96, "e"],
-		["display_rack_01", 11.545, 7.5, "w"],
-		["display_rack_01", 11.545, 8.5, "w"],
-		["display_rack_01", 11.545, 9.5, "w"],
-		["sellers_counter", 10.4, 21.0, "s"],
-		["cash_register", 10.4, 21.6, "s", 0.82],
-		["picture_03", 1.0, 23.79, "n", 1.7],
-		["carpet_big_03", 6.5, 17.0, "s"],
+	"edges": {"e": "w4 n2 w2 n2 n2 e4 n4 w4", "w": "w4 w4 w4 w4 w4 w4", "n": "w4 w4 w4", "s": "w2 n4 e4 w2"},
+	"inner": [
+		[Vector2(0, 6), Vector2(12, 6), "w4 d2 w2 d2 w2"],
+		[Vector2(8, 0), Vector2(8, 6), "w4 w2"],
+	],
+	"rooms": [
+		{"name": "창고", "rect": Rect2i(0, 0, 8, 6), "floor": "c", "paint": "grey", "props": [
+			["shelf_02", 1.5, 0.515, "s"],
+			["shelf_02", 3.2, 0.515, "s"],
+			["shelf_02", 6.5, 0.515, "s"],
+			["cardboard_box_01", 6.0, 3.0, "w"],
+			["cardboard_box_02", 6.6, 3.5, "n"],
+			["store_inventory_stack_01", 7.66, 4.0, "w"],
+			["store_inventory_stack_02", 1.5, 4.5, "s"],
+		]},
+		{"name": "사무실", "rect": Rect2i(8, 0, 4, 6), "floor": "carpeting", "paint": "cream", "props": [
+			["desk_01", 10.0, 0.54, "s"],
+			["office_chair_01", 10.0, 1.4, "n"],
+			["computer", 10.0, 0.5, "s", 0.86],
+			["filing_cabinet_a_01", 11.535, 2.4, "w"],
+			["filing_cabinet_a_01", 11.535, 2.9, "w"],
+			["locker", 8.265, 2.0, "e"],
+			["locker", 8.265, 2.9, "e"],
+		]},
+		{"name": "매장", "rect": Rect2i(0, 6, 12, 18), "floor": "tile", "paint": "mint", "props": [
+			["shelf_01", 0.51, 8.5, "e"],
+			["shelf_01", 0.51, 10.5, "e"],
+			["shelf_01", 0.51, 12.5, "e"],
+			["shelf_01", 0.51, 14.5, "e"],
+			["shelf_01", 0.51, 16.5, "e"],
+			["shelf_01", 0.51, 18.5, "e"],
+			["shelf_01", 0.51, 20.5, "e"],
+			["retail_shelf_03", 2.71, 11.0, "w"],
+			["retail_shelf_03", 2.71, 12.24, "w"],
+			["retail_shelf_03", 2.71, 13.48, "w"],
+			["retail_shelf_03", 2.71, 14.72, "w"],
+			["retail_shelf_03", 2.71, 15.96, "w"],
+			["retail_shelf_03", 3.29, 11.0, "e"],
+			["retail_shelf_03", 3.29, 12.24, "e"],
+			["retail_shelf_03", 3.29, 13.48, "e"],
+			["retail_shelf_03", 3.29, 14.72, "e"],
+			["retail_shelf_03", 3.29, 15.96, "e"],
+			["display_rack_01", 11.545, 7.5, "w"],
+			["display_rack_01", 11.545, 8.5, "w"],
+			["display_rack_01", 11.545, 9.5, "w"],
+			["sellers_counter", 10.4, 21.0, "s"],
+			["cash_register", 10.4, 21.6, "s", 0.82],
+			["picture_03", 1.0, 23.79, "n", 1.7],
+			["carpet_big_03", 6.5, 17.0, "s"],
+		]},
 	],
 }
 
-## 주유소 편의점: two double rows, fridges on the south wall, counter by the north door,
-## stockroom behind a west wall. Doors: north (forecourt) and east.
+## 주유소 편의점: two double rows, fridges on the south wall, a counter corner by the north door,
+## stockroom and a staff toilet behind a west wall. Doors: north (forecourt) and east.
 const GAS_STORE := {
 	"size": Vector2i(20, 14), "floor": "tile",
 	"edges": {"n": "w4 n4 e4 n4 w4", "e": "w2 n4 e2 n4 w2", "s": "w4 w4 w4 w4 w4", "w": "w4 w4 w2 w4"},
-	"inner": [[Vector2(4, 0), Vector2(4, 14), "w4 d2 w4 w4"]],
-	"props": [
-		["retail_shelf_03", 7.71, 4.0, "w"],
-		["retail_shelf_03", 7.71, 5.24, "w"],
-		["retail_shelf_03", 7.71, 6.48, "w"],
-		["retail_shelf_03", 7.71, 7.72, "w"],
-		["retail_shelf_03", 7.71, 8.96, "w"],
-		["retail_shelf_03", 8.29, 4.0, "e"],
-		["retail_shelf_03", 8.29, 5.24, "e"],
-		["retail_shelf_03", 8.29, 6.48, "e"],
-		["retail_shelf_03", 8.29, 7.72, "e"],
-		["retail_shelf_03", 8.29, 8.96, "e"],
-		["retail_shelf_03", 12.71, 4.0, "w"],
-		["retail_shelf_03", 12.71, 5.24, "w"],
-		["retail_shelf_03", 12.71, 6.48, "w"],
-		["retail_shelf_03", 12.71, 7.72, "w"],
-		["retail_shelf_03", 12.71, 8.96, "w"],
-		["retail_shelf_03", 13.29, 4.0, "e"],
-		["retail_shelf_03", 13.29, 5.24, "e"],
-		["retail_shelf_03", 13.29, 6.48, "e"],
-		["retail_shelf_03", 13.29, 7.72, "e"],
-		["retail_shelf_03", 13.29, 8.96, "e"],
-		["display_refrigerator_cold_drinks", 6.0, 13.515, "n"],
-		["display_refrigerator_cold_drinks", 7.4, 13.515, "n"],
-		["display_refrigerator_milk", 8.8, 13.515, "n"],
-		["display_refrigerator_milk", 10.2, 13.515, "n"],
-		["display_refrigerator_cold_drinks", 11.6, 13.515, "n"],
-		["display_refrigerator_cold_drinks", 13.0, 13.515, "n"],
-		["sellers_counter", 17.0, 2.0, "e"],
-		["cash_register", 17.5, 1.6, "e", 0.82],
-		["vending_machine_01", 19.43, 11.0, "w"],
-		["ice_merchandiser", 19.33, 12.6, "w"],
-		["soda_fountain_machine", 4.64, 10.5, "e"],
-		["store_inventory_stack_02", 1.5, 2.0, "w"],
-		["store_inventory_stack_01", 0.44, 9.0, "e"],
-		["cardboard_box_01", 2.5, 12.5, "w"],
-		["cardboard_box_02", 3.0, 13.2, "n"],
+	"inner": [
+		[Vector2(4, 0), Vector2(4, 14), "w4 d2 w4 d2 w2"],
+		[Vector2(0, 10), Vector2(4, 10), "w4"],
+	],
+	"rooms": [
+		{"name": "계산대", "rect": Rect2i(14, 0, 6, 4), "floor": "b", "paint": "cream", "props": [
+			["sellers_counter", 17.0, 2.0, "e"],
+			["cash_register", 17.5, 1.6, "e", 0.82],
+		]},
+		{"name": "창고", "rect": Rect2i(0, 0, 4, 10), "floor": "c", "paint": "grey", "props": [
+			["store_inventory_stack_02", 1.5, 2.0, "w"],
+			["shelf_02", 0.515, 5.0, "e"],
+			["store_inventory_stack_01", 0.44, 8.6, "e"],
+			["cardboard_box_01", 2.5, 7.5, "w"],
+			["cardboard_box_02", 3.0, 9.4, "n"],
+		]},
+		{"name": "화장실", "rect": Rect2i(0, 10, 4, 4), "floor": "tile", "paint": "white", "props": [
+			["toilet", 0.635, 12.6, "e"],
+			["sink", 2.0, 13.485, "n"],
+			["bathroom_cabinet", 0.32, 11.0, "e"],
+		]},
+		{"name": "매장", "rect": Rect2i(4, 0, 16, 14), "floor": "tile", "paint": "cream", "props": [
+			["retail_shelf_03", 7.71, 4.0, "w"],
+			["retail_shelf_03", 7.71, 5.24, "w"],
+			["retail_shelf_03", 7.71, 6.48, "w"],
+			["retail_shelf_03", 7.71, 7.72, "w"],
+			["retail_shelf_03", 7.71, 8.96, "w"],
+			["retail_shelf_03", 8.29, 4.0, "e"],
+			["retail_shelf_03", 8.29, 5.24, "e"],
+			["retail_shelf_03", 8.29, 6.48, "e"],
+			["retail_shelf_03", 8.29, 7.72, "e"],
+			["retail_shelf_03", 8.29, 8.96, "e"],
+			["retail_shelf_03", 12.71, 4.0, "w"],
+			["retail_shelf_03", 12.71, 5.24, "w"],
+			["retail_shelf_03", 12.71, 6.48, "w"],
+			["retail_shelf_03", 12.71, 7.72, "w"],
+			["retail_shelf_03", 12.71, 8.96, "w"],
+			["retail_shelf_03", 13.29, 4.0, "e"],
+			["retail_shelf_03", 13.29, 5.24, "e"],
+			["retail_shelf_03", 13.29, 6.48, "e"],
+			["retail_shelf_03", 13.29, 7.72, "e"],
+			["retail_shelf_03", 13.29, 8.96, "e"],
+			["display_refrigerator_cold_drinks", 6.0, 13.515, "n"],
+			["display_refrigerator_cold_drinks", 7.4, 13.515, "n"],
+			["display_refrigerator_milk", 8.8, 13.515, "n"],
+			["display_refrigerator_milk", 10.2, 13.515, "n"],
+			["display_refrigerator_cold_drinks", 11.6, 13.515, "n"],
+			["display_refrigerator_cold_drinks", 13.0, 13.515, "n"],
+			["vending_machine_01", 19.43, 11.0, "w"],
+			["ice_merchandiser", 19.33, 12.6, "w"],
+			["soda_fountain_machine", 4.64, 8.0, "e"],
+		]},
 	],
 }
 
-## 정비실: workbench, shelves and a desk. Door faces the bus yard (west, mirrored).
+## 정비실: the mechanics' office with a workbench and a desk, tool room along the back wall. The tool
+## room keeps its south half clear: the region's extra loot spot lands in that corner (layout_builder).
+## Door faces the bus yard (west, mirrored).
 const DEPOT_OFFICE := {
 	"size": Vector2i(8, 8), "floor": "a",
 	"edges": {"e": "w2 e4 w2", "w": "w2 n4 w2", "n": "w2 n4 w2", "s": "w4 w4"},
-	"props": [
-		["workbench", 0.49, 2.0, "e"],
-		["shelf_02", 0.515, 6.0, "e"],
-		["desk_01", 5.0, 0.54, "s"],
-		["chair_01", 5.0, 1.3, "n"],
-		["store_inventory_stack_01", 2.5, 7.56, "n"],
-		["cardboard_box_01", 6.8, 7.4, "w"],
-		["cardboard_box_02", 7.4, 6.6, "w"],
-		["computer", 5.0, 0.5, "s", 0.86],
-		["picture_02", 1.0, 0.21, "s", 1.6],
+	"inner": [[Vector2(2, 0), Vector2(2, 8), "w2 d2 w4"]],
+	"rooms": [
+		{"name": "공구실", "rect": Rect2i(0, 0, 2, 8), "floor": "c", "paint": "grey", "props": [
+			["shelf_02", 0.515, 1.0, "e"],
+		]},
+		{"name": "정비 사무실", "rect": Rect2i(2, 0, 6, 8), "floor": "a", "paint": "sand", "props": [
+			["workbench", 2.39, 6.5, "e"],
+			["desk_01", 5.0, 0.54, "s"],
+			["chair_01", 5.0, 1.3, "n"],
+			["computer", 5.0, 0.5, "s", 0.86],
+			["store_inventory_stack_01", 4.5, 7.56, "n"],
+			["cardboard_box_01", 6.8, 7.4, "w"],
+			["cardboard_box_02", 7.4, 6.6, "w"],
+			["picture_02", 7.0, 0.21, "s", 1.6],
+		]},
 	],
 }
 
 ## Indoor zone id -> [plan, spec]. Houses on the west row face east, the east row faces west,
 ## across the alley. Origins keep the map file's spots and doors inside and off the roads.
 const BUILDINGS := {
-	"house1": [HOME, {"origin": Vector2i(-41, 56), "mirror": false, "style": "a", "roof": "gable"}],
+	"house1": [HOME_A, {"origin": Vector2i(-41, 56), "mirror": false, "style": "a", "roof": "gable"}],
 	"house2": [CLINIC, {"origin": Vector2i(-22, 57), "mirror": true, "style": "c", "roof": "gable"}],
 	"house3": [HARDWARE, {"origin": Vector2i(-41, 80), "mirror": false, "style": "b", "roof": "gable"}],
-	"house4": [HOME, {"origin": Vector2i(-23, 80), "mirror": true, "style": "a", "roof": "gable"}],
+	"house4": [HOME_B, {"origin": Vector2i(-23, 80), "mirror": true, "style": "a", "roof": "gable"}],
 	"house5": [LAUNDRY, {"origin": Vector2i(-41, 98), "mirror": false, "style": "c", "roof": "gable"}],
 	"house6": [STORE, {"origin": Vector2i(-22, 96), "mirror": true, "style": "b", "roof": "gable"}],
 	"pharm": [PHARMACY, {"origin": Vector2i(-44, -92), "mirror": false, "style": "c", "roof": "flat"}],
