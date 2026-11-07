@@ -19,6 +19,10 @@ const SIGHT_RAY_HEIGHT := 1.0
 ## Vision is checked this often, not every frame.
 const SIGHT_CHECK_INTERVAL := 0.2
 
+# --- Sound ---
+## Min gap between one monster's hurt sounds (rifle fire would stack them).
+const HURT_SOUND_GAP_SEC := 0.25
+
 # --- States ---
 const SUSPICIOUS_SEC := 1.0
 ## Seconds spent looking around after reaching the noise point.
