@@ -13,8 +13,9 @@ signal downed()
 ## Helped back up by a resident (RescueCall, 살려주는 주민).
 signal revived()
 
-## B-05 maps these to noise radii (aim-walk 0m, walk 4m, sprint 8m, dodge 5m).
-enum MoveState { IDLE, WALK, SPRINT, AIM_WALK, DODGE }
+## B-05 maps these to noise radii (aim-walk 0m, walk 4m, sprint 8m, dodge 5m, vault 5m).
+## VAULT: climbing over low cover after pushing into it (see _step_vault_push).
+enum MoveState { IDLE, WALK, SPRINT, AIM_WALK, DODGE, VAULT }
 
 const GROUP := &"player"
 ## NoiseTable action per move state. Footsteps repeat every table.continuous_interval_sec;
@@ -24,6 +25,16 @@ const MOVE_NOISE := {
 	MoveState.SPRINT: &"sprint",
 }
 const DODGE_NOISE := &"roll"
+const VAULT_NOISE := &"vault"
+## Vault probe: a forward ray this high finds the obstacle within VAULT_REACH of the body edge.
+const VAULT_PROBE_HEIGHT := 0.25
+const VAULT_REACH := 0.25
+const VAULT_PROBE_STEP := 0.1
+## Pushing counts only this close to straight into the obstacle (cos of the angle).
+const VAULT_FACE_DOT := 0.7
+## Landing floor may be this much higher / lower than the feet.
+const VAULT_FLOOR_EPS := 0.2
+const VAULT_MAX_DROP := 0.5
 ## Seconds between footstep sounds per move state. Only states that make noise (AIM_WALK is 0 m), and
 ## silent while the noise comes out 0 (shadow step), so a sound always means monsters can hear it.
 const FOOTSTEP_SEC := {MoveState.WALK: 0.45, MoveState.SPRINT: 0.3}
@@ -65,6 +76,11 @@ var _dodge_left := 0.0
 var _dodge_elapsed := 0.0
 var _dodge_dir := Vector3.ZERO
 var _footstep_left := 0.0
+var _vault_push := 0.0
+var _vault_from := Vector3.ZERO
+var _vault_to := Vector3.ZERO
+var _vault_lift := 0.0
+var _vault_elapsed := 0.0
 var _facing := Vector3.FORWARD
 var _aim_point: Variant = null
 ## Interactable the player last started using (HUD hold bar).
@@ -72,6 +88,7 @@ var _interacting: Node3D
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
 @onready var _noise: NoiseEmitter = $Noise
+@onready var _collision: CollisionShape3D = $Collision
 ## Status effects (B-14): bleed, stagger, bind, slow ... Lane D listens to its signals.
 @onready var status: StatusHolder = StatusHolder.attach(self)
 ## Class skills, passives and mastery (B-13). It hooks the Weapons node and incoming_damage_filter.
@@ -100,10 +117,12 @@ func _physics_process(delta: float) -> void:
 	if not script_input.is_empty():
 		interact_held = false
 		step(delta, script_input)  # a cutscene drives the player (IntroCutscene); no interact
-		move_and_slide()
+		if not is_vaulting():
+			move_and_slide()
 		return
 	step(delta, {} if input_blocked() else _read_input())
-	move_and_slide()
+	if not is_vaulting():
+		move_and_slide()  # a vault moves the body itself (_step_vault)
 	interact_held = Input.is_action_pressed(&"interact") and not input_blocked()
 	if Input.is_action_just_pressed(&"interact") and not input_blocked():
 		interact()
@@ -119,6 +138,8 @@ static func input_blocked() -> bool:
 ## Returns false when nothing is in reach or it refused.
 ## Uses a shape query, not an Area3D: Jolt areas do not report static bodies by default.
 func interact() -> bool:
+	if is_vaulting():
+		return false
 	var target := interact_target()
 	if target == null or not target.begin_open(self):
 		return false
@@ -195,6 +216,11 @@ func facing() -> Vector3:
 	return _facing
 
 
+## Mid-vault over low cover: weapons, items and interaction wait (no invulnerability).
+func is_vaulting() -> bool:
+	return move_state == MoveState.VAULT
+
+
 func is_invulnerable() -> bool:
 	return move_state == MoveState.DODGE and _dodge_elapsed < stats.dodge_invuln_sec
 
@@ -222,6 +248,9 @@ func take_damage(amount: float, info: Dictionary = {}) -> void:
 	if not tick and ratio >= CombatFeel.SHAKE_HURT_MIN_RATIO:
 		CombatFeel.shake(self, CombatFeel.SHAKE_PLAYER_HURT * ratio)
 	if health == 0.0:
+		if is_vaulting():
+			global_position = _vault_to  # do not stay down in the air over the cover
+			_set_move_state(MoveState.IDLE)
 		is_downed = true
 		status.clear()
 		velocity = Vector3.ZERO
@@ -279,17 +308,20 @@ func step(delta: float, input: Dictionary) -> void:
 		dir = Vector3.ZERO
 		input = input.merged({"dodge": false, "sprint": false}, true)
 	input = consumables.filter_input(input)
-	if move_state == MoveState.DODGE:
+	if move_state == MoveState.VAULT:
+		_step_vault(delta)
+	elif move_state == MoveState.DODGE:
 		_step_dodge(delta)
 	elif input.get("dodge", false) and stamina >= stats.dodge_stamina:
 		_start_dodge(dir)
 	else:
 		_step_move(delta, dir, input.get("aim", false), input.get("sprint", false))
+		_step_vault_push(delta, dir)
 	var push := status.knockback_velocity()
-	if push != Vector3.ZERO:
+	if push != Vector3.ZERO and not is_vaulting():
 		velocity.x = push.x
 		velocity.z = push.z
-	if not is_on_floor():
+	if not is_on_floor() and not is_vaulting():
 		velocity.y -= _gravity * delta
 	_step_stamina_regen(delta)
 	_update_facing(dir)
@@ -419,6 +451,118 @@ func _step_dodge(delta: float) -> void:
 		_set_move_state(MoveState.IDLE)
 
 
+## Walking or sprinting into low cover for stats.vault_hold_sec starts a vault. Not while aiming
+## (aim over cover to shoot), supporting someone (B-10 부축) or using an item.
+func _step_vault_push(delta: float, dir: Vector3) -> void:
+	var hit := {} if stats.vault_hold_sec <= 0.0 or one_hand_only or consumables.is_using() \
+			or move_state not in [MoveState.WALK, MoveState.SPRINT] else _vault_obstacle(dir)
+	if hit.is_empty():
+		_vault_push = 0.0
+		return
+	_vault_push += delta
+	if _vault_push < stats.vault_hold_sec:
+		return
+	_vault_push = 0.0
+	var plan := _vault_plan(hit, dir)
+	if not plan.is_empty():
+		_start_vault(plan)
+
+
+## Low cover right in front, roughly facing `dir`: the forward ray hit, or {}.
+func _vault_obstacle(dir: Vector3) -> Dictionary:
+	if dir.length_squared() < 0.0001:
+		return {}
+	var flat := dir.normalized()
+	var from := global_position + Vector3.UP * VAULT_PROBE_HEIGHT
+	var hit := _ray(from, from + flat * (_body_radius() + VAULT_REACH))
+	if hit.is_empty() or not WeaponHolder.is_low_cover(hit["collider"]) \
+			or (hit["normal"] as Vector3).dot(-flat) < VAULT_FACE_DOT:
+		return {}
+	return hit
+
+
+## {"to": landing feet, "top": obstacle top y}, or {} when it is too tall, too deep, has no floor
+## behind it or no room for the body there.
+func _vault_plan(hit: Dictionary, dir: Vector3) -> Dictionary:
+	var flat := dir.normalized()
+	var feet := global_position.y
+	var over := feet + stats.vault_max_height + 0.05
+	var near: Vector3 = hit["position"]
+	near.y = over
+	var reach := stats.vault_max_depth + _body_radius() * 2.0
+	if not _ray(Vector3(global_position.x, over, global_position.z), near + flat * reach).is_empty():
+		return {}  # something taller than the limit on the way over
+	var top := feet
+	var d := VAULT_PROBE_STEP * 0.5
+	while d <= stats.vault_max_depth + VAULT_PROBE_STEP:
+		var surface: Variant = _floor_at(near + flat * d, over, feet)
+		if surface == null:
+			return {}
+		var surface_y: float = surface
+		if surface_y - feet > VAULT_FLOOR_EPS:
+			top = maxf(top, surface_y)
+			d += VAULT_PROBE_STEP
+			continue
+		var to := near + flat * (d + _body_radius() + 0.05)
+		var land: Variant = _floor_at(to, over, feet)
+		if land == null or float(land) - feet > VAULT_FLOOR_EPS:
+			return {}
+		to.y = land
+		return {"to": to, "top": top} if _body_fits(to) else {}
+	return {}  # deeper than vault_max_depth
+
+
+func _start_vault(plan: Dictionary) -> void:
+	_vault_from = global_position
+	_vault_to = plan["to"]
+	_vault_lift = plan["top"] - _vault_from.y + stats.vault_clearance
+	_vault_elapsed = 0.0
+	is_aiming = false
+	var flat := _vault_to - _vault_from
+	flat.y = 0.0
+	_facing = flat.normalized()
+	velocity = flat / stats.vault_duration_sec  # the model reads it as walk speed; move_and_slide is skipped
+	_set_move_state(MoveState.VAULT)
+
+
+## Moves along the arc directly: no move_and_slide, the body passes over the obstacle.
+func _step_vault(delta: float) -> void:
+	_vault_elapsed = minf(_vault_elapsed + delta, stats.vault_duration_sec)
+	var t := _vault_elapsed / stats.vault_duration_sec
+	global_position = _vault_from.lerp(_vault_to, t) + Vector3.UP * sin(PI * t) * _vault_lift
+	if _vault_elapsed >= stats.vault_duration_sec:
+		velocity = Vector3.ZERO
+		_set_move_state(MoveState.IDLE)
+		Audio.play(&"footstep_run", global_position)
+
+
+## World-layer ray, or {}.
+func _ray(from: Vector3, to: Vector3) -> Dictionary:
+	var query := PhysicsRayQueryParameters3D.create(from, to, 1 << (Enums.LAYER_WORLD - 1), [get_rid()])
+	return get_world_3d().direct_space_state.intersect_ray(query)
+
+
+## Height of the first world surface straight down from `over` at `at` (xz), or null when there is
+## none down to VAULT_MAX_DROP below the feet.
+func _floor_at(at: Vector3, over: float, feet: float) -> Variant:
+	var hit := _ray(Vector3(at.x, over, at.z), Vector3(at.x, feet - VAULT_MAX_DROP - VAULT_FLOOR_EPS, at.z))
+	return null if hit.is_empty() else (hit["position"] as Vector3).y
+
+
+## The body capsule standing with its feet at `feet` touches no wall or monster.
+func _body_fits(feet: Vector3) -> bool:
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = _collision.shape
+	query.transform = Transform3D(Basis(), feet + _collision.position + Vector3.UP * 0.05)
+	query.collision_mask = (1 << (Enums.LAYER_WORLD - 1)) | (1 << (Enums.LAYER_MONSTER - 1))
+	query.exclude = [get_rid()]
+	return get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty()
+
+
+func _body_radius() -> float:
+	return (_collision.shape as CapsuleShape3D).radius
+
+
 func _spend_stamina(amount: float) -> void:
 	stamina = maxf(stamina - amount, 0.0)
 	_since_stamina_use = 0.0
@@ -434,12 +578,13 @@ func _step_stamina_regen(delta: float) -> void:
 
 
 func _update_facing(dir: Vector3) -> void:
-	if faces_cursor() and _aim_point != null and move_state != MoveState.DODGE:
+	var committed := move_state == MoveState.DODGE or move_state == MoveState.VAULT
+	if faces_cursor() and _aim_point != null and not committed:
 		var to_aim: Vector3 = _aim_point - global_position
 		to_aim.y = 0.0
 		if to_aim.length_squared() > 0.0001:
 			_facing = to_aim.normalized()
-	elif move_state != MoveState.DODGE and dir.length_squared() > 0.0001:
+	elif not committed and dir.length_squared() > 0.0001:
 		_facing = dir.normalized()
 	rotation.y = atan2(-_facing.x, -_facing.z)
 
@@ -461,3 +606,5 @@ func _update_noise(state: MoveState) -> void:
 	_noise.stop_continuous()
 	if state == MoveState.DODGE:
 		_noise.emit(DODGE_NOISE)
+	elif state == MoveState.VAULT:
+		_noise.emit(VAULT_NOISE)
