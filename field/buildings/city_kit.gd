@@ -468,6 +468,26 @@ const PROPS := {
 ## Prop facing (the way its front looks, in the plan) -> yaw. The pack's front is -X.
 const FACE_YAW := {"w": 0.0, "e": PI, "s": PI * 0.5, "n": -PI * 0.5}
 
+## Room wall paint by name (sRGB, plan rooms "paint"). Muted on purpose: no yellow or blue-grey, the
+## loot outline colours stay the only bright signals indoors (user feedback 2026-11-07: rooms all
+## looked alike).
+const PAINT := {
+	"white": Color(0.86, 0.85, 0.82),
+	"cream": Color(0.85, 0.79, 0.67),
+	"sand": Color(0.78, 0.70, 0.60),
+	"sage": Color(0.66, 0.74, 0.62),
+	"mint": Color(0.68, 0.80, 0.76),
+	"rose": Color(0.80, 0.65, 0.62),
+	"grey": Color(0.56, 0.57, 0.58),
+}
+const PAINT_SHADER := preload("res://field/buildings/room_paint.gdshader")
+## Wall piece meta: [+X side colour, -X side colour] (alpha 0 = unpainted), see paint_walls().
+const PAINT_META := &"room_paint"
+## How far off a wall's middle the room on each side is looked up.
+const PAINT_PROBE := 0.3
+## Floor pieces are on a 2 m grid from the building's corner; room rects must follow it.
+const FLOOR_GRID := 2
+
 
 static func available() -> bool:
 	return DirAccess.dir_exists_absolute(ROOT)
@@ -519,15 +539,25 @@ static func place(parent: Node3D, folder: String, piece: String, xf: Transform3D
 ##   loot (optional): furniture that is a loot container, [piece, x, z, face, container kind
 ##   (LootSpot.ContainerType name), loot table id ("" = the region's)]. Its collision is in the
 ##   building like props, but the mesh comes with the container (LootSpot.look_piece), not build_meshes().
+##   rooms (optional): [{name, rect: Rect2i (plan metres, on the FLOOR_GRID), floor (style),
+##   paint (PAINT name, "" = the pack's grey), props, loot}]. A room's props and loot are its
+##   furniture set, in plan coordinates like the plan's own. Where rooms overlap the earlier one wins
+##   (a counter corner on a sales floor). Floor the rooms leave uncovered is the plan's floor.
 ## spec: origin (Vector2i, north-west corner), mirror (true: the plan's east front faces west),
 ##   style (a, b or c), roof (gable or flat).
 ## Returns rect (Rect2), segments ([{kind, len, a, b, inward, inner, index}]), doors ([[x, z, gap]]),
 ## props ([{piece, folder, xf, box: AABB}]), walls (Array[AABB]), floor ([{piece, rect}]),
-## loot ([{piece, folder, xf, box, center: Vector2, yaw, kind: String, table: String}]).
+## loot ([{piece, folder, xf, box, center: Vector2, yaw, kind: String, table: String}]),
+## rooms ([{name, rect: Rect2 (world), paint: Color (alpha 0 = unpainted)}]).
 static func parts(plan: Dictionary, spec: Dictionary) -> Dictionary:
 	var size: Vector2i = plan.size
 	var out := {"rect": Rect2(Vector2(spec.origin), Vector2(size)), "segments": [], "doors": [],
-		"props": [], "walls": [], "floor": [], "loot": []}
+		"props": [], "walls": [], "floor": [], "loot": [], "rooms": []}
+	var props: Array = plan.get("props", []).duplicate()
+	var loot: Array = plan.get("loot", []).duplicate()
+	for room: Dictionary in plan.get("rooms", []):
+		props.append_array(room.get("props", []))
+		loot.append_array(room.get("loot", []))
 	var lines := {
 		"n": [Vector2(0, 0), Vector2(size.x, 0), Vector2(0, 1)],
 		"s": [Vector2(0, size.y), Vector2(size.x, size.y), Vector2(0, -1)],
@@ -541,9 +571,9 @@ static func parts(plan: Dictionary, spec: Dictionary) -> Dictionary:
 		_cut(out, plan, spec, inner[2], inner[0], inner[1], Vector2.ZERO, true)
 	for seg: Dictionary in out.segments:
 		out.walls.append_array(_segment_boxes(seg))
-	for p: Array in plan.get("props", []):
+	for p: Array in props:
 		out.props.append(_prop(plan, spec, p))
-	for l: Array in plan.get("loot", []):
+	for l: Array in loot:
 		var part := _prop(plan, spec, [l[0], l[1], l[2], l[3]])
 		if part.is_empty():
 			continue
@@ -555,7 +585,22 @@ static func parts(plan: Dictionary, spec: Dictionary) -> Dictionary:
 		part["kind"] = String(l[4])
 		part["table"] = String(l[5]) if l.size() > 5 else ""
 		out.loot.append(part)
-	out.floor = _floor_tiles(out.rect, plan.get("floor", "b"))
+	var used := {}
+	for room: Dictionary in plan.get("rooms", []):
+		var r: Rect2i = room.rect
+		if r.position.x % FLOOR_GRID or r.position.y % FLOOR_GRID or r.size.x % FLOOR_GRID or r.size.y % FLOOR_GRID \
+				or not Rect2i(Vector2i.ZERO, size).encloses(r):
+			push_error("CityKit: room %s %s is off the %d m grid or outside the plan" % [room.get("name", ""), r, FLOOR_GRID])
+			continue
+		var a := _world(plan, spec, Vector2(r.position))
+		var b := _world(plan, spec, Vector2(r.end))
+		var rect := Rect2(Vector2(minf(a.x, b.x), a.y), Vector2(absf(b.x - a.x), b.y - a.y))
+		var paint: String = room.get("paint", "")
+		if not paint.is_empty() and not PAINT.has(paint):
+			push_error("CityKit: room %s has unknown paint %s" % [room.get("name", ""), paint])
+		out.rooms.append({"name": room.get("name", ""), "rect": rect, "paint": PAINT.get(paint, Color(0, 0, 0, 0))})
+		out.floor.append_array(_floor_tiles(out.rect, rect, room.get("floor", plan.get("floor", "b")), used))
+	out.floor.append_array(_floor_tiles(out.rect, out.rect, plan.get("floor", "b"), used))
 	return out
 
 
@@ -643,21 +688,25 @@ static func _prop(plan: Dictionary, spec: Dictionary, p: Array) -> Dictionary:
 	return part
 
 
-## Greedy floor tiling of rect on a 2 m grid, biggest pieces first.
-static func _floor_tiles(rect: Rect2, style: String) -> Array:
-	var cols := int(rect.size.x / 2.0)
-	var rows := int(rect.size.y / 2.0)
-	var used := {}
+## Greedy floor tiling of area (inside building, both on the building's 2 m grid), biggest pieces
+## first. Cells already in used (other rooms) are skipped; the cells laid here are added to it.
+static func _floor_tiles(building: Rect2, area: Rect2, style: String, used: Dictionary) -> Array:
+	var i0 := roundi((area.position.x - building.position.x) / FLOOR_GRID)
+	var j0 := roundi((area.position.y - building.position.y) / FLOOR_GRID)
+	var cols := i0 + roundi(area.size.x / FLOOR_GRID)
+	var rows := j0 + roundi(area.size.y / FLOOR_GRID)
 	var out := []
+	if not FLOOR_SIZES.has(style):
+		push_error("CityKit: unknown floor style %s" % style)
 	var sizes: Array = FLOOR_SIZES.get(style, FLOOR_SIZES.b)
 	var all_sizes: Array = FLOOR_SIZES.b
-	for j in rows:
-		for i in cols:
+	for j in range(j0, rows):
+		for i in range(i0, cols):
 			if used.has(Vector2i(i, j)):
 				continue
 			for wd: Array in all_sizes:
-				var w: int = wd[0] / 2
-				var d: int = wd[1] / 2
+				var w: int = wd[0] / FLOOR_GRID
+				var d: int = wd[1] / FLOOR_GRID
 				if i + w > cols or j + d > rows or not _free(used, i, j, w, d):
 					continue
 				for di in w:
@@ -665,7 +714,7 @@ static func _floor_tiles(rect: Rect2, style: String) -> Array:
 						used[Vector2i(i + di, j + dj)] = true
 				var s := style if wd in sizes else "b"
 				out.append({"piece": "house_floor_%s_%dx%dm" % [s, wd[1], wd[0]],
-					"rect": Rect2(rect.position + Vector2(i, j) * 2.0, Vector2(wd[0], wd[1]))})
+					"rect": Rect2(building.position + Vector2(i, j) * FLOOR_GRID, Vector2(wd[0], wd[1]))})
 				break
 	return out
 
@@ -693,7 +742,11 @@ static func build_meshes(parent: Node3D, id: StringName, plan: Dictionary, spec:
 		if piece.is_empty():
 			continue
 		var xf := _segment_xf(seg)
-		place(walls, MODULES, piece, xf)
+		var node := place(walls, MODULES, piece, xf)
+		if node != null and not p.rooms.is_empty():
+			var sides := _wall_paint(p.rooms, seg, xf)
+			if sides[0].a > 0.0 or sides[1].a > 0.0:
+				node.set_meta(PAINT_META, sides)
 		if plan.get("porch", false) and seg.kind == "e" and not seg.inner and PORCH.has(seg.len):
 			place(porch, MODULES, PORCH[seg.len], xf)
 	var floor := _group(building, "Floor")
@@ -743,6 +796,21 @@ static func _segment_piece(seg: Dictionary, style: String, salt: String) -> Stri
 			push_error("CityKit: style %s has no %s piece of %d m" % [style, seg.kind, length])
 		return ""
 	return pool[absi(hash(salt + str(seg.index))) % pool.size()]
+
+
+## [+X side, -X side] paint of a wall piece at xf: the rooms PAINT_PROBE off the segment's middle.
+static func _wall_paint(rooms: Array, seg: Dictionary, xf: Transform3D) -> Array[Color]:
+	var mid: Vector2 = (seg.a + seg.b) * 0.5
+	var x := Vector2(xf.basis.x.x, xf.basis.x.z).normalized() * PAINT_PROBE
+	return [_room_paint_at(rooms, mid + x), _room_paint_at(rooms, mid - x)]
+
+
+## Paint of the first room (parts() rooms) holding p, alpha 0 if none.
+static func _room_paint_at(rooms: Array, p: Vector2) -> Color:
+	for room: Dictionary in rooms:
+		if (room.rect as Rect2).has_point(p):
+			return room.paint
+	return Color(0, 0, 0, 0)
 
 
 ## Piece pivot for a wall segment: X points inward (exterior face on the outline), Z along the wall,
@@ -957,6 +1025,32 @@ static func cap_walls(root: Node3D) -> void:
 		holder.add_child(node)
 
 
+## Room wall paint: pieces with PAINT_META (build_meshes) get the room_paint shader, a copy of their
+## own toon material, with the two room colours as instance uniforms. Runtime only, never saved.
+static func paint_walls(root: Node) -> void:
+	var cache := {}
+	for node: Node in root.find_children("*", "Node3D", true, false):
+		if not node.has_meta(PAINT_META):
+			continue
+		var sides: Array = node.get_meta(PAINT_META)
+		for mi: MeshInstance3D in node.find_children("*", "MeshInstance3D", true, false):
+			if mi.mesh == null:
+				continue
+			for s in mi.mesh.get_surface_count():
+				var mat := mi.get_active_material(s) as ShaderMaterial
+				if mat == null or mat.shader == null:
+					continue
+				if not cache.has(mat):
+					var painted := mat.duplicate() as ShaderMaterial
+					painted.shader = PAINT_SHADER
+					for u: Dictionary in mat.shader.get_shader_uniform_list():
+						painted.set_shader_parameter(u.name, mat.get_shader_parameter(u.name))
+					cache[mat] = painted
+				mi.set_surface_override_material(s, cache[mat])
+			mi.set_instance_shader_parameter(&"paint_pos", sides[0])
+			mi.set_instance_shader_parameter(&"paint_neg", sides[1])
+
+
 ## Box of a mesh's top face: all vertices within 2 cm of its highest point. Zero box if none.
 static func _top_face(mesh: Mesh) -> AABB:
 	var high := mesh.get_aabb().end.y - 0.02
@@ -984,6 +1078,7 @@ static func attach(region: Node3D, layout: Node3D, kit_path: String) -> Node3D:
 	region.add_child(kit)
 	tune_look(kit)
 	cap_walls(kit)
+	paint_walls(kit)
 	# Layout CSG that stays (stairs, ramps) gets pack textures; Lane D's toon skin leaves ShaderMaterials.
 	var skins: Dictionary = kit.get_meta(&"layout_skins", {})
 	for path: NodePath in skins:

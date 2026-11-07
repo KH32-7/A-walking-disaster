@@ -21,13 +21,34 @@ uniform float emission_energy : hint_range(0.0, 8.0) = 0.0;
 
 varying vec3 v_world_normal;
 
+#ifdef ROOM_PAINT
+// Room wall paint (field/buildings/room_paint.gdshader, CityKit.paint_walls): the pack's interior
+// paint texels (paint_uv: min in xy, max in zw) take the colour of the room on that side of the wall.
+// paint_pos is for faces looking down the piece's local +X, paint_neg for -X. Alpha 0 = unpainted.
+instance uniform vec4 paint_pos : source_color = vec4(0.0);
+instance uniform vec4 paint_neg : source_color = vec4(0.0);
+uniform vec4 paint_uv = vec4(0.50, 0.555, 0.75, 0.75);
+// Linear brightness of the pack's grey paint: the texture's shading stays, relative to it.
+uniform float paint_base = 0.51;
+varying float v_side;
+#endif
+
 void vertex() {
 	v_world_normal = (MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz;
+#ifdef ROOM_PAINT
+	v_side = NORMAL.x;
+#endif
 }
 
 void fragment() {
 	vec4 tex = texture(albedo_texture, UV);
 	ALBEDO = albedo.rgb * tex.rgb;
+#ifdef ROOM_PAINT
+	vec4 paint = v_side > 0.0 ? paint_pos : paint_neg;
+	if (paint.a > 0.0 && abs(v_side) > 0.5 && all(greaterThan(UV, paint_uv.xy)) && all(lessThan(UV, paint_uv.zw))) {
+		ALBEDO = mix(ALBEDO, albedo.rgb * paint.rgb * tex.rgb / paint_base, paint.a);
+	}
+#endif
 	if (alpha_cut > 0.0 && albedo.a * tex.a < alpha_cut) {
 		discard;
 	}

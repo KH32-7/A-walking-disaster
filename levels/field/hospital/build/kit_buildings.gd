@@ -9,6 +9,7 @@ extends RefCounted
 ## clothes and food, office cabinets keys, the security cabinets guns and ammo.
 ## Map file markers inside a building keep 0.3 m clear of walls and props (layout_builder checks it).
 ## Every door is level (no steps), so a wheelchair reaches every room.
+## Rooms (parts() rooms) only give floors and wall paint here; the furniture stays in props / loot.
 
 ## Room loot tables (data/loot/tables/hospital_<room>.tres).
 const WARD := "hospital_ward_cabinet"
@@ -36,6 +37,19 @@ const STOREROOM := "hospital_storeroom"
 ## the office door) or the east door.
 const MAIN := {
 	"size": Vector2i(60, 36), "floor": "tile",
+	"rooms": [
+		{"name": "병동 A", "rect": Rect2i(0, 0, 16, 16), "floor": "tile", "paint": "sage"},
+		{"name": "병동 B", "rect": Rect2i(16, 0, 12, 16), "floor": "tile", "paint": "sage"},
+		{"name": "남북 복도", "rect": Rect2i(28, 0, 4, 16), "floor": "c", "paint": ""},
+		{"name": "격리실", "rect": Rect2i(32, 0, 8, 16), "floor": "tile", "paint": "mint"},
+		{"name": "검사실", "rect": Rect2i(40, 0, 10, 16), "floor": "tile", "paint": "white"},
+		{"name": "직원실", "rect": Rect2i(50, 0, 10, 16), "floor": "b", "paint": "cream"},
+		{"name": "복도", "rect": Rect2i(0, 16, 60, 4), "floor": "c", "paint": ""},
+		{"name": "진료실", "rect": Rect2i(0, 20, 22, 16), "floor": "tile", "paint": "mint"},
+		{"name": "로비", "rect": Rect2i(22, 20, 16, 16), "floor": "c", "paint": "white"},
+		{"name": "약국", "rect": Rect2i(38, 20, 10, 16), "floor": "tile", "paint": "white"},
+		{"name": "사무실", "rect": Rect2i(48, 20, 12, 16), "floor": "carpeting", "paint": "cream"},
+	],
 	"edges": {
 		"n": "w2 n4 w4 n4 w2 w2 n4 w2 n2 w2 e4 w2 n4 w2 w2 n2 w2 n2 w2 w2 n2 w2 n2 w2",
 		"s": "w2 n4 w2 w2 n4 w2 w2 n2 w2 w2 n4 e4 n4 w2 w2 n2 w2 n2 w2 w2 n4 w2 n2 w2",
@@ -237,6 +251,12 @@ const MAIN := {
 ## who guarded it left their weapons cabinet in the waiting room.
 const ER := {
 	"size": Vector2i(22, 28), "floor": "tile",
+	"rooms": [
+		{"name": "처치 홀", "rect": Rect2i(10, 0, 12, 28), "floor": "tile", "paint": "mint"},
+		{"name": "소생실", "rect": Rect2i(0, 0, 10, 10), "floor": "tile", "paint": "white"},
+		{"name": "보급실", "rect": Rect2i(0, 10, 10, 8), "floor": "c", "paint": "grey"},
+		{"name": "대기실", "rect": Rect2i(0, 18, 10, 10), "floor": "b", "paint": "cream"},
+	],
 	"edges": {
 		"n": "w2 n4 w4 n4 w4 n2 w2",
 		"s": "w2 n4 w4 n4 w4 n2 w2",
@@ -295,6 +315,10 @@ const ER := {
 ## (z 20..28) behind a double door. South door to the courtyard, north door to the back yard.
 const SURGERY := {
 	"size": Vector2i(32, 28), "floor": "tile",
+	"rooms": [
+		{"name": "수술실", "rect": Rect2i(0, 0, 32, 20), "floor": "tile", "paint": "mint"},
+		{"name": "준비 복도", "rect": Rect2i(0, 20, 32, 8), "floor": "c", "paint": "white"},
+	],
 	"edges": {
 		"n": "w2 n4 w4 w4 w4 n4 w4 e4 w2",
 		"s": "w2 n4 w4 w2 w2 e4 w2 w2 w4 n4 w2",
@@ -339,6 +363,9 @@ const SURGERY := {
 ## 영안실: cold lockers on the north wall (some still hold people's things), trolleys.
 const MORGUE := {
 	"size": Vector2i(16, 12), "floor": "c",
+	"rooms": [
+		{"name": "영안실", "rect": Rect2i(0, 0, 16, 12), "floor": "c", "paint": "grey"},
+	],
 	"edges": {"n": "w2 n4 w4 n4 w2", "s": "w4 w2 e4 w2 w4", "w": "w4 w4 w4", "e": "w4 w4 w4"},
 	"props": [
 		["locker", 1.9, 0.365, "s"],
@@ -365,6 +392,9 @@ const MORGUE := {
 ## 보일러실: workbench and spare parts. Door west, next to the generator extract.
 const BOILER := {
 	"size": Vector2i(12, 12), "floor": "c",
+	"rooms": [
+		{"name": "보일러실", "rect": Rect2i(0, 0, 12, 12), "floor": "c", "paint": "grey"},
+	],
 	"edges": {"w": "w4 e4 w4", "n": "w4 w4 w4", "s": "w2 n4 w4 w2", "e": "w4 w4 w4"},
 	"props": [
 		["store_inventory_stack_02", 3.0, 2.0, "s"],
@@ -383,6 +413,10 @@ const BOILER := {
 ## 별관 (재활 병동): rehab ward north, storeroom south. Doors west (road) and east (garden).
 const ANNEX := {
 	"size": Vector2i(20, 28), "floor": "b",
+	"rooms": [
+		{"name": "재활 병동", "rect": Rect2i(0, 0, 20, 14), "floor": "b", "paint": "cream"},
+		{"name": "창고", "rect": Rect2i(0, 14, 20, 14), "floor": "c", "paint": "grey"},
+	],
 	"edges": {
 		"w": "w4 n4 w2 e4 w2 n4 w4 w4",
 		"e": "w4 n4 w4 w2 e4 w2 n4 w4",
@@ -417,6 +451,9 @@ const ANNEX := {
 ## 정문 경비실: the gate guards' desk and their gun cabinet.
 const GUARD := {
 	"size": Vector2i(6, 6), "floor": "a",
+	"rooms": [
+		{"name": "경비실", "rect": Rect2i(0, 0, 6, 6), "floor": "a", "paint": "sand"},
+	],
 	"edges": {"n": "w2 n2 w2", "s": "w2 e2 w2", "w": "w2 n2 w2", "e": "w2 w2 w2"},
 	"props": [["chair_01", 1.5, 2.0, "w"]],
 	"loot": [
