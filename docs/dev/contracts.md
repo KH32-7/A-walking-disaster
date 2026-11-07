@@ -211,7 +211,7 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   `friend`·`lover`·`spouse`(또는 `married`)·`separated`를 읽는다(다르면 `Journal.STAGE_KINDS`에 별칭).
 - **Quests** (A-13): `start(quest_id, giver_id)`, `advance(quest_id, objective_id, amount)`(C: 공동체 퀘스트), `complete(quest_id)`, `fail(quest_id, reason)`,
   `get_status(quest_id)`(-1 = 시작 전, `Quests.Status`), `is_active()`, `is_completed()`, `days_left()`, `get_def()`, `active_quests()`(D: 퀘스트 기록),
-  `active_field_objectives(region_id)`(B: 필드 목표 `{"quest_id", "objective_id", "kind": &"visit"|&"recover"|&"rescue", "region_id", "marker", "target_id", "count", "remaining", "text", "marker_label"}`). 지도·미니맵은 marker 위치에 노란 이중 마름모와 marker_label(없으면 text)을 그린다. 구출 목표는 그 사람이 따라오기 시작하면 `RescueTarget.escort_goal(tree, objective)`(가장 가까운 열린 탈출 지점)로 마름모를 옮긴다.
+  `active_field_objectives(region_id)`(B: 필드 목표 `{"quest_id", "objective_id", "kind": &"visit"|&"recover"|&"rescue", "region_id", "marker", "target_id", "count", "remaining", "text", "marker_label"}`). 지도·미니맵은 marker 위치에 노란 이중 마름모와 marker_label(없으면 text)을 그린다. 구출 목표는 그 사람이 따라오기 시작하면 `RescueTarget.escort_goal(tree, objective)`(가장 가까운 열린 탈출 지점)로 마름모를 옮긴다. marker가 없거나 못 찾으면 `RescueTarget.auto_goal(tree, objective)`: 구출은 따라오지 않는 가장 가까운 맞는 사람, 방문은 같은 퀘스트의 다른 목표가 없을 때 가장 가까운 열린 탈출 지점, 회수는 없음. 화면 밖 목표는 플레이어 발밑의 노란 바닥 화살표(핑과 같은 모양)로 그린다.
   진행은 신호로만 한다: 지역 방문·데려가기(`sortie_ended` 탈출), 아이템 회수(`sortie_ended`의 loot), 사람 데려오기(`rescue_completed`의 profile `id`),
   기지 제작(`building_completed`), 특정 날 방어(`raid_resolved`). 유품은 `data/resources/`의 자원(예: `keepsake_plane`)이라 B는 `marker` 자리에 줍는 물건을 두고
   `Bag.try_add`로 넣기만 하면 된다. 보상의 신뢰도는 `Colony.add_trust(resident_id, amount)`(C에 요청)를 부른다. 무전 소문은 Radio 트리거 `quest_rumor`로 말한다.
@@ -395,3 +395,13 @@ levels/base/base_school/
 - 의무실 `infirmary`는 `requires_former_job = &"doctor"`. `main_01_left_behind`는 `tutorial_doctor` 완료 뒤 시작.
 - 구조 인원(2026-11-06): `RescueManager.max_per_sortie = 5`, `pool_count = 3` — 고정 spawns 뒤에 `ResidentPool`에서 안 쓴 생존자를 빈 RescueSpot에 더 놓는다(부상, 아이템 없이 F 일으켜 세우기). `profile_for`는 DemoProfiles 다음 ResidentPool을 찾는다. 공원 의사는 `doctor_office` 태그(관리사무소)에만 나온다.
 - 진행 속도(2026-11-06): `WorkRules.pace`(1.5) — 건설 진행·직업 생산·성장 일수에 곱한다(`build_progress()`, `stay_build_progress()`, `days_per_skill()`, `days_per_stat()`). `Progression.xp_pace`(1.5)는 경험치. 기획 수치 테스트는 둘 다 1.0으로 돌린다.
+
+## 초반 단계 해금 (2026-11-07, 기획 12 "해금 순서")
+
+- `BuildingDef.unlock_flag`: 그 GameState 플래그가 서기 전에는 건설 목록에서 아예 숨긴다(이유로 보이지 않음). `tier_min`도 숨김 조건.
+  단계 플래그: `tutorial_done`(첫 구조 뒤), `extracted_flooded_mall`(상가 첫 탈출), `blueprint_essence_workshop`(공원 보스).
+- `Colony.is_unlocked(def_id)`: 목록에 나오는지(단계 플래그 + 기지 단계, prebuilt·story_only는 false). `can_build()`도 같은 조건을 이유로 넣는다.
+- `UnlockRules`(base/building/unlock_rules.gd): `menu_open(menu_id)`(기지 메뉴: 주민·무기고는 `tutorial_done`, 제작은 정비소·재봉실 완공, 일지는 2일차, 전초기지는 정착지), `open_keys()`, `take_new_unlocks()`(지난 호출 뒤 새로 열린 메뉴·건물·지역을 알림 한 줄로. 처음 호출은 기록만. 본 목록은 GameState 플래그 `unlocks_seen`). BaseHud가 0.5초마다 부른다.
+- `EarlyZone`(field/regions/early_zone.gd): `RegionDef.early_min_z`, `early_open_day`. 그날 전에는 그 z 선 북쪽 마커(둥지·루팅·구조·탈출·탈것·보스·녹음기·스폰)를 그룹에서 빼고 선에 벽(그룹 `early_zone_wall`, 땅 아래까지)을 세운다. 지역 씬 `_ready`에서 `EarlyZone.apply(self, def)`. `FieldState.open_min_z`(배회 무리가 쓰는 선, 출격이 끝나면 -INF). 지금은 공원만(-32m, 3일차).
+- `MonsterRules.EARLY_DENSITY`, `density_mult(day)`, `scaled(base)`: 1~2일차 ×0.5, 3~4일차 ×0.75. 지역 상한, 둥지 상한, 배회 시작 무리·상한에 곱한다.
+- `FieldState.EARLY_KEEP_BAG_DAYS`(3), `early_bag_kept(day)`: 그 날까지는 하드코어가 아니면 쓰러져도 가방을 지킨다(장착 장비는 그대로 유실물).

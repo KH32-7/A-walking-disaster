@@ -83,6 +83,9 @@ const NEST_SPAWN_MIN := 1
 const NEST_SPAWN_MAX := 2
 ## Spawned monsters appear inside this radius around the nest.
 const SPAWN_SCATTER_RADIUS := 2.0 * SIZE_MULT
+## Onboarding ramp (04 "등장" 초반 밀도, 사용자 요청 2026-11-07, 가안): day -> multiplier on the
+## region cap, nest caps and the roaming start packs and cap. Days not listed use 1.0.
+const EARLY_DENSITY := {1: 0.5, 2: 0.5, 3: 0.75, 4: 0.75}
 
 # --- Roaming packs (RoamingSpawner). User request 2026-11-05, x2 on 2026-11-06 (more monsters). ---
 ## Packs scattered over outdoor navmesh when the region loads.
@@ -190,3 +193,12 @@ const ELITE_SIZE_MULT := 1.3
 ## Target-side defense factor from the 03 damage formula: 100 / (100 + R).
 static func defense_factor(defense: float) -> float:
 	return 100.0 / (100.0 + maxf(defense, 0.0))
+
+
+static func density_mult(day: int) -> float:
+	return float(EARLY_DENSITY.get(day, 1.0))
+
+
+## Today's value of a spawn cap or count: `base` x density_mult(GameState.day), at least 1.
+static func scaled(base: int) -> int:
+	return maxi(1, roundi(base * density_mult(GameState.day)))

@@ -6,6 +6,7 @@
 script = ExtResource("1_vtkpd")
 id = &"essence_lamp"
 display_name = "정수 등불"
+unlock_flag = &"blueprint_essence_workshop"
 description = "습격 때 가까이 온 마물에게 계속 피해를 줘요. 습격마다 정수를 써요."
 category = 10
 cost = Dictionary[StringName, int]({

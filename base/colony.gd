@@ -360,6 +360,15 @@ func remove_beds(bed_ids: Array[StringName]) -> void:
 ## Former job names for the "전직 … 주민 필요" reason (residents_screen has the full list).
 const _JOB_REASON_NAMES := {&"doctor": "의사", &"nurse": "간호사", &"electrician": "전기기사", &"carpenter": "목수"}
 
+## On the build list at all? (12 "해금 순서") Hidden until the base tier is reached and its onboarding
+## flag (BuildingDef.unlock_flag) is set. Prebuilt and story buildings are never on the list.
+func is_unlocked(def_id: StringName) -> bool:
+	var def := BaseDB.get_building(def_id)
+	if def == null or def.prebuilt or def.story_only:
+		return false
+	return tier >= def.tier_min and (def.unlock_flag == &"" or GameState.has_flag(def.unlock_flag))
+
+
 ## Can `def_id` be built now? Checks tier, required buildings, flags (blueprints, first death),
 ## a resident with the required former job, and the Lv1 cost. Placement (cells, zone, paths)
 ## is checked by the grid (C-03). Returns {"ok": bool, "reasons": Array[String]} for the UI.
@@ -374,6 +383,8 @@ func can_build(def_id: StringName) -> Dictionary:
 		reasons.append("이야기로만 생기는 건물")
 	if tier < def.tier_min:
 		reasons.append("기지 단계 %s 필요" % Enums.BaseTier.keys()[def.tier_min])
+	if def.unlock_flag != &"" and not GameState.has_flag(def.unlock_flag):
+		reasons.append("아직 안 열림")
 	for req in def.requires:
 		if not has_completed(req):
 			var req_def := BaseDB.get_building(req)

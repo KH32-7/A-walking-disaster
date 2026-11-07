@@ -14,9 +14,10 @@ extends Control
 ##   out (`called_out` signal, B-10). Cream bubble above the person for 3.5 s, also through walls;
 ##   off screen, a cream edge arrow "목소리". Companions (group "field_companions") use the same
 ##   signal for their signature skill line (B-29).
-## - Quest objectives (Quests.active_field_objectives, node named `marker`): the double yellow
-##   diamond of the minimap / M map floats over the spot with the distance under it; off screen, a
-##   yellow edge arrow with the diamond. Hidden within OBJ_HIDE_M, where the place takes over.
+## - Quest objectives (Quests.active_field_objectives, node named `marker`, or with no marker
+##   RescueTarget.auto_goal): the double yellow diamond of the minimap / M map floats over the spot
+##   with the distance under it; off screen, a yellow arrow on the ground at the player's feet like
+##   the ping's (사용자 요청 2026-11-07: edge arrows were missed). Hidden within OBJ_HIDE_M.
 ##   The words (marker_label) come once per sortie only: a banner at the top centre, diamond +
 ##   words, for BANNER_SEC (사용자 요청 2026-11-06: explain briefly, then just the symbol).
 ##   A rescue objective whose person is following points at the nearest open extraction point
@@ -214,6 +215,16 @@ func _draw_ping(cam: Camera3D, view: Rect2) -> void:
 		MapView.draw_symbol(self, sp, &"ping")
 		_center_text(sp + Vector2(0, 18), label, 17, UiTokens.TEXT, true)
 		return
+	_draw_ground_arrow(cam, p, target, UiTokens.PING, label)
+
+
+## Arrow lying on the ground at the player's feet, pointing at `target`, distance past its tip.
+## Ping (purple) and off-screen quest objectives (yellow) use it: the player always looks at their
+## own feet, the screen edge they miss (사용자 요청 2026-11-07).
+func _draw_ground_arrow(cam: Camera3D, p: Node3D, target: Vector3, color: Color, label: String) -> void:
+	var flat := Vector3(target.x - p.global_position.x, 0.0, target.z - p.global_position.z)
+	if flat.length_squared() < 0.01:
+		return
 	# Built flat on the ground in world space, then projected, so it lies on the floor.
 	var dir := flat.normalized()
 	var side := Vector3(-dir.z, 0.0, dir.x)
@@ -226,13 +237,13 @@ func _draw_ping(cam: Camera3D, view: Rect2) -> void:
 	var pts := PackedVector2Array()
 	for w in tri:
 		pts.append(cam.unproject_position(w))
-	draw_colored_polygon(pts, UiTokens.PING)
+	draw_colored_polygon(pts, color)
 	pts.append(pts[0])
 	draw_polyline(pts, Color(0, 0, 0, 0.8), 2.0, true)
 	_center_text(cam.unproject_position(tip + dir * 0.6), label, 17, UiTokens.TEXT, true)
 
 
-## Quest objectives in this region: diamond + distance on screen, edge arrow off it. The first
+## Quest objectives in this region: diamond + distance on screen, ground arrow off it. The first
 ## time an objective shows in a sortie its words go to the banner queue.
 func _draw_objectives(cam: Camera3D, view: Rect2) -> void:
 	if FieldState.region_id == &"":
@@ -244,6 +255,8 @@ func _draw_objectives(cam: Camera3D, view: Rect2) -> void:
 		# Rescued and following: the diamond moves to the nearest open extraction point.
 		var escort := RescueTarget.escort_goal(get_tree(), o)
 		var node := escort if escort != null else _find_marker(StringName(o.get("marker", &"")))
+		if node == null:
+			node = RescueTarget.auto_goal(get_tree(), o)
 		if node == null:
 			continue
 		var key := "%s/%s%s" % [o.get("quest_id", &""), o.get("objective_id", &""), "/escort" if escort != null else ""]
@@ -262,8 +275,8 @@ func _draw_objectives(cam: Camera3D, view: Rect2) -> void:
 		if not cam.is_position_behind(wp) and view.grow(-EDGE_PAD).has_point(sp):
 			MapView.draw_symbol(self, sp, &"objective")
 			_center_text(sp + Vector2(0, 32), dist, 15, UiTokens.TEXT, true)
-		else:
-			_draw_edge_arrow(cam, wp, &"objective", dist, 1.0)
+		elif p != null:
+			_draw_ground_arrow(cam, p, node.global_position, UiTokens.ACCENT, dist)
 	_draw_banner()
 
 
@@ -357,20 +370,12 @@ func _draw_edge_arrow(cam: Camera3D, wp: Vector3, kind: StringName, label: Strin
 	var col := Color("ff5b4d") if kind == &"alert" else (Color("ffc35a") if kind == &"suspicious" else Color("ffaa46"))
 	if kind == &"voice":
 		col = UiTokens.CREAM
-	elif kind == &"objective":
-		col = UiTokens.ACCENT
 	col.a *= alpha
 	var side := Vector2(-dir.y, dir.x)
 	var tri := PackedVector2Array([at + dir * 18.0, at - dir * 10.0 + side * 14.0, at - dir * 10.0 - side * 14.0])
 	draw_colored_polygon(tri, col)
 	tri.append(tri[0])
 	draw_polyline(tri, Color(0, 0, 0, 0.8 * alpha), 2.0, true)
-	if kind == &"objective":
-		# The diamond inside the arrow, the distance under it.
-		var d := at - dir * 36.0
-		MapView.draw_symbol(self, d, &"objective")
-		_center_text(_free_label_spot(d + Vector2(0, 30), label, 15, side), label, 15, Color(1, 1, 1, alpha), true)
-		return
 	_center_text(_free_label_spot(at - dir * 34.0, label, 17, side), label, 17, Color(1, 1, 1, alpha), true)
 
 

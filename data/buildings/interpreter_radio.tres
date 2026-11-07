@@ -6,6 +6,7 @@
 script = ExtResource("1_mbjb0")
 id = &"interpreter_radio"
 display_name = "통역 무전기"
+tier_min = 1
 description = "방송실에 달아요. 말이 다른 이주민과 무전하고 교역할 수 있어요."
 category = 5
 size = Vector2i(0, 0)

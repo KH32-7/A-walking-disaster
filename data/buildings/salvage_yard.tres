@@ -6,6 +6,7 @@
 script = ExtResource("1_x147l")
 id = &"salvage_yard"
 display_name = "고철 해체장"
+unlock_flag = &"extracted_flooded_mall"
 description = "주워 온 잔해를 뜯어 고철을 만들어요. 소리가 조금 나요."
 category = 1
 size = Vector2i(2, 2)

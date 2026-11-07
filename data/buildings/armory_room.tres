@@ -6,6 +6,7 @@
 script = ExtResource("1_atctg")
 id = &"armory_room"
 display_name = "무기고"
+unlock_flag = &"extracted_flooded_mall"
 description = "장비를 보관하고, 주민에게 무기와 방어구를 입혀요."
 category = 6
 size = Vector2i(3, 3)

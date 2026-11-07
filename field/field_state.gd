@@ -27,7 +27,11 @@ var boss_kills: Dictionary = {}
 ## region_id -> times the player went down there (A-14 radio: "같은 지역에서 3번 쓰러짐").
 var downs_by_region: Dictionary = {}
 ## Current sortie, from EventBus.sortie_started. Saved so a suspended sortie keeps them.
+## Days from the start on which going down keeps the bag (early_bag_kept).
+const EARLY_KEEP_BAG_DAYS := 3
 var region_id: StringName = &""
+## EarlyZone: the open part of today's map is z >= this (world, m). -INF = all of it.
+var open_min_z := -INF
 ## Companions still with the player this sortie (stranded ones are removed).
 var companions: Array[StringName] = []
 ## Garage uid of the vehicle brought on this sortie (loadout "vehicle"), &"" for none.
@@ -235,6 +239,7 @@ func _on_sortie_started(loadout: Dictionary) -> void:
 func _on_sortie_ended(_result: Dictionary) -> void:
 	# Back at base: no field night left over for anything that reads is_night().
 	_reset_clock()
+	open_min_z = -INF
 	clear_ping()
 	# Not recovered during its one sortie: gone.
 	_drop_lost_gear(func(e: Dictionary) -> bool: return e.get("offered", false))
@@ -257,11 +262,17 @@ func ensure_starter_weapon() -> StringName:
 	return uid
 
 
+## 12 "난이도" 초반 보호 (사용자 요청 2026-11-07, 가안): going down on days 1..EARLY_KEEP_BAG_DAYS
+## keeps the bag on every difficulty but hardcore. Equipped gear still drops as lost gear.
+func early_bag_kept(day: int) -> bool:
+	return day <= EARLY_KEEP_BAG_DAYS and not Settings.get_value(&"hardcore")
+
+
 func _on_player_downed() -> void:
 	_clock_running = false
 	var player := get_tree().get_first_node_in_group(Player.GROUP) as Node3D
 	var pos := player.global_position if player else Vector3.ZERO
-	var bag_kept: bool = Settings.get_value(&"keep_bag_on_down")
+	var bag_kept: bool = Settings.get_value(&"keep_bag_on_down") or early_bag_kept(GameState.day)
 	var bag: Dictionary = {"resources": {}, "items": []} if bag_kept else Bag.lose_contents()
 	var gear: Array[StringName] = []
 	for uid: StringName in Armory.list_equipped(Armory.PLAYER_ID).values():

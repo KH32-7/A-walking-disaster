@@ -12,6 +12,10 @@ var _completed: Array[StringName] = []
 func run() -> bool:
 	var colony_snapshot := JSON.stringify(Colony.save_data())
 	var economy_snapshot := Economy.save_data().duplicate(true)
+	var flags_snapshot := GameState.flags.duplicate(true)
+	# Past the onboarding stages (UnlockRules): these tests check the 09 rules, not the 12 order.
+	GameState.set_flag(UnlockRules.FIRST_RESCUE_FLAG)
+	GameState.set_flag(&"extracted_flooded_mall")
 	EventBus.building_completed.connect(_on_completed)
 	var ok := true
 	ok = _test_defs() and ok
@@ -25,6 +29,7 @@ func run() -> bool:
 	EventBus.building_completed.disconnect(_on_completed)
 	Economy.load_data(economy_snapshot)
 	Colony.load_data(JSON.parse_string(colony_snapshot))
+	GameState.flags = flags_snapshot
 	return ok
 
 
@@ -101,10 +106,12 @@ func _test_site_and_beds() -> bool:
 func _test_requirements() -> bool:
 	_fresh({&"wood": 120, &"stone": 40})  # stays under the base storage cap (200)
 	var check := Colony.can_build(&"dormitory")
-	var ok := _check(not check["ok"] and check["reasons"].size() == 1, "숙소는 목공소 필요: %s" % [check["reasons"]])
+	var ok := _check(not check["ok"] and check["reasons"].size() == 2, "숙소는 정착지와 목공소 필요: %s" % [check["reasons"]])
 	Colony.complete_building(Colony.place_building(&"carpentry_shop"))
-	ok = _check(Colony.can_build(&"dormitory")["ok"], "목공소 뒤에는 숙소 가능") and ok
 	ok = _check(not Colony.can_build(&"family_house")["ok"], "가족 숙소는 정착지") and ok
+	Colony.tier = Enums.BaseTier.SETTLEMENT
+	ok = _check(Colony.can_build(&"dormitory")["ok"], "정착지에서 목공소 뒤에는 숙소 가능") and ok
+	Colony.tier = Enums.BaseTier.CAMP
 	ok = _check(not Colony.can_build(&"essence_workshop")["ok"], "정수 공방은 설계도 필요") and ok
 	ok = _check(not Colony.can_build(&"generator")["ok"], "발전기는 전기기사 필요") and ok
 	return ok

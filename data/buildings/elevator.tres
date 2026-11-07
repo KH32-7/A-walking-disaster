@@ -6,6 +6,7 @@
 script = ExtResource("1_sc18c")
 id = &"elevator"
 display_name = "승강기"
+tier_min = 1
 description = "층이 다른 곳에 누구나 올라갈 수 있게 해요. 지금 기지에는 층이 다른 구역이 없어요."
 category = 5
 size = Vector2i(2, 2)

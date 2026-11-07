@@ -39,6 +39,12 @@ const FMT := "res://data/regions/%s.tres"
 
 const MAP_LABEL_KINDS: Array[StringName] = [&"landmark", &"water", &"area", &"road", &"spot"]
 
+@export_group("Early days")
+## 02 "맵 구조" 초반 구역 (EarlyZone): before early_open_day only the map south of this world z line
+## (m) is open. -INF = the whole map from day 1.
+@export var early_min_z := -INF
+@export var early_open_day := 3
+
 @export_group("Unlock")
 ## Shown on the sortie prep screen (02 "해금 조건").
 @export var unlock_text: String = ""

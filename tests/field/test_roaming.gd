@@ -19,6 +19,9 @@ var _autosave_before := true
 
 
 func run() -> bool:
+	# Past the onboarding days (MonsterRules.EARLY_DENSITY, EarlyZone, FieldState.early_bag_kept).
+	var day_before := GameState.day
+	GameState.day = 9
 	_night_before = FieldState.night
 	_autosave_before = SaveSystem.autosave_enabled
 	SaveSystem.autosave_enabled = false
@@ -41,6 +44,7 @@ func run() -> bool:
 	FieldState.night = _night_before
 	SaveSystem.autosave_enabled = _autosave_before
 	_world.free()
+	GameState.day = day_before
 	return _ok
 
 

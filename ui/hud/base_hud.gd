@@ -14,6 +14,8 @@ const MENU := [["건설", "B", &"build"], ["주민", "R", &"residents"], ["무�
 	["제작", "C", &"craft"], ["일지", "J", &"journal"], ["전초기지", "O", &"outposts"], ["머무르기", "H", &"@stay"], ["출격", "Enter", &"@sortie"]]
 const NOTE_MAX := 4
 const NOTE_SEC := 8.0
+## How often (s) the HUD rechecks which menus are open and posts what newly opened (UnlockRules).
+const UNLOCK_CHECK_SEC := 0.5
 
 var _day: Label
 var _phase: Label
@@ -25,6 +27,7 @@ var _threat_label: Label
 var _threat: ThreatGauge
 var _notes: VBoxContainer
 var _menu_buttons: Dictionary = {}
+var _unlock_t := 0.0
 
 
 func _ready() -> void:
@@ -37,6 +40,25 @@ func _ready() -> void:
 		sig.connect(func(_a: Variant = null, _b: Variant = null) -> void: refresh())
 	EventBus.notification_posted.connect(push_note)
 	refresh()
+	_update_unlocks()
+
+
+func _process(delta: float) -> void:
+	_unlock_t += delta
+	if _unlock_t >= UNLOCK_CHECK_SEC:
+		_unlock_t = 0.0
+		_update_unlocks()
+
+
+## Shows only the menus UnlockRules opens, and posts one note when menus or buildings opened.
+func _update_unlocks() -> void:
+	for id: StringName in _menu_buttons:
+		(_menu_buttons[id] as Control).visible = UnlockRules.menu_open(id)
+	if not is_visible_in_tree():
+		return
+	var note := UnlockRules.take_new_unlocks()
+	if note != "":
+		push_note("@build " + note)
 
 
 func refresh() -> void:
@@ -110,7 +132,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		var k := OS.get_keycode_string((event as InputEventKey).keycode)
 		for m: Array in MENU:
-			if k == m[1]:
+			if k == m[1] and UnlockRules.menu_open(m[2]):
 				_do(m[2])
 				get_viewport().set_input_as_handled()
 				return

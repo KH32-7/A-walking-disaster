@@ -55,6 +55,10 @@ const POWER_PRIORITY_OTHER := 3
 ## An active resident with this former job must live in the base (발전기 → electrician).
 @export var requires_former_job: StringName = &""
 @export var tier_min: Enums.BaseTier = Enums.BaseTier.CAMP
+## Onboarding stage (12 "해금 순서"): the build list hides this building until the GameState flag
+## is set (doctor_rescued, extracted_flooded_mall ...). &"" = open from the start. Unlike
+## requires_flags it hides the card instead of showing a reason. Colony.is_unlocked() checks it.
+@export var unlock_flag: StringName = &""
 ## Must be placed in a zone with this id (무전탑 → roof). &"" = any cleared zone.
 @export var zone_only: StringName = &""
 ## Attached to another building instead of the grid (통역 무전기 → radio_room).

@@ -281,11 +281,13 @@ func _collect() -> void:
 	for o: Dictionary in Quests.active_field_objectives(region_id):
 		var escort := RescueTarget.escort_goal(get_tree(), o)
 		var node := escort if escort != null else _find_marker(StringName(o.get("marker", &"")))
+		if node == null:
+			node = RescueTarget.auto_goal(get_tree(), o)
 		var entry := o.duplicate()
 		entry["found"] = node != null
 		if node != null:
 			entry["pos"] = node.global_position
-			var where := "탈출 지점" if escort != null else String(o.get("marker_label", ""))
+			var where := "탈출 지점" if escort != null or node is ExtractPoint else String(o.get("marker_label", ""))
 			marks.append({"pos": node.global_position, "kind": &"objective", "label": where if where != "" else _short(String(o.text))})
 		objectives.append(entry)
 	for r: Node3D in _markers(Recording.GROUP):

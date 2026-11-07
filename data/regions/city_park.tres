@@ -14,6 +14,8 @@ loot_table_id = &"city_park"
 boss_id = &"ancient_tree_giant"
 extract_candidates = Array[StringName]([&"park_south_gate", &"park_east_bus", &"park_north_gate"])
 hidden_routes = Array[StringName]([&"park_old_underpass"])
+early_min_z = -32.0
+early_open_day = 3
 map_labels = Array[Dictionary]([{
 "kind": &"landmark",
 "pos": Vector2(-63, -7.5),

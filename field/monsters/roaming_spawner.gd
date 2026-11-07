@@ -44,9 +44,10 @@ func tick(delta: float) -> void:
 		_started = true
 		_collect_indoor()
 		if spawn_start_groups:
-			for i in MonsterRules.ROAM_START_GROUPS:
+			var start_groups := MonsterRules.scaled(MonsterRules.ROAM_START_GROUPS)
+			for i in start_groups:
 				# Leave room under ROAM_MAX_ALIVE for the packs still to come (1 monster each).
-				var packs_left := MonsterRules.ROAM_START_GROUPS - i - 1
+				var packs_left := start_groups - i - 1
 				_spawn_pack(MonsterRules.ROAM_START_MIN_PLAYER_DIST, false,
 						packs_left * MonsterRules.ROAM_GROUP_MIN)
 	_timer -= delta * (FieldState.night.spawn_mult if FieldState.is_night() else 1.0)
@@ -74,8 +75,8 @@ func spawn_group(at: Vector3, count: int, def: MonsterDef = null) -> Array[Monst
 		return out
 	var pack := MonsterPack.new()
 	for i in count:
-		if alive_count() >= MonsterRules.ROAM_MAX_ALIVE \
-				or get_tree().get_nodes_in_group(Monster.GROUP).size() >= MonsterRules.REGION_MAX_ALIVE:
+		if alive_count() >= MonsterRules.scaled(MonsterRules.ROAM_MAX_ALIVE) \
+				or get_tree().get_nodes_in_group(Monster.GROUP).size() >= MonsterRules.scaled(MonsterRules.REGION_MAX_ALIVE):
 			break
 		var monster := pick.scene.instantiate() as Monster
 		monster.def = pick
@@ -97,7 +98,7 @@ func spawn_group(at: Vector3, count: int, def: MonsterDef = null) -> Array[Monst
 
 ## reserve = roaming slots to keep free for packs that still have to spawn (start packs).
 func _spawn_pack(min_player_dist: float, hide_from_camera: bool, reserve: int = 0) -> void:
-	var room := MonsterRules.ROAM_MAX_ALIVE - alive_count() - reserve
+	var room := MonsterRules.scaled(MonsterRules.ROAM_MAX_ALIVE) - alive_count() - reserve
 	if room <= 0:
 		return
 	var at := _pick_point(min_player_dist, hide_from_camera)
@@ -120,7 +121,7 @@ func _try_points(min_player_dist: float, hide_from_camera: bool, keep_spread: bo
 	var camera := get_viewport().get_camera_3d() if hide_from_camera else null
 	for i in MonsterRules.ROAM_POINT_TRIES:
 		var p := NavigationServer3D.map_get_random_point(map, navigation_layers, true)
-		if p == Vector3.ZERO or p.y > MonsterRules.ROAM_MAX_Y or _is_indoor(p):
+		if p == Vector3.ZERO or p.y > MonsterRules.ROAM_MAX_Y or _is_indoor(p) or p.z < FieldState.open_min_z:
 			continue
 		if _near_any(p, players, min_player_dist) or _near_any(p, nests, MonsterRules.ROAM_CLEAR_NEST):
 			continue
