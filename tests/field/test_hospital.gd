@@ -168,9 +168,7 @@ func _check_wall(map: RID) -> void:
 
 func _check_assembly() -> void:
 	var saved_respawn := FieldState.boss_respawn_day.duplicate()
-	var saved_day := GameState.day
 	FieldState.boss_respawn_day = {}
-	GameState.day = BossDef.for_monster(BOSS_ID).first_day
 	var hospital := (load(ASSEMBLY) as PackedScene).instantiate() as Node3D
 	_tree.root.add_child(hospital)
 	for i in 5:
@@ -181,7 +179,6 @@ func _check_assembly() -> void:
 		bosses.append((node as BossMonster).def.id)
 		_expect((node as BossMonster).state == Enums.AIState.SLEEP, "%s starts asleep" % node.name)
 	_expect(bosses == [BOSS_ID], "the hospital's BossSpawner puts the wraith out %s" % [bosses])
-	GameState.day = saved_day
 	FieldState.boss_respawn_day = saved_respawn
 	var players := _tree.get_nodes_in_group(Player.GROUP)
 	_expect(players.size() == 1, "assembly spawns one player")
