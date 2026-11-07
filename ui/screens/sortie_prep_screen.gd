@@ -16,6 +16,8 @@ const MAX_COMPANIONS := 1
 
 var _region: StringName = &""
 var _companions: Array[StringName] = []
+## Garage uid of the vehicle to bring (02 "탈것"), &"" for none.
+var _vehicle: StringName = &""
 var _regions_box: VBoxContainer
 var _mid: VBoxContainer
 var _right: VBoxContainer
@@ -197,6 +199,7 @@ func _fill_loadout() -> void:
 	eb.disabled = not UI.has_screen(&"armory")
 	eb.pressed.connect(func() -> void: UI.open(&"armory"))
 	_mid.add_child(eb)
+	_fill_vehicles()
 	var reg: Dictionary = {}
 	for r: Dictionary in REGIONS:
 		if r.id == _region:
@@ -210,6 +213,51 @@ func _fill_loadout() -> void:
 		cv.add_child(_cream_label("이런 걸 찾을 수 있어요: %s" % reg.res, 15))
 		cv.add_child(_cream_label("해질녘까지 %d분. 해가 지면 마물이 강해집니다." % int(GameState.SORTIE_DUSK_SEC / 60.0), 14, true))
 		_mid.add_child(card[0])
+
+
+## 02 "탈것": one of the base's vehicles may come along. Boats only where the region has a dock;
+## broken ones and ones left in the field cannot (the row says why).
+func _fill_vehicles() -> void:
+	if Garage.list().is_empty():
+		return
+	_mid.add_child(MenuScreen.label("탈것", &"LabelSection", 16))
+	if not vehicle_ok(_vehicle, _region):
+		_vehicle = &""
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override(&"h_separation", 8)
+	row.add_theme_constant_override(&"v_separation", 8)
+	row.add_child(_vehicle_button(&"", "걸어서", ""))
+	for uid in Garage.list():
+		row.add_child(_vehicle_button(uid, Garage.def_of(uid).name, vehicle_block(uid, _region)))
+	_mid.add_child(row)
+
+
+## Why `uid` cannot come to `region_id`, "" when it can.
+static func vehicle_block(uid: StringName, region_id: StringName) -> String:
+	if Garage.is_away(uid):
+		return "필드에 있음"
+	if Garage.is_broken(uid):
+		return "고장"
+	var def := RegionDef.load_def(region_id)
+	if Garage.def_of(uid).surface == VehicleDef.Surface.WATER and (def == null or not def.boat_dock):
+		return "선착장 없음"
+	return ""
+
+
+static func vehicle_ok(uid: StringName, region_id: StringName) -> bool:
+	return uid == &"" or (Garage.owned.has(uid) and vehicle_block(uid, region_id) == "")
+
+
+func _vehicle_button(uid: StringName, text: String, why: String) -> Button:
+	var on := uid == _vehicle
+	var b := MenuScreen.button(("선택: " if on else "") + text + ("  (%s)" % why if why != "" else ""),
+			&"ButtonPrimary" if on else &"ButtonSoft")
+	b.disabled = why != ""
+	b.focus_mode = Control.FOCUS_NONE
+	b.pressed.connect(func() -> void:
+		_vehicle = uid
+		_fill_loadout())
+	return b
 
 
 func _fill_companions() -> void:
@@ -320,7 +368,8 @@ func go_button() -> Button:
 
 
 func loadout() -> Dictionary:
-	return {"region_id": _region, "companions": _companions.duplicate(), "gear": {}}
+	return {"region_id": _region, "companions": _companions.duplicate(), "gear": {},
+		"vehicle": _vehicle if vehicle_ok(_vehicle, _region) else &""}
 
 
 func _depart() -> void:

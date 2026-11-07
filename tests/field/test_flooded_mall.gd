@@ -13,12 +13,15 @@ const NAV_WHEELCHAIR := 2
 const REACH := 1.5 ## path end within this distance (xz) of the target
 ## Map file markers plus the generator's extras (build_layout.gd EXTRA_NESTS, extra LootSpots):
 ## loot 19 + 54 (B-26: denser loot) + 9 (B-26: filler scenes in dead space; the boss arenas keep two
-## fillers out since 2026-11-06), nests 3 + 3.
+## fillers out since 2026-11-06), nests 3 + 3, vehicle spots 6 land + 2 boats and the roof deck
+## helicopter extract (02 "탈것", _build_late_markers).
 const MARKER_COUNTS := {
-	PlayerSpawn.GROUP: 2, ExtractPoint.GROUP: 3, LootSpot.GROUP: 82, MonsterNest.GROUP: 6,
+	PlayerSpawn.GROUP: 2, ExtractPoint.GROUP: 4, LootSpot.GROUP: 82, MonsterNest.GROUP: 6,
 	RescueSpot.GROUP: 8, HiddenRoute.GROUP: 1, Recording.GROUP: 2, BossArena.GROUP: 4,
+	VehicleSpot.GROUP: 8,
 }
-const EXTRACT_IDS := [&"mall_dock", &"mall_gas_station", &"mall_north_gate"]
+## 02 "헬기 탈출": the roof deck helicopter joins on top of the 3 candidates (30% of sorties).
+const EXTRACT_IDS := [&"mall_dock", &"mall_gas_station", &"mall_north_gate", &"mall_heli_deck"]
 const BOSS_IDS := [&"sunken_sign_serpent", &"surgical_lamp_wraith", &"neon_colossus", &"breakwater_golem"]
 const NAV_SYNC_MAX_FRAMES := 300
 ## Nest interval after the generator's NEST_INTERVAL_MULT (map file 180s).
@@ -145,7 +148,10 @@ func _check_assembly() -> void:
 			"roaming packs start on real navmesh points %s" % [packs.values()])
 	_expect((mall.get_node(^"LootSpawner") as LootSpawner).spawned.size() > 0, "loot containers spawn")
 	var extraction := mall.get_node(^"ExtractionManager") as ExtractionManager
-	_expect(extraction.active_point_ids().size() == ExtractionManager.ACTIVE_COUNT, "2 of 3 extract points are active")
+	var normal_active := extraction.active_points().filter(func(p: ExtractPoint) -> bool:
+		return p.type != ExtractPoint.Type.HELICOPTER)
+	_expect(normal_active.size() == ExtractionManager.ACTIVE_COUNT, "2 of 3 extract points are active (+ helicopter maybe)")
+	_expect((mall.get_node(^"VehicleSpawner") as VehicleSpawner).spawned.size() > 0, "vehicles spawn (02 탈것)")
 	_expect(mall.get_node_or_null(^"CompanionManager") is CompanionManager, "companion manager (B-17) in the assembly")
 	var zones := mall.find_children("IndoorZone_*", "Area3D", true, false)
 	_expect(zones.size() == 12 and zones.all(func(z: Node) -> bool: return z is IndoorZone and z.building_id != &""),

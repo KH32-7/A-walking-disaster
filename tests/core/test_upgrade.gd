@@ -217,14 +217,16 @@ func _check_auto_repair() -> bool:
 
 
 func _check_recipes() -> bool:
-	if not _expect(Armory.recipes.size() == 34, "recipes %d (design 05 table: 34)" % Armory.recipes.size()):
+	# Design 05 table: 34, plus 5 vehicles (02 "탈것").
+	if not _expect(Armory.recipes.size() == 39, "recipes %d (design 05 table: 34 + vehicles 5)" % Armory.recipes.size()):
 		return false
 	for id: StringName in Armory.recipes:
 		var recipe: Recipe = Armory.get_recipe(id)
 		for input: StringName in recipe.inputs:
 			if not _expect(Economy.get_def(input) != null, "%s: unknown input %s" % [id, input]):
 				return false
-		var equipment := Armory.get_def(recipe.output_id) != null
+		# Vehicles are crafted by the player, like equipment.
+		var equipment := Armory.get_def(recipe.output_id) != null or Garage.is_vehicle(recipe.output_id)
 		if not _expect(equipment or Economy.get_def(recipe.output_id) != null, "%s: unknown output" % id) \
 				or not _expect(BaseDB.get_building(recipe.facility) != null, "%s: unknown facility %s" % [id, recipe.facility]) \
 				or not _expect(equipment != recipe.by_worker, "%s: equipment is crafted by the player" % id):

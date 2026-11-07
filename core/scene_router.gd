@@ -33,6 +33,8 @@ const STARTER_LOADOUT := {Enums.EquipSlot.MAIN: &"pistol"}
 ## What the camp has on day 1 (가안 — not in the design yet): enough for the tutorial 모닥불 and a
 ## 침상, so building can be tried before the first sortie. Numbers live only here.
 const STARTER_RESOURCES := {&"wood": 25, &"stone": 10, &"food": 10}
+## StartKit data (시연용 슬롯별 시작 장비). A new game in a slot applies the kit for that slot.
+const START_KITS_DIR := "res://data/start_kits/"
 
 const S := Enums.FlowState
 ## Allowed moves. Anything else is refused with an error.
@@ -101,8 +103,25 @@ func start_new_game(slot: int = 0, difficulty: StringName = &"normal", with_intr
 	else:
 		_give_starter_loadout()
 	Economy.apply(STARTER_RESOURCES)
+	var kit := start_kit_for(slot)
+	if kit != null and not kit.apply():
+		push_error("SceneRouter: start kit for slot %d was not fully given" % slot)
 	_begin_morning()
 	return true
+
+
+## The StartKit in START_KITS_DIR for this save slot, or null (the usual start).
+## ResourceLoader.list_directory so an exported build finds the .tres too.
+static func start_kit_for(slot: int) -> StartKit:
+	if not DirAccess.dir_exists_absolute(START_KITS_DIR):
+		return null
+	for f in ResourceLoader.list_directory(START_KITS_DIR):
+		if f.get_extension() != "tres":
+			continue
+		var kit := load(START_KITS_DIR + f) as StartKit
+		if kit != null and kit.slot == slot:
+			return kit
+	return null
 
 
 func _give_starter_loadout() -> void:

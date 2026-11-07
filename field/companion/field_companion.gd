@@ -90,6 +90,8 @@ var signature_skill: SkillDef
 var signature_line := ""
 ## RescueCall (살려주는 주민): runs straight to this node at sprint speed, no fighting, until cleared.
 var rush_to: Node3D
+## Vehicle this person sits in (FieldVehicle seats them), or null. Hidden and not acting meanwhile.
+var riding: FieldVehicle
 var rng := RandomNumberGenerator.new()
 
 var _player: Node3D
@@ -148,6 +150,10 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if riding != null:
+		global_position = riding.seat_position(1)
+		velocity = Vector3.ZERO
+		return
 	tick(delta)
 	# Slow / bind scale the walking velocity; knockback replaces it (B-14).
 	velocity = status.steer(velocity)
@@ -219,6 +225,9 @@ func hold_state() -> Dictionary:
 ## Damage from monsters (B-07 calls take_damage(amount, info) on layer 3 bodies).
 ## Status effects ride in info (StatusHolder header). Tick damage comes back here too.
 func take_damage(amount: float, info: Dictionary = {}) -> void:
+	if riding != null:
+		riding.take_damage(amount, info)
+		return
 	if state != State.ACTIVE or amount <= 0.0:
 		return
 	amount = status.scale_damage(amount, info)

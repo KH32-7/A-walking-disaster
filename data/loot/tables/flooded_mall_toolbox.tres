@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="LootTable" load_steps=9 format=3]
+[gd_resource type="Resource" script_class="LootTable" load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://field/defs/loot_table.gd" id="1_table"]
 [ext_resource type="Script" path="res://field/defs/loot_entry.gd" id="2_entry"]
@@ -45,6 +45,13 @@ weight = 60.0
 min_count = 3
 max_count = 6
 
+[sub_resource type="Resource" id="Entry_6"]
+script = ExtResource("2_entry")
+item_id = &"steel_plate"
+weight = 8.0
+min_count = 1
+max_count = 2
+
 [resource]
 script = ExtResource("1_table")
 id = &"flooded_mall_toolbox"
@@ -52,7 +59,7 @@ region_id = &"flooded_mall"
 container_type = 2
 roll_min = 1
 roll_max = 3
-entries = Array[ExtResource("2_entry")]([SubResource("Entry_0"), SubResource("Entry_1"), SubResource("Entry_2"), SubResource("Entry_3"), SubResource("Entry_4"), SubResource("Entry_5")])
+entries = Array[ExtResource("2_entry")]([SubResource("Entry_0"), SubResource("Entry_1"), SubResource("Entry_2"), SubResource("Entry_3"), SubResource("Entry_4"), SubResource("Entry_5"), SubResource("Entry_6")])
 gear_chance = 0.3
 gear_rarity_weights = Array[float]([70.0, 30.0])
 gear_pool = Array[StringName]([&"pipe_wrench", &"hammer", &"club", &"dagger", &"work_helmet", &"work_boots", &"work_vest", &"sneakers"])

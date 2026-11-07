@@ -31,6 +31,9 @@ const FMT := "res://data/regions/%s.tres"
 @export var extract_candidates: Array[StringName] = []
 ## HiddenRoute ids on the map.
 @export var hidden_routes: Array[StringName] = []
+## 02 "탈것": the map has a WATER VehicleSpot to put a boat from the base on (the sortie screen
+## offers boats only here).
+@export var boat_dock := false
 ## Place names drawn on the field map and minimap (Lane D). Generated from the map file by
 ## field/build/export_map_labels.gd; edit the map file and run that again rather than this list.
 ## [{"text": String, "pos": Vector2 (world x/z, metres), "kind": StringName}]

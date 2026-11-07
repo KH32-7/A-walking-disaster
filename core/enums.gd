@@ -45,7 +45,7 @@ enum FlowState {
 
 ## Data enums from the design "데이터 정의" tables, shared because more than one lane reads them.
 enum ResourceCategory { BASIC, PROCESSED, FIELD, MONSTER, SPECIAL }  # 11 ResourceDef
-enum ExtractType { NORMAL, GENERATOR, KEY, BATTERY }  # 02 ExtractPoint
+enum ExtractType { NORMAL, GENERATOR, KEY, BATTERY, HELICOPTER }  # 02 ExtractPoint
 enum RelationFlag { LOVERS, MARRIED, RIVAL, GUARDIAN, COMRADES }  # 08 Relation (COMRADES: 2026-11-07 전우애)
 enum ArrivalMethod { BIRTH, ADOPTION }  # 08 Arrival
 enum RaidTime { DAY, NIGHT }  # 10 RaidResult
@@ -64,6 +64,8 @@ const LAYER_PLAYER_PROJECTILE := 5
 const LAYER_MONSTER_PROJECTILE := 6
 const LAYER_INTERACTABLE := 7
 const LAYER_TRIGGER := 8
+## Land around deep water: the only thing boats bump into (02 "탈것").
+const LAYER_BOAT_BOUNDS := 9
 
 
 ## Element multiplier when an attack of `attack` hits a target of `target`.

@@ -30,6 +30,8 @@ var downs_by_region: Dictionary = {}
 var region_id: StringName = &""
 ## Companions still with the player this sortie (stranded ones are removed).
 var companions: Array[StringName] = []
+## Garage uid of the vehicle brought on this sortie (loadout "vehicle"), &"" for none.
+var vehicle_uid: StringName = &""
 ## loadout["seed"] of the current sortie (SceneRouter sets it), -1 when the scene runs without
 ## the router. ExtractionManager picks the active extraction points from it (issue #44).
 var sortie_seed := -1
@@ -215,6 +217,7 @@ func strand_companion(resident_id: StringName) -> void:
 func _on_sortie_started(loadout: Dictionary) -> void:
 	region_id = loadout.get("region_id", &"")
 	companions.assign(loadout.get("companions", []))
+	vehicle_uid = StringName(loadout.get("vehicle", &""))
 	sortie_seed = int(loadout.get("seed", -1))
 	_down_result = {}
 	# A stale result would leak into this sortie's sortie_ended (issue #44).
@@ -293,7 +296,7 @@ func _drop_lost_gear(should_drop: Callable) -> void:
 func save_data() -> Dictionary:
 	return {"lost_gear": lost_gear, "boss_respawn_day": boss_respawn_day, "boss_kills": boss_kills,
 		"downs_by_region": downs_by_region, "region_id": region_id, "companions": companions,
-		"sortie_time": _sortie_time, "clock_running": _clock_running}
+		"vehicle_uid": String(vehicle_uid), "sortie_time": _sortie_time, "clock_running": _clock_running}
 
 
 func load_data(data: Dictionary) -> void:
@@ -303,6 +306,7 @@ func load_data(data: Dictionary) -> void:
 	downs_by_region = data.get("downs_by_region", {})
 	region_id = data.get("region_id", &"")
 	companions.assign(data.get("companions", []))
+	vehicle_uid = StringName(data.get("vehicle_uid", ""))
 	_down_result = {}
 	# A suspended sortie resumes on the same clock. Thresholds already passed are not re-sent;
 	# MonsterSpawner checks is_night() itself when the region scene loads.

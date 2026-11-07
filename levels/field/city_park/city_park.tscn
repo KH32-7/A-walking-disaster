@@ -5,6 +5,7 @@
 [ext_resource type="Script" path="res://field/monsters/monster_spawner.gd" id="3_monster_spawner"]
 [ext_resource type="Resource" path="res://data/monsters/vine_tendril.tres" id="4_vine"]
 [ext_resource type="Resource" path="res://data/monsters/spore_pod.tres" id="5_pod"]
+[ext_resource type="Script" path="res://field/vehicles/vehicle_spawner.gd" id="92_vehicle_spawner"]
 [ext_resource type="Script" path="res://field/loot/loot_spawner.gd" id="7_loot_spawner"]
 [ext_resource type="Script" path="res://field/extract/extraction_manager.gd" id="8_extraction"]
 [ext_resource type="Script" path="res://field/downed/lost_gear_spawner.gd" id="9_lost_gear"]
@@ -46,6 +47,10 @@ region_id = &"city_park"
 script = ExtResource("7_loot_spawner")
 region_id = &"city_park"
 spawn_ratio = 0.7
+spots_root = NodePath("../Layout")
+
+[node name="VehicleSpawner" type="Node3D" parent="."]
+script = ExtResource("92_vehicle_spawner")
 spots_root = NodePath("../Layout")
 
 [node name="GreyboxLighting" type="Node3D" parent="."]

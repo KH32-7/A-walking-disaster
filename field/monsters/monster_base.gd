@@ -102,6 +102,8 @@ var _arrived := false
 var _attack_cooldown := 0.0
 var _windup_sent := false
 var _sight_timer := 0.0
+## _clock of the last hurt sound (MonsterRules.HURT_SOUND_GAP_SEC).
+var _hurt_sound_at := -INF
 var _raid: RaidMarch
 ## Collision body radius before scale (attack_reach).
 var _body_radius := 0.0
@@ -222,6 +224,9 @@ func take_damage(amount: float, info: Dictionary = {}) -> void:
 		return
 	if tick:
 		return
+	if _clock - _hurt_sound_at >= MonsterRules.HURT_SOUND_GAP_SEC:
+		_hurt_sound_at = _clock
+		_sound("hurt")
 	status.apply_hit(info)
 	_react_to_hit(info)
 	CombatFeel.flinch(self, info)
@@ -488,6 +493,7 @@ func _tick_attack(delta: float) -> void:
 	_attack_cooldown -= delta
 	if not _windup_sent and _attack_cooldown <= MonsterRules.ATTACK_WINDUP_SEC:
 		_windup_sent = true
+		_sound("attack")
 		attack_started.emit({"monster_id": def.id, "target": target})
 	if _attack_cooldown <= 0.0:
 		_attack_cooldown = def.attack_interval
@@ -651,6 +657,10 @@ func _set_state(new_state: Enums.AIState) -> void:
 			_heard_times.clear()
 		Enums.AIState.INVESTIGATE:
 			target = null
+	if new_state == Enums.AIState.SUSPICIOUS:
+		_sound("suspicious")
+	elif new_state == Enums.AIState.CHASE and old != Enums.AIState.ATTACK:
+		_sound("chase")
 	state_changed.emit(old, new_state)
 	for behavior in _behaviors:
 		behavior.on_state_changed(old, new_state)
@@ -712,12 +722,21 @@ func _die() -> void:
 	for behavior in _behaviors:
 		behavior.on_died()
 	MonsterDrops.drop_for(self)
+	_sound("death")
 	EventBus.monster_killed.emit(def.id, def.family, global_position)
 	_set_outline(false)
 	died.emit(self)
 	if pack:
 		pack.remove(self)
 	queue_free()
+
+
+## Audio.play(&"monster_<family>_<action>"); Audio falls back to monster_<action>.
+func _sound(action: String) -> void:
+	if not is_inside_tree():
+		return
+	var family := String(Enums.Element.keys()[def.family]).to_lower()
+	Audio.play(StringName("monster_%s_%s" % [family, action]), global_position)
 
 
 func _on_noise_emitted(point: Vector3, radius: float, source: Node) -> void:

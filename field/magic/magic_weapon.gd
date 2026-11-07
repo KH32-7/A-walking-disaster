@@ -78,7 +78,7 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if _player.is_downed:
+	if _player.is_downed or _player.is_riding():
 		return
 	step(delta, {"release": Input.is_action_just_pressed(&"essence_release") and not Player.input_blocked()})
 

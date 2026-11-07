@@ -25,6 +25,7 @@ InputSetup="*res://core/input_setup.gd"
 SaveSystem="*res://core/save_system.gd"
 Economy="*res://systems/economy.gd"
 Armory="*res://systems/armory.gd"
+Garage="*res://systems/garage.gd"
 Bag="*res://systems/bag.gd"
 Radio="*res://ai/radio.gd"
 FieldState="*res://field/field_state.gd"
@@ -54,6 +55,7 @@ enabled=PackedStringArray("res://addons/Godot-MToon-Shader/plugin.cfg", "res://a
 3d_physics/layer_6="monster_projectile"
 3d_physics/layer_7="interactable"
 3d_physics/layer_8="trigger"
+3d_physics/layer_9="boat_bounds"
 
 [shader_globals]
 

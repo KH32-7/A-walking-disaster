@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="Recipe" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/recipe.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = &"vehicle_rowboat"
+facility = &"carpentry_shop"
+inputs = Dictionary[StringName, int]({
+&"wood": 20,
+&"plank": 5
+})
+output_id = &"rowboat"
+output_qty = 1
+by_worker = false
