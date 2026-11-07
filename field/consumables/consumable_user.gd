@@ -235,10 +235,10 @@ func _throw(def: ConsumableDef) -> bool:
 	return true
 
 
-## Downed, staggered, knocked back or mid-dodge: no using.
+## Downed, staggered, knocked back, mid-dodge or mid-vault: no using.
 func _can_act() -> bool:
 	return _player != null and not _player.is_downed and _player.status.can_act() \
-			and _player.move_state != Player.MoveState.DODGE
+			and _player.move_state != Player.MoveState.DODGE and not _player.is_vaulting()
 
 
 # --- Quick slots and HUD ------------------------------------------------------

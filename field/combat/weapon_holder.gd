@@ -162,7 +162,7 @@ func switch_to(slot: Enums.EquipSlot) -> bool:
 
 func can_act() -> bool:
 	return _clock >= _stun_until and _player.move_state != Player.MoveState.DODGE \
-			and not _player.is_downed
+			and not _player.is_vaulting() and not _player.is_downed
 
 
 func is_stunned() -> bool:

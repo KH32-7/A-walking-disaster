@@ -35,7 +35,8 @@ radii = Dictionary[StringName, float]({
 &"vehicle_rowboat": 3.0,
 &"vehicle_motorboat": 18.0,
 &"vehicle_repair": 6.0,
-&"helicopter_repair": 25.0
+&"helicopter_repair": 25.0,
+&"vault": 5.0
 })
 footstep_actions = Array[StringName]([&"walk", &"sprint", &"escort_walk", &"escort_slow", &"escort_wheelchair", &"escort_supported", &"escort_child", &"companion_quiet"])
 quiet_step_bonus = -2.0

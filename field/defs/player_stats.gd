@@ -31,6 +31,17 @@ extends Resource
 @export var dodge_invuln_sec: float = 0.3
 @export var dodge_stamina: float = 25.0
 
+@export_group("Vault")
+## Pushing into low cover (B-06 low_cover group) this long climbs over it (가안). 0 = off.
+@export var vault_hold_sec: float = 0.25
+## Highest obstacle top above the feet (m). Same as LOW_COVER_MAX_H (city_kit, layout_builder).
+@export var vault_max_height: float = 1.2
+## Thickest obstacle it climbs over (m).
+@export var vault_max_depth: float = 1.2
+@export var vault_duration_sec: float = 0.45
+## How far the feet clear the top at the arc's peak (m).
+@export var vault_clearance: float = 0.15
+
 @export_group("Interaction")
 ## Reach for loot containers and other interactables (가안, not in the design doc).
 @export var interact_range: float = 1.5
