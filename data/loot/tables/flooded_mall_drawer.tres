@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="LootTable" load_steps=11 format=3]
+[gd_resource type="Resource" script_class="LootTable" load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://field/defs/loot_table.gd" id="1_table"]
 [ext_resource type="Script" path="res://field/defs/loot_entry.gd" id="2_entry"]
@@ -59,6 +59,13 @@ weight = 35.0
 min_count = 2
 max_count = 4
 
+[sub_resource type="Resource" id="Entry_8"]
+script = ExtResource("2_entry")
+item_id = &"ammo_rifle"
+weight = 6.0
+min_count = 4
+max_count = 8
+
 [resource]
 script = ExtResource("1_table")
 id = &"flooded_mall_drawer"
@@ -66,6 +73,7 @@ region_id = &"flooded_mall"
 container_type = 0
 roll_min = 1
 roll_max = 3
-entries = Array[ExtResource("2_entry")]([SubResource("Entry_0"), SubResource("Entry_1"), SubResource("Entry_2"), SubResource("Entry_3"), SubResource("Entry_4"), SubResource("Entry_5"), SubResource("Entry_6"), SubResource("Entry_7")])
-gear_chance = 0.04
-gear_pool = Array[StringName]([&"pistol", &"smg", &"shotgun", &"machete", &"pipe_wrench", &"hammer", &"baseball_bat"])
+entries = Array[ExtResource("2_entry")]([SubResource("Entry_0"), SubResource("Entry_1"), SubResource("Entry_2"), SubResource("Entry_3"), SubResource("Entry_4"), SubResource("Entry_5"), SubResource("Entry_6"), SubResource("Entry_7"), SubResource("Entry_8")])
+gear_chance = 0.18
+gear_rarity_weights = Array[float]([70.0, 30.0])
+gear_pool = Array[StringName]([&"pistol", &"smg", &"shotgun", &"machete", &"pipe_wrench", &"hammer", &"baseball_bat", &"cloth_hat", &"hoodie", &"sneakers", &"knee_guards", &"work_boots", &"work_helmet"])

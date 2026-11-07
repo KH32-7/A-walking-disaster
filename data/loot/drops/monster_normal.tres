@@ -12,6 +12,6 @@ essence_max = 1
 material_chance = 0.5
 material_min = 1
 material_max = 1
-gear_chance = 0.03
+gear_chance = 0.06
 gear_rarity_weights = Array[float]([1.0])
 gear_pool = Array[StringName]([&"club", &"dagger", &"pipe_wrench", &"baseball_bat", &"machete", &"pistol", &"cloth_hat", &"hoodie", &"sneakers", &"knee_guards", &"work_helmet", &"work_vest", &"work_boots"])
