@@ -72,6 +72,8 @@ var _result: Dictionary = {}
 var _emergency: EmergencyReturn
 ## Blueprints not known when the sortie began: flag -> output_id. The result lists the ones learned since.
 var _blueprints_before := {}
+## Active helicopter point -> its HelicopterWreck (02 "헬기 탈출").
+var _wrecks := {}
 
 
 func _ready() -> void:
@@ -111,6 +113,14 @@ func activate(seed_value: int) -> void:
 		if node is ExtractPoint:
 			candidates.append(node)
 	candidates.sort_custom(func(a: ExtractPoint, b: ExtractPoint) -> bool: return String(a.id) < String(b.id))
+	# Helicopter points are not part of the draw: each joins on top with TUNING.helicopter_chance.
+	for wreck: HelicopterWreck in _wrecks.values():
+		# Out of the tree now, so the next wreck gets the same node name.
+		wreck.get_parent().remove_child(wreck)
+		wreck.queue_free()
+	_wrecks.clear()
+	var helis := candidates.filter(func(p: ExtractPoint) -> bool: return p.type == ExtractPoint.Type.HELICOPTER)
+	candidates.assign(candidates.filter(func(p: ExtractPoint) -> bool: return p.type != ExtractPoint.Type.HELICOPTER))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
 	# Partial Fisher-Yates: the first ACTIVE_COUNT slots end up random.
@@ -120,7 +130,11 @@ func activate(seed_value: int) -> void:
 		candidates[i] = candidates[j]
 		candidates[j] = swap
 	_active = candidates.slice(0, ACTIVE_COUNT)
-	for c in candidates:
+	for h: ExtractPoint in helis:
+		if rng.randf() < FieldVehicle.TUNING.helicopter_chance:
+			_active.append(h)
+			_make_wreck(h)
+	for c: ExtractPoint in candidates + helis:
 		c.set_active(c in _active)
 	active_points_changed.emit(active_point_ids())
 
@@ -212,6 +226,9 @@ func _has_required_item(point: ExtractPoint) -> bool:
 
 
 func _try_start(point: ExtractPoint) -> void:
+	# The wreck's [F] prompt ("정비공 필요") tells why nothing happens until it is fixed.
+	if point.type == ExtractPoint.Type.HELICOPTER and not (_wrecks.has(point) and _wrecks[point].fixed):
+		return
 	if not _has_required_item(point):
 		if _blocked_at != point:
 			_blocked_at = point
@@ -223,6 +240,13 @@ func _try_start(point: ExtractPoint) -> void:
 	if point.type == ExtractPoint.Type.GENERATOR:
 		_start_generator(point)
 	extraction_started.emit(point.id, _wait_for(point))
+
+
+func _make_wreck(point: ExtractPoint) -> void:
+	var wreck := HelicopterWreck.new()
+	wreck.name = "HelicopterWreck"
+	point.add_child(wreck)
+	_wrecks[point] = wreck
 
 
 func _start_generator(point: ExtractPoint) -> void:
@@ -373,4 +397,23 @@ func _build_result(extracted: bool, point_id: StringName, loot: Dictionary,
 		# B-22: the player answered a day raid warning with "go back".
 		"emergency_return": _emergency != null and _emergency.state == EmergencyReturn.State.RETURNING,
 		"xp": 0,  # SceneRouter fills this (Progression.finish_sortie)
-	}
+	}.merged(_vehicle_result(extracted))
+
+
+## 02 "탈것": "vehicle" = what the player rides out on ({} if none; garage_uid "" = found in the field),
+## "vehicles_left" = the base's vehicles still in the field (Garage keeps them for one more sortie).
+func _vehicle_result(extracted: bool) -> Dictionary:
+	var player := get_tree().get_first_node_in_group(Player.GROUP) as Player
+	var ridden: FieldVehicle = player.riding if extracted and player != null else null
+	var left := []
+	for node in get_tree().get_nodes_in_group(FieldVehicle.GROUP):
+		var v := node as FieldVehicle
+		if v == null or v == ridden or v.garage_uid == &"":
+			continue
+		var p := v.global_position
+		left.append({"garage_uid": String(v.garage_uid), "durability": v.durability,
+			"position": [p.x, p.y, p.z], "yaw": v.global_rotation.y})
+	var rode := {}
+	if ridden != null:
+		rode = {"garage_uid": String(ridden.garage_uid), "def_id": String(ridden.def.id), "durability": ridden.durability}
+	return {"vehicle": rode, "vehicles_left": left}

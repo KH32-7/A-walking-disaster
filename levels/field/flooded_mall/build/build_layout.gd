@@ -106,6 +106,26 @@ const LANDMARK_LOOT := {
 	"pier_lm": ["TOOLBOX", "SUPPLY_CRATE"],
 }
 
+## 02 "탈것" (_build_late_markers): land vehicle spots (차고지, 주유소, 마트 주차장 first, then the
+## streets), boats by the pier (the first one, by name, is where a boat from the base waits), the
+## roof deck helicopter extract.
+const VEHICLE_SEED := 20261107
+const VEHICLE_SPOT_SCENE := "res://field/markers/vehicle_spot.tscn"
+const LAND_VEHICLE_ZONES := ["depot_lm", "gas_lm", "mart_lm"]
+const LAND_VEHICLE_SPOTS := 6
+## Land spots at least this far apart (m).
+const LAND_VEHICLE_SPACING := 20.0
+## Free radius around a land vehicle spot (m).
+const VEHICLE_CLEAR := 1.5
+const BOAT_SPOTS := 2
+## Boat centre from the bank (m) and its min / max distance from the pier edge.
+const BOAT_BANK_CLEAR := 2.6
+const BOAT_PIER_GAP := Vector2(1.2, 1.8)
+const HELI_EXTRACT_ID := "mall_heli_deck"
+## Free patch for the wreck (HelicopterWreck.SIZE plus a margin, x by z, m) and the zone around it.
+const HELI_FOOTPRINT := Vector2(4.0, 9.5)
+const HELI_ZONE_RADIUS := 7.0
+
 const CLUTTER_SEED := 20261106
 const CLUTTER_KITS := [
 	# [kit, weight, pieces]
@@ -420,6 +440,114 @@ func _build_pois() -> void:
 	# 주유소: a tanker and a mail truck stalled by the pumps.
 	placed += _poi_row(["tanker_truck", "ice_cream_truck"], 1, 0.0, _poly(_zones.gas_lm), keep_out, routes)
 	print("pois: %d pieces, %d deck cars, %d wrecks" % [placed, deck_cars, wrecks])
+
+
+## 02 "탈것" (2026-11-07): vehicle spots in the yards and lots, boat spots beside the pier, and the
+## helicopter extract point on the roof deck. Own random stream (VEHICLE_SEED).
+func _build_late_markers() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = VEHICLE_SEED
+	# Cars may stand on roads (they did before the flood), so only buildings, blocked ground and
+	# deep water keep them out, plus every placed piece, marker, prop and tree.
+	var keep_out := _vehicle_keep_out()
+	var points := _keep_out_points()
+	# The yards first (depot, gas station, mart lot), then any street: they are packed with props.
+	var pools: Array = []
+	for id: String in LAND_VEHICLE_ZONES:
+		pools.append(_poly(_zones[id]))
+	var streets: Array = []
+	var water: Array[PackedVector2Array] = []
+	water.assign(_kit_ground.water)
+	for zone: Dictionary in _map.zones:
+		if zone.floor == 0 and zone.kind == "road" and not _overlaps_any(_poly(zone), water):
+			streets.append(_poly(zone))
+	var land: Array[Vector2] = []
+	for attempt in 6000:
+		if land.size() >= LAND_VEHICLE_SPOTS:
+			break
+		var pool: Array = pools if attempt < 3000 else streets
+		var poly: PackedVector2Array = pool[rng.randi_range(0, pool.size() - 1)]
+		var b := _bounds(poly)
+		var p := Vector2(rng.randf_range(b.position.x, b.end.x), rng.randf_range(b.position.y, b.end.y))
+		if not Geometry2D.is_point_in_polygon(p, poly) \
+				or keep_out.any(func(k: PackedVector2Array) -> bool: return Geometry2D.is_point_in_polygon(p, k)) \
+				or _near_points(p, _taken, VEHICLE_CLEAR) or _near_points(p, points, VEHICLE_CLEAR) \
+				or _in_prop(p, VEHICLE_CLEAR) or _near_plant(p, VEHICLE_CLEAR) \
+				or land.any(func(q: Vector2) -> bool: return q.distance_to(p) < LAND_VEHICLE_SPACING):
+			continue
+		land.append(p)
+		_add_extra(VEHICLE_SPOT_SCENE, "VehicleSpot_land_%d" % land.size(), Vector3(p.x, 0.0, p.y), rng.randf() * TAU, {})
+	if land.size() < LAND_VEHICLE_SPOTS:
+		push_error("vehicle spots: only %d of %d on land" % [land.size(), LAND_VEHICLE_SPOTS])
+
+	# Boats lie alongside the pier, bow along its edge, clear of the banks and the sunk wrecks.
+	var pier := _poly(_zones.pier)
+	var boats: Array[Vector2] = []
+	for attempt in 2000:
+		if boats.size() >= BOAT_SPOTS:
+			break
+		var w: PackedVector2Array = _kit_ground.water[rng.randi_range(0, _kit_ground.water.size() - 1)]
+		var wb := _bounds(w)
+		var p := Vector2(rng.randf_range(wb.position.x, wb.end.x), rng.randf_range(wb.position.y, wb.end.y))
+		var to_pier := _dist_to_ring(p, pier)
+		if not Geometry2D.is_point_in_polygon(p, w) or Geometry2D.is_point_in_polygon(p, pier) \
+				or _dist_to_ring(p, w) < BOAT_BANK_CLEAR or to_pier < BOAT_PIER_GAP.x or to_pier > BOAT_PIER_GAP.y \
+				or boats.any(func(q: Vector2) -> bool: return q.distance_to(p) < 6.0) \
+				or _kit_items.any(func(it: Dictionary) -> bool: return it.has("wreck") and (it.wreck as Vector2).distance_to(p) < 8.0):
+			continue
+		var edge := _closest_edge(p, pier)
+		var yaw := atan2(-edge.x, -edge.y)
+		boats.append(p)
+		_add_extra(VEHICLE_SPOT_SCENE, "VehicleSpot_boat_%d" % boats.size(), Vector3(p.x, WATER_SURFACE_Y, p.y), yaw,
+			{"surface": VehicleDef.Surface.WATER})
+	if boats.size() < BOAT_SPOTS:
+		push_error("vehicle spots: only %d of %d boats by the pier" % [boats.size(), BOAT_SPOTS])
+
+	# 헬기 탈출: a clear patch of the roof deck, away from the parked cars and the ramp top.
+	var deck_raw := _poly(_zones.shop2_deck)
+	var deck := _largest(Geometry2D.offset_polygon(deck_raw, -1.0))
+	var ramp_top := _ramp_top(deck_raw)
+	var cars: Array = _kit_items.filter(func(it: Dictionary) -> bool: return it.has("deck")).map(
+		func(it: Dictionary) -> Vector2: return it.deck)
+	var db := _bounds(deck)
+	for attempt in 2000:
+		var p := Vector2(rng.randf_range(db.position.x, db.end.x), rng.randf_range(db.position.y, db.end.y))
+		var yaw := PI * 0.5 * rng.randi_range(0, 3)
+		var half := Vector2(HELI_FOOTPRINT.x, HELI_FOOTPRINT.y) * 0.5
+		var corners := [Vector2(-half.x, -half.y), Vector2(half.x, -half.y), Vector2(half.x, half.y), Vector2(-half.x, half.y)]
+		if corners.any(func(c: Vector2) -> bool: return not Geometry2D.is_point_in_polygon(p + c.rotated(-yaw), deck)) \
+				or p.distance_to(ramp_top) < 9.0 or cars.any(func(c: Vector2) -> bool: return c.distance_to(p) < 7.0) \
+				or _near_marker(p, 1, 5.0) or _near_door(p, _doors("shop2_in"), 5.0):
+			continue
+		_add_extra(_scene_of("ExtractPoint"), "ExtractPoint_%s" % HELI_EXTRACT_ID, Vector3(p.x, _map.floors[1].y, p.y), yaw,
+			{"id": HELI_EXTRACT_ID, "type": "HELICOPTER", "wait_sec": 0.0, "zone_radius": HELI_ZONE_RADIUS})
+		return
+	push_error("vehicle spots: no room for the helicopter on the roof deck")
+
+
+## Buildings, blocked zones and deep water (grown by VEHICLE_CLEAR), and the mall structures.
+func _vehicle_keep_out() -> Array[PackedVector2Array]:
+	var out: Array[PackedVector2Array] = []
+	for zone: Dictionary in _map.zones:
+		if zone.floor == 0 and (zone.kind in ["indoor", "blocked"] or (zone.kind == "flooded" and not zone.passable)):
+			out.append_array(Geometry2D.offset_polygon(_poly(zone), VEHICLE_CLEAR))
+	for poly in _structure_keep_out:
+		out.append_array(Geometry2D.offset_polygon(poly, VEHICLE_CLEAR))
+	return out
+
+
+## Unit direction of the polygon edge nearest to p.
+func _closest_edge(p: Vector2, poly: PackedVector2Array) -> Vector2:
+	var best := INF
+	var dir := Vector2.RIGHT
+	for i in poly.size():
+		var a := poly[i]
+		var b := poly[(i + 1) % poly.size()]
+		var d := p.distance_to(Geometry2D.get_closest_point_to_segment(p, a, b))
+		if d < best and a.distance_to(b) > 0.01:
+			best = d
+			dir = (b - a).normalized()
+	return dir
 
 
 ## Where the ramp line (map hidden route) leaves the deck polygon.

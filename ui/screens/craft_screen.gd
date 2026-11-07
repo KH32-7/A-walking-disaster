@@ -12,12 +12,17 @@ extends MenuScreen
 ## open_with({"facility": &"workshop" | &"sewing_room" | &"essence_workshop", "mode": StringName,
 ##   "uid": item uid}) — all optional.
 
-const FACILITIES: Array[StringName] = [&"workshop", &"sewing_room", &"essence_workshop"]
+const FACILITIES: Array[StringName] = [&"workshop", &"sewing_room", &"essence_workshop", &"carpentry_shop"]
+const CARPENTRY := &"carpentry_shop"
 const GEAR_MODES := [[&"craft", "제작"], [&"upgrade", "강화"], [&"transfer", "강화 옮기기"], [&"repair", "수리"]]
 const ESSENCE_MODES := [[&"engrave", "각인"], [&"refine", "정제"], [&"disassemble", "분해"]]
+## 02 "탈것": the workshop also repairs the base's vehicles; the carpentry shop only builds (rowboat).
+const VEHICLE_MODES := [[&"vehicles", "탈것"]]
+const CARPENTRY_MODES := [[&"craft", "제작"]]
 const GRADE_NAMES := ["하급", "중급", "상급"]
 const STRIP_HEADS := {&"craft": "만들 것", &"upgrade": "강화할 장비", &"transfer": "단계를 넘길 장비",
-	&"repair": "고칠 장비", &"engrave": "각인할 장비", &"refine": "정제할 정수", &"disassemble": "분해할 장비"}
+	&"repair": "고칠 장비", &"engrave": "각인할 장비", &"refine": "정제할 정수", &"disassemble": "분해할 장비",
+	&"vehicles": "기지의 탈것"}
 
 ## Blocked reasons from the Armory previews → one line for the player.
 const REASONS := {
@@ -246,7 +251,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 # ---------------- state ----------------
 
 func _modes() -> Array:
-	return ESSENCE_MODES if _facility == EssenceRules.FACILITY else GEAR_MODES
+	if _facility == EssenceRules.FACILITY:
+		return ESSENCE_MODES
+	if _facility == CARPENTRY:
+		return CARPENTRY_MODES
+	return GEAR_MODES + VEHICLE_MODES if _facility == &"workshop" else GEAR_MODES
 
 
 func _has_mode(mode: StringName) -> bool:
@@ -364,6 +373,8 @@ func _strip_ids() -> Array[StringName]:
 			for id in _essences_ordered():
 				if Economy.get_amount(id) > 0:
 					out.append(id)
+		&"vehicles":
+			out.append_array(Garage.list())
 		_:
 			for uid in _owned_items():
 				var it := Armory.get_item(uid)
@@ -435,6 +446,13 @@ func _strip_cell(id: StringName) -> Control:
 			text = e.name
 			element = int(e.element)
 			corner = "×%d" % Economy.get_amount(id)
+		&"vehicles":
+			var vdef := Garage.def_of(id)
+			text = vdef.name
+			bar = Garage.durability(id) / maxf(vdef.max_durability, 1.0)
+			caption = "필드에 두고 옴" if Garage.is_away(id) else ("고장" if Garage.is_broken(id) else
+				"%d/%d" % [roundi(Garage.durability(id)), roundi(vdef.max_durability)])
+			dim = Garage.is_away(id)
 		_:
 			var it := Armory.get_item(id)
 			var st := Armory.get_item_stats(id)
@@ -506,7 +524,7 @@ func _strip_cell(id: StringName) -> Control:
 		_last = ""
 		Audio.play(&"ui_click")
 		_refresh())
-	if _mode not in [&"craft", &"refine"]:
+	if _mode not in [&"craft", &"refine", &"vehicles"]:
 		b.mouse_entered.connect(func() -> void:
 			_tip.show_info(ItemInfo.for_item(id).tooltip, b.global_position + Vector2(0, -12) - Vector2(0, 330)))
 		b.mouse_exited.connect(func() -> void: _tip.visible = false)
@@ -547,6 +565,8 @@ func _fill_detail() -> void:
 			_detail_refine()
 		&"disassemble":
 			_detail_disassemble()
+		&"vehicles":
+			_detail_vehicle()
 
 
 func _title_item(uid: StringName) -> void:
@@ -564,7 +584,15 @@ func _detail_craft() -> void:
 	var p := Armory.preview_craft(_sel)
 	_title.text = _output_name(r.output_id) + ("  ×%d" % r.output_qty if r.output_qty > 1 else "")
 	var def := Armory.get_def(r.output_id)
-	if def != null:
+	if p.get("vehicle", false):
+		var vdef := Garage.get_def(r.output_id)
+		_title_sub.text = "탈것"
+		_section("탈것")
+		_detail.add_child(_info_line("자리", "%d명" % vdef.seats))
+		_detail.add_child(_info_line("다니는 곳", "깊은 물" if vdef.surface == VehicleDef.Surface.WATER else "땅"))
+		_detail.add_child(_info_line("휠체어", "탈 수 있음" if vdef.wheelchair_ok else "탈 수 없음"))
+		_detail.add_child(_dim("만든 탈것은 출격 준비에서 하나 골라 가져갈 수 있어요."))
+	elif def != null:
 		_title_sub.text = ItemInfo.SLOT_NAMES[clampi(int(def.slot), 0, 6)]
 		_section("기본 성능")
 		_rows(ItemInfo.compare_rows(def.base_stats, {}))
@@ -591,6 +619,8 @@ func _detail_craft() -> void:
 			if StringName(out.get("uid", &"")) != &"":
 				var nm := String(Armory.get_item_stats(out.uid).get("display_name", ""))
 				_done("%s (%s)을(를) 만들었어요. 무기고에 들어갔어요." % [nm, UiTokens.RARITY_NAMES[clampi(int(out.rarity), 0, 4)]])
+			elif StringName(out.get("vehicle_uid", &"")) != &"":
+				_done("%s을(를) 만들었어요." % _output_name(r.output_id))
 			else:
 				_done("%s ×%d을(를) 만들었어요." % [_output_name(r.output_id), r.output_qty])
 		else:
@@ -722,6 +752,31 @@ func _detail_repair() -> void:
 	_card_worker(p)
 	_card_action("수리", p.ok, func() -> void:
 		if Armory.repair(_sel):
+			_done("다 고쳤어요.")
+		else:
+			_fail(&"cost"))
+
+
+## 02 "탈것": a base vehicle's durability and the workshop repair (lost durability 10 = scrap 1).
+func _detail_vehicle() -> void:
+	var vdef := Garage.def_of(_sel)
+	var now := Garage.durability(_sel)
+	_title.text = vdef.name
+	_title_sub.text = "탈것"
+	_section("수리")
+	_rows([["내구도", "%d/%d" % [roundi(now), roundi(vdef.max_durability)],
+		"%d/%d" % [roundi(vdef.max_durability), roundi(vdef.max_durability)], "up" if now < vdef.max_durability else ""]])
+	if Garage.is_away(_sel):
+		_detail.add_child(_dim("지난 출격에서 필드에 두고 왔어요. 그 지역에 다시 가면 그 자리에 있어요."))
+		_card_line("주의: 필드에 있는 탈것은 고칠 수 없어요.", UiTokens.DANGER)
+		return
+	var cost := Garage.repair_cost(_sel)
+	var p := {"cost": cost, "missing": Armory._missing(cost)}
+	_card_cost(p)
+	_card_reason(&"full" if cost.is_empty() else (&"cost" if not p.missing.is_empty() else &""))
+	_card_worker()
+	_card_action("수리", not cost.is_empty() and p.missing.is_empty(), func() -> void:
+		if Garage.repair(_sel):
 			_done("다 고쳤어요.")
 		else:
 			_fail(&"cost"))
@@ -1180,7 +1235,9 @@ func _essences_ordered() -> Array[StringName]:
 
 func _output_name(id: StringName) -> String:
 	var def := Armory.get_def(id)
-	return def.name if def != null else MenuScreen.resource_name(id)
+	if def != null:
+		return def.name
+	return Garage.get_def(id).name if Garage.is_vehicle(id) else MenuScreen.resource_name(id)
 
 
 func _res_name(id: StringName) -> String:

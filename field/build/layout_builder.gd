@@ -185,6 +185,7 @@ const LOW_COVER_GROUP := &"low_cover"
 const LAYER_WORLD_BIT := 1
 const LAYER_PLAYER_BIT := 1 << 1
 const LAYER_TRIGGER_BIT := 1 << 7
+const LAYER_BOAT_BOUNDS_BIT := 1 << 8
 const NAV_LAYER_WALK := 1
 const NAV_LAYER_WHEELCHAIR := 2
 
@@ -388,6 +389,7 @@ func _initialize() -> void:
 	_build_nature()
 	_build_bounds()
 	_build_outskirts()
+	_build_late_markers()
 	_build_markers()
 	_check_kit_markers()
 	var region := _build_navigation()
@@ -429,6 +431,8 @@ func _build_terrain() -> void:
 	for water in deep:
 		land = _clip_all(land, water)
 	var ground := _combiner("Ground")
+	# 02 탈것: boats bump into the land around the water holes (layer 9); walkers still use the lip.
+	ground.collision_layer |= LAYER_BOAT_BOUNDS_BIT
 	_nav(ground)
 	_root.add_child(ground)
 	for i in land.size():
@@ -494,6 +498,22 @@ func _build_terrain() -> void:
 			blocked.add_child(shape)
 			if _kit_blocked(zone, _poly(zone), blocked_h.get(zone.id, DEFAULT_BLOCKED_H)):
 				shape.add_to_group(KIT_GREYBOX_GROUP, true)
+
+
+## Region hook: extra markers placed after all dressing (02 "탈것": vehicle spots), so earlier random
+## draws and every dressing piece stay where they were. Add them with _add_extra(). Default: none.
+func _build_late_markers() -> void:
+	pass
+
+
+## Closer than pad to a tree or bush (_kit_plants entries are x, y, z, yaw, scale).
+func _near_plant(p: Vector2, pad: float) -> bool:
+	for path: String in _kit_plants:
+		var arr: PackedFloat32Array = _kit_plants[path]
+		for i in range(0, arr.size(), 5):
+			if p.distance_to(Vector2(arr[i], arr[i + 2])) < pad:
+				return true
+	return false
 
 
 ## Region hook (B-26): draws a blocked zone with pack pieces, returns true if it did (its greybox

@@ -94,7 +94,7 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if _player.is_downed:
+	if _player.is_downed or _player.is_riding():
 		return
 	step(delta, {"aim": _player.is_aiming} if Player.input_blocked() else _read_input())
 

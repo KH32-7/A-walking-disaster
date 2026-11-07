@@ -6,7 +6,7 @@ extends FieldMarker
 
 const GROUP := &"field_extract_points"
 
-enum Type { NORMAL, GENERATOR, KEY, BATTERY }
+enum Type { NORMAL, GENERATOR, KEY, BATTERY, HELICOPTER }
 
 @export var id: StringName = &"":
 	set(value):

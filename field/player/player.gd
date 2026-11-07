@@ -55,6 +55,8 @@ var one_hand_only := false
 ## Set by RescueCall (field maps). Called when health reaches 0; returning true means someone is
 ## coming, so EventBus.player_downed waits for give_up(). revive() stands the player back up.
 var down_interceptor: Callable
+## Vehicle being driven (02 "탈것"), or null. FieldVehicle sets it through start_riding / stop_riding.
+var riding: FieldVehicle
 
 var _aim_toggled := false
 var _sprint_toggled := false
@@ -82,8 +84,7 @@ var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
 func _ready() -> void:
 	add_to_group(GROUP)
-	collision_layer = 1 << (Enums.LAYER_PLAYER - 1)
-	collision_mask = (1 << (Enums.LAYER_WORLD - 1)) | (1 << (Enums.LAYER_MONSTER - 1))
+	_set_body_layers(true)
 	# TODO(A-11): add stats.health_per_level per player level once progression exists.
 	health = stats.max_health
 	stamina = stats.max_stamina
@@ -92,6 +93,9 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	if is_downed:
+		return
+	if riding != null:
+		_step_riding()
 		return
 	if not script_input.is_empty():
 		interact_held = false
@@ -200,6 +204,9 @@ func is_invulnerable() -> bool:
 ## Status tick damage (bleed, shock) skips blocking and dodge invulnerability.
 ## DebugConsole `godmode` blocks everything.
 func take_damage(amount: float, info: Dictionary = {}) -> void:
+	if riding != null:
+		riding.take_damage(amount, info)
+		return
 	var tick := StatusHolder.is_tick(info)
 	if is_downed or (is_invulnerable() and not tick) or amount <= 0.0 or DebugConsole.godmode:
 		return
@@ -237,6 +244,26 @@ func revive(health_ratio: float) -> void:
 func give_up() -> void:
 	if is_downed and field_rules:
 		EventBus.player_downed.emit()
+
+
+func is_riding() -> bool:
+	return riding != null
+
+
+## FieldVehicle.mount(): stop walking and footsteps, leave every physics layer (hits go to the vehicle).
+func start_riding(vehicle: FieldVehicle) -> void:
+	riding = vehicle
+	is_aiming = false
+	velocity = Vector3.ZERO
+	_set_move_state(MoveState.IDLE)
+	_set_body_layers(false)
+
+
+## FieldVehicle.dismount(): stand at `at`.
+func stop_riding(at: Vector3) -> void:
+	riding = null
+	_set_body_layers(true)
+	global_position = at
 
 
 ## One simulation step. Split from input reading so tests can drive it.
@@ -287,6 +314,26 @@ func _read_input() -> Dictionary:
 		"sprint": sprint,
 		"dodge": Input.is_action_just_pressed(&"dodge"),
 	}
+
+
+## Driving: the move keys steer the vehicle, F gets off. Weapons, skills and items are locked
+## (their nodes check is_riding()).
+func _step_riding() -> void:
+	interact_held = false
+	if input_blocked():
+		riding.set_input(Vector3.ZERO)
+		return
+	if Input.is_action_just_pressed(&"interact"):
+		riding.dismount()
+		return
+	riding.set_input(_to_world(Input.get_vector(&"move_left", &"move_right", &"move_up", &"move_down")))
+	_facing = riding.forward()
+	rotation.y = atan2(-_facing.x, -_facing.z)
+
+
+func _set_body_layers(on: bool) -> void:
+	collision_layer = (1 << (Enums.LAYER_PLAYER - 1)) if on else 0
+	collision_mask = ((1 << (Enums.LAYER_WORLD - 1)) | (1 << (Enums.LAYER_MONSTER - 1))) if on else 0
 
 
 ## Screen-relative stick/WASD to a world direction on the ground plane.

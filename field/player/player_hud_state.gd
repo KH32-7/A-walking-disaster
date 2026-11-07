@@ -118,6 +118,8 @@ static func _hold(player: Player, extraction: ExtractionManager) -> Dictionary:
 
 
 static func _prompt(player: Player, hold: Dictionary) -> Dictionary:
+	if player.is_riding():
+		return {"key": PROMPT_KEY, "label": FieldVehicle.DISMOUNT_LABEL} if player.riding.can_dismount() else {}
 	if not hold.is_empty():
 		return {}
 	var target := player.interact_target()
