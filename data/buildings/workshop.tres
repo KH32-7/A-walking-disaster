@@ -6,6 +6,7 @@
 script = ExtResource("1_bxnb0")
 id = &"workshop"
 display_name = "정비소"
+unlock_flag = &"tutorial_done"
 description = "무기를 만들고 강화하고 고쳐요. 탄약도 만들어요."
 category = 4
 size = Vector2i(3, 3)

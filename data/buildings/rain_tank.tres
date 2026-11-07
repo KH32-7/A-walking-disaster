@@ -6,6 +6,7 @@
 script = ExtResource("1_xu7m0")
 id = &"rain_tank"
 display_name = "빗물 저장고"
+unlock_flag = &"extracted_flooded_mall"
 description = "빗물을 모아 근처 텃밭의 수확을 늘려요."
 category = 1
 size = Vector2i(2, 2)

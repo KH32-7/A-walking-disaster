@@ -54,6 +54,8 @@ const TIER_NAMES := ["캐프", "정착지", "요새"]
 var _mode: StringName = &"build"
 var _cat := -1
 var _sel: StringName = &""
+## Building a link opened the screen on (open_with "def"): listed even while not unlocked yet.
+var _linked: StringName = &""
 var _sel_zone: StringName = &""
 var _sel_uid: StringName = &""
 ## Runs the card's main action on Enter (empty when the card has none or it is blocked).
@@ -91,6 +93,7 @@ func open_with(args: Dictionary) -> void:
 	if args.has("def"):  # #125: "가족 숙소 짓기 ›" links from the resident screens open on that building
 		_mode = &"build"
 		_sel = StringName(args["def"])
+		_linked = _sel  # shown even while UnlockRules still hides it, with its reasons
 		var d := BaseDB.get_building(_sel)
 		_cat = group_of(int(d.category)) if d != null else -1
 	if _list != null:
@@ -326,7 +329,7 @@ static func group_color(category: int) -> Color:
 func _group_defs(key: int) -> Array:
 	var out := []
 	for def: BuildingDef in BaseDB.buildings().values():
-		if def.prebuilt or def.story_only:
+		if not Colony.is_unlocked(def.id) and (def.id != _linked or def.prebuilt or def.story_only):
 			continue
 		if key >= 0 and group_of(int(def.category)) != key:
 			continue

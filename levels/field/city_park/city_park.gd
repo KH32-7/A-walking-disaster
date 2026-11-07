@@ -27,6 +27,7 @@ func _ready() -> void:
 	if ResourceLoader.exists(DRESSING_PATH):
 		add_child((load(DRESSING_PATH) as PackedScene).instantiate())
 		$GreyboxLighting.queue_free()
+	EarlyZone.apply(self, RegionDef.load_def(&"city_park"))
 	if spawn_player:
 		player = _spawn_player()
 

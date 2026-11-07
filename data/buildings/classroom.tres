@@ -6,6 +6,7 @@
 script = ExtResource("1_ubmyi")
 id = &"classroom"
 display_name = "교실"
+unlock_flag = &"extracted_flooded_mall"
 description = "교사 한 명이 학생들을 가르쳐요. 배우는 주민의 능력치가 빨리 자라요."
 category = 5
 size = Vector2i(4, 3)

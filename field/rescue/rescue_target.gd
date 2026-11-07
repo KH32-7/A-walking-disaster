@@ -341,6 +341,40 @@ static func escort_goal(tree: SceneTree, objective: Dictionary) -> Node3D:
 	return best
 
 
+## Where an objective with no marker of its own points (사용자 요청 2026-11-07: every field quest
+## gets a mark). Callers use it after escort_goal() and the objective's marker found nothing.
+##   rescue: the nearest person not yet following who fits target_id.
+##   visit:  the nearest open extraction point (a visit counts on extraction), but only when no
+##           other objective of the same quest is open in this region (that one leads first).
+## Other kinds (recover) have no single place: null.
+static func auto_goal(tree: SceneTree, objective: Dictionary) -> Node3D:
+	var player := tree.get_first_node_in_group(&"player") as Node3D
+	var candidates: Array[Node3D] = []
+	match StringName(objective.get("kind", &"")):
+		&"rescue":
+			var target_id := StringName(objective.get("target_id", &""))
+			for n: Node in tree.get_nodes_in_group(GROUP):
+				var t := n as RescueTarget
+				if t != null and not t.is_rescued() \
+						and (target_id == &"" or StringName(t.profile.get("id", &"")) == target_id):
+					candidates.append(t)
+		&"visit":
+			for o: Dictionary in Quests.active_field_objectives(StringName(objective.get("region_id", &""))):
+				if o["quest_id"] == objective.get("quest_id") and o["objective_id"] != objective.get("objective_id"):
+					return null
+			var em := tree.get_first_node_in_group(ExtractionManager.GROUP) as ExtractionManager
+			if em != null:
+				candidates.assign(em.active_points())
+	var best: Node3D = null
+	var best_d := INF
+	for c in candidates:
+		var d := c.global_position.distance_squared_to(player.global_position) if player != null else 0.0
+		if d < best_d:
+			best = c
+			best_d = d
+	return best
+
+
 ## Current walking speed (m/s). SUPPORTED moves with the player (player speed x speed_mult).
 func move_speed() -> float:
 	var walk := FALLBACK_WALK_SPEED

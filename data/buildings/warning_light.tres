@@ -6,6 +6,7 @@
 script = ExtResource("1_rh754")
 id = &"warning_light"
 display_name = "경광등"
+tier_min = 1
 description = "빛으로 경보를 알려요. 잘 듣지 못하는 주민도 습격을 알 수 있어요."
 category = 5
 cost = Dictionary[StringName, int]({

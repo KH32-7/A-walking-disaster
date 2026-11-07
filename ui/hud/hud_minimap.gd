@@ -100,6 +100,8 @@ func _collect(p: Node3D) -> void:
 		var node := RescueTarget.escort_goal(get_tree(), o)
 		if node == null:
 			node = _find_marker(StringName(o.get("marker", &"")))
+		if node == null:
+			node = RescueTarget.auto_goal(get_tree(), o)
 		if node != null:
 			add.call(node.global_position, &"objective")
 	for g: Dictionary in FieldState.recoverable_gear():

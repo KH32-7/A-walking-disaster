@@ -6,6 +6,7 @@
 script = ExtResource("1_bdef")
 id = &"spike_trap"
 display_name = "가시 함정"
+unlock_flag = &"tutorial_done"
 description = "밟은 마물에게 피해를 주고 느리게 해요. 몇 번 쓰면 부서져요."
 category = 10
 size = Vector2i(1, 1)

@@ -20,6 +20,9 @@ class FakeTarget extends Node3D:
 
 
 func run() -> bool:
+	# Past the onboarding days (MonsterRules.EARLY_DENSITY, EarlyZone, FieldState.early_bag_kept).
+	var day_before := GameState.day
+	GameState.day = 9
 	var tree := Engine.get_main_loop() as SceneTree
 	_root = Node3D.new()
 	_root.name = "TestMonsters"
@@ -49,6 +52,7 @@ func run() -> bool:
 		for child in _root.get_children():
 			child.free()
 	_root.free()
+	GameState.day = day_before
 	return _ok
 
 

@@ -6,6 +6,7 @@
 script = ExtResource("1_a78ak")
 id = &"sewing_room"
 display_name = "재봉실"
+tier_min = 1
 description = "방어구와 가방을 만들고 강화해요."
 category = 4
 size = Vector2i(3, 3)

@@ -35,6 +35,9 @@ var _ok := true
 
 
 func run() -> bool:
+	# Past the onboarding days (MonsterRules.EARLY_DENSITY, EarlyZone, FieldState.early_bag_kept).
+	var day_before := GameState.day
+	GameState.day = 9
 	_tree = Engine.get_main_loop() as SceneTree
 	var layout := (load(LAYOUT) as PackedScene).instantiate() as Node3D
 	_tree.root.add_child(layout)
@@ -60,6 +63,7 @@ func run() -> bool:
 	layout.queue_free()
 	await _tree.process_frame
 	await _check_assembly()
+	GameState.day = day_before
 	return _ok
 
 

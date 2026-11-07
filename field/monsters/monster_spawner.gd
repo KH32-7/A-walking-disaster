@@ -74,7 +74,8 @@ func spawn_at(entry: Dictionary, count: int, def: MonsterDef) -> void:
 	var nest: MonsterNest = entry.nest
 	_prune(entry)
 	for i in count:
-		if entry.alive.size() >= nest.max_alive or region_alive_count() >= MonsterRules.REGION_MAX_ALIVE:
+		if entry.alive.size() >= MonsterRules.scaled(nest.max_alive) \
+				or region_alive_count() >= MonsterRules.scaled(MonsterRules.REGION_MAX_ALIVE):
 			return
 		var pick := def if def else _pick_def(nest)
 		if pick == null or pick.scene == null:

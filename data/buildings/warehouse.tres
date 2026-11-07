@@ -6,6 +6,7 @@
 script = ExtResource("1_bgv4t")
 id = &"warehouse"
 display_name = "창고"
+unlock_flag = &"tutorial_done"
 description = "자원을 더 많이 보관할 수 있어요."
 category = 6
 size = Vector2i(3, 3)

@@ -15,6 +15,9 @@ var _keep_bag_before: Variant
 
 
 func run() -> bool:
+	# Past the onboarding days (MonsterRules.EARLY_DENSITY, EarlyZone, FieldState.early_bag_kept).
+	var day_before := GameState.day
+	GameState.day = 9
 	_ok = true
 	_autosave_before = SaveSystem.autosave_enabled
 	SaveSystem.autosave_enabled = false
@@ -33,6 +36,7 @@ func run() -> bool:
 	Settings.set_value(&"keep_bag_on_down", _keep_bag_before)
 	SaveSystem.autosave_enabled = _autosave_before
 	_reset()
+	GameState.day = day_before
 	return _ok
 
 
