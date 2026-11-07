@@ -21,6 +21,7 @@ const REACH := 1.5 ## path end within this distance (xz) of the target
 const MARKER_COUNTS := {
 	PlayerSpawn.GROUP: 2, ExtractPoint.GROUP: 3, LootSpot.GROUP: 122, MonsterNest.GROUP: 8,
 	RescueSpot.GROUP: 7, HiddenRoute.GROUP: 1, Recording.GROUP: 2, BossArena.GROUP: 1,
+	VehicleSpot.GROUP: 7,
 }
 const EXTRACT_IDS := [&"hospital_main_gate", &"hospital_generator", &"hospital_north_gate"]
 const NAV_SYNC_MAX_FRAMES := 300
@@ -225,6 +226,7 @@ func _check_assembly() -> void:
 		for i in 100:
 			shelf.advance(0.1)
 		_expect(shelf.state == LootContainer.State.OPEN, "the shelf is open (%d)" % shelf.state)
+	_expect(hospital.get_node_or_null(^"VehicleSpawner") is VehicleSpawner, "vehicle spawner (02 탈것) in the assembly")
 	var extraction := hospital.get_node(^"ExtractionManager") as ExtractionManager
 	_expect(extraction.active_point_ids().size() == ExtractionManager.ACTIVE_COUNT, "2 of 3 extract points are active")
 	var gates := hospital.get_node(^"HiddenRouteManager") as HiddenRouteManager

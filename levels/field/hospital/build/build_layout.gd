@@ -89,6 +89,18 @@ const PARK_X := Vector2(-94.0, -46.0)
 const PARK_STEP := 2.9
 const PARK_SKIP := 0.3
 
+## 02 "탈것" (_build_late_markers): land vehicle spots, world metres and yaw. Car park aisles, the
+## ambulance bay, the south road, the back yard. A spot under a placed piece or a marker is skipped.
+const VEHICLE_SPOT_SCENE := "res://field/markers/vehicle_spot.tscn"
+const VEHICLE_SPOTS := [
+	[Vector2(-82.0, 60.5), 0.0], [Vector2(-75.0, 78.5), 0.0], [Vector2(75.5, 20.0), PI * 0.5],
+	[Vector2(-40.0, 99.0), 0.0], [Vector2(40.0, 99.0), PI], [Vector2(-80.0, -90.0), 0.0],
+	[Vector2(30.0, -88.0), 0.0],
+]
+const VEHICLE_SPOTS_MIN := 5
+## Free radius around a vehicle spot (m).
+const VEHICLE_CLEAR := 1.5
+
 ## Footprints of the pieces _fixed() placed (world xz), for _spot().
 var _fixed_boxes: Array[Rect2] = []
 
@@ -362,6 +374,35 @@ func _build_pois() -> void:
 	placed += _fixed("hesco_barrier_01", Vector2(-95.0, -48.5), 0.0, true)
 	placed += _fixed("striped_concrete_barrier", Vector2(-100.5, -56.0), PI * 0.5, true)
 	print("pois: %d pieces, %d parked cars" % [placed, cars])
+
+
+## Vehicle spots (02 "탈것") after all dressing, so the earlier random draws stay as they were.
+func _build_late_markers() -> void:
+	var points := _keep_out_points()
+	var placed := 0
+	var blocked := func(p: Vector2) -> bool:
+		return _near_points(p, _taken, VEHICLE_CLEAR) or _near_points(p, points, VEHICLE_CLEAR) 				or _in_prop(p, VEHICLE_CLEAR) or _near_plant(p, VEHICLE_CLEAR) 				or _fixed_boxes.any(func(r: Rect2) -> bool: return r.grow(VEHICLE_CLEAR).has_point(p))
+	for v: Array in VEHICLE_SPOTS:
+		# The listed point, else the nearest free one within 8 m (2 m steps, 8 directions).
+		var p: Vector2 = v[0]
+		var found: bool = not blocked.call(p)
+		for ring in range(1, 5):
+			if found:
+				break
+			for k in 8:
+				var q: Vector2 = v[0] + Vector2(2.0 * ring, 0.0).rotated(TAU * k / 8.0)
+				if not blocked.call(q):
+					p = q
+					found = true
+					break
+		if not found:
+			continue
+		placed += 1
+		_add_extra(VEHICLE_SPOT_SCENE, "VehicleSpot_land_%d" % placed, Vector3(p.x, 0.0, p.y), v[1], {})
+		_taken.append(Vector3(p.x, p.y, VEHICLE_CLEAR + 1.5))
+	if placed < VEHICLE_SPOTS_MIN:
+		push_error("vehicle spots: only %d of %d" % [placed, VEHICLE_SPOTS.size()])
+	print("vehicle spots: %d" % placed)
 
 
 ## One pack piece at a fixed spot (world metres), with collision from its bounds unless collide is

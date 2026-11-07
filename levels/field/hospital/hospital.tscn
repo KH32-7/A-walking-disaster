@@ -18,6 +18,7 @@
 [ext_resource type="Script" path="res://field/monsters/roaming_spawner.gd" id="16_roaming"]
 [ext_resource type="Script" path="res://field/routes/hidden_route_manager.gd" id="90_hidden_routes"]
 [ext_resource type="Script" path="res://field/monsters/boss/boss_spawner.gd" id="91_boss_spawner"]
+[ext_resource type="Script" path="res://field/vehicles/vehicle_spawner.gd" id="92_vehicle_spawner"]
 
 [sub_resource type="Environment" id="Env_greybox"]
 background_mode = 1
@@ -49,6 +50,10 @@ region_id = &"hospital"
 script = ExtResource("7_loot_spawner")
 region_id = &"hospital"
 spawn_ratio = 0.7
+spots_root = NodePath("../Layout")
+
+[node name="VehicleSpawner" type="Node3D" parent="."]
+script = ExtResource("92_vehicle_spawner")
 spots_root = NodePath("../Layout")
 
 [node name="GreyboxLighting" type="Node3D" parent="."]
