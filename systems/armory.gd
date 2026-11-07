@@ -597,6 +597,8 @@ func preview_craft(recipe_id: StringName, ctx: Dictionary = {}) -> Dictionary:
 	out["output_id"] = recipe.output_id
 	out["output_qty"] = recipe.output_qty
 	out["equipment"] = equipment
+	# 02 "탈것": the output is a vehicle and goes to the Garage.
+	out["vehicle"] = Garage.is_vehicle(recipe.output_id)
 	out["facility"] = recipe.facility
 	out["facility_level"] = fac["level"]
 	out["dex"] = fac["dex"]
@@ -621,8 +623,8 @@ func preview_craft(recipe_id: StringName, ctx: Dictionary = {}) -> Dictionary:
 
 
 ## Crafts once and pays through Economy. Equipment goes to storage with a rarity rolled from the
-## worker's dexterity (pass an rng for repeatable rolls). Returns {"ok", "reason", "uid" (equipment),
-## "rarity", "resources" {id: n} (resource outputs)}.
+## worker's dexterity (pass an rng for repeatable rolls). Vehicles go to the Garage. Returns {"ok", "reason",
+## "uid" (equipment), "rarity", "vehicle_uid" (vehicles), "resources" {id: n} (resource outputs)}.
 func craft(recipe_id: StringName, ctx: Dictionary = {}, rng: RandomNumberGenerator = null) -> Dictionary:
 	var preview := preview_craft(recipe_id, ctx)
 	var out := {"ok": false, "reason": preview["reason"], "uid": &"", "rarity": -1, "resources": {}}
@@ -639,6 +641,8 @@ func craft(recipe_id: StringName, ctx: Dictionary = {}, rng: RandomNumberGenerat
 		var rarity := UpgradeRules.roll_craft_rarity(preview["dex"], rng, def.rarity_min)
 		out["uid"] = create_item(recipe.output_id, rarity, rng)
 		out["rarity"] = rarity
+	elif preview["vehicle"]:
+		out["vehicle_uid"] = Garage.add(recipe.output_id)
 	else:
 		Economy.apply({recipe.output_id: recipe.output_qty})
 		out["resources"] = {recipe.output_id: recipe.output_qty}

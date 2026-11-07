@@ -56,12 +56,16 @@ func _check_maps() -> void:
 	for def in RegionDef.all():
 		if not def.has_map():
 			continue
-		_expect(def.extract_candidates.size() == 3, "%s has 3 extract candidates (02)" % def.id)
 		var layout := (load("res://levels/field/%s/layout.tscn" % def.id) as PackedScene).instantiate() as Node3D
 		tree.root.add_child(layout)
 		var extracts: Array[StringName] = []
+		var normal := 0
 		for node in layout.find_children("*", "ExtractPoint", true, false):
 			extracts.append(node.id)
+			# 02 "헬기 탈출": helicopter points come on top of the 3 candidates.
+			if (node as ExtractPoint).type != ExtractPoint.Type.HELICOPTER:
+				normal += 1
+		_expect(normal == 3, "%s has 3 extract candidates besides helicopters (02), got %d" % [def.id, normal])
 		var routes: Array[StringName] = []
 		for node in layout.find_children("*", "HiddenRoute", true, false):
 			routes.append(node.id)

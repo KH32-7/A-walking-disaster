@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="VehicleDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/vehicle_def.gd" id="1_vdef"]
+[ext_resource type="PackedScene" path="res://assets/vehicles/cc0/quaternius_public_transport/square_frame_bicycle.fbx" id="2_model"]
+
+[resource]
+script = ExtResource("1_vdef")
+id = &"bicycle"
+name = "자전거"
+surface = 0
+seats = 1
+speed = 8.0
+noise_action = &"vehicle_bicycle"
+max_durability = 40.0
+wheelchair_ok = false
+field_broken_chance = 0.0
+ram = false
+body_size = Vector3(0.6, 1.1, 1.8)
+model = ExtResource("2_model")
+model_yaw_deg = 0.0

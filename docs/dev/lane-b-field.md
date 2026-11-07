@@ -146,3 +146,12 @@
 - 실행은 기존 `CompanionSkill` id(`dash_slash`, `slam`, `precision_shot`)를 다시 쓰고, 수치·연출만 따로(`data/classes/skills/signature/`).
 - 쓸 때만 히트스톱·셰이크(`CombatFeel.STOP_SIGNATURE`, `SHAKE_SIGNATURE`)와 담담한 한 줄 말풍선(`FieldCompanion.called_out`).
 - 데모: 서하은(휠체어 정비공) 휠체어 돌진, 조순임(70대 농부) 마법서 광역.
+
+### 탈것 (feat/vehicles, 2026-11-07)
+- 기획: `02-field.md` "탈것", "헬기 탈출", `09` 정비소·목공소, `11` 철판. 계약: contracts.md "탈것".
+- 데이터와 기지: `VehicleDef`, `VehicleTuning`, `Garage` 오토로드, 레시피 5개(`data/recipes/vehicle_*.tres`), 철판 자원, 제작 화면 목공소 탭과 정비소 "탈것" 탭(수리), 출격 준비 탈것 칸, `RegionDef.boat_dock`.
+- 필드: `FieldVehicle`(타기, 같이 타기, 정비공 수리, 들이받기, 엔진 소음, 연기와 불꽃), `VehicleSpawner`, `VehicleSpot`, `HelicopterWreck`과 `ExtractPoint.Type.HELICOPTER`, 물리 레이어 9 `boat_bounds`.
+- 침수 상가: 생성기 `_build_late_markers()`로 땅 6곳, 배 2곳(선착장 옆), 옥상 주차 데크 헬기 탈출 1곳.
+- 모델: `assets/vehicles/cc0/`(자전거, 오토바이, 나무배, 철배, 헬기). 자동차는 도시 팩 `car_sedan_01`.
+- 철판: 침수 상가 공구함에 소량(가중치 8, 1~2개).
+- 남은 것: 실제 플레이로 조작감과 수치 확인, 자동차 모델 앞뒤 방향 확인.

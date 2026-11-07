@@ -68,6 +68,8 @@ var profile: Dictionary = {}
 var spot_tags: Array[StringName] = []
 var state := State.WAITING
 var health := 0.0
+## Vehicle this person sits in (FieldVehicle seats them), or null. Hidden and not acting meanwhile.
+var riding: FieldVehicle
 
 var _player: Node3D
 var _door: RescueDoor
@@ -132,6 +134,10 @@ func _exit_tree() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if riding != null:
+		global_position = riding.seat_position(1)
+		velocity = Vector3.ZERO
+		return
 	tick(delta)
 	if state == State.FOLLOW and _supporting:
 		return
@@ -287,6 +293,9 @@ func revive(interactor: Node3D) -> bool:
 ## Damage from monsters (B-07 calls take_damage(amount, info) on layer 3 bodies).
 ## Status effects ride in info (StatusHolder header).
 func take_damage(amount: float, info: Dictionary = {}) -> void:
+	if riding != null:
+		riding.take_damage(amount, info)
+		return
 	if not EXPOSED.has(state) or amount <= 0.0:
 		return
 	amount = status.scale_damage(amount, info)

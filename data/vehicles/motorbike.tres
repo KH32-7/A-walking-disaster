@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="VehicleDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/vehicle_def.gd" id="1_vdef"]
+[ext_resource type="PackedScene" path="res://assets/vehicles/cc0/kenney_starter_kit_racing/vehicle_motorcycle.glb" id="2_model"]
+
+[resource]
+script = ExtResource("1_vdef")
+id = &"motorbike"
+name = "오토바이"
+surface = 0
+seats = 2
+speed = 13.0
+noise_action = &"vehicle_motorbike"
+max_durability = 60.0
+wheelchair_ok = false
+field_broken_chance = 0.7
+ram = false
+body_size = Vector3(0.8, 1.2, 2.1)
+model = ExtResource("2_model")
+model_yaw_deg = 180.0

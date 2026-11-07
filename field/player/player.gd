@@ -58,6 +58,8 @@ var down_interceptor: Callable
 
 var _aim_toggled := false
 var _sprint_toggled := false
+## Vehicle being driven (02 "탈것"), or null. FieldVehicle sets it through start_riding / stop_riding.
+var riding: FieldVehicle
 var _since_stamina_use := 0.0
 var _dodge_left := 0.0
 var _dodge_elapsed := 0.0
@@ -82,8 +84,7 @@ var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 
 func _ready() -> void:
 	add_to_group(GROUP)
-	collision_layer = 1 << (Enums.LAYER_PLAYER - 1)
-	collision_mask = (1 << (Enums.LAYER_WORLD - 1)) | (1 << (Enums.LAYER_MONSTER - 1))
+	_set_body_layers(true)
 	# TODO(A-11): add stats.health_per_level per player level once progression exists.
 	health = stats.max_health
 	stamina = stats.max_stamina
@@ -97,6 +98,9 @@ func _physics_process(delta: float) -> void:
 		interact_held = false
 		step(delta, script_input)  # a cutscene drives the player (IntroCutscene); no interact
 		move_and_slide()
+	if riding != null:
+		_step_riding()
+		return
 		return
 	step(delta, {} if input_blocked() else _read_input())
 	move_and_slide()
@@ -204,6 +208,9 @@ func take_damage(amount: float, info: Dictionary = {}) -> void:
 	if is_downed or (is_invulnerable() and not tick) or amount <= 0.0 or DebugConsole.godmode:
 		return
 	if incoming_damage_filter.is_valid() and not tick:
+	if riding != null:
+		riding.take_damage(amount, info)
+		return
 		amount = incoming_damage_filter.call(amount, info)
 		if amount <= 0.0:
 			return
@@ -243,6 +250,26 @@ func give_up() -> void:
 ## input: {"move": Vector2, "aim": bool, "sprint": bool, "dodge": bool}
 ## A cutscene may give "world_move": Vector3 (ground direction, length <= 1) instead of "move".
 func step(delta: float, input: Dictionary) -> void:
+func is_riding() -> bool:
+	return riding != null
+
+
+## FieldVehicle.mount(): stop walking and footsteps, leave every physics layer (hits go to the vehicle).
+func start_riding(vehicle: FieldVehicle) -> void:
+	riding = vehicle
+	is_aiming = false
+	velocity = Vector3.ZERO
+	_set_move_state(MoveState.IDLE)
+	_set_body_layers(false)
+
+
+## FieldVehicle.dismount(): stand at `at`.
+func stop_riding(at: Vector3) -> void:
+	riding = null
+	_set_body_layers(true)
+	global_position = at
+
+
 	var dir: Vector3 = input["world_move"] if input.has("world_move") else _to_world(input.get("move", Vector2.ZERO))
 	status.step(delta)
 	if is_downed:
@@ -293,6 +320,26 @@ func _read_input() -> Dictionary:
 func _to_world(move: Vector2) -> Vector3:
 	var camera := get_viewport().get_camera_3d() if is_inside_tree() else null
 	if camera == null:
+## Driving: the move keys steer the vehicle, F gets off. Weapons, skills and items are locked
+## (their nodes check is_riding()).
+func _step_riding() -> void:
+	interact_held = false
+	if input_blocked():
+		riding.set_input(Vector3.ZERO)
+		return
+	if Input.is_action_just_pressed(&"interact"):
+		riding.dismount()
+		return
+	riding.set_input(_to_world(Input.get_vector(&"move_left", &"move_right", &"move_up", &"move_down")))
+	_facing = riding.forward()
+	rotation.y = atan2(-_facing.x, -_facing.z)
+
+
+func _set_body_layers(on: bool) -> void:
+	collision_layer = (1 << (Enums.LAYER_PLAYER - 1)) if on else 0
+	collision_mask = ((1 << (Enums.LAYER_WORLD - 1)) | (1 << (Enums.LAYER_MONSTER - 1))) if on else 0
+
+
 		return Vector3(move.x, 0.0, move.y)
 	var right := camera.global_basis.x
 	var forward := -camera.global_basis.z

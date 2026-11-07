@@ -15,6 +15,7 @@
 | `SaveSystem` | `core/save_system.gd` | A | 저장·불러오기 (레인별 provider) |
 | `Economy` | `systems/economy.gd` | A | 창고 자원 |
 | `Armory` | `systems/armory.gd` | A | 장비 인스턴스, 누가 무엇을 장착했나, 최종 스탯 |
+| `Garage` | `systems/garage.gd` | 공용 | 기지가 가진 탈것, 필드에 두고 온 탈것(02 "탈것") |
 | `Bag` | `systems/bag.gd` | A | 필드 가방 격자 + 안전 주머니 |
 | `Radio` | `ai/radio.gd` | A | 방송실 지기 무전 (트리거·문장) |
 | `FieldState` | `field/field_state.gd` | B | 필드 쪽 영속 상태 |
@@ -148,6 +149,16 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   자세한 사용법은 [field/README.md](../../field/README.md).
 - **FieldState**: `in_sortie()`, `lost_gear`, `boss_ready(boss_id)`, `boss_kill_count(boss_id)`, `ensure_starter_weapon()`(출격이 끝날 때 손·창고에 무기가 없으면 `STARTER_WEAPON`(단검)을 만들어 장착, 알림).
   보스 부활 날짜 `boss_respawn_day`는 **보스 id별**이다(한 지역에 보스가 여럿일 수 있다). 지역 id로 저장된 옛 세이브는 불러올 때 그 지역의 `boss_id`로 옮긴다.
+- **탈것 (02 "탈것", 2026-11-07)**: 정의 `VehicleDef`(`data/vehicles/*.tres`), 공통 수치 `VehicleTuning`(`data/vehicles/tuning/vehicle_tuning.tres`).
+  `Garage`: `add(def_id, durability)`, `remove(uid)`, `list()`, `ready_list()`(기지에 있고 안 부서진 것), `def_of(uid)`, `durability(uid)`,
+  `is_broken(uid)`, `is_away(uid)`(필드에 두고 옴), `repair_cost(uid)`, `repair(uid)`(정비소, 잃은 내구도 10당 고철 1), `lost_in_region(region_id)`,
+  `lost_transform(uid)`. `sortie_started`/`sortie_ended`를 듣고 두고 온 탈것을 정리한다(그 지역 다음 출격 1회).
+  `Armory.craft()`의 결과물이 탈것이면 `Garage`로 가고 `vehicle_uid`를 돌려준다(`preview_craft().vehicle`).
+  필드: `FieldVehicle`(그룹 `field_vehicles`, 레이어 1+7, F로 타기·내리기, 고장 나면 정비공 동행이 6m 안에 있을 때 F 꾹 수리),
+  `Player.riding` / `is_riding()` / `start_riding()` / `stop_riding()`, `FieldCompanion.riding`, `RescueTarget.riding`(탄 사람의 피해는 탈것으로).
+  무기·스킬·정수·소모품은 `is_riding()`이면 쉰다. `FieldVehicle.mechanic_near_point(tree, point)`(정비공 찾기, 헬기도 씀).
+  `VehicleSpawner`(지역 씬, `VehicleSpot` 마커의 `spawn_ratio`, 출격 loadout의 탈것, 두고 온 탈것), `HelicopterWreck`(헬기 탈출 지점에 생김).
+  loadout `"vehicle"`: Garage uid(없으면 `&""`), `FieldState.vehicle_uid`. `RegionDef.boat_dock`: 기지 배를 가져갈 수 있는 지역.
 - **보스 (B-19)**: `BossSpawner`가 `BossArena`마다 그 보스의 부활 날짜를 따로 본다. 보스마다의 공략 규칙은 `BossDef.mechanic`(`BossMechanic` 스크립트)에 둔다.
   `BossDef.first_day` 전에는 안 나온다. `RegionDef.bosses_per_day`(0이면 전부)가 있으면 `BossSpawner.todays(arenas, day)`가 지역과 날짜로 그만큼만 뽑는다.
   잠든 채 소환된 보스(`BossDef.buried_intro`)는 땅에 묻혀 있다가 처음 깰 때 솟아오른다: `is_buried()`, `is_in_intro()`(피격 무시), 끝나면 신호 `woke`.
@@ -237,6 +248,8 @@ B의 결과가 없으면(디버그 진행) 라우터가 기본값으로 채운�
   "duration_sec": float,
   "down": Dictionary,                                  # FieldState.down_result(), 쓰러지지 않으면 {} (라우터)
   "xp": int                                            # Progression.finish_sortie (라우터)
+  "vehicle": Dictionary,                               # 타고 나온 탈것 {garage_uid ("" = 필드에서 찾음), def_id, durability}, 없으면 {}
+  "vehicles_left": Array[Dictionary],                  # 필드에 남은 기지 탈것 [{garage_uid, durability, position [x, y, z], yaw}] (Garage가 처리)
 }
 ```
 
@@ -302,6 +315,7 @@ loadout의 `"seed": int`는 라우터가 없으면 만들어 넣고 저장한다
 - `journal`(A, A-17): 일지 항목, 만난 주민과 그들의 순간, 마지막 날.
 
 ## 아이템 id 규칙
+- `garage`: 가진 탈것(def id, 내구도, 필드에 두고 온 위치), 다음 uid 번호. `field`에는 이번 출격에 가져간 `vehicle_uid`.
 
 - 자원·소모품은 `data/resources/`의 id(`Economy.get_def`). 탄약은 `ammo_pistol`(권총·기관단총), `ammo_rifle`(소총·저격총),
   `ammo_shell`(산탄총). 총의 `get_item_stats()["ammo_id"]`가 어느 탄약을 쓰는지 알려준다. 소모품: `first_aid_kit`, `bandage`, `noise_lure`, `painkiller`, `flashbang`, `grenade`.
@@ -323,7 +337,7 @@ loadout의 `"seed": int`는 라우터가 없으면 만들어 넣고 저장한다
 
 ## 물리 레이어 (`Enums.LAYER_*`)
 
-1 world · 2 player · 3 ally(주민·동행·구조자) · 4 monster · 5 player_projectile · 6 monster_projectile · 7 interactable · 8 trigger
+1 world · 2 player · 3 ally(주민·동행·구조자) · 4 monster · 5 player_projectile · 6 monster_projectile · 7 interactable · 8 trigger · 9 boat_bounds(깊은 물 둘레의 땅, 배만 부딪힘. 생성기가 `Ground`에 붙임)
 
 ## 맵 파일과 마커
 
@@ -344,7 +358,9 @@ levels/base/base_school/
   `buildings.tscn`은 `assets/` 팩 파일을 경로로만 참조하고 메시 데이터는 넣지 않는다. 에셋이 없는 클론(CI)에서는 붙지 않고 회색 맵으로 돈다.
   팩 꾸미기가 켜지면 지역 씬이 layout의 회색 박스(그룹 `kit_greybox`)를 숨긴다. 숨긴 CSG도 충돌은 남고, D의 dressing은 그대로 동작한다.
 - **필드 마커**(B-02, `field/markers/`): `PlayerSpawn`, `ExtractPoint`, `LootSpot`, `MonsterNest`, `RescueSpot`,
-  `HiddenRoute`, `BossArena`, `Recording`.
+  `HiddenRoute`, `BossArena`, `Recording`, `VehicleSpot`(02 "탈것", `surface` LAND/WATER, 이름순 첫 WATER가 기지 배 자리).
+  `ExtractPoint.Type.HELICOPTER`는 3곳 후보와 별개로 출격마다 `VehicleTuning.helicopter_chance`로 더해진다.
+  생성기 훅 `_build_late_markers()`: 모든 꾸미기가 끝난 뒤 마커를 더한다(앞의 무작위 배치를 흔들지 않음).
 - **기지 마커**(C-01, `base/markers/`): `BuildArea`, `ZoneMarker`, `ResourceNode`(나무·잔해), `RaidSpawnPoint`, `WorkSpot`, `OutpostNode`.
 - dressing을 만들 때 layout을 인스턴스해서 본다. 마커 위치를 바꾸려면 layout을 고치고, 그 마커를 읽는 테스트·생성기도 같이 고친다.
 

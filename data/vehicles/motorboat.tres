@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="VehicleDef" format=3]
+
+[ext_resource type="Script" path="res://systems/defs/vehicle_def.gd" id="1_vdef"]
+[ext_resource type="PackedScene" path="res://assets/vehicles/cc0/kenney_watercraft_kit/boat_speed_a.glb" id="2_model"]
+
+[resource]
+script = ExtResource("1_vdef")
+id = &"motorboat"
+name = "철배"
+surface = 1
+seats = 4
+speed = 9.0
+noise_action = &"vehicle_motorboat"
+max_durability = 100.0
+wheelchair_ok = true
+field_broken_chance = 0.7
+ram = false
+body_size = Vector3(1.8, 1.0, 4.2)
+model = ExtResource("2_model")
+model_yaw_deg = 180.0

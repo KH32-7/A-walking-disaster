@@ -14,8 +14,9 @@ resources = Array[StringName]([&"paint", &"cloth", &"food", &"scrap"])
 loot_table_id = &"flooded_mall"
 boss_id = &"sunken_sign_serpent"
 bosses_per_day = 1
-extract_candidates = Array[StringName]([&"mall_dock", &"mall_gas_station", &"mall_north_gate"])
+extract_candidates = Array[StringName]([&"mall_dock", &"mall_gas_station", &"mall_north_gate", &"mall_heli_deck"])
 hidden_routes = Array[StringName]([&"mall_loading_ramp"])
+boat_dock = true
 map_labels = Array[Dictionary]([{
 "kind": &"landmark",
 "pos": Vector2(21, -85.5),
