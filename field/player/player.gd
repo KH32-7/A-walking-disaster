@@ -24,6 +24,9 @@ const MOVE_NOISE := {
 	MoveState.SPRINT: &"sprint",
 }
 const DODGE_NOISE := &"roll"
+## Seconds between footstep sounds per move state. Only states that make noise (AIM_WALK is 0 m), and
+## silent while the noise comes out 0 (shadow step), so a sound always means monsters can hear it.
+const FOOTSTEP_SEC := {MoveState.WALK: 0.45, MoveState.SPRINT: 0.3}
 ## Interaction query: sphere centered at body height, at most this many candidates.
 const INTERACT_HEIGHT := 0.9
 const INTERACT_MAX_HITS := 8
@@ -59,6 +62,7 @@ var _since_stamina_use := 0.0
 var _dodge_left := 0.0
 var _dodge_elapsed := 0.0
 var _dodge_dir := Vector3.ZERO
+var _footstep_left := 0.0
 var _facing := Vector3.FORWARD
 var _aim_point: Variant = null
 ## Interactable the player last started using (HUD hold bar).
@@ -322,6 +326,20 @@ func _step_move(delta: float, dir: Vector3, aim: bool, sprint: bool) -> void:
 		_set_move_state(MoveState.SPRINT)
 	else:
 		_set_move_state(MoveState.WALK)
+	_step_footstep(delta)
+
+
+func _step_footstep(delta: float) -> void:
+	var sec: float = FOOTSTEP_SEC.get(move_state, 0.0)
+	if sec <= 0.0:
+		_footstep_left = 0.0
+		return
+	_footstep_left -= delta
+	if _footstep_left > 0.0:
+		return
+	_footstep_left = sec
+	if _noise == null or _noise.radius_for(MOVE_NOISE[move_state]) > 0.0:
+		Audio.play(&"footstep_run" if move_state == MoveState.SPRINT else &"footstep", global_position)
 
 
 ## Slower when walking away from where the body faces (only while it faces the cursor).
@@ -342,6 +360,7 @@ func _start_dodge(dir: Vector3) -> void:
 	velocity.x = dodge_velocity.x
 	velocity.z = dodge_velocity.z
 	_set_move_state(MoveState.DODGE)
+	Audio.play(&"dodge_roll", global_position)
 
 
 func _step_dodge(delta: float) -> void:

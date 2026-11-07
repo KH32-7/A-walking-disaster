@@ -50,6 +50,10 @@ const CHASE_POLL_SEC := 0.25
 const MONSTER_GROUP := &"field_monsters"
 const CHASE_STATES := [Enums.AIState.CHASE, Enums.AIState.ATTACK]
 const WEDDING_EVENT := &"wedding"
+## Every BaseButton in the game clicks when pressed (screens need no call).
+const UI_CLICK := &"ui_click"
+## The same 2D event asked again within this many ms plays once (a screen that also calls ui_click).
+const REPEAT_2D_MSEC := 60
 ## Ambience loop id -> music states it plays in. Rain plays in every state while GameState.is_raining().
 const AMB_RAIN := &"amb_rain"
 const AMBIENCE := {
@@ -104,6 +108,8 @@ var _monster_states: Dictionary = {}
 var _chase_left := 0.0
 ## -1 not started, -2 finished and waited for, else the WorkerThreadPool task id.
 var _prewarm_task := -1
+## 2D event id -> Time.get_ticks_msec() it last played (REPEAT_2D_MSEC).
+var _last_2d: Dictionary = {}
 
 
 func _ready() -> void:
@@ -155,6 +161,16 @@ func _ready() -> void:
 	poll.autostart = true
 	poll.timeout.connect(_poll_chase)
 	add_child(poll)
+	get_tree().node_added.connect(_on_node_added)
+
+
+func _on_node_added(node: Node) -> void:
+	if node is BaseButton and not (node as BaseButton).pressed.is_connected(_on_button_pressed):
+		(node as BaseButton).pressed.connect(_on_button_pressed)
+
+
+func _on_button_pressed() -> void:
+	play(UI_CLICK)
 
 
 func _exit_tree() -> void:
@@ -206,6 +222,10 @@ func play(event_id: StringName, position: Vector3 = Vector3.INF) -> void:
 		p.play()
 		sound_played.emit(ev, position)
 	else:
+		var now := Time.get_ticks_msec()
+		if now - int(_last_2d.get(event_id, -REPEAT_2D_MSEC)) < REPEAT_2D_MSEC:
+			return
+		_last_2d[event_id] = now
 		var p := _free_2d(ev.priority)
 		if p == null:
 			return
