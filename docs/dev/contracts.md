@@ -342,6 +342,7 @@ levels/base/base_school/
 ```
 
 - 지도가 있는 지역: `city_park`(공원), `flooded_mall`(침수 상가), `hospital`(병원, 2026-11-07. 지하 통로는 맵 파일 floor_links의 kind `tunnel`).
+- 가구 상자(2026-11-07): `LootSpot.look_piece`(CityKit.PROPS 조각 이름)가 있으면 그 상자는 가구 모양으로 보이고 출격마다 항상 생긴다(`LootSpawner`, 보급 상자처럼). 건물 평면(`kit_buildings.gd`)의 `loot` 목록 `[piece, x, z, face, 종류, 루팅 표 id]`에서 생성기가 LootSpot을 만들고 충돌은 건물에 굽는다. 방 전용 표는 `region_id`를 비워 둔다(지역 기본 표와 섞이지 않게).
 - `buildings.tscn`, `ground_splat.res`는 `field/build/layout_builder.gd`가 layout.tscn과 같이 생성한다(B-26, 이슈 #144). 손으로 고치지 않는다.
   `buildings.tscn`은 `assets/` 팩 파일을 경로로만 참조하고 메시 데이터는 넣지 않는다. 에셋이 없는 클론(CI)에서는 붙지 않고 회색 맵으로 돈다.
   팩 꾸미기가 켜지면 지역 씬이 layout의 회색 박스(그룹 `kit_greybox`)를 숨긴다. 숨긴 CSG도 충돌은 남고, D의 dressing은 그대로 동작한다.

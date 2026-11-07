@@ -10,14 +10,16 @@ const LAYOUT := "res://levels/field/hospital/layout.tscn"
 const ASSEMBLY := "res://levels/field/hospital/hospital.tscn"
 const MAP_FILE := "res://levels/field/hospital/build/hospital_map.json"
 const BUILDER := preload("res://levels/field/hospital/build/build_layout.gd")
+const CityKit := preload("res://field/buildings/city_kit.gd")
 const MAP_SCALE: float = BUILDER.MAP_SCALE
 const NAV_WALK := 1
 const NAV_WHEELCHAIR := 2
 const REACH := 1.5 ## path end within this distance (xz) of the target
-## Map file markers plus the generator's extras: loot 32 + 15 (4 extra nests, area spots, garden)
-## + 13 (filler scenes) + 6 (bay, plaza, car park by hand), nests 4 + 4.
+## Map file markers plus the generator's extras: loot 9 (crates and nest spots) + 87 furniture
+## containers (build/kit_buildings.gd loot) + 7 (4 extra nests, garden) + 13 (filler scenes)
+## + 6 (bay, plaza, car park by hand), nests 4 + 4.
 const MARKER_COUNTS := {
-	PlayerSpawn.GROUP: 2, ExtractPoint.GROUP: 3, LootSpot.GROUP: 66, MonsterNest.GROUP: 8,
+	PlayerSpawn.GROUP: 2, ExtractPoint.GROUP: 3, LootSpot.GROUP: 122, MonsterNest.GROUP: 8,
 	RescueSpot.GROUP: 7, HiddenRoute.GROUP: 1, Recording.GROUP: 2, BossArena.GROUP: 1,
 }
 const EXTRACT_IDS := [&"hospital_main_gate", &"hospital_generator", &"hospital_north_gate"]
@@ -33,6 +35,8 @@ const WALL_DETOUR_MIN := 60.0
 ## Families of data/regions/hospital.tres.
 const FAMILIES := [Enums.Element.WATER, Enums.Element.LIGHT]
 const BOSS_ID := &"surgical_lamp_wraith"
+## Furniture containers (kit plans' loot): all of them spawn, each with its room table.
+const FURNITURE := 87
 
 var _tree: SceneTree
 var _ok := true
@@ -114,7 +118,12 @@ func _check_paths(map: RID) -> void:
 		_expect(_reaches(map, main, target, NAV_WHEELCHAIR), "wheelchair reaches extract %s" % node.id)
 	for group: StringName in [LootSpot.GROUP, MonsterNest.GROUP, RescueSpot.GROUP, Recording.GROUP, BossArena.GROUP]:
 		for node in _tree.get_nodes_in_group(group):
-			_expect(_reaches(map, main, node.global_position, NAV_WALK), "main spawn reaches %s" % node.name)
+			# Furniture stands in its own collision: reaching its side is enough.
+			var reach := REACH
+			if node is LootSpot and (node as LootSpot).look_piece != &"":
+				var size: Vector3 = CityKit.PROPS[(node as LootSpot).look_piece][2]
+				reach += maxf(size.x, size.z) * 0.5
+			_expect(_reaches(map, main, node.global_position, NAV_WALK, reach), "main spawn reaches %s" % node.name)
 	# The trapped wheelchair user in the isolation room gets out to the main gate.
 	for node in _tree.get_nodes_in_group(RescueSpot.GROUP):
 		if &"isolation" in (node as RescueSpot).spawn_tags:
@@ -196,8 +205,26 @@ func _check_assembly() -> void:
 			MonsterRules.ROAM_START_GROUPS, packs.size()])
 	var loot := hospital.get_node(^"LootSpawner") as LootSpawner
 	_expect(loot.spawned.size() > 0, "loot containers spawn")
+	var furniture := 0
 	for c in loot.spawned:
-		_expect(c.loot_table != null and c.loot_table.region_id == &"hospital", "container %s uses a hospital loot table" % c.name)
+		_expect(c.loot_table != null and String(c.loot_table.id).begins_with("hospital_"),
+			"container %s uses a hospital loot table" % c.name)
+		if c.look_piece != &"":
+			furniture += 1
+			_expect(c.loot_table.region_id == &"" and LootData.table(c.loot_table.id) == c.loot_table,
+				"furniture %s (%s) uses its room table %s" % [c.name, c.look_piece, c.loot_table.id])
+	_expect(furniture == FURNITURE, "every furniture container spawns (%d of %d)" % [furniture, FURNITURE])
+	# A pharmacy shelf opens like any container (open time from its kind, contents from its room).
+	var shelves := loot.spawned.filter(func(c: LootContainer) -> bool: return c.look_piece == &"shelf_02" 			and c.loot_table.id == &"hospital_pharmacy")
+	_expect(not shelves.is_empty() and players.size() == 1, "a pharmacy shelf container")
+	if not shelves.is_empty() and players.size() == 1:
+		var shelf := shelves[0] as LootContainer
+		var who := players[0] as Node3D
+		who.global_position = shelf.global_position + Vector3(1.0, 0.0, 0.0)
+		_expect(shelf.begin_open(who), "the shelf starts opening")
+		for i in 100:
+			shelf.advance(0.1)
+		_expect(shelf.state == LootContainer.State.OPEN, "the shelf is open (%d)" % shelf.state)
 	var extraction := hospital.get_node(^"ExtractionManager") as ExtractionManager
 	_expect(extraction.active_point_ids().size() == ExtractionManager.ACTIVE_COUNT, "2 of 3 extract points are active")
 	var gates := hospital.get_node(^"HiddenRouteManager") as HiddenRouteManager
@@ -209,12 +236,12 @@ func _check_assembly() -> void:
 	await _tree.process_frame
 
 
-func _reaches(map: RID, from: Vector3, to: Vector3, layers: int) -> bool:
+func _reaches(map: RID, from: Vector3, to: Vector3, layers: int, reach := REACH) -> bool:
 	var path := _path(map, from, to, layers)
 	if path.is_empty():
 		return false
 	var end := path[path.size() - 1]
-	return Vector2(end.x - to.x, end.z - to.z).length() <= REACH and absf(end.y - to.y) < 1.5
+	return Vector2(end.x - to.x, end.z - to.z).length() <= reach and absf(end.y - to.y) < 1.5
 
 
 ## Full path search: the map has more polygons than the default search budget (4096), so the long

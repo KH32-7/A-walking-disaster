@@ -18,6 +18,13 @@ enum ContainerType { DRAWER, MEDICINE, TOOLBOX, SUPPLY_CRATE, MONSTER_NEST }
 	set(value):
 		loot_table_id = value
 		_refresh()
+## Furniture this container is (CityKit.PROPS piece, e.g. &"locker"), drawn by the container in
+## place of the kind's crate look. Such spots are part of a room's furniture, so they always spawn
+## (LootSpawner); their collision is baked into the building. Empty = a loose crate.
+@export var look_piece: StringName = &"":
+	set(value):
+		look_piece = value
+		_refresh()
 
 
 func _marker_group() -> StringName:
@@ -30,7 +37,8 @@ func _gizmo_color() -> Color:
 
 func _gizmo_label() -> String:
 	var table := " [%s]" % loot_table_id if loot_table_id != &"" else ""
-	return "LootSpot %s%s" % [ContainerType.keys()[container_type], table]
+	var look := " (%s)" % look_piece if look_piece != &"" else ""
+	return "LootSpot %s%s%s" % [ContainerType.keys()[container_type], table, look]
 
 
 func _build_gizmo() -> void:

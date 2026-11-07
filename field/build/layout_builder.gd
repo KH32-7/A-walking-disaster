@@ -602,7 +602,8 @@ func _check_kit_markers() -> void:
 		if m.floor == 0:
 			points.append(Vector3(m.position[0] * MAP_SCALE, 0.0, m.position[2] * MAP_SCALE))
 	for m: Dictionary in _extra_markers:
-		if m.pos.y < 1.0:
+		# Furniture containers stand in their own collision box on purpose.
+		if m.pos.y < 1.0 and not m.props.has("look_piece"):
 			points.append(m.pos)
 	for id: String in _kit:
 		var parts: Dictionary = _kit[id]
@@ -914,6 +915,16 @@ func _plan_extra_markers() -> void:
 		_add_extra(loot_scene, "LootSpot_loot_%s" % n[0], Vector3(spot.x, 0.0, spot.y), 0.0,
 			{"container_type": "MONSTER_NEST", "loot_table_id": ""})
 
+	# Furniture containers of the kit plans (CityKit.parts() loot): always there, part of the room.
+	var furniture := 0
+	for id: String in _kit:
+		var entries: Array = _kit[id].loot
+		for i in entries.size():
+			var f: Dictionary = entries[i]
+			_add_extra(loot_scene, "LootSpot_%s_f%d" % [id, i], Vector3(f.center.x, 0.0, f.center.y), f.yaw,
+				{"container_type": f.kind, "loot_table_id": f.table, "look_piece": f.piece})
+			furniture += 1
+
 	var rng := RandomNumberGenerator.new()
 	rng.seed = loot_seed
 	var added := 0
@@ -921,7 +932,8 @@ func _plan_extra_markers() -> void:
 		if zone.kind != "indoor":
 			continue
 		var poly := _poly(zone)
-		var have := 0
+		# Furniture containers count toward the room's spots, so a furnished building gets no crates.
+		var have: int = _kit[zone.id].loot.size() if _kit.has(zone.id) else 0
 		for m: Dictionary in _map.markers:
 			if m["class"] == "LootSpot" and m.floor == zone.floor \
 					and Geometry2D.is_point_in_polygon(_xz(m.position), poly):
@@ -971,7 +983,8 @@ func _plan_extra_markers() -> void:
 		if placed < landmark_loot[id].size():
 			push_warning("Loot: %s got %d of %d spots" % [id, placed, landmark_loot[id].size()])
 		added += placed
-	print("extra markers: %d nests, %d loot spots" % [extra_nests.size(), extra_nests.size() + added])
+	print("extra markers: %d nests, %d loot spots, %d furniture containers" % [extra_nests.size(),
+		extra_nests.size() + added, furniture])
 
 
 ## Seeded clutter clusters on open ground (clutter_kits).
@@ -2381,7 +2394,7 @@ func _marker(m: Dictionary) -> Node3D:
 				value = enums.ContainerType[value]
 			"family":
 				value = element[value]
-			"id", "spawn_id", "recording_id", "required_trait", "loot_table_id", "boss_id":
+			"id", "spawn_id", "recording_id", "required_trait", "loot_table_id", "boss_id", "look_piece":
 				value = StringName(value)
 			"spawn_tags":
 				var tags: Array[StringName] = []
