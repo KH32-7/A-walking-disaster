@@ -3,13 +3,13 @@ extends Control
 ## Relation map (D-13, design 14 "관계도": 주민은 점, 관계는 선). Owner: Lane D.
 ## Each stage has its own line *shape* (UI_RULES §1.6 — never colour alone):
 ##   앙숙 지그재그 · 서먹함 긴 점선 · 아는 사이 잔 점선 · 친구 실선 · 절친 굵은 실선 ·
-##   연인 이중선 · 배우자 이중선 + 고리 두 개 · 헤어짐 끊긴 선
+##   연인 이중선 · 배우자 이중선 + 고리 두 개 · 전우 실선 + 가로 마디 · 헤어짐 끊긴 선
 ## Residents sit on an ellipse; the selected one is larger and its lines carry stage labels.
 ## Data comes from Colony.relations_of() through set_data(); nothing is computed here.
 
 signal resident_selected(resident_id: StringName)
 
-const STAGE_ORDER: Array[StringName] = [&"married", &"lover", &"best_friend", &"friend", &"acquainted",
+const STAGE_ORDER: Array[StringName] = [&"married", &"lover", &"comrade", &"best_friend", &"friend", &"acquainted",
 	&"awkward", &"rival"]
 const NODE_R := 30.0
 const NODE_R_SEL := 40.0
@@ -127,6 +127,8 @@ static func stage_color(stage: StringName) -> Color:
 			return UiTokens.TEXT
 		&"best_friend":
 			return UiTokens.INFO
+		&"comrade":
+			return UiTokens.COMRADE
 		&"lover", &"married":
 			return UiTokens.ACCENT
 	return UiTokens.TEXT_DIM
@@ -159,6 +161,13 @@ static func draw_stage_line(ci: CanvasItem, p0: Vector2, p1: Vector2, stage: Str
 			ci.draw_line(p0, p1, col, 2.5 * k, true)
 		&"best_friend":
 			ci.draw_line(p0, p1, col, 6.0 * k, true)
+		&"comrade":
+			# 전우: a solid line with short cross ties, like a rope ladder.
+			ci.draw_line(p0, p1, col, 3.0 * k, true)
+			var ties := maxi(int(dist / (18.0 * k)), 2)
+			for i in range(1, ties):
+				var c := p0 + d * (float(i) / float(ties))
+				ci.draw_line(c - nrm * 6.0 * k, c + nrm * 6.0 * k, col, 2.0 * k, true)
 		&"lover", &"married":
 			ci.draw_line(p0 + nrm * 3.5 * k, p1 + nrm * 3.5 * k, col, 2.0 * k, true)
 			ci.draw_line(p0 - nrm * 3.5 * k, p1 - nrm * 3.5 * k, col, 2.0 * k, true)

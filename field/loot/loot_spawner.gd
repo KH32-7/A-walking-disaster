@@ -34,9 +34,13 @@ func spawn(rng: RandomNumberGenerator) -> Array[LootContainer]:
 	spawned.clear()
 	var spots := _find_spots()
 	# Supply crates stand in fixed dangerous places (next to nests and bosses), so they come every
-	# sortie: the place itself tells the player it is worth the risk. Only the rest is drawn.
-	var fixed := spots.filter(func(s: LootSpot) -> bool: return s.container_type == LootSpot.ContainerType.SUPPLY_CRATE)
-	var rest := spots.filter(func(s: LootSpot) -> bool: return s.container_type != LootSpot.ContainerType.SUPPLY_CRATE)
+	# sortie: the place itself tells the player it is worth the risk. Furniture containers (lockers,
+	# cabinets: LootSpot.look_piece) are part of the room and always there too, sometimes empty.
+	# Only the loose crates are drawn.
+	var always := func(s: LootSpot) -> bool:
+		return s.container_type == LootSpot.ContainerType.SUPPLY_CRATE or s.look_piece != &""
+	var fixed := spots.filter(always)
+	var rest := spots.filter(func(s: LootSpot) -> bool: return not always.call(s))
 	var count := roundi(rest.size() * spawn_ratio)
 	if spawn_ratio > 0.0:
 		count = maxi(count, mini(1, rest.size()))
@@ -56,6 +60,7 @@ func _make_container(spot: LootSpot, rng: RandomNumberGenerator) -> LootContaine
 	var c: LootContainer = CONTAINER_SCENE.instantiate()
 	c.def = def
 	c.loot_table = LootData.resolve_table(spot.loot_table_id, region_id, spot.container_type)
+	c.look_piece = spot.look_piece
 	if c.loot_table == null:
 		push_warning("LootSpawner: no loot table for %s" % spot.get_path())
 	add_child(c)

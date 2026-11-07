@@ -20,9 +20,9 @@ max_count = 1
 [sub_resource type="Resource" id="Entry_2"]
 script = ExtResource("2_entry")
 item_id = &"ammo_rifle"
-weight = 10.0
-min_count = 5
-max_count = 10
+weight = 15.0
+min_count = 10
+max_count = 20
 
 [sub_resource type="Resource" id="Entry_3"]
 script = ExtResource("2_entry")
@@ -60,7 +60,7 @@ container_type = 3
 roll_min = 2
 roll_max = 3
 entries = Array[ExtResource("2_entry")]([SubResource("Entry_0"), SubResource("Entry_1"), SubResource("Entry_2"), SubResource("Entry_3"), SubResource("Entry_4"), SubResource("Entry_5"), SubResource("Entry_6")])
-gear_chance = 0.6
+gear_chance = 0.85
 gear_rarity_weights = Array[float]([0.0, 60.0, 40.0])
-gear_pool = Array[StringName]([&"pistol", &"rifle", &"shotgun", &"smg", &"machete", &"spear", &"riot_helmet", &"flak_vest", &"work_vest", &"knee_guards"])
+gear_pool = Array[StringName]([&"pistol", &"rifle", &"shotgun", &"smg", &"machete", &"spear", &"riot_helmet", &"flak_vest", &"work_vest", &"knee_guards", &"longsword", &"shield_club", &"sniper_rifle", &"scrap_armor", &"work_helmet"])
 blueprint_chance = 0.35

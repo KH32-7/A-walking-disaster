@@ -186,7 +186,7 @@ func _test_drop_rolls() -> void:
 			counts_ok = counts_ok and g.rarity == Enums.Rarity.COMMON and Armory.get_def(g.def_id) != null
 	_check(absf(essence / float(n) - 0.3) < 0.03, "normal: low essence 30%% (got %.3f)" % (essence / float(n)))
 	_check(absf(material / float(n) - 0.5) < 0.03, "normal: family material 50%% (got %.3f)" % (material / float(n)))
-	_check(absf(gear / float(n) - 0.03) < 0.012, "normal: common gear 3%% (got %.3f)" % (gear / float(n)))
+	_check(absf(gear / float(n) - 0.06) < 0.015, "normal: common gear 6%% (got %.3f)" % (gear / float(n)))
 	_check(counts_ok, "normal: 1 essence, 1 material, common gear")
 
 	var elite_ok := true
@@ -200,7 +200,7 @@ func _test_drop_rolls() -> void:
 		for g: Dictionary in d.gear:
 			elite_ok = elite_ok and g.rarity >= Enums.Rarity.UNCOMMON
 	_check(elite_ok, "elite: 1-2 mid essence, 2-3 material always, gear uncommon or better")
-	_check(absf(elite_gear / 1000.0 - 0.2) < 0.04, "elite: gear 20%% (got %.3f)" % (elite_gear / 1000.0))
+	_check(absf(elite_gear / 1000.0 - 0.35) < 0.05, "elite: gear 35%% (got %.3f)" % (elite_gear / 1000.0))
 
 	# Night drop x1.3.
 	var night := 0

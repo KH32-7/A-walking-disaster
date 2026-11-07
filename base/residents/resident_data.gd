@@ -126,6 +126,7 @@ static func create(profile: Dictionary, rng: RandomNumberGenerator) -> Dictionar
 		"story": {"background": "", "fragments": [], "requests": [], "first_line": str(profile.get("first_line", ""))},
 		"status": Enums.ResidentStatus.ACTIVE,
 		"joined_day": 0,
+		"milestones": [],  # 육아 사건 (2026-11-07): first_steps, party_<stage>, copycat
 	}
 	for key in profile:
 		var k := str(key)
@@ -158,6 +159,7 @@ static func normalize(src: Dictionary) -> Dictionary:
 	r["traits"] = _names(r.get("traits", []))
 	r["likes"] = _names(r.get("likes", []))
 	r["dislikes"] = _names(r.get("dislikes", []))
+	r["milestones"] = _names(r.get("milestones", []))
 	r["origin_tags"] = _names(r.get("origin_tags", []))
 	var needs: Array = []
 	for n in r.get("access_needs", []):

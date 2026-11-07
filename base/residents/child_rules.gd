@@ -23,6 +23,24 @@ const NAME_MAX := ResidentTemplate.NAME_MAX
 const STAGE_START := {
 	Enums.AgeStage.BABY: 0, Enums.AgeStage.CHILD: 10, Enums.AgeStage.TEEN: 30, Enums.AgeStage.ADULT: 50,
 }
+## --- 2026-11-07 패치: 육아 사건 (밤 이벤트, 아이마다 한 번씩: resident "milestones") ---
+## 첫걸음: 아기가 이 나이(일)가 되면.
+const FIRST_STEPS_DAY := 4
+const FIRST_STEPS_MORALE := 8
+const FIRST_STEPS_RELATION := 5
+## 성장 잔치: 아이·청소년·어른이 된 뒤 이 날수 안에. 선물을 준비하면 능력치 하나 +1.
+const GROWTH_PARTY_WITHIN := 3
+const GROWTH_PARTY_MORALE := 6
+const GROWTH_PARTY_GIFT_COST := {&"food": 3}
+const GROWTH_PARTY_GIFT_STAT := 1
+## 어른 흉내: 아이·청소년이 보호자의 숙련 작업을 따라 해 그 작업 숙련 1을 얻는다. 칭찬하면 사기 +.
+const COPYCAT_SKILL := 1
+const COPYCAT_PRAISE_MORALE := 5
+## 가족 식사: 결혼한 부부와 그 아이들.
+const FAMILY_DINNER_RELATION := 3
+const FAMILY_DINNER_MORALE := 4
+const FAMILY_DINNER_KIDS := 2  # 화면에 다 들어가게
+
 ## 아이 놀이: 기지에 아이가 있으면 모두 사기 +2.
 const PLAY_MORALE := 2
 

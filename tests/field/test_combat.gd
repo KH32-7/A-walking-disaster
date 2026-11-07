@@ -34,6 +34,7 @@ func run() -> bool:
 	await _test_melee_combo_and_backstab()
 	await _test_block()
 	await _test_magazine_and_reload()
+	await _test_hold_to_fire()
 	await _test_one_hand_only()
 	_restore_loadout()
 	return _ok
@@ -323,9 +324,29 @@ func _test_magazine_and_reload() -> void:
 	w.holder.step(DT, {"weapon_swap": true})
 	_expect(w.holder.active_slot == Enums.EquipSlot.MAIN, "weapon_swap goes back to MAIN")
 	w.holder.step(1.0, {})
-	_expect(w.holder.fire() and w.holder.ammo_in_magazine() == 19, "rifle uses its own magazine")
+	_expect(w.holder.fire() and w.holder.ammo_in_magazine() == 29, "rifle uses its own magazine")
 	if Bag.count(&"ammo_rifle") == 0:
 		_expect(not w.holder.start_reload(), "no rifle reload without rifle ammo in the bag")
+	w.root.free()
+
+
+## 꾹 누르기 (사용자 요청 2026-11-07): holding attack keeps firing every gun at its attack_interval.
+func _test_hold_to_fire() -> void:
+	var w := await _world()
+	_equip(&"pistol", Enums.EquipSlot.MAIN)
+	var held := {"attack_held": true}
+	w.holder.step(DT, {"attack": true, "attack_held": true})
+	_expect(w.holder.ammo_in_magazine() == 11, "press fires once")
+	w.holder.step(DT, held)
+	_expect(w.holder.ammo_in_magazine() == 11, "hold waits out the attack interval")
+	for i in 30:
+		w.holder.step(DT, held)
+	_expect(w.holder.ammo_in_magazine() < 11, "hold keeps firing a semi-auto pistol")
+	w.holder._magazines[w.holder.current_uid()] = 0
+	var dry := [0]
+	w.holder.dry_fired.connect(func() -> void: dry[0] += 1)
+	w.holder.step(DT, held)
+	_expect(w.holder.is_reloading and dry[0] == 0, "hold on an empty magazine reloads without dry fire")
 	w.root.free()
 
 

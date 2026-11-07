@@ -136,6 +136,61 @@ const PROPS := {
 	"soda_fountain_machine": ["retail_shelving", Vector3(-1.08, 0.00, -1.67), Vector3(1.08, 2.17, 3.34)],
 	"store_inventory_stack_01": ["retail_shelving", Vector3(-0.23, 0.00, -0.64), Vector3(0.48, 1.13, 1.28)],
 	"store_inventory_stack_02": ["retail_shelving", Vector3(-0.68, -0.00, -0.50), Vector3(1.31, 0.97, 1.08)],
+	# Hospital rooms and vehicles (levels/field/hospital, measured 2026-11-07).
+	"bed_02": ["furniture", Vector3(-1.39, -0.00, -1.25), Vector3(2.92, 1.54, 2.55)],
+	"bathroom_cabinet": ["furniture", Vector3(-0.24, 0.00, -0.44), Vector3(0.24, 0.81, 0.89)],
+	"toilet": ["furniture", Vector3(-0.50, -0.00, -0.25), Vector3(0.87, 0.92, 0.51)],
+	"table_wheels": ["furniture_sheriffs", Vector3(-0.41, -0.00, -0.78), Vector3(0.82, 0.82, 1.59)],
+	"locker": ["furniture_sheriffs", Vector3(-0.33, -0.00, -0.43), Vector3(0.33, 1.61, 0.86)],
+	"filing_cabinet_a_01": ["furniture_sheriffs", Vector3(-0.26, -0.00, -0.23), Vector3(0.53, 1.34, 0.47)],
+	"filing_cabinet_b_01": ["furniture_sheriffs", Vector3(-0.19, 0.00, -0.23), Vector3(0.48, 1.38, 0.58)],
+	"office_chair_01": ["furniture_sheriffs", Vector3(-0.39, -0.00, -0.34), Vector3(0.73, 1.06, 0.68)],
+	"office_computer": ["furniture_sheriffs", Vector3(-0.47, -0.01, -0.41), Vector3(0.65, 0.72, 0.95)],
+	"office_storage_shelf": ["furniture_sheriffs", Vector3(-0.25, 0.01, -0.50), Vector3(0.51, 0.96, 1.03)],
+	"sheriff_desk": ["furniture_sheriffs", Vector3(-0.52, 0.00, -0.98), Vector3(1.05, 0.87, 1.99)],
+	"armory_cabinet_01": ["furniture_sheriffs", Vector3(-0.22, 0.00, -0.54), Vector3(0.44, 2.00, 1.09)],
+	"ambulance": ["vehicle", Vector3(-2.74, -0.00, -1.21), Vector3(6.17, 2.39, 2.42)],
+	"military_ambulance": ["vehicle", Vector3(-2.51, -0.01, -1.27), Vector3(5.26, 2.30, 2.55)],
+	"fire_truck": ["vehicle", Vector3(-4.24, -0.01, -1.37), Vector3(8.51, 2.74, 2.74)],
+	"chair_03": ["furniture", Vector3(-0.33, -0.00, -0.32), Vector3(0.67, 1.13, 0.62)],
+	"nightstand_02": ["furniture", Vector3(-0.25, 0.00, -0.31), Vector3(0.51, 0.81, 0.61)],
+	"nightstand_03": ["furniture", Vector3(-0.30, -0.00, -0.31), Vector3(0.62, 0.83, 0.62)],
+	"wardrobe_02": ["furniture", Vector3(-0.39, -0.00, -0.80), Vector3(0.41, 2.57, 1.52)],
+	"dresser_02": ["furniture", Vector3(-0.25, 0.00, -0.56), Vector3(0.52, 0.94, 1.11)],
+	"sofa_02": ["furniture", Vector3(-0.46, 0.00, -1.02), Vector3(1.06, 1.14, 2.06)],
+	"armchair_02": ["furniture", Vector3(-0.55, 0.00, -0.50), Vector3(1.16, 1.15, 0.98)],
+	"table_01": ["furniture", Vector3(-0.67, 0.01, -1.46), Vector3(1.33, 0.91, 2.91)],
+	"console_table_01": ["furniture", Vector3(-0.36, 0.00, -0.89), Vector3(0.74, 1.01, 1.82)],
+	"fridge_02": ["furniture", Vector3(-0.32, 0.00, -0.54), Vector3(0.93, 1.98, 1.08)],
+	"kitchen_a_01": ["furniture", Vector3(-0.72, 0.00, -1.82), Vector3(0.72, 2.68, 3.64)],
+	"kitchen_island_01": ["furniture", Vector3(-0.44, 0.00, -0.92), Vector3(0.88, 0.93, 1.82)],
+	"bath": ["furniture", Vector3(-0.55, 0.00, -1.07), Vector3(1.10, 0.89, 2.15)],
+	"tv_02": ["furniture", Vector3(-0.08, 0.00, -0.95), Vector3(0.16, 1.08, 1.90)],
+	"metal_bunk": ["furniture_sheriffs", Vector3(-0.63, -0.21, -0.93), Vector3(0.63, 0.48, 1.86)],
+	"water_cooler": ["furniture_sheriffs", Vector3(-0.18, 0.00, -0.19), Vector3(0.35, 1.39, 0.38)],
+	"printer_big": ["furniture_sheriffs", Vector3(-0.35, 0.00, -0.36), Vector3(0.69, 1.12, 0.67)],
+	"shelves_ammunition_01": ["furniture_sheriffs", Vector3(-0.28, -0.00, -0.70), Vector3(0.56, 1.66, 1.41)],
+	"armory_cabinet_02": ["furniture_sheriffs", Vector3(-0.66, 0.00, -0.51), Vector3(0.88, 1.98, 1.02)],
+	"filing_cabinet_a_02": ["furniture_sheriffs", Vector3(-0.26, -0.00, -0.23), Vector3(0.53, 0.69, 0.47)],
+	"office_chair_02": ["furniture_sheriffs", Vector3(-0.43, 0.00, -0.45), Vector3(0.86, 1.19, 0.84)],
+	"office_telephone": ["furniture_sheriffs", Vector3(-0.22, -0.01, -0.17), Vector3(0.37, 0.11, 0.30)],
+	"office_urn": ["furniture_sheriffs", Vector3(-0.27, -0.00, -0.19), Vector3(0.53, 0.58, 0.39)],
+	"bench": ["furniture_sheriffs", Vector3(-0.21, -0.00, -0.66), Vector3(0.41, 0.49, 1.32)],
+	"documents_01": ["furniture_sheriffs", Vector3(-0.18, 0.00, -0.13), Vector3(0.36, 0.05, 0.26)],
+	"folders_01": ["furniture_sheriffs", Vector3(-0.24, 0.00, -0.32), Vector3(0.24, 0.32, 0.65)],
+	"clipboard_document_01": ["furniture_sheriffs", Vector3(-0.23, 0.00, -0.15), Vector3(0.50, 0.06, 0.29)],
+	"church_bench": ["furniture_church", Vector3(-0.47, -0.00, -2.47), Vector3(0.77, 1.25, 4.95)],
+	"church_chair": ["furniture_church", Vector3(-0.28, -0.00, -0.27), Vector3(0.60, 1.06, 0.54)],
+	"altar_table": ["furniture_church", Vector3(-0.46, -0.00, -0.99), Vector3(0.90, 0.77, 1.96)],
+	"church_bookcase": ["furniture_church", Vector3(-0.22, 0.00, -1.69), Vector3(0.44, 3.34, 3.39)],
+	"display_rack_02": ["retail_shelving", Vector3(-0.20, 0.01, -0.43), Vector3(0.39, 1.50, 0.86)],
+	"retail_shelf_02": ["retail_shelving", Vector3(-0.45, 0.00, -0.57), Vector3(0.46, 1.80, 1.14)],
+	"retail_shelf_04": ["retail_shelving", Vector3(-0.60, 0.00, -0.62), Vector3(0.61, 1.79, 1.24)],
+	"handheld_radio": ["gameplay_props", Vector3(-0.04, 0.00, -0.07), Vector3(0.08, 0.46, 0.14)],
+	"military_duffel_bag": ["gameplay_props", Vector3(-0.53, -0.00, -0.25), Vector3(1.08, 0.53, 0.51)],
+	"ammo_box": ["gameplay_props", Vector3(-0.13, 0.00, -0.23), Vector3(0.26, 0.37, 0.47)],
+	"portable_power_station": ["gameplay_props", Vector3(-0.22, 0.00, -0.32), Vector3(0.44, 0.58, 0.63)],
+	"tactical_flashlight": ["gameplay_props", Vector3(-0.19, -0.01, -0.06), Vector3(0.46, 0.12, 0.13)],
 	# Loot container looks (field/loot/loot_container.gd).
 	"medical_supplies_crate": ["gameplay_props", Vector3(-0.27, 0.00, -0.34), Vector3(0.55, 0.42, 0.69)],
 	"medical_duffel_bag": ["gameplay_props", Vector3(-0.51, 0.00, -0.29), Vector3(1.02, 0.60, 0.59)],
@@ -461,14 +516,18 @@ static func place(parent: Node3D, folder: String, piece: String, xf: Transform3D
 ## plan: size (Vector2i: depth along X, length along Z), edges ({n, s, w, e}: tokens, west to east
 ##   and north to south), inner ([from: Vector2, to: Vector2, tokens]), props ([piece, x, z, face],
 ##   x/z = footprint center), floor (style), porch (bool). The plan's front is its east edge.
+##   loot (optional): furniture that is a loot container, [piece, x, z, face, container kind
+##   (LootSpot.ContainerType name), loot table id ("" = the region's)]. Its collision is in the
+##   building like props, but the mesh comes with the container (LootSpot.look_piece), not build_meshes().
 ## spec: origin (Vector2i, north-west corner), mirror (true: the plan's east front faces west),
 ##   style (a, b or c), roof (gable or flat).
 ## Returns rect (Rect2), segments ([{kind, len, a, b, inward, inner, index}]), doors ([[x, z, gap]]),
-## props ([{piece, folder, xf, box: AABB}]), walls (Array[AABB]), floor ([{piece, rect}]).
+## props ([{piece, folder, xf, box: AABB}]), walls (Array[AABB]), floor ([{piece, rect}]),
+## loot ([{piece, folder, xf, box, center: Vector2, yaw, kind: String, table: String}]).
 static func parts(plan: Dictionary, spec: Dictionary) -> Dictionary:
 	var size: Vector2i = plan.size
 	var out := {"rect": Rect2(Vector2(spec.origin), Vector2(size)), "segments": [], "doors": [],
-		"props": [], "walls": [], "floor": []}
+		"props": [], "walls": [], "floor": [], "loot": []}
 	var lines := {
 		"n": [Vector2(0, 0), Vector2(size.x, 0), Vector2(0, 1)],
 		"s": [Vector2(0, size.y), Vector2(size.x, size.y), Vector2(0, -1)],
@@ -484,15 +543,27 @@ static func parts(plan: Dictionary, spec: Dictionary) -> Dictionary:
 		out.walls.append_array(_segment_boxes(seg))
 	for p: Array in plan.get("props", []):
 		out.props.append(_prop(plan, spec, p))
+	for l: Array in plan.get("loot", []):
+		var part := _prop(plan, spec, [l[0], l[1], l[2], l[3]])
+		if part.is_empty():
+			continue
+		var face: String = l[3]
+		if spec.get("mirror", false):
+			face = {"e": "w", "w": "e"}.get(face, face)
+		part["center"] = _world(plan, spec, Vector2(l[1], l[2]))
+		part["yaw"] = FACE_YAW[face]
+		part["kind"] = String(l[4])
+		part["table"] = String(l[5]) if l.size() > 5 else ""
+		out.loot.append(part)
 	out.floor = _floor_tiles(out.rect, plan.get("floor", "b"))
 	return out
 
 
-## Collision boxes of the props: [tall (Array[AABB]), low (Array[AABB])].
+## Collision boxes of the props and loot furniture: [tall (Array[AABB]), low (Array[AABB])].
 static func prop_boxes(p: Dictionary) -> Array:
 	var tall: Array[AABB] = []
 	var low: Array[AABB] = []
-	for prop: Dictionary in p.props:
+	for prop: Dictionary in p.props + p.get("loot", []):
 		var box: AABB = prop.box
 		if prop.decor or box.size.y < PROP_MIN_COLLIDE_H:
 			continue

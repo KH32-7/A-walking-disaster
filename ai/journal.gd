@@ -30,6 +30,7 @@ const FALLBACK_TEXT := {"name": "누군가", "other": "누군가", "building": "
 const STAGE_KINDS := {
 	&"friend": &"friend",
 	&"lover": &"lover",
+	&"comrade": &"comrade",
 	&"spouse": &"wedding",
 	&"married": &"wedding",
 	&"separated": &"separated",
@@ -41,7 +42,7 @@ const OUTCOME_KINDS := {
 	Enums.RaidOutcome.LOSS: &"raid_loss",
 }
 ## Korean region names in lines. TODO(B): read the region's display name once data/regions has one.
-const REGION_NAMES := {&"flooded_mall": "침수 상가"}
+const REGION_NAMES := {&"flooded_mall": "침수 상가", &"hospital": "병원"}
 ## Journal moments that can become a resident's second epilogue line, best first by template priority.
 const HIGHLIGHTS := {
 	&"wedding": &"epilogue_family",

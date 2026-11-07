@@ -18,7 +18,7 @@ func run() -> bool:
 	var counts: Array[int] = [base0.size()]
 
 	# Field regions: own song, chase song crossfades (replaces the field song); other regions fall back.
-	for region in [&"city_park", &"flooded_mall"]:
+	for region in [&"city_park", &"flooded_mall", &"hospital"]:
 		var f := Audio.layers_for(&"field", 0, false, false, region)
 		var c := Audio.layers_for(&"field", 0, true, false, region)
 		ok = _expect(f == [StringName("field_%s" % region)], "%s field song %s" % [region, f]) and ok

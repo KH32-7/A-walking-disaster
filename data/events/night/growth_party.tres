@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="NightEventDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/night_event_def.gd" id="1_night"]
+
+[resource]
+script = ExtResource("1_night")
+id = &"growth_party"
+display_name = "성장 잔치"
+description = "아이, 청소년, 어른이 될 때마다 한 번. 모두 사기 +6. 선물(식량 3)이면 가장 낮은 능력치 +1"
+tagline = "어제보다 한 뼘 자란 얼굴"
+weight = 100
+priority = true
+choices = Array[StringName]([&"watch", &"gift"])

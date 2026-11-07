@@ -53,7 +53,7 @@ func _add(traits: Array = [], extra: Dictionary = {}) -> StringName:
 
 func _test_defs() -> bool:
 	var ids := BaseDB.night_events().keys()
-	var ok := _check(ids.size() == 8 and &"prejudice_talk" in ids, "밤 이벤트 7종 + 편견 해소 대화 (C-16): %s" % [ids])
+	var ok := _check(ids.size() == 18 and &"prejudice_talk" in ids, "밤 이벤트 7종 + 편견 해소 대화 (C-16) + 2026-11-07 사건 10종: %s" % [ids])
 	ok = _check(BaseDB.get_night_event(&"wedding").priority and not BaseDB.get_night_event(&"bonfire").priority, "결혼식은 우선") and ok
 	ok = _check(BaseDB.get_night_event(&"quarrel").choices == [&"watch", &"mediate"], "다툼: 지켜보기·중재") and ok
 	return ok
@@ -90,7 +90,7 @@ func _test_daily() -> bool:
 	for id in [a, b]:
 		Colony.residents[id]["assignment"] = {"job": &"woodcutting", "building_id": &""}
 	Colony._settle_relations({a: true, b: true, c: true})
-	var ok := _check(Colony.relation(a, b) == 1 and Colony.relation(a, c) == 0, "같은 작업장에서 하루 +1")
+	var ok := _check(Colony.relation(a, b) == RelationRules.SAME_WORKPLACE and Colony.relation(a, c) == 0, "같은 작업장에서 하루 +2")
 	Colony.add_relation(a, c, 40)
 	Colony.relation_meta[RelationRules.pair_key(a, c)]["last_day"] = 10
 	Colony._settle_relations({})
@@ -149,7 +149,7 @@ func _test_romance() -> bool:
 	Colony.residents[a]["relations"][kid] = 70
 	Colony.residents[kid]["relations"][a] = 70
 	var groups := Colony._night_candidates(&"confession")
-	var ok := _check(groups.size() == 1 and a in groups[0] and b in groups[0], "고백: 관계 50 이상 미혼 성인, 연애에 관심 없음·아이 제외 %s" % [groups])
+	var ok := _check(groups.size() == 1 and a in groups[0] and b in groups[0], "고백: 관계 40 이상 미혼 성인, 연애에 관심 없음·아이 제외 %s" % [groups])
 	var morale := int(Colony.residents[a]["morale"])
 	Colony._apply_night_event({"event_id": &"confession", "participants": [a, b], "choices": [&"watch", &"cheer"], "night_day": 20}, &"cheer")
 	ok = _check(Colony.relation_stage(a, b) == &"lover" and Colony.partner_of(a) == b, "고백 → 연인") and ok
@@ -158,12 +158,12 @@ func _test_romance() -> bool:
 	ok = _check(Colony._night_candidates(&"confession").is_empty() and Colony._night_candidates(&"date").size() == 1, "연인은 고백 대상이 아니고 데이트 대상") and ok
 	Colony._apply_night_event({"event_id": &"date", "participants": [a, b], "choices": [&"watch"], "night_day": 20}, &"")
 	ok = _check(Colony.relation(a, b) == 60, "데이트 관계 +5") and ok
-	ok = _check(Colony._night_candidates(&"proposal").is_empty(), "연인 10일·관계 80 전에는 청혼 없음") and ok
+	ok = _check(Colony._night_candidates(&"proposal").is_empty(), "연인 7일·관계 70 전에는 청혼 없음") and ok
 	Colony.add_relation(a, b, 25)
 	GameState.load_data({"day": 30})
 	for id in [a, b]:
 		Colony.residents[id]["morale"] = 60
-	ok = _check(Colony._night_candidates(&"proposal").size() == 1, "연인 10일, 관계 80, 사기 50 → 청혼") and ok
+	ok = _check(Colony._night_candidates(&"proposal").size() == 1, "연인 7일, 관계 70, 사기 50 → 청혼") and ok
 	return ok
 
 

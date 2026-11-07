@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="NightEventDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/night_event_def.gd" id="1_night"]
+
+[resource]
+script = ExtResource("1_night")
+id = &"copycat"
+display_name = "어른 흉내"
+description = "아이나 청소년이 보호자의 숙련 작업을 따라 해 그 작업 숙련 1을 얻음. 한 번만. 칭찬하면 사기 +5"
+tagline = "어른들이 하는 걸 보고 그대로 따라 한다"
+weight = 25
+priority = false
+choices = Array[StringName]([&"watch", &"praise"])

@@ -332,6 +332,7 @@ func _test_mastery_from_hits() -> void:
 	_set_mastery({})
 	w.skills.mastery = ClassMastery.new()
 	w.holder.switch_to(Enums.EquipSlot.MAIN)
+	_advance(w, 0.5)  # the pistol's attack interval still holds the shared cooldown
 	monster.hp = 1.0
 	_shot_damage(w, monster)
 	_expect(Progression.mastery_xp(Enums.CombatClass.GUN) >= int(ClassMastery.XP_PER_KILL), "kill xp")

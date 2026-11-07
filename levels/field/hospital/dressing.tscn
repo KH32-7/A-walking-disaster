@@ -1,0 +1,35 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://art/dressing/region_dressing.gd" id="1_dress"]
+
+[sub_resource type="Gradient" id="Gradient_cool"]
+offsets = PackedFloat32Array(0, 0.5, 1)
+colors = PackedColorArray(0, 0.04, 0.06, 1, 0.45, 0.5, 0.5, 1, 1, 0.99, 0.95, 1)
+
+[node name="Dressing" type="Node3D"]
+script = ExtResource("1_dress")
+seed_value = 31
+sky_top = Color(0.43529412, 0.5411765, 0.6117647, 1)
+sky_horizon = Color(0.7254902, 0.78039217, 0.8, 1)
+sun_color = Color(0.9529412, 0.9607843, 1, 1)
+sun_energy = 1.0
+sun_rotation = Vector3(-46, -32, 0)
+ambient = Color(0.5019608, 0.5803922, 0.6627451, 1)
+ambient_energy = 0.28
+fog_color = Color(0.6627451, 0.72156864, 0.7490196, 1)
+fog_density = 0.0018
+shade_tint = Color(0.23529412, 0.32156864, 0.4, 1)
+shade_tint_mix = 0.6
+sun_shadow_distance = 60.0
+tonemap = 4
+exposure = 0.86
+agx_contrast = 1.45
+glow_intensity = 0.25
+glow_bloom = 0.04
+ssao = true
+ssao_intensity = 2.5
+adjust = true
+contrast = 1.1
+saturation = 0.9
+grade = SubResource("Gradient_cool")
+vines_per_10m = 0.0

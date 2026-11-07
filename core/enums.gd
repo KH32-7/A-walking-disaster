@@ -46,7 +46,7 @@ enum FlowState {
 ## Data enums from the design "데이터 정의" tables, shared because more than one lane reads them.
 enum ResourceCategory { BASIC, PROCESSED, FIELD, MONSTER, SPECIAL }  # 11 ResourceDef
 enum ExtractType { NORMAL, GENERATOR, KEY, BATTERY, HELICOPTER }  # 02 ExtractPoint
-enum RelationFlag { LOVERS, MARRIED, RIVAL, GUARDIAN }  # 08 Relation
+enum RelationFlag { LOVERS, MARRIED, RIVAL, GUARDIAN, COMRADES }  # 08 Relation (COMRADES: 2026-11-07 전우애)
 enum ArrivalMethod { BIRTH, ADOPTION }  # 08 Arrival
 enum RaidTime { DAY, NIGHT }  # 10 RaidResult
 enum RaidMode { AUTO, PLAYED }  # 10 RaidResult

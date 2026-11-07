@@ -58,6 +58,8 @@ signal slot_taken(index: int, item_id: StringName, count: int)
 
 @export var def: LootContainerDef
 @export var loot_table: LootTable
+## Furniture piece drawn instead of the kind's crate look (LootSpot.look_piece), &"" = crate.
+@export var look_piece: StringName = &""
 
 var state := State.CLOSED
 ## [{"item_id": StringName, "count": int, "identified": bool}], count 0 = taken. Gear slots also
@@ -92,6 +94,9 @@ func _ready() -> void:
 func _dress() -> void:
 	var greybox := get_node_or_null(^"Greybox") as GeometryInstance3D
 	var looks: Array = LOOKS.get(def.type if def else LootSpot.ContainerType.DRAWER, [])
+	if look_piece != &"" and CityKit.PROPS.has(look_piece):
+		looks = [[CityKit.PROPS[look_piece][0], String(look_piece), 1.0]]
+		_fit_shape(CityKit.PROPS[look_piece][2])
 	if not looks.is_empty() and CityKit.available():
 		var pick: Array = looks[absi(hash(Vector3i(global_position.round()))) % looks.size()]
 		var part := CityKit.prop_part(pick[1], Vector2.ZERO, 0.0, 0.0, pick[2])
@@ -105,6 +110,22 @@ func _dress() -> void:
 	if _look.is_empty() and greybox != null:
 		_look.append(greybox)
 	_refresh_outline()
+
+
+## Furniture is bigger than a crate: the interaction shape (and the greybox) take its size, centred.
+func _fit_shape(size: Vector3) -> void:
+	var cs := get_node_or_null(^"CollisionShape3D") as CollisionShape3D
+	if cs != null:
+		var box := BoxShape3D.new()
+		box.size = size
+		cs.shape = box
+		cs.position = Vector3(0.0, size.y * 0.5, 0.0)
+	var greybox := get_node_or_null(^"Greybox") as MeshInstance3D
+	if greybox != null:
+		var mesh := (greybox.mesh as BoxMesh).duplicate() as BoxMesh
+		mesh.size = size
+		greybox.mesh = mesh
+		greybox.position = Vector3(0.0, size.y * 0.5, 0.0)
 
 
 func _refresh_outline() -> void:

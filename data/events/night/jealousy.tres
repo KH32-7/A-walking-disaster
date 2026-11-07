@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="NightEventDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/night_event_def.gd" id="1_night"]
+
+[resource]
+script = ExtResource("1_night")
+id = &"jealousy"
+display_name = "질투"
+description = "연인의 상대와 관계 45 이상인 제3자. 말리면 신뢰도 평균 %로 오해가 풀림, 아니면 연인 -6, 제3자와 -8"
+tagline = "괜히 신경 쓰이는 사람이 생겼다"
+weight = 8
+priority = false
+choices = Array[StringName]([&"watch", &"mediate"])

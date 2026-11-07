@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="NightEventDef" format=3]
+
+[ext_resource type="Script" path="res://base/defs/night_event_def.gd" id="1_night"]
+
+[resource]
+script = ExtResource("1_night")
+id = &"reconcile"
+display_name = "화해의 손길"
+description = "관계 0 미만인 둘이 오늘 함께 출격해 살아 돌아옴. 관계 +12, 사기 +3"
+tagline = "등을 맡기고 나니 미움이 조금 우습다"
+weight = 30
+priority = false
+choices = Array[StringName]([&"watch"])

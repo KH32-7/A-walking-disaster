@@ -1,0 +1,87 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://levels/field/hospital/hospital.gd" id="1_hospital"]
+[ext_resource type="PackedScene" path="res://levels/field/hospital/layout.tscn" id="2_layout"]
+[ext_resource type="Script" path="res://field/monsters/monster_spawner.gd" id="3_monster_spawner"]
+[ext_resource type="Resource" path="res://data/monsters/mist.tres" id="4_mist"]
+[ext_resource type="Resource" path="res://data/monsters/swamp_blob.tres" id="5_blob"]
+[ext_resource type="Resource" path="res://data/monsters/neon_moth.tres" id="6_moth"]
+[ext_resource type="Resource" path="res://data/monsters/signal_wraith.tres" id="6_signal"]
+[ext_resource type="Script" path="res://field/loot/loot_spawner.gd" id="7_loot_spawner"]
+[ext_resource type="Script" path="res://field/extract/extraction_manager.gd" id="8_extraction"]
+[ext_resource type="Script" path="res://field/downed/lost_gear_spawner.gd" id="9_lost_gear"]
+[ext_resource type="PackedScene" path="res://field/camera/field_camera.tscn" id="10_camera"]
+[ext_resource type="Script" path="res://field/rescue/rescue_manager.gd" id="11_rescue"]
+[ext_resource type="Resource" path="res://data/regions/hospital/rescues/injured_farmer.tres" id="12_farmer"]
+[ext_resource type="Resource" path="res://data/regions/hospital/rescues/trapped_teacher.tres" id="13_teacher"]
+[ext_resource type="Script" path="res://field/companion/companion_manager.gd" id="15_companions"]
+[ext_resource type="Script" path="res://field/monsters/roaming_spawner.gd" id="16_roaming"]
+[ext_resource type="Script" path="res://field/routes/hidden_route_manager.gd" id="90_hidden_routes"]
+[ext_resource type="Script" path="res://field/monsters/boss/boss_spawner.gd" id="91_boss_spawner"]
+[ext_resource type="Script" path="res://field/vehicles/vehicle_spawner.gd" id="92_vehicle_spawner"]
+
+[sub_resource type="Environment" id="Env_greybox"]
+background_mode = 1
+background_color = Color(0.62, 0.68, 0.72, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.75, 0.75, 0.78, 1)
+ambient_light_energy = 0.6
+
+[node name="Hospital" type="Node3D"]
+script = ExtResource("1_hospital")
+
+[node name="Layout" parent="." instance=ExtResource("2_layout")]
+
+[node name="MonsterSpawner" type="Node3D" parent="."]
+script = ExtResource("3_monster_spawner")
+monster_defs = Array[Resource]([ExtResource("4_mist"), ExtResource("5_blob"), ExtResource("6_moth"), ExtResource("6_signal")])
+region_id = &"hospital"
+
+[node name="RoamingSpawner" type="Node3D" parent="."]
+script = ExtResource("16_roaming")
+monster_defs = Array[Resource]([ExtResource("4_mist"), ExtResource("5_blob"), ExtResource("6_moth"), ExtResource("6_signal")])
+region_id = &"hospital"
+
+[node name="BossSpawner" type="Node3D" parent="."]
+script = ExtResource("91_boss_spawner")
+region_id = &"hospital"
+
+[node name="LootSpawner" type="Node3D" parent="."]
+script = ExtResource("7_loot_spawner")
+region_id = &"hospital"
+spawn_ratio = 0.7
+spots_root = NodePath("../Layout")
+
+[node name="VehicleSpawner" type="Node3D" parent="."]
+script = ExtResource("92_vehicle_spawner")
+spots_root = NodePath("../Layout")
+
+[node name="GreyboxLighting" type="Node3D" parent="."]
+
+[node name="Sun" type="DirectionalLight3D" parent="GreyboxLighting"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 30, 0)
+rotation_degrees = Vector3(-50, 30, 0)
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="GreyboxLighting"]
+environment = SubResource("Env_greybox")
+
+[node name="ExtractionManager" type="Node" parent="."]
+script = ExtResource("8_extraction")
+region_id = &"hospital"
+
+[node name="LostGearSpawner" type="Node3D" parent="."]
+script = ExtResource("9_lost_gear")
+
+[node name="RescueManager" type="Node" parent="."]
+script = ExtResource("11_rescue")
+spawns = Array[Resource]([ExtResource("12_farmer"), ExtResource("13_teacher")])
+
+[node name="CompanionManager" type="Node" parent="."]
+script = ExtResource("15_companions")
+
+[node name="HiddenRouteManager" type="Node" parent="."]
+script = ExtResource("90_hidden_routes")
+gate_width = 5.0
+
+[node name="FieldCamera" parent="." instance=ExtResource("10_camera")]
