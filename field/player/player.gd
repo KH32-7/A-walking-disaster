@@ -55,11 +55,11 @@ var one_hand_only := false
 ## Set by RescueCall (field maps). Called when health reaches 0; returning true means someone is
 ## coming, so EventBus.player_downed waits for give_up(). revive() stands the player back up.
 var down_interceptor: Callable
+## Vehicle being driven (02 "탈것"), or null. FieldVehicle sets it through start_riding / stop_riding.
+var riding: FieldVehicle
 
 var _aim_toggled := false
 var _sprint_toggled := false
-## Vehicle being driven (02 "탈것"), or null. FieldVehicle sets it through start_riding / stop_riding.
-var riding: FieldVehicle
 var _since_stamina_use := 0.0
 var _dodge_left := 0.0
 var _dodge_elapsed := 0.0
@@ -94,13 +94,13 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if is_downed:
 		return
+	if riding != null:
+		_step_riding()
+		return
 	if not script_input.is_empty():
 		interact_held = false
 		step(delta, script_input)  # a cutscene drives the player (IntroCutscene); no interact
 		move_and_slide()
-	if riding != null:
-		_step_riding()
-		return
 		return
 	step(delta, {} if input_blocked() else _read_input())
 	move_and_slide()
@@ -204,13 +204,13 @@ func is_invulnerable() -> bool:
 ## Status tick damage (bleed, shock) skips blocking and dodge invulnerability.
 ## DebugConsole `godmode` blocks everything.
 func take_damage(amount: float, info: Dictionary = {}) -> void:
+	if riding != null:
+		riding.take_damage(amount, info)
+		return
 	var tick := StatusHolder.is_tick(info)
 	if is_downed or (is_invulnerable() and not tick) or amount <= 0.0 or DebugConsole.godmode:
 		return
 	if incoming_damage_filter.is_valid() and not tick:
-	if riding != null:
-		riding.take_damage(amount, info)
-		return
 		amount = incoming_damage_filter.call(amount, info)
 		if amount <= 0.0:
 			return
@@ -246,10 +246,6 @@ func give_up() -> void:
 		EventBus.player_downed.emit()
 
 
-## One simulation step. Split from input reading so tests can drive it.
-## input: {"move": Vector2, "aim": bool, "sprint": bool, "dodge": bool}
-## A cutscene may give "world_move": Vector3 (ground direction, length <= 1) instead of "move".
-func step(delta: float, input: Dictionary) -> void:
 func is_riding() -> bool:
 	return riding != null
 
@@ -270,6 +266,10 @@ func stop_riding(at: Vector3) -> void:
 	global_position = at
 
 
+## One simulation step. Split from input reading so tests can drive it.
+## input: {"move": Vector2, "aim": bool, "sprint": bool, "dodge": bool}
+## A cutscene may give "world_move": Vector3 (ground direction, length <= 1) instead of "move".
+func step(delta: float, input: Dictionary) -> void:
 	var dir: Vector3 = input["world_move"] if input.has("world_move") else _to_world(input.get("move", Vector2.ZERO))
 	status.step(delta)
 	if is_downed:
@@ -316,10 +316,6 @@ func _read_input() -> Dictionary:
 	}
 
 
-## Screen-relative stick/WASD to a world direction on the ground plane.
-func _to_world(move: Vector2) -> Vector3:
-	var camera := get_viewport().get_camera_3d() if is_inside_tree() else null
-	if camera == null:
 ## Driving: the move keys steer the vehicle, F gets off. Weapons, skills and items are locked
 ## (their nodes check is_riding()).
 func _step_riding() -> void:
@@ -340,6 +336,10 @@ func _set_body_layers(on: bool) -> void:
 	collision_mask = ((1 << (Enums.LAYER_WORLD - 1)) | (1 << (Enums.LAYER_MONSTER - 1))) if on else 0
 
 
+## Screen-relative stick/WASD to a world direction on the ground plane.
+func _to_world(move: Vector2) -> Vector3:
+	var camera := get_viewport().get_camera_3d() if is_inside_tree() else null
+	if camera == null:
 		return Vector3(move.x, 0.0, move.y)
 	var right := camera.global_basis.x
 	var forward := -camera.global_basis.z

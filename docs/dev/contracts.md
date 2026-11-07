@@ -147,8 +147,6 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   `field_rules`, `guard_post`, `Monster.raid_goal`, `is_raider()`, `drop_mult`, `died`, `attack_landed`. 구조물 그룹 `raid_structures`, `raid_gates`
   (`RaidMarch` 상수), 구조물과 주민의 `take_damage(amount, info)`, 구조물 info 키 `structure_damage_mult`, `charges_gates`, `monster_id`, `source`, `element`.
   자세한 사용법은 [field/README.md](../../field/README.md).
-- **FieldState**: `in_sortie()`, `lost_gear`, `boss_ready(boss_id)`, `boss_kill_count(boss_id)`, `ensure_starter_weapon()`(출격이 끝날 때 손·창고에 무기가 없으면 `STARTER_WEAPON`(단검)을 만들어 장착, 알림).
-  보스 부활 날짜 `boss_respawn_day`는 **보스 id별**이다(한 지역에 보스가 여럿일 수 있다). 지역 id로 저장된 옛 세이브는 불러올 때 그 지역의 `boss_id`로 옮긴다.
 - **탈것 (02 "탈것", 2026-11-07)**: 정의 `VehicleDef`(`data/vehicles/*.tres`), 공통 수치 `VehicleTuning`(`data/vehicles/tuning/vehicle_tuning.tres`).
   `Garage`: `add(def_id, durability)`, `remove(uid)`, `list()`, `ready_list()`(기지에 있고 안 부서진 것), `def_of(uid)`, `durability(uid)`,
   `is_broken(uid)`, `is_away(uid)`(필드에 두고 옴), `repair_cost(uid)`, `repair(uid)`(정비소, 잃은 내구도 10당 고철 1), `lost_in_region(region_id)`,
@@ -159,6 +157,8 @@ C의 기지 신호(신뢰·입주·관계·아이·편견·고립·전초기지�
   무기·스킬·정수·소모품은 `is_riding()`이면 쉰다. `FieldVehicle.mechanic_near_point(tree, point)`(정비공 찾기, 헬기도 씀).
   `VehicleSpawner`(지역 씬, `VehicleSpot` 마커의 `spawn_ratio`, 출격 loadout의 탈것, 두고 온 탈것), `HelicopterWreck`(헬기 탈출 지점에 생김).
   loadout `"vehicle"`: Garage uid(없으면 `&""`), `FieldState.vehicle_uid`. `RegionDef.boat_dock`: 기지 배를 가져갈 수 있는 지역.
+- **FieldState**: `in_sortie()`, `lost_gear`, `boss_ready(boss_id)`, `boss_kill_count(boss_id)`, `ensure_starter_weapon()`(출격이 끝날 때 손·창고에 무기가 없으면 `STARTER_WEAPON`(단검)을 만들어 장착, 알림).
+  보스 부활 날짜 `boss_respawn_day`는 **보스 id별**이다(한 지역에 보스가 여럿일 수 있다). 지역 id로 저장된 옛 세이브는 불러올 때 그 지역의 `boss_id`로 옮긴다.
 - **보스 (B-19)**: `BossSpawner`가 `BossArena`마다 그 보스의 부활 날짜를 따로 본다. 보스마다의 공략 규칙은 `BossDef.mechanic`(`BossMechanic` 스크립트)에 둔다.
   `BossDef.first_day` 전에는 안 나온다. `RegionDef.bosses_per_day`(0이면 전부)가 있으면 `BossSpawner.todays(arenas, day)`가 지역과 날짜로 그만큼만 뽑는다.
   잠든 채 소환된 보스(`BossDef.buried_intro`)는 땅에 묻혀 있다가 처음 깰 때 솟아오른다: `is_buried()`, `is_in_intro()`(피격 무시), 끝나면 신호 `woke`.
@@ -246,10 +246,10 @@ B의 결과가 없으면(디버그 진행) 라우터가 기본값으로 채운�
   "rescued_profiles": Array[Dictionary],               # rescue_completed로 받은 프로필 (라우터)
   "companions": Array[StringName], "stranded": Array[StringName],
   "duration_sec": float,
-  "down": Dictionary,                                  # FieldState.down_result(), 쓰러지지 않으면 {} (라우터)
-  "xp": int                                            # Progression.finish_sortie (라우터)
   "vehicle": Dictionary,                               # 타고 나온 탈것 {garage_uid ("" = 필드에서 찾음), def_id, durability}, 없으면 {}
   "vehicles_left": Array[Dictionary],                  # 필드에 남은 기지 탈것 [{garage_uid, durability, position [x, y, z], yaw}] (Garage가 처리)
+  "down": Dictionary,                                  # FieldState.down_result(), 쓰러지지 않으면 {} (라우터)
+  "xp": int                                            # Progression.finish_sortie (라우터)
 }
 ```
 
@@ -313,9 +313,9 @@ loadout의 `"seed": int`는 라우터가 없으면 만들어 넣고 저장한다
 - `resident_pool`(A): 생존자 풀에서 이미 구조한 항목 id 목록(`{"used": [...]}`).
 - 키 `quests`(A, A-13): 퀘스트 상태·진행도·진행 중인 출격의 지역과 동행.
 - `journal`(A, A-17): 일지 항목, 만난 주민과 그들의 순간, 마지막 날.
+- `garage`: 가진 탈것(def id, 내구도, 필드에 두고 온 위치), 다음 uid 번호. `field`에는 이번 출격에 가져간 `vehicle_uid`.
 
 ## 아이템 id 규칙
-- `garage`: 가진 탈것(def id, 내구도, 필드에 두고 온 위치), 다음 uid 번호. `field`에는 이번 출격에 가져간 `vehicle_uid`.
 
 - 자원·소모품은 `data/resources/`의 id(`Economy.get_def`). 탄약은 `ammo_pistol`(권총·기관단총), `ammo_rifle`(소총·저격총),
   `ammo_shell`(산탄총). 총의 `get_item_stats()["ammo_id"]`가 어느 탄약을 쓰는지 알려준다. 소모품: `first_aid_kit`, `bandage`, `noise_lure`, `painkiller`, `flashbang`, `grenade`.
